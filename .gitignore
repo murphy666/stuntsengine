@@ -1,0 +1,9 @@
+# Build directories (all CMake presets follow build_cmake* naming)
+build/
+build_cmake*/
+
+# Game resource files (not tracked in source control)
+ressources/
+*.hig
+stunts.cfg
+.gitignore

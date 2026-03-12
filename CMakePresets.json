@@ -1,0 +1,99 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 16 },
+  "configurePresets": [
+    {
+      "name": "linux-debug",
+      "displayName": "Linux — Debug",
+      "description": "Native GCC build, debug symbols, no optimisation",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STUNTS_TESTS": "ON"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux — Release",
+      "description": "Native GCC build, optimised",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "STUNTS_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "Linux — AddressSanitizer",
+      "description": "Native GCC build with ASAN enabled",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake_asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STUNTS_ASAN": "ON",
+        "STUNTS_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "linux-coverage",
+      "displayName": "Linux — Coverage (gcov/lcov)",
+      "description": "Native GCC build with gcov line-coverage instrumentation",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake_coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "STUNTS_TESTS": "ON",
+        "STUNTS_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "windows-x64",
+      "displayName": "Windows x64 (MinGW cross-compile)",
+      "description": "Cross-compile for Windows 64-bit using MinGW-w64 on Linux. SDL2 is auto-downloaded to library/sdl2-windows/ during configure.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake_windows",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-mingw-w64-x86_64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "STUNTS_TESTS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan"
+    },
+    {
+      "name": "linux-coverage",
+      "configurePreset": "linux-coverage"
+    },
+    {
+      "name": "windows-x64",
+      "configurePreset": "windows-x64",
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-coverage",
+      "configurePreset": "linux-coverage",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

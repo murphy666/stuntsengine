@@ -1,0 +1,4 @@
+# Auto-downloaded by CMake during Windows cross-compile configure step.
+# See the "SDL2 auto-download" section in the top-level CMakeLists.txt.
+*
+!.gitignore
