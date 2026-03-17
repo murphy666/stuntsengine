@@ -60,6 +60,9 @@ _RT_ unsigned         resource_alloc_state_b;
 
 #undef _RT_
 
+extern short is_audioloaded;
+extern char  g_is_busy;
+
 /* Debug helpers */
 void debug_track_terrain_map(const char * tag);
 

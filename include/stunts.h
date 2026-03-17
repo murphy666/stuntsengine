@@ -28,7 +28,6 @@
 
 /* Data / global variables */
 #include "data_game.h"
-#include "data_core.h"
 #include "data_menu_track.h"
 
 /* Core modules */

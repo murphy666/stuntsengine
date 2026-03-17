@@ -30,8 +30,6 @@ struct GAMEINFO  gameconfigcopy;
 char            *replay_header     = nullptr;
 char             g_path_buf[260]     = {0};
 char             audiodriverstring[32] = "ad";
-char             g_is_busy           = 0;
-short            is_audioloaded      = 0;
 void            *songfileptr         = nullptr;
 void            *voicefileptr        = nullptr;
 

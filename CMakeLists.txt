@@ -464,6 +464,7 @@ if(STUNTS_TESTS)
 
     stunts_add_gtest(test_ressources
         tests/test_ressources.cc
+        tests/test_ressources_stubs.c
         src/ressources.c)
     if(TARGET test_ressources)
         target_compile_definitions(test_ressources PRIVATE _GNU_SOURCE)
@@ -472,7 +473,6 @@ if(STUNTS_TESTS)
     stunts_add_gtest(test_data_tables
         tests/test_data_tables.cc
         src/data_game.c
-        src/data_core.c
         src/data_menu_track.c
         src/data_runtime.c)
 

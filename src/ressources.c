@@ -28,6 +28,10 @@
 #include <ctype.h>
 #include <dirent.h>
 #include "ressources.h"
+
+/* Audio / busy state — defined here, used by stuntsengine.c, highscore.c */
+short is_audioloaded = 0;
+char  g_is_busy      = 0;
 #include "memmgr.h"
 #include "shape2d.h"
 #include "stunts.h"

@@ -522,3 +522,18 @@ char checkpoint_lap_trigger = 0;
 unsigned char game_mode_state_register[2] = { 0, 0 };
 char replaybar_enabled = 0;
 
+/* Game physics / terrain constants (moved from data_core.c) */
+short hillHeightConsts[] = { 0, 450 };
+char aMain[]             = "main";
+unsigned char aDesert[]  = "desert";
+unsigned char aAlpine[]  = "alpine";
+unsigned char aCity[]    = "city";
+unsigned char aCountry[] = "country";
+
+/* Camera / free-cam control state (moved from data_core.c) */
+char cameramode = 0;
+unsigned char timertestflag2 = 0;
+unsigned short rotation_x_angle = 210;
+unsigned short rotation_z_angle = 464;
+unsigned short rotation_y_angle = 80;
+

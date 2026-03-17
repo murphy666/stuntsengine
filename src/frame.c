@@ -27,6 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Frame buffer pointers (moved from data_core.c) */
+struct RECTANGLE *rect_buffer_primary   = 0;
+struct RECTANGLE *rect_buffer_secondary = 0;
+
 /* Variables moved from data_game.c (private to this translation unit) */
 static struct TRANSFORMEDSHAPE3D currenttransshape[29] = { 0 };
 static struct RECTANGLE hud_timer_rect = { 0, 0, 0, 0 };
