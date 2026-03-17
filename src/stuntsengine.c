@@ -1679,25 +1679,28 @@ int setup_player_cars(void) {
 	wndsprite = 0;
 	ensure_file_exists(2);
 	shape3d_load_car_shapes(gameconfig.game_playercarid, gameconfig.game_opponentcarid);
-	aCarcoun[3] = gameconfig.game_playercarid[0];
-	aCarcoun[4] = gameconfig.game_playercarid[1];
-	aCarcoun[5] = gameconfig.game_playercarid[2];
-	aCarcoun[6] = gameconfig.game_playercarid[3];
-	carresptr = file_load_resfile(aCarcoun);
-	setup_aero_trackdata(carresptr, 0);
-	unload_resource(carresptr);
-
-	if (gameconfig.game_opponenttype != 0) {
-		aCarcoun[3] = gameconfig.game_opponentcarid[0];
-		aCarcoun[4] = gameconfig.game_opponentcarid[1];
-		aCarcoun[5] = gameconfig.game_opponentcarid[2];
-		aCarcoun[6] = gameconfig.game_opponentcarid[3];
-		carresptr = file_load_resfile(aCarcoun);
-		setup_aero_trackdata(carresptr, 1);
+	{
+		char carname[8] = "carcoun";
+		carname[3] = gameconfig.game_playercarid[0];
+		carname[4] = gameconfig.game_playercarid[1];
+		carname[5] = gameconfig.game_playercarid[2];
+		carname[6] = gameconfig.game_playercarid[3];
+		carresptr = file_load_resfile(carname);
+		setup_aero_trackdata(carresptr, 0);
 		unload_resource(carresptr);
-		
-		ensure_file_exists(4);
-		load_opponent_data();
+
+		if (gameconfig.game_opponenttype != 0) {
+			carname[3] = gameconfig.game_opponentcarid[0];
+			carname[4] = gameconfig.game_opponentcarid[1];
+			carname[5] = gameconfig.game_opponentcarid[2];
+			carname[6] = gameconfig.game_opponentcarid[3];
+			carresptr = file_load_resfile(carname);
+			setup_aero_trackdata(carresptr, 1);
+			unload_resource(carresptr);
+
+			ensure_file_exists(4);
+			load_opponent_data();
+		}
 	}
 
 	ensure_file_exists(3);

@@ -81,6 +81,7 @@ static struct SPRITE * whlsprite3 = 0;
 
 
 /* file-local data (moved from data_global.c) */
+static unsigned char HKeyFlag[1] = { 0 }; /* 'H' key toggle: bit 0 flipped on keypress */
 static unsigned char collision_surface_type[34] = { 0, 0, 0, 0, 0, 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 84, 90, 98, 106, 114, 121, 127, 127, 127 };
 static char aStdaxxxx[] = "stdaxxxx";
 static char aStdbxxxx[] = "stdbxxxx";

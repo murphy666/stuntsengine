@@ -24,7 +24,6 @@ extern char           cameramode;
 extern unsigned short rotation_x_angle;
 extern unsigned short rotation_z_angle;
 extern unsigned short rotation_y_angle;
-extern unsigned char  HKeyFlag[];
 extern unsigned char  resources[];
 extern unsigned char  aDesert[];
 extern unsigned char  aAlpine[];
@@ -146,11 +145,6 @@ TEST(DataCore, RotationYAngleInit)
 TEST(DataCore, CameraModeDefault)
 {
     EXPECT_EQ(0, cameramode);
-}
-
-TEST(DataCore, HKeyFlagDefault)
-{
-    EXPECT_EQ(0, HKeyFlag[0]);
 }
 
 /* ================================================================== */

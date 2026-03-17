@@ -957,8 +957,9 @@ static void opp_on_render(UIScreen *self)
 
 		ensure_file_exists(4);
 		if (gameconfig.game_opponenttype != 0) {
-			aOpp1[3] = (char)('0' + gameconfig.game_opponenttype);
-			st->opponent_resptr = file_load_resfile(aOpp1);
+			char oppname[5] = "opp1";
+			oppname[3] = (char)('0' + gameconfig.game_opponenttype);
+			st->opponent_resptr = file_load_resfile(oppname);
 			st->has_opponent_res = 1;
 		} else {
 			st->opponent_resptr = 0;
@@ -1331,12 +1332,14 @@ static void car_on_render(UIScreen *self)
 		shape3d_load_car_shapes(st->carids[st->car_index],
 								gameconfig.game_opponentcarid);
 
-		aCarcoun[3] = st->carids[st->car_index][0];
-		aCarcoun[4] = st->carids[st->car_index][1];
-		aCarcoun[5] = st->carids[st->car_index][2];
-		aCarcoun[6] = st->carids[st->car_index][3];
-
-		st->carres = file_load_resfile(aCarcoun);
+		{
+			char carname[8] = "carcoun";
+			carname[3] = st->carids[st->car_index][0];
+			carname[4] = st->carids[st->car_index][1];
+			carname[5] = st->carids[st->car_index][2];
+			carname[6] = st->carids[st->car_index][3];
+			st->carres = file_load_resfile(carname);
+		}
 		setup_aero_trackdata(st->carres, 0);
 
 		sprite_select_wnd_as_sprite1_and_clear();

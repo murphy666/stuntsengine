@@ -29,7 +29,6 @@
  *   HKeyFlag, cameramode, and the misc runtime state flags.
  */
 
-#define DATA_CORE_IMPL
 #include "data_core.h"
 #include "game_types.h"
 
@@ -57,8 +56,7 @@ unsigned char aAlpine[]  = "alpine";
 unsigned char aCity[]    = "city";
 unsigned char aCountry[] = "country";
 
-/* Hot-key toggle flag (gamemech.c XORs bit 0 on key press) */
-unsigned char HKeyFlag[1] = { 0 };
+
 
 /* Camera mode: 0=follow, 1=bumper, 2=overhead, 3=free */
 char cameramode = 0;
@@ -69,8 +67,4 @@ unsigned char timertestflag2 = 0;
 /* Global "engine busy" flag */
 char g_is_busy = 0;
 
-/* Opponent resource prefix string (bto.c, menu.c) */
-char aOpp1[] = "opp1";
 
-/* Car resource prefix string — last 4 bytes are overwritten with car ID */
-unsigned char aCarcoun[] = "carcoun";

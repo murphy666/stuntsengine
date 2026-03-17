@@ -2443,10 +2443,11 @@ void load_opponent_data(void)
     int di;
 
     /* Build "oppN" filename from opponent type */
-    aOpp1[3] = gameconfig.game_opponenttype + '0';
+    char oppname[5] = "opp1";
+    oppname[3] = gameconfig.game_opponenttype + '0';
 
     /* Load resource file */
-    resourcePtr = (char *)file_load_resfile(aOpp1);
+    resourcePtr = (char *)file_load_resfile(oppname);
 
     /* Extract opponent name */
     copy_string(player_name_buffer, locate_text_res(resourcePtr, "nam"));

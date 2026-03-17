@@ -95,7 +95,7 @@ static unsigned char aSdgame2[] = "sdgame2";
 static unsigned char aEx01ex02ex03leftrigh[] = "ex01ex02ex03leftrigh";
 static unsigned char aTitle[] = "title";
 static unsigned char aLogolog2brav[] = "logolog2brav";
-static unsigned char aCarcoun_0[] = "carcoun";
+static char aCarcoun_0[] = "carcoun";
 static unsigned char preview_camera_forward_vector[6] = { 0, 0, 140, 216, 120, 65 };
 static short intro_colorvalue = 1;
 
@@ -1579,7 +1579,7 @@ unsigned short  setup_intro(void) {
     /* Load car model for intro */
     {
         char * carres;
-        carres = (char *)file_load_resfile((char *)aCarcoun_0);
+        carres = file_load_resfile(aCarcoun_0);
         setup_aero_trackdata(carres, 1);
         unload_resource(carres);
     }

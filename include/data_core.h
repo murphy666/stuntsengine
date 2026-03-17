@@ -27,26 +27,15 @@
 
 /* Global variables — defined in src/data_core.c */
 
-#ifdef DATA_CORE_IMPL
-#  define _DC_
-#else
-#  define _DC_ extern
-#endif
-
-_DC_ unsigned char    HKeyFlag[];
-_DC_ unsigned char    aCarcoun[];
-_DC_ char             aOpp1[];
-_DC_ char             cameramode;
-_DC_ char             g_is_busy;
-_DC_ short            hillHeightConsts[];
-_DC_ short            is_audioloaded;
-_DC_ struct RECTANGLE *rect_buffer_primary;
-_DC_ struct RECTANGLE *rect_buffer_secondary;
-_DC_ unsigned short   rotation_x_angle;
-_DC_ unsigned short   rotation_y_angle;
-_DC_ unsigned short   rotation_z_angle;
-_DC_ unsigned char    timertestflag2;
-
-#undef _DC_
+extern char             cameramode;
+extern char             g_is_busy;
+extern short            hillHeightConsts[];
+extern short            is_audioloaded;
+extern struct RECTANGLE *rect_buffer_primary;
+extern struct RECTANGLE *rect_buffer_secondary;
+extern unsigned short   rotation_x_angle;
+extern unsigned short   rotation_y_angle;
+extern unsigned short   rotation_z_angle;
+extern unsigned char    timertestflag2;
 
 #endif /* DATA_CORE_H */
