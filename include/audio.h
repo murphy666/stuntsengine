@@ -33,11 +33,6 @@ short  audio_toggle_flag2(void);
 void   audio_disable_flag2(void);
 void   audio_enable_flag2(void);
 
-/* Weak-linked file loaders (provided by platform layer) */
-void * load_song_file(const char* filename) RST_WEAK;
-void * load_voice_file(const char* filename) RST_WEAK;
-void * load_sfx_file(const char* filename) RST_WEAK;
-
 /* Engine sound management */
 char * pad_id(unsigned long * id_value);
 short  audio_init_engine(short unused, void * data_ptr, void * song_res, void * voice_res);

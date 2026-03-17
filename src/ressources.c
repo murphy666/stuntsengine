@@ -1237,13 +1237,9 @@ void* file_load_resource(int type, const char* filename)
 				return file_try_binary_with_exts(filename, shape_exts);
 			}
 			#endif
-			if (file_load_shape2d_nofatal != NULL) {
+			{
 				void* shape = file_load_shape2d_nofatal(filename);
 				return shape;
-			}
-			{
-				void* r = file_try_binary_with_exts(filename, shape_exts);
-				return r;
 			}
 		case 3:
 			#ifdef _WIN32
@@ -1255,26 +1251,15 @@ void* file_load_resource(int type, const char* filename)
 				return file_try_binary_with_exts(filename, shape_res_exts);
 			}
 			#endif
-			if (file_load_shape2d_res_nofatal_thunk != NULL) {
-				void* r = file_load_shape2d_res_nofatal_thunk(filename);
-				return r;
-			}
 			{
-				void* r = file_try_binary_with_exts(filename, shape_res_exts);
+				void* r = file_load_shape2d_res_nofatal_thunk(filename);
 				return r;
 			}
 		case 4:
 			#ifdef _WIN32
 			return file_try_binary_with_exts(filename, song_exts);
 			#endif
-			if (load_song_file != NULL) {
-				void* r = load_song_file(filename);
-				return r;
-			}
-			{
-				void* r = file_try_binary_with_exts(filename, song_exts);
-				return r;
-			}
+			return file_try_binary_with_exts(filename, song_exts);
 		case 5:
 			#ifdef _WIN32
 			{
@@ -1285,10 +1270,6 @@ void* file_load_resource(int type, const char* filename)
 				return r;
 			}
 			#endif
-			if (load_voice_file != NULL) {
-				void* r = load_voice_file(filename);
-				return r;
-			}
 			{
 				void* r = file_try_driver_prefixed_binary(filename, voice_exts);
 				if (r == NULL) {
@@ -1314,10 +1295,6 @@ void* file_load_resource(int type, const char* filename)
 				return r;
 			}
 			#endif
-			if (load_sfx_file != NULL) {
-				void* r = load_sfx_file(filename);
-				return r;
-			}
 			{
 				/* Try driver-specific prefix first (e.g., adeng.sfx for sb15) */
 				void* r = file_try_driver_prefixed_binary(filename, sfx_exts);
@@ -1352,13 +1329,9 @@ void* file_load_resource(int type, const char* filename)
 				return file_try_binary_with_exts(filename, shape_exts);
 			}
 			#endif
-			if (file_load_shape2d_nofatal != NULL) {
+			{
 				void* shape = file_load_shape2d_nofatal(filename);
 				return shape;
-			}
-			{
-				void* r = file_try_binary_with_exts(filename, shape_exts);
-				return r;
 			}
 		default:
 			break;

@@ -137,16 +137,8 @@ void file_load_shape2d_palmap_apply(unsigned char * memchunk, unsigned char palm
 void * file_load_shape2d_esh(void * memchunk, const char* str);
 void * file_load_shape2d(char* shapename, int fatal);
 
-/* Weak variants: caller must NULL-check before calling when shape2d.c may not be linked */
-#if !defined(RST_WEAK)
-#  if defined(__GNUC__) && !defined(__BORLANDC__)
-#    define RST_WEAK __attribute__((weak))
-#  else
-#    define RST_WEAK
-#  endif
-#endif
-void * file_load_shape2d_fatal(char* shapename) RST_WEAK;
-void * file_load_shape2d_nofatal(const char* shapename) RST_WEAK;
+void * file_load_shape2d_fatal(char* shapename);
+void * file_load_shape2d_nofatal(const char* shapename);
 
 void * file_load_shape2d_res(char* resname, int fatal);
 void * file_load_shape2d_res_fatal(char* resname);
@@ -197,10 +189,10 @@ _S2_ struct SPRITE sprite1;
 
 #undef _S2_
 
-/* Shape2D file loading thunks — weak so test binaries without shape2d.c can link */
-void * file_load_shape2d_fatal_thunk(const char* shapename) RST_WEAK;
-void * file_load_shape2d_nofatal_thunk(const char* shapename) RST_WEAK;
-void * file_load_shape2d_res_nofatal_thunk(const char* resname) RST_WEAK;
+/* Shape2D file loading thunks */
+void * file_load_shape2d_fatal_thunk(const char* shapename);
+void * file_load_shape2d_nofatal_thunk(const char* shapename);
+void * file_load_shape2d_res_nofatal_thunk(const char* resname);
 
 /* XOR rectangle fill on sprite */
 void sprite_xor_fill_rect(int x, int y, int width, int height, unsigned char color);
