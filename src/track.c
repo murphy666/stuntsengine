@@ -2213,10 +2213,6 @@ loc_2BD20:
  * Returns 0 on success, error code (1-11) on failure.
  */
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-#endif
-
 /* Extern globals (declared in data_game.h) */
 
 

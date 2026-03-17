@@ -452,10 +452,6 @@ void update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *ca
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wchar-subscripts"
-#endif
-
 
 /* 
  * Map dseg 16-bit offset to actual pointer.
@@ -2299,7 +2295,7 @@ short car_car_detect_collision(short* pColl, short* pWorld, short* oColl, short*
 	struct MATRIX* mat;
 	short combinedRadius;
 	short axisDelta;
-	char i;
+	int i;
 
 	combinedRadius = (short)(pColl[3] + oColl[3]);
 
@@ -2415,10 +2411,6 @@ static short pState_minusRotate_x_1 = 0;
 static short pState_minusRotate_y_1 = 0;
 static short pState_minusRotate_z_1 = 0;
 
-
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wchar-subscripts"
-#endif
 
 void build_track_object(struct VECTOR* a, struct VECTOR* b);
 

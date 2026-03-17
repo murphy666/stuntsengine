@@ -73,10 +73,6 @@ static char * track_file_append = 0;
 /* file-local data (moved from data_global.c) */
 static char input_status_stack_index = 0;
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic ignored "-Wchar-subscripts"
-#endif
-
 struct SIMD simd_opponent_rt = {0};
 
 void call_exitlist(void);
@@ -1088,7 +1084,7 @@ void audio_unload(void) {
 /** @brief Push current input state onto the input stack
  */
 void input_push_status(void) {
-	char idx = input_status_stack_index;
+	int idx = input_status_stack_index;
 	sprite_buffer_x_coords[idx] = mouse_motion_detected_flag;
 	sprite_buffer_y_coords[idx] = kbormouse;
 	input_status_stack_index++;
@@ -1097,7 +1093,7 @@ void input_push_status(void) {
 /** @brief Pop input state from the input stack
  */
 void input_pop_status(void) {
-	char idx;
+	int idx;
 	if (input_status_stack_index == 0) {
 		return;
 	}
@@ -2343,8 +2339,8 @@ void init_main(int argc, char* argv[])
 					break;
 
 				case 's':
-					if ((((g_ascii_props[argv[i][2]] & RST_ASC_CHAR_UPPER) ? (argv[i][2] + ' ') : (argv[i][2])) == 's')
-					 && (((g_ascii_props[argv[i][3]] & RST_ASC_CHAR_UPPER) ? (argv[i][3] + ' ') : (argv[i][3])) == 'b')) {
+					if ((((g_ascii_props[(unsigned char)argv[i][2]] & RST_ASC_CHAR_UPPER) ? (argv[i][2] + ' ') : (argv[i][2])) == 's')
+					 && (((g_ascii_props[(unsigned char)argv[i][3]] & RST_ASC_CHAR_UPPER) ? (argv[i][3] + ' ') : (argv[i][3])) == 'b')) {
 						audiodriverstring[0] = argv[i][2];
 						audiodriverstring[1] = argv[i][3];
 					}
