@@ -226,13 +226,17 @@ if(NOT WIN32)
 endif()
 
 # ---------------------------------------------------------------------------
-# Copy game resources next to the binary after build
+# Copy game resources next to the binary after build (optional)
 # ---------------------------------------------------------------------------
-add_custom_command(TARGET stunts POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/ressources"
-        "$<TARGET_FILE_DIR:stunts>"
-    COMMENT "Copying game resources")
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ressources")
+    add_custom_command(TARGET stunts POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/ressources"
+            "$<TARGET_FILE_DIR:stunts>"
+        COMMENT "Copying game resources")
+else()
+    message(STATUS "Game resources folder not found — skipping copy")
+endif()
 
 # On Windows cross-build: copy SDL2.dll next to the executable so it can run.
 if(WIN32)
