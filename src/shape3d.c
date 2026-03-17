@@ -72,7 +72,7 @@ static unsigned short zorder_tail_counter = 0;
 
 
 /* file-local data (moved from data_global.c) */
-static char aStxxx[] = "stxxx";
+static char aStxxx[7] = "stxxx";   /* "st" + 4-char car ID + NUL */
 static unsigned char car_wheel_vertex_data[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 static char track_object_shape_names[116 * 5] = {
     /* 00 barn */ 'b','a','r','n',0,
