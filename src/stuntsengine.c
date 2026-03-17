@@ -533,7 +533,7 @@ void set_default_car(void) {
 	gameconfig.game_playercarid[3]     = 'N';
 	gameconfig.game_playermaterial     = 0;
 	gameconfig.game_playertransmission = 1;
-	gameconfig.game_opponenttype       = 1; /* default opponent: Joe Stallin (OPP1) */
+	gameconfig.game_opponenttype       = 0; /* default opponent: Clock */
 	gameconfig.game_opponentmaterial   = 1; /* alternate material from player */
 	gameconfig.game_opponentcarid[0]   = STN_TRACK_OPPONENT_AUTOSELECT; /* auto-select at race start */
 	gameconfig.game_opponenttransmission = 0;
