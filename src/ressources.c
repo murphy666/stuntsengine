@@ -1214,8 +1214,6 @@ void* file_load_resfile(const char* filename)
  */
 void* file_load_resource(int type, const char* filename)
 {
-	static const char* const shape_exts[] = { "", ".pvs", ".pes", NULL };
-	static const char* const shape_res_exts[] = { "", ".res", ".pre", NULL };
 	static const char* const song_exts[] = { "", ".kms", NULL };
 	static const char* const voice_exts[] = { "", ".vce", NULL };
 	static const char* const sfx_exts[] = { "", ".sfx", NULL };

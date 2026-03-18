@@ -1372,14 +1372,14 @@ compute_target:
 	mat_mul_vector(&delta, matptr, &localDelta);
 
 	if (localDelta.x < 0) {
-			/* Player is to the left of waypoint -> use left-side midpoint */
-		midpoint.x = (short)(((long)state.opponentstate.car_waypoint_left.x + (long)state.opponentstate.car_waypoint_target.x) >> 1);
+			/* Player is to the left of waypoint -> opponent takes right-side path (car_vec_unk5) */
+		midpoint.x = (short)(((long)state.opponentstate.car_waypoint_right.x + (long)state.opponentstate.car_waypoint_target.x) >> 1);
 		if (state.opponentstate.car_waypoint_target.y != -1) {
-			midpoint.y = (short)(((long)state.opponentstate.car_waypoint_left.y + (long)state.opponentstate.car_waypoint_target.y) >> 1);
+			midpoint.y = (short)(((long)state.opponentstate.car_waypoint_right.y + (long)state.opponentstate.car_waypoint_target.y) >> 1);
 		} else {
 			midpoint.y = -1;
 		}
-		midpoint.z = (short)(((long)state.opponentstate.car_waypoint_left.z + (long)state.opponentstate.car_waypoint_target.z) >> 1);
+		midpoint.z = (short)(((long)state.opponentstate.car_waypoint_right.z + (long)state.opponentstate.car_waypoint_target.z) >> 1);
 
 		/* If player is behind and not crashed, set field_45E=2 */
 		if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
@@ -1389,14 +1389,14 @@ compute_target:
 		}
 		goto compute_target;
 	} else {
-			/* Player is to the right -> use right-side midpoint */
-		midpoint.x = (short)(((long)state.opponentstate.car_waypoint_right.x + (long)state.opponentstate.car_waypoint_target.x) >> 1);
+			/* Player is to the right -> opponent takes left-side path (car_vec_unk4) */
+		midpoint.x = (short)(((long)state.opponentstate.car_waypoint_left.x + (long)state.opponentstate.car_waypoint_target.x) >> 1);
 		if (state.opponentstate.car_waypoint_target.y != -1) {
-			midpoint.y = (short)(((long)state.opponentstate.car_waypoint_right.y + (long)state.opponentstate.car_waypoint_target.y) >> 1);
+			midpoint.y = (short)(((long)state.opponentstate.car_waypoint_left.y + (long)state.opponentstate.car_waypoint_target.y) >> 1);
 		} else {
 			midpoint.y = -1;
 		}
-		midpoint.z = (short)(((long)state.opponentstate.car_waypoint_right.z + (long)state.opponentstate.car_waypoint_target.z) >> 1);
+		midpoint.z = (short)(((long)state.opponentstate.car_waypoint_left.z + (long)state.opponentstate.car_waypoint_target.z) >> 1);
 
 		if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
 			if (state.playerstate.car_crashBmpFlag == 0) {
