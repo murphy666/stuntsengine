@@ -43,6 +43,7 @@
 #include "menu.h"
 #include "ui_keys.h"
 #include "ui_widgets.h"
+#include "framebuffer.h"
 
 /* Variables moved from data_game.c */
 static void (*exitlistfuncs[11])(void) = { 0 };
@@ -280,7 +281,7 @@ enum {
 enum {
 	STN_PERSIST_PATH_LEN = 82,
 	STN_PERSIST_TRACKNAME_LEN = 9,
-	STN_PERSIST_VERSION = 1
+	STN_PERSIST_VERSION = 2
 };
 
 static const char STN_PERSIST_CONFIG_FILE[] = "stunts.cfg";
@@ -324,6 +325,7 @@ struct STN_PERSIST_CONFIG {
 	char replay_path[STN_PERSIST_PATH_LEN];
 	char mouse_mode;
 	char joystick_mode;
+	char video_scale;
 };
 #pragma pack(pop)
 
@@ -388,6 +390,9 @@ static int stn_persist_load(void)
 	memcpy(replay_file_path_buffer, cfg.replay_path, STN_PERSIST_PATH_LEN);
 	mouse_motion_state_flag = cfg.mouse_mode;
 	joystick_assigned_flags = cfg.joystick_mode;
+	if (cfg.video_scale >= 1 && cfg.video_scale <= 3) {
+		video_set_scale(cfg.video_scale);
+	}
 
 	stn_persist_sanitize_runtime_state();
 	return 1;
@@ -409,6 +414,7 @@ static void stn_persist_save(void)
 	memcpy(cfg.replay_path, replay_file_path_buffer, STN_PERSIST_PATH_LEN);
 	cfg.mouse_mode = mouse_motion_state_flag;
 	cfg.joystick_mode = joystick_assigned_flags;
+	cfg.video_scale = (char)video_get_scale();
 
 	fp = fopen(STN_PERSIST_CONFIG_FILE, "wb");
 	if (fp == NULL) {
@@ -2463,6 +2469,7 @@ int main(int argc, char* argv[]) {
 	if (!stn_persist_load()) {
 		stn_persist_save();
 	}
+	video_set_scale_changed_cb(stn_persist_save);
 
 	regsi = 1;
 

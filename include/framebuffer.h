@@ -67,5 +67,8 @@ void fb_sdl2_toggle_fullscreen(SDL2Context* ctx);
 void video_scale_up(void);
 void video_scale_down(void);
 void video_toggle_fullscreen(void);
+int  video_get_scale(void);
+void video_set_scale(int scale);
+void video_set_scale_changed_cb(void (*cb)(void));
 
 #endif

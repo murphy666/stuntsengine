@@ -75,6 +75,13 @@ static void video_wait_refresh_slot(unsigned long *next_counter, unsigned long *
 static int sdl_scale = 3;
 static int sdl_fullscreen = 0;
 static unsigned char video_exit_handler_registered = 0;
+static void (*video_scale_changed_cb)(void) = NULL;
+
+/** @brief Register a callback invoked whenever the scale changes.
+ */
+void video_set_scale_changed_cb(void (*cb)(void)) {
+	video_scale_changed_cb = cb;
+}
 
 /** @brief Increase the SDL render scale by one step.
  */
@@ -83,6 +90,7 @@ void video_scale_up(void) {
 	if (sdl_scale >= 3) return;
 	sdl_scale++;
 	fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+	if (video_scale_changed_cb) video_scale_changed_cb();
 }
 
 /** @brief Decrease the SDL render scale by one step.
@@ -93,6 +101,24 @@ void video_scale_down(void) {
 	if (sdl_scale <= 1) return;
 	sdl_scale--;
 	fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+	if (video_scale_changed_cb) video_scale_changed_cb();
+}
+
+/** @brief Return current render scale multiplier.
+ */
+int video_get_scale(void) {
+	return sdl_scale;
+}
+
+/** @brief Set render scale multiplier (1–3), applying immediately if SDL is active.
+ */
+void video_set_scale(int scale) {
+	if (scale < 1) scale = 1;
+	if (scale > 3) scale = 3;
+	sdl_scale = scale;
+	if (sdl_active && !sdl_fullscreen) {
+		fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+	}
 }
 
 /** @brief Toggle SDL fullscreen mode and reinitialize the video surface.
@@ -107,9 +133,6 @@ void video_toggle_fullscreen(void) {
  */
 static void video_try_init_sdl(void) {
 
-	int scale;
-	const char* scale_env;
-
 	if (sdl_init_attempted != 0) {
 		return;
 	}
@@ -118,16 +141,18 @@ static void video_try_init_sdl(void) {
 	fb_init(&sdl_fb);
 	memset(sdl_framebuffer, 0, sizeof(sdl_framebuffer));
 
-	scale = 3;
-	scale_env = getenv("STUNTS_SCALE");
-	if (scale_env != NULL) {
-		scale = atoi(scale_env);
-		if (scale < 1) scale = 1;
-		if (scale > 3) scale = 3;
+	/* Use sdl_scale as-is: may have been pre-set by video_set_scale() from
+	 * persisted config. Fall back to env var, then default 3. */
+	{
+		const char* scale_env = getenv("STUNTS_SCALE");
+		if (scale_env != NULL) {
+			int s = atoi(scale_env);
+			if (s >= 1 && s <= 3) sdl_scale = s;
+		}
 	}
-	sdl_scale = scale;
+	if (sdl_scale < 1 || sdl_scale > 3) sdl_scale = 3;
 
-	if (fb_sdl2_init(&sdl_ctx, "stuntsengine", scale) == 0) {
+	if (fb_sdl2_init(&sdl_ctx, "stuntsengine", sdl_scale) == 0) {
 		sdl_ctx_saved_window   = sdl_ctx.window;
 		sdl_ctx_saved_renderer = sdl_ctx.renderer;
 		sdl_ctx_saved_texture  = sdl_ctx.texture;
