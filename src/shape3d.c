@@ -2028,10 +2028,8 @@ void get_a_poly_info(void) {
             } else if (matpattern == 1) {
                 if (pattype2 != 0) {
                     preRender_patterned(pattype2, matcolor, maxcount, (struct POINT2D*)polygon_points_xy);
-                } else {
-                    /* Fallback: render as solid when pattern requested but pattern2 is 0 */
-                    preRender_default(matcolor, maxcount, (unsigned int*)polygon_points_xy);
                 }
+                /* pattype2 == 0: pixel mask is 0 → polygon is invisible, skip (matches original ASM jz _fill_next) */
             } else if (matpattern == 2) {
                 clrlist2 = material_color_list;
                 if (material_clrlist2_ptr_cpy != 0 && (uintptr_t)material_clrlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
