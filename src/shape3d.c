@@ -1425,9 +1425,18 @@ static void free_polyinfo_atexit(void) {
  * @brief Allocate and initialise the polygon info buffer and z-order tables.
  */
 void init_polyinfo(void) {
+    static int atexit_registered = 0;
+    if (s_polyinfo_base != NULL) {
+        mmgr_free((char*)s_polyinfo_base);
+        s_polyinfo_base = NULL;
+        polyinfoptr = NULL;
+    }
     polyinfoptr = mmgr_alloc_resbytes("polyinfo", POLYINFO_BUFFER_SIZE);
     s_polyinfo_base = polyinfoptr;
-	atexit(free_polyinfo_atexit);
+    if (!atexit_registered) {
+        atexit(free_polyinfo_atexit);
+        atexit_registered = 1;
+    }
 	
     mat_rot_y(&mat_y0, 0);
     mat_rot_y(&mat_y100, MAT_Y_ROT_100);
