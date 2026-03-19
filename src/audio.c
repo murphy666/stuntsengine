@@ -85,6 +85,10 @@ typedef struct AUDIO_VCE_INSTRUMENT {
     /* Frequency mapping (rec[14/15]): Fnum = RPM / freq_div + freq_base * 16 */
     unsigned char freq_div;
     unsigned char freq_base;
+    /* Pitch/volume fields from AD15.DRV analysis (rec[16..21]) */
+    signed char transpose;         /* rec[16]: signed semitone offset added before pitch_to_fnum */
+    signed char fine_tune;         /* rec[17]: signed offset added to fnum|block after lookup */
+    unsigned char vel_sensitivity; /* rec[21]: 0=use max velocity(127), nonzero=use actual */
     /* OPL2 channel regs (rec[68..69]) — from AD15.DRV disassembly */
     unsigned char opl_con;         /* connection: 0=FM, 1=AM (additive) */
     unsigned char opl_fb;          /* operator feedback: 0-7 */
@@ -744,6 +748,35 @@ static unsigned int audio_note_to_hz(unsigned char note) {
     return (unsigned int)midi_hz_lut[midi_note];
 }
 
+/* -----------------------------------------------------------------------
+ * Original AD15.DRV Fnum table (12 entries, one per semitone C..B)
+ * Verified from disassembly at CS:0x8B2 of AD15.DRV binary.
+ * --------------------------------------------------------------------- */
+static const unsigned short s_ad15_fnum_table[12] = {
+    86, 91, 96, 102, 108, 114, 121, 128, 136, 144, 153, 162
+};
+
+/**
+ * @brief Convert an AD15 pitch value to Hz using the original fnum table.
+ *
+ * The AD15 driver uses pitch = KMS_note + VCE_transpose.
+ * block = pitch / 12;  fnum = table[pitch % 12];
+ * Hz = fnum * 49716 / 2^(20-block).
+ *
+ * @param pitch  AD15 pitch (KMS note byte + VCE transpose), clamped to 0-95.
+ * @return Frequency in Hz.
+ */
+static unsigned int audio_ad15_pitch_to_hz(int pitch) {
+    int block, idx;
+    unsigned int fnum;
+    if (pitch < 0) pitch = 0;
+    if (pitch > 95) pitch = 95;
+    block = pitch / 12;
+    idx   = pitch % 12;
+    fnum  = (unsigned int)s_ad15_fnum_table[idx];
+    return fnum * 49716u / (1u << (20 - block));
+}
+
 /**
  * @brief Fast integer parabolic sine approximation.
  *
@@ -859,6 +892,13 @@ static unsigned short audio_parse_vce_instruments(void *voiceptr) {
         /** rec[14]/rec[15]: RPM-to-Fnum mapping (audio_update_engine_sound seg007.asm) */
         inst->freq_div  = rec[14u];
         inst->freq_base = rec[15u];
+        /* rec[16]: signed transpose (added to pitch before fnum lookup) */
+        inst->transpose = (signed char)rec[16u];
+        /* rec[17]: signed fine-tune (added to fnum|block after lookup) */
+        inst->fine_tune = (signed char)rec[17u];
+        /* rec[21]: velocity sensitivity (0 = ignore, use 127) */
+        if (record_size > 21u)
+            inst->vel_sensitivity = rec[21u];
         /* OPL2 FM params: present when record_size >= 94 (ADENG1.VCE format) */
         if (record_size >= 94u) {
             inst->opl_con = rec[68];
@@ -887,9 +927,10 @@ static unsigned short audio_parse_vce_instruments(void *voiceptr) {
  *     E7/E8 = track separator (stop parsing this track)
  *   - delta = music ticks from previous event dispatch
  *   - duration = music ticks the note sounds
- *   - music tick rate: 48 Hz for DD param=120 (100*128*120/32000)
+ *   - music tick rate computed from DD param: Hz = param * 2 / 5
+ *     (e.g. DD=120 → 48 Hz, DD=185 → 74 Hz, DD=160 → 64 Hz)
  * --------------------------------------------------------------------- */
-#define AUDIO_KMS_MUSIC_HZ  48u  /* music ticks/sec for DD=120 */
+static unsigned int g_audio_kms_music_hz = 48u;  /* music ticks/sec, set from DD command */
 
 static const signed char audio_kms_cmd_extra[18] = {
 /* D9  DA  DB  DC  DD  DE  DF  E0  E1  E2  E3  E4  E5  E6  E7  E8  E9  EA */
@@ -920,6 +961,7 @@ static uint32_t audio_kms_read_vlq(const unsigned char *d, size_t *pos, size_t e
 /* Temporary note event for KMS parsing */
 typedef struct {
     unsigned char pitch;
+    unsigned char velocity;   /* 0-127 */
     unsigned short dur;  /* music ticks */
     uint32_t abs_tick;
 } AUDIO_KMS_NOTE;
@@ -937,7 +979,9 @@ typedef struct {
     unsigned int count;
     uint32_t     loop_ticks;
     char         name[20];
-    int          synth_type; /* 0=tone, 1=perc, 2=hat */
+    int          synth_type;    /* 0=tone, 1=perc, 2=hat */
+    int          instrument_idx; /* VCE instrument index from DC command */
+    int          channel_volume; /* 0-127 from DF CC7 command */
 } AUDIO_KMS_TRACK_INFO;
 
 typedef struct {
@@ -947,6 +991,8 @@ typedef struct {
     uint32_t     gap_frames;
     uint32_t     snd_frames;
     uint32_t     lfsr;
+    unsigned int prev_ei;          /* previous event index for transition detect */
+    unsigned char note_active;     /* 1 if OPL2 note currently keyed on */
 } AUDIO_KMS_VOICE;
 
 static AUDIO_KMS_NOTE       g_audio_kms_evt_pool[AUDIO_KMS_EVENTS_POOL];
@@ -972,11 +1018,16 @@ static AUDIO_KMS_VOICE      g_audio_kms_voices[AUDIO_KMS_MAX_TRACKS];
 static unsigned int audio_kms_parse_track(
         const unsigned char *data, size_t start, size_t end,
         AUDIO_KMS_NOTE *tmp, unsigned int max_tmp,
-        uint32_t *out_loop_ticks) {
+        uint32_t *out_loop_ticks,
+        int *out_instrument_idx, int *out_channel_volume,
+        int *out_tempo) {
     size_t pos = start;
     uint32_t abs_tick = 0u;
     uint32_t loop_end = 0u;
     unsigned int count = 0u;
+    int inst_idx = -1;
+    int ch_vol = 127;
+    int tempo = -1;
 
     while (pos < end && count < max_tmp) {
         unsigned char peek = data[pos];
@@ -993,17 +1044,28 @@ static unsigned int audio_kms_parse_track(
             signed char extra = audio_kms_cmd_extra[event - 217u];
             if (extra < 0) break;
             if (pos + (size_t)extra > end) break;
+            /* DC (220): instrument change — 1 extra byte = VCE index */
+            if (event == 220u && extra >= 1)
+                inst_idx = (int)data[pos];
+            /* DD (221): tempo — 1 extra byte = tempo param */
+            if (event == 221u && extra >= 1 && tempo < 0)
+                tempo = (int)data[pos];
+            /* DF (223): set controller — 2 bytes: CC#, value */
+            if (event == 223u && extra >= 2 && data[pos] == 7u)
+                ch_vol = (int)data[pos + 1u];
             pos += (size_t)extra;
             continue;
         }
 
         unsigned char pitch = event & 127u;
-        if (event > 128u && pos < end) pos++;  /* skip velocity */
+        unsigned char vel = 96u;
+        if (event > 128u && pos < end) vel = data[pos++];
 
         uint32_t dur = audio_kms_read_vlq(data, &pos, end);
         if (dur == 0u || dur > 10000u) continue;
 
         tmp[count].pitch    = pitch;
+        tmp[count].velocity = vel;
         tmp[count].dur      = (unsigned short)(dur > 65535u ? 65535u : dur);
         tmp[count].abs_tick = abs_tick;
         count++;
@@ -1013,6 +1075,9 @@ static unsigned int audio_kms_parse_track(
     }
 
     if (out_loop_ticks) *out_loop_ticks = loop_end;
+    if (out_instrument_idx) *out_instrument_idx = inst_idx;
+    if (out_channel_volume) *out_channel_volume = ch_vol;
+    if (out_tempo) *out_tempo = tempo;
     return count;
 }
 
@@ -1037,8 +1102,9 @@ static void audio_kms_gap_for_event(
     uint32_t gap_ticks = (next_abs > ev->abs_tick)
         ? (next_abs - ev->abs_tick) : (uint32_t)ev->dur;
     uint32_t snd_ticks = ((uint32_t)ev->dur < gap_ticks) ? (uint32_t)ev->dur : gap_ticks;
-    uint32_t gap_f = gap_ticks * sample_rate / AUDIO_KMS_MUSIC_HZ;
-    uint32_t snd_f = snd_ticks * sample_rate / AUDIO_KMS_MUSIC_HZ;
+    unsigned int music_hz = g_audio_kms_music_hz > 0u ? g_audio_kms_music_hz : 48u;
+    uint32_t gap_f = gap_ticks * sample_rate / music_hz;
+    uint32_t snd_f = snd_ticks * sample_rate / music_hz;
     if (gap_f < 1u) gap_f = 1u;
     *out_gap_frames = gap_f;
     *out_snd_frames = snd_f;
@@ -1082,6 +1148,7 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
 
     /* Reset multi-track pool */
     g_audio_kms_n_tracks = 0u;
+    g_audio_kms_music_hz = 48u;  /* reset to default before parsing */
     memset(g_audio_kms_voices, 0, sizeof(g_audio_kms_voices));
     memset(g_audio_kms_tracks, 0, sizeof(g_audio_kms_tracks));
 
@@ -1128,7 +1195,11 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
             ? (AUDIO_KMS_EVENTS_POOL - pool_used) : 0u;
         unsigned int maxn = (avail < AUDIO_KMS_TMP_MAX) ? avail : AUDIO_KMS_TMP_MAX;
         uint32_t lt = 0u;
-        unsigned int cnt = audio_kms_parse_track(song, ts, te, kms_tmp, maxn, &lt);
+        int trk_inst = -1;
+        int trk_vol = 127;
+        int trk_tempo = -1;
+        unsigned int cnt = audio_kms_parse_track(song, ts, te, kms_tmp, maxn, &lt,
+                                                 &trk_inst, &trk_vol, &trk_tempo);
 
         unsigned int slot = pool_used;
         for (ni = 0u; ni < cnt && pool_used < AUDIO_KMS_EVENTS_POOL; ni++, pool_used++)
@@ -1138,6 +1209,16 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
         tr->count      = pool_used - slot;
         tr->loop_ticks = lt;
         tr->synth_type = audio_kms_synth_type(tr->name);
+        tr->instrument_idx = trk_inst;
+        tr->channel_volume = trk_vol;
+
+        /* Capture per-song tempo from the first DD command found */
+        if (trk_tempo > 0 && g_audio_kms_music_hz == 48u) {
+            unsigned int hz = (unsigned int)trk_tempo * 2u / 5u;
+            if (hz < 10u) hz = 10u;
+            if (hz > 200u) hz = 200u;
+            g_audio_kms_music_hz = hz;
+        }
 
         if (tr->count > 0u) g_audio_kms_n_tracks++;
         si = ts;
@@ -1150,6 +1231,8 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
     if (rate == 0u) rate = 22050u;
     for (t = 0u; t < g_audio_kms_n_tracks; t++) {
         g_audio_kms_voices[t].lfsr = 2900361217u + t * 2654435769u;
+        g_audio_kms_voices[t].prev_ei = (unsigned int)-1; /* force first note-on */
+        g_audio_kms_voices[t].note_active = 0u;
         audio_kms_gap_for_event(&g_audio_kms_tracks[t], 0u, rate,
                                 &g_audio_kms_voices[t].gap_frames,
                                 &g_audio_kms_voices[t].snd_frames);
@@ -1788,15 +1871,32 @@ static void audio_sb_generate_dma_samples(unsigned int sample_count) {
                                 }
                             }
                         } else {
-                            /* Melodic: sawtooth + OPL2-style ADSR */
-                            unsigned int nhz = audio_note_to_hz(ev->pitch);
+                            /* Melodic: sawtooth + OPL2-style ADSR
+                             * Pitch uses per-instrument VCE transpose + AD15.DRV fnum table
+                             * instead of the global g_audio_menu_note_transpose. */
+                            const AUDIO_VCE_INSTRUMENT *mus_ins = NULL;
+                            int ad15_pitch = (int)ev->pitch;
+                            if (tr2->instrument_idx >= 0 &&
+                                tr2->instrument_idx < (int)g_audio_vce_instrument_count) {
+                                mus_ins = &g_audio_vce_instruments[tr2->instrument_idx];
+                                ad15_pitch += (int)mus_ins->transpose;
+                            }
+                            unsigned int nhz = audio_ad15_pitch_to_hz(ad15_pitch);
                             unsigned int stp = (unsigned int)(
                                 ((uint64_t)nhz << 16u) / (uint64_t)sr);
+                            /* Volume: scale envelope by channel_volume and velocity.
+                             * Matches AD15.DRV scaling: instruments with vel_sensitivity=0
+                             * use max velocity (127), otherwise actual note velocity. */
+                            int mus_vel = (mus_ins && mus_ins->vel_sensitivity)
+                                          ? (int)ev->velocity : 127;
+                            int vol_scale = (tr2->channel_volume * mus_vel + 64) >> 7;
+                            if (vol_scale < 0) vol_scale = 0;
+                            if (vol_scale > 127) vol_scale = 127;
+                            unsigned int peak    = 120u * (unsigned int)vol_scale / 127u;
+                            unsigned int sustain =  68u * (unsigned int)vol_scale / 127u;
                             unsigned int attack  = (sr * 3u / 1000u) + 1u;
                             unsigned int decay   = (sf / 8u) + 1u;
                             unsigned int release = (sf / 6u) + 1u;
-                            unsigned int peak    = 120u;
-                            unsigned int sustain = 68u;
                             unsigned int env;
                             if (fp < attack) {
                                 env = (fp * peak) / attack;
