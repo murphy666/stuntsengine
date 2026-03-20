@@ -5,6 +5,9 @@
 #include "math.h"
 #include "shape3d.h"
 
+/* Size of the global path scratch buffer g_path_buf (see src/data_game.c). */
+#define GAME_PATH_BUF_SIZE 94
+
 #pragma pack(push, 1)
 
 struct GAMEINFO {

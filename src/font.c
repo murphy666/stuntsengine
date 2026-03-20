@@ -146,42 +146,7 @@ unsigned short font_op(char* text, unsigned short maxChars) {
  * @return Total pixel width for the full string.
  */
 unsigned short font_get_text_width(char* text) {
-	unsigned char * fontdef = g_fontdef_ptr;
-	unsigned short width = 0;
-	if (fontdef == 0) {
-		return 0;
-	}
-	unsigned char proportional = fontdef[12];
-	unsigned short default_width = *(unsigned short *)(fontdef + 18);
-	unsigned short * char_table = (unsigned short *)(fontdef + 22);
-	unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
-	unsigned short fixed_width = default_width;
-	int has_width_byte = 0;
-	if (default_width == 0) {
-		default_width = 8;
-	}
-
-	if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
-		has_width_byte = 1;
-	} else if (proportional == 1 && prop1_width != 0) {
-		fixed_width = prop1_width;
-	}
-	
-	while (*text) {
-		unsigned char ch = *text++;
-		unsigned short char_ptr = char_table[ch];
-		unsigned short char_width;
-		
-		if (char_ptr == 0) continue; // Character not in font
-		
-		if (has_width_byte) {
-			char_width = fontdef[char_ptr];
-		} else {
-			char_width = fixed_width;
-		}
-		width += char_width;
-	}
-	return width;
+	return font_op(text, (unsigned short)~0u);
 }
 
 /* --- font_draw_text --- */

@@ -584,7 +584,8 @@ static int file_resolve_case_insensitive(const char* input, char* out, size_t ou
 		dirpath[n] = '\0';
 		basename = slash + 1;
 	} else {
-		strcpy(dirpath, ".");
+		dirpath[0] = '.';
+		dirpath[1] = '\0';
 		basename = input;
 	}
 
@@ -694,7 +695,8 @@ static int file_resolve_wildcard_path(const char* query, char* out, size_t out_s
 			dirpath[n] = '\0';
 			pattern = slash + 1;
 		} else {
-			strcpy(dirpath, ".");
+			dirpath[0] = '.';
+			dirpath[1] = '\0';
 			pattern = candidate;
 		}
 
@@ -834,8 +836,7 @@ const char* file_find(const char* query)
 		g_find_match_index = 0;
 	}
 
-	strncpy(g_find_query, resolved, sizeof(g_find_query) - 1);
-	g_find_query[sizeof(g_find_query) - 1] = '\0';
+	snprintf(g_find_query, sizeof(g_find_query), "%s", resolved);
 	return g_find_query;
 }
 
@@ -853,8 +854,7 @@ const char* file_find_next(void)
 		return NULL;
 	}
 
-	strncpy(g_find_query, g_find_matches[g_find_match_index], sizeof(g_find_query) - 1);
-	g_find_query[sizeof(g_find_query) - 1] = '\0';
+	snprintf(g_find_query, sizeof(g_find_query), "%s", g_find_matches[g_find_match_index]);
 	return g_find_query;
 }
 
@@ -872,27 +872,40 @@ const char* file_find_next_alt(void)
  * @param ext Parameter `ext`.
  * @param dst Parameter `dst`.
  */
-void file_build_path(const char* dir, const char* name, const char* ext, char* dst)
+void file_build_path(const char* dir, const char* name, const char* ext, char* dst, size_t dst_size)
 {
-	if (dst == NULL) {
+	size_t cur_len;
+
+	if (dst == NULL || dst_size == 0) {
 		return;
 	}
 	dst[0] = '\0';
+
 	if (dir != NULL) {
-		strcat(dst, dir);
-		if (dst[0] != '\0') {
-			size_t n = strlen(dst);
-			char last = dst[n - 1];
-			if (last != '/' && last != '\\' && last != ':') {
-				strcat(dst, "/");
-			}
+		snprintf(dst, dst_size, "%s", dir);
+	}
+
+	if (dst[0] != '\0') {
+		cur_len = strlen(dst);
+		char last = dst[cur_len - 1];
+		if (last != '/' && last != '\\' && last != ':' && cur_len < dst_size - 1) {
+			dst[cur_len]     = '/';
+			dst[cur_len + 1] = '\0';
 		}
 	}
+
 	if (name != NULL) {
-		strcat(dst, name);
+		cur_len = strlen(dst);
+		if (cur_len < dst_size - 1) {
+			snprintf(dst + cur_len, dst_size - cur_len, "%s", name);
+		}
 	}
+
 	if (ext != NULL) {
-		strcat(dst, ext);
+		cur_len = strlen(dst);
+		if (cur_len < dst_size - 1) {
+			snprintf(dst + cur_len, dst_size - cur_len, "%s", ext);
+		}
 	}
 }
 
@@ -905,7 +918,7 @@ void file_build_path(const char* dir, const char* name, const char* ext, char* d
 const char* file_combine_and_find(const char* dir, const char* name, const char* ext)
 {
 	static char path[260];
-	file_build_path(dir, name, ext, path);
+	file_build_path(dir, name, ext, path, sizeof(path));
 	return file_find(path);
 }
 
@@ -1358,7 +1371,7 @@ short file_load_replay(const char* dir, const char* name)
 	   901-byte terrain map + replay input bytes.
 	   td13/td14/td15/td16 are contiguous in memory, so a single read fills
 	   all four buffers correctly. */
-	file_build_path(dir, name, ".rpl", g_path_buf);
+	file_build_path(dir, name, ".rpl", g_path_buf, sizeof(g_path_buf));
 
 	g_is_busy = 1;
 	file_read_fatal(g_path_buf, replay_header);

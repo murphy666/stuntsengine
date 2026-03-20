@@ -2009,9 +2009,10 @@ file_search_loop:
 			for (compare_index = si + 1; compare_index < file_count; compare_index++) {
 				if (strcmp(&file_names[compare_index][0], &file_names[si][0]) < 0) {
 					/* Swap entries */
-					strcpy(resID_byte1, &file_names[si][0]);
-					strcpy(&file_names[si][0], &file_names[compare_index][0]);
-					strcpy(&file_names[compare_index][0], resID_byte1);
+					char tmp[13];
+					memcpy(tmp,                          &file_names[si][0],            13);
+					memcpy(&file_names[si][0],           &file_names[compare_index][0],  13);
+					memcpy(&file_names[compare_index][0], tmp,                            13);
 				}
 			}
 		}
@@ -2084,9 +2085,9 @@ file_search_loop:
 				
 				/* Draw filename or blank if past end of list */
 				if (i < file_count) {
-					strcpy(resID_byte1, &file_names[i][0]);
+					memcpy(resID_byte1, &file_names[i][0], sizeof(file_names[i]));
 				} else {
-					strcpy(resID_byte1, "        ");  /* 8 spaces */
+					memcpy(resID_byte1, "        ", 9);  /* 8 spaces + NUL */
 				}
 				
 				sprite_draw_text_opaque(resID_byte1, list_x, row_y_start[si + 2]);
@@ -2211,9 +2212,10 @@ file_search_loop:
 		/* Cancelled */
 		dialog_accept = 0;
 	} else {
-		/* Copy selected filename to defaultName (the name buffer).
-		   ASM: strcpy([bp+8], &file_names[selected_file_index]) into defaultName. */
-		strcpy(defaultName, &file_names[selected_file_index][0]);
+		/* Copy selected filename into defaultName (9-byte game_trackname field).
+		   Intentional truncation: file names can be up to 12 chars. */
+		memcpy(defaultName, &file_names[selected_file_index][0], 8);
+		defaultName[8] = '\0';
 		dialog_accept = 1;
 	}
 	

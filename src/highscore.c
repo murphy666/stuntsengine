@@ -21,6 +21,7 @@
  */
 
 /* highscore.c — Highscore system extracted from stunts.c */
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "stunts.h"
@@ -134,7 +135,7 @@ unsigned short highscore_write_a_(unsigned short write_defaults) {
 		highscore_primary_index[i] = i;
 	}
 
-	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".hig", g_path_buf);
+	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".hig", g_path_buf, sizeof(g_path_buf));
 
 	if (write_defaults == 0) {
 		void * status;
@@ -147,10 +148,10 @@ unsigned short highscore_write_a_(unsigned short write_defaults) {
 	for (j = 0; j < sizeof(entry); ++j) {
 		entry[j] = 0;
 	}
-	strcpy((char*)entry, "....................");
-	strcpy((char*)entry + 17, ".......................");
+	memcpy(entry,      "....................",  sizeof("...................."));
+	memcpy(entry + 17, ".......................", sizeof("......................."));
 	entry[41] = 0;
-	strcpy((char*)entry + 42, "../....");
+	memcpy(entry + 42, "../....",              sizeof("../...."));
 	*(unsigned short*)(entry + 50) = 65535;
 
 	for (i = 0; i < 7; ++i) {
@@ -183,7 +184,7 @@ unsigned short  highscore_write_b(void) {
 		}
 	}
 
-	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".hig", g_path_buf);
+	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".hig", g_path_buf, sizeof(g_path_buf));
 	g_is_busy = 1;
 	{
 		short ok = file_write_fatal(g_path_buf, buffer, 364);
@@ -250,15 +251,15 @@ unsigned short  enter_hiscore(unsigned short score, void* textres_ptr, unsigned 
 			entry[i] = 0;
 		}
 	}
-	strcpy((char*)(entry + 17), gnam_string);
+	snprintf((char*)(entry + 17), 25, "%s", gnam_string);
 	entry[41] = arg6;
 
 	if (gameconfig.game_opponenttype != 0) {
-		strcpy((char*)(entry + 42), player_name_buffer);
+		snprintf((char*)(entry + 42), 3, "%s", player_name_buffer);
 		entry[44] = '/';
-		strcpy((char*)(entry + 45), gsna_string);
+		snprintf((char*)(entry + 45), 5, "%s", gsna_string);
 	} else {
-		strcpy((char*)(entry + 42), " ");
+		memcpy(entry + 42, " ", 2);
 	}
 
 	*(unsigned short*)(entry + 50) = score;
@@ -276,7 +277,7 @@ unsigned short  enter_hiscore(unsigned short score, void* textres_ptr, unsigned 
 		call_read_line(input_replay_buffer, 16, dialog_coords[0], dialog_coords[1], terraincenterpos + 17);
 	}
 
-	strcpy((char*)entry, input_replay_buffer);
+	snprintf((char*)entry, 17, "%s", input_replay_buffer);
 
 	memcpy((void *)((unsigned char *)highscore_data + (6 * 52)), entry, sizeof(entry));
 
@@ -320,13 +321,13 @@ void print_highscore_entry_(unsigned short index, unsigned char* lengths) {
 	}
 
 	dst = resID_byte1;
-	strcpy(dst, (char*)entry);
+	snprintf(dst, 2048, "%s", (char*)entry);
 	offset = (unsigned short)(strlen(dst) + 1);
 	if (lengths != NULL) {
 		lengths[1] = (unsigned char)offset;
 	}
 
-	strcpy(dst + offset, (char*)entry + 17);
+	snprintf(dst + offset, 2048 - offset, "%s", (char*)entry + 17);
 	offset = (unsigned short)(offset + strlen(dst + offset) + 1);
 	if (lengths != NULL) {
 		lengths[2] = (unsigned char)offset;
@@ -334,12 +335,17 @@ void print_highscore_entry_(unsigned short index, unsigned char* lengths) {
 	dst[offset] = '\0';
 
 	if (entry[41] == 1) {
-		strcat(dst + offset, "(");
+		size_t cur_len = strlen(dst + offset);
+		snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "(");
 	}
 
-	strcat(dst + offset, (char*)entry + 42);
+	{
+		size_t cur_len = strlen(dst + offset);
+		snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "%s", (char*)entry + 42);
+	}
 	if (entry[41] == 1) {
-		strcat(dst + offset, ")");
+		size_t cur_len = strlen(dst + offset);
+		snprintf(dst + offset + cur_len, 2048 - offset - cur_len, ")");
 	}
 
 	offset = (unsigned short)(offset + strlen(dst + offset) + 1);
@@ -353,7 +359,7 @@ void print_highscore_entry_(unsigned short index, unsigned char* lengths) {
 	format_frame_as_string(frame_buf, time_value == 65535 ? 0 : time_value, 1);
 	framespersec = old_framespersec;
 
-	strcpy(dst + offset, frame_buf);
+	snprintf(dst + offset, 2048 - offset, "%s", frame_buf);
 }
 
 /* --- highscore_draw_screen --- */
@@ -372,9 +378,10 @@ void highscore_draw_screen(void) {
 	sprite_select_wnd_as_sprite1();
 
 	copy_string(resID_byte1, locate_text_res(mainresptr, "hs1"));
-	strcat(resID_byte1, " '");
-	strcat(resID_byte1, gameconfig.game_trackname);
-	strcat(resID_byte1, "'");
+	{
+		size_t len = strlen(resID_byte1);
+		snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, " '%s'", gameconfig.game_trackname);
+	}
 	centered_x = font_get_centered_x(resID_byte1);
 	hiscore_draw_text(resID_byte1, centered_x, 5, dialog_fnt_colour, 0);
 
@@ -665,7 +672,7 @@ unsigned short  end_hiscore(void) {
 	// Verify current track matches loaded data; determine if we can update highscores.
 	has_track_match = 1;
 	{
-		file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+		file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 		{
 			void * track_res = file_load_resource(1, g_path_buf);
 			if (track_res != 0) {

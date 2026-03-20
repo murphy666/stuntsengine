@@ -1743,7 +1743,7 @@ save_retry:
 						goto save_check;
 					}
 
-					file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf);
+					file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf, sizeof(g_path_buf));
 					saveDialogState = 1;
 					g_is_busy = 1;
 
@@ -1955,7 +1955,7 @@ save_retry2:
 				saveDialogState = 255;
 				goto save_check2;
 			}
-			file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf);
+			file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf, sizeof(g_path_buf));
 			saveDialogState = 1;
 			g_is_busy = 1;
 			if (file_find(g_path_buf)) {

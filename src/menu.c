@@ -617,8 +617,10 @@ rebuild_ui:
 	sprite_select_wnd_as_sprite1();
 
 	copy_string(resID_byte1, "'");
-	strcat(resID_byte1, gameconfig.game_trackname);
-	strcat(resID_byte1, "'");
+	{
+		size_t len = strlen(resID_byte1);
+		snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, "%s'", gameconfig.game_trackname);
+	}
 	intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_TRACK_TITLE_Y, dialog_fnt_colour, 0);
 
 	if (highscore_write_a_(0) == 0) {
@@ -713,12 +715,10 @@ rebuild_ui:
 
 		if (selection == MENU_TRACK_BTN_SELECT) {
 			char track_dir_backup[MENU_TRACK_NAME_BACKUP_SIZE];
-			strncpy(track_dir_backup, track_highscore_path_buffer, sizeof(track_dir_backup) - 1);
-			track_dir_backup[sizeof(track_dir_backup) - 1] = '\0';
+			snprintf(track_dir_backup, sizeof(track_dir_backup), "%s", track_highscore_path_buffer);
 			chosen = do_fileselect_dialog(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", locate_text_res(mainresptr, "trk"));
-			strncpy(track_highscore_path_buffer, track_dir_backup, MENU_TRACK_NAME_BACKUP_COPYLEN);
-			track_highscore_path_buffer[MENU_TRACK_NAME_BACKUP_COPYLEN] = '\0';
-			file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+			snprintf(track_highscore_path_buffer, MENU_TRACK_NAME_BACKUP_SIZE, "%s", track_dir_backup);
+			file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 			if (chosen != 0) {
 				file_read_fatal(g_path_buf, track_elem_map);
 				sprite_free_wnd(wndsprite);
@@ -1649,9 +1649,9 @@ static UIScreen *make_car_screen(
 			for (jj = (unsigned char)(ii + 1); jj < st->car_count; ++jj) {
 				if (strcmp(st->carids[ii], st->carids[jj]) > 0) {
 					char tmp[5];
-					strcpy(tmp, st->carids[ii]);
-					strcpy(st->carids[ii], st->carids[jj]);
-					strcpy(st->carids[jj], tmp);
+					memcpy(tmp,              st->carids[ii], MENU_CAR_ID_STRLEN);
+					memcpy(st->carids[ii],   st->carids[jj], MENU_CAR_ID_STRLEN);
+					memcpy(st->carids[jj],   tmp,            MENU_CAR_ID_STRLEN);
 				}
 			}
 		}

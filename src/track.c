@@ -1857,8 +1857,7 @@ loc_2B49A:
 					redraw_map++;
 					{
 						char track_dir_backup[82];
-						strncpy(track_dir_backup, track_highscore_path_buffer, sizeof(track_dir_backup) - 1);
-						track_dir_backup[sizeof(track_dir_backup) - 1] = '\0';
+						snprintf(track_dir_backup, sizeof(track_dir_backup), "%s", track_highscore_path_buffer);
 
 					/* File select dialog */
 					track_consume_dialog_click();
@@ -1867,11 +1866,10 @@ loc_2B49A:
 						locate_text_res(mainresptr, "trk"));
 						/* do_fileselect_dialog already wrote the selected base name (no extension)
 						   into gameconfig.game_trackname — nothing more to parse here. */
-						strncpy(track_highscore_path_buffer, track_dir_backup, 81);
-						track_highscore_path_buffer[81] = '\0';
+						snprintf(track_highscore_path_buffer, 82, "%s", track_dir_backup);
 					}
 
-					file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+					file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 
 					if (si > 0) {
 						/* Load track file */
@@ -1924,7 +1922,7 @@ loc_done_load:
 					si = do_savefile_dialog(track_highscore_path_buffer, gameconfig.game_trackname,
 						locate_text_res(mainresptr, "trk"));
 					if (si != 0) {
-						file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+						file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 						if (file_find(g_path_buf) != 0) {
 							/* File exists — confirm overwrite */
 							track_consume_dialog_click();

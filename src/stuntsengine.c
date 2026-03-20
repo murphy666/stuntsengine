@@ -334,7 +334,7 @@ struct STN_PERSIST_CONFIG {
  */
 static int stn_persist_track_is_available(void)
 {
-	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+	file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 	return file_paras_nofatal(g_path_buf) != 0;
 }
 
@@ -347,11 +347,11 @@ static void stn_persist_sanitize_runtime_state(void)
 	replay_file_path_buffer[STN_PERSIST_PATH_LEN - 1] = '\0';
 
 	if (gameconfig.game_trackname[0] == '\0') {
-		strcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME);
+		memcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME, sizeof(STN_DEFAULT_TRACK_NAME));
 	}
 
 	if (!stn_persist_track_is_available()) {
-		strcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME);
+		memcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME, sizeof(STN_DEFAULT_TRACK_NAME));
 		if (!stn_persist_track_is_available()) {
 			gameconfig.game_trackname[0] = '\0';
 		}
@@ -1167,44 +1167,25 @@ void format_frame_as_string(char* dest, unsigned short frames, unsigned short sh
 	unsigned short seconds;
 	unsigned short remainingFrames;
 	unsigned short fps;
-	char tempBuf[24];
 	
 	fps = framespersec;
 	if (fps == 0) {
 		fps = 20;
 	}
 
-	// Calculate frames per minute (60 * framespersec)
-	framesPerMinute = 60 * fps;
-	
-	// Calculate minutes
+	framesPerMinute = (unsigned short)(60 * fps);
 	minutes = frames / framesPerMinute;
-	remainingFrames = frames - (minutes * framesPerMinute);
-	
-	// Calculate seconds
+	remainingFrames = (unsigned short)(frames - (minutes * framesPerMinute));
 	seconds = remainingFrames / fps;
-	remainingFrames = remainingFrames - (seconds * fps);
-	
-	// Format minutes (2 digits, no zero-pad)
-	print_int_as_string_maybe(tempBuf, minutes, 0, 2);
-	strcpy(dest, tempBuf);
-	
-	// Add colon separator
-	strcat(dest, ":");
-	
-	// Format seconds (2 digits, zero-padded)
-	print_int_as_string_maybe(tempBuf, seconds, 1, 2);
-	strcat(dest, tempBuf);
-	
-	// Optionally add fractions
+	remainingFrames = (unsigned short)(remainingFrames - (seconds * fps));
+
 	if (showFractions != 0) {
-		unsigned short fraction;
-		strcat(dest, ".");
-		
-		// Calculate fraction as hundredths
-		fraction = (100 / fps) * remainingFrames;
-		print_int_as_string_maybe(tempBuf, fraction, 1, 2);
-		strcat(dest, tempBuf);
+		unsigned short fraction = (unsigned short)((100 / fps) * remainingFrames);
+		/* minutes≤54, seconds≤59, fraction≤99 — all fit in "%2u:%02u.%02u" (max 11 chars) */
+		snprintf(dest, 16, "%2u:%02u.%02u",
+			(unsigned)(minutes % 100u), (unsigned)(seconds % 60u), (unsigned)(fraction % 100u));
+	} else {
+		snprintf(dest, 16, "%2u:%02u", (unsigned)(minutes % 100u), (unsigned)(seconds % 60u));
 	}
 }
 
@@ -2457,7 +2438,7 @@ int main(int argc, char* argv[]) {
 	
 	init_kevinrandom("kevin");
 	
-	strcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME);
+	memcpy(gameconfig.game_trackname, STN_DEFAULT_TRACK_NAME, sizeof(STN_DEFAULT_TRACK_NAME));
 	
 	input_do_checking(1);
 	input_do_checking(1);
@@ -2477,7 +2458,7 @@ int main(int argc, char* argv[]) {
 		ensure_file_exists(2);
 		
 		if (regsi != 0) {
-			file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf);
+			file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf, sizeof(g_path_buf));
 			file_read_fatal(g_path_buf, track_elem_map);
 		}
 		

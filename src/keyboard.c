@@ -30,8 +30,8 @@
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static void (*callbacks[64])(void) = { 0 };
-static unsigned char callbackflags[128] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-static unsigned char callbackflags2[134] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static unsigned char callbackflags[128]  = { 0 };
+static unsigned char callbackflags2[134] = { 0 };
 static unsigned short camera_rotation_state = 0;
 static unsigned char collision_debug_state[16] = { 0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0 };
 static unsigned char in_kb_parse_key = 0;
@@ -123,31 +123,6 @@ static SDL_GameController* kb_sdl_controller = 0;
 // --- DOS compatibility stubs (removed) ---
 #define PTR_SEG(x) 0
 #define PTR_OFF(x) 0
-#ifndef _WIN32
-/** @brief Inp.
- * @param port Parameter `port`.
- * @return Function result.
- */
-/* MinGW's <conio.h> (pulled in by SDL.h on Windows) already defines inp/outp */
-static inline unsigned char inp(unsigned short port) { (void)port; return 0; }
-static inline void outp(unsigned short port, unsigned char val) { (void)port; (void)val; }
-#else
-/** @brief Unavailable.
- * @param disable Parameter `disable`.
- * @return Function result.
- */
-/* conio.h (via SDL2) declares inp/outp as deprecated Win32 CRT functions that
- * are unavailable (no implementations) in Win64 MinGW.  Override all call sites
- * with macros that expand to no-ops so we never generate an external reference. */
-#  ifdef inp
-#    undef inp
-#  endif
-#  ifdef outp
-#    undef outp
-#  endif
-#  define inp(port)       ((unsigned char)0)
-#  define outp(port, val) ((void)(val))
-#endif
 static inline void disable(void) {}
 /** @brief Enable.
  * @return Function result.

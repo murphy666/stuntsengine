@@ -186,7 +186,7 @@ extern short            gState_topSpeed;
 extern short            gState_total_finish_time;
 extern long             gState_travDist;
 extern unsigned const char g_ascii_props[];
-extern char             g_path_buf[];
+extern char             g_path_buf[GAME_PATH_BUF_SIZE];
 extern unsigned char    game_exit_request_flag;
 extern unsigned char    game_finish_state;
 extern unsigned char    game_mode_state_register;

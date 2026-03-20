@@ -1557,7 +1557,8 @@ void * file_load_shape2d(char* shapename, int fatal) {
 	}
 
 	for (counter = 0; extlist[counter] != 0; counter++) {
-		strcpy(strptr, extlist[counter]);
+		size_t remaining = sizeof(g_shape2d_namebuf) - (size_t)(strptr - g_shape2d_namebuf);
+		snprintf(strptr, remaining, "%s", extlist[counter]);
 
 		if (file_find(str)) {
 			if (strcasecmp(strptr, ".PVS") == 0) {

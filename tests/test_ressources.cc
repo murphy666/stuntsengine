@@ -28,7 +28,7 @@ extern "C" {
 struct GAMEINFO  gameconfig;
 struct GAMEINFO  gameconfigcopy;
 char            *replay_header     = nullptr;
-char             g_path_buf[260]     = {0};
+char             g_path_buf[GAME_PATH_BUF_SIZE] = {0};
 char             audiodriverstring[32] = "ad";
 void            *songfileptr         = nullptr;
 void            *voicefileptr        = nullptr;
@@ -140,69 +140,69 @@ protected:
 TEST(FileBuildPath, FullPath)
 {
     char buf[260] = {};
-    file_build_path("assets", "MAIN", ".RES", buf);
+    file_build_path("assets", "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("assets/MAIN.RES", buf);
 }
 TEST(FileBuildPath, NullDir)
 {
     char buf[260] = {};
-    file_build_path(nullptr, "MAIN", ".RES", buf);
+    file_build_path(nullptr, "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("MAIN.RES", buf);
 }
 TEST(FileBuildPath, NullExt)
 {
     char buf[260] = {};
-    file_build_path("assets", "MAIN", nullptr, buf);
+    file_build_path("assets", "MAIN", nullptr, buf, sizeof(buf));
     EXPECT_STREQ("assets/MAIN", buf);
 }
 TEST(FileBuildPath, NullDst)
 {
-    EXPECT_NO_FATAL_FAILURE(file_build_path("assets", "MAIN", ".RES", nullptr));
+    EXPECT_NO_FATAL_FAILURE(file_build_path("assets", "MAIN", ".RES", nullptr, 0));
 }
 TEST(FileBuildPath, TrailingSlash)
 {
     char buf[260] = {};
-    file_build_path("assets/", "MAIN", ".RES", buf);
+    file_build_path("assets/", "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("assets/MAIN.RES", buf);
 }
 TEST(FileBuildPath, TrailingBackslash)
 {
     char buf[260] = {};
-    file_build_path("assets\\", "MAIN", ".RES", buf);
+    file_build_path("assets\\", "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("assets\\MAIN.RES", buf);
 }
 TEST(FileBuildPath, TrailingColon)
 {
     char buf[260] = {};
-    file_build_path("C:", "MAIN", ".RES", buf);
+    file_build_path("C:", "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("C:MAIN.RES", buf);
 }
 TEST(FileBuildPath, EmptyDir)
 {
     char buf[260] = {};
-    file_build_path("", "MAIN", ".RES", buf);
+    file_build_path("", "MAIN", ".RES", buf, sizeof(buf));
     EXPECT_STREQ("MAIN.RES", buf);
 }
 TEST(FileBuildPath, AllNullComponents)
 {
     char buf[260] = {};
-    file_build_path(nullptr, nullptr, nullptr, buf);
+    file_build_path(nullptr, nullptr, nullptr, buf, sizeof(buf));
     EXPECT_STREQ("", buf);
 }
 TEST(FileBuildPath, EmptyExt)
 {
     char buf[260] = {};
-    file_build_path("dir", "file", "", buf);
+    file_build_path("dir", "file", "", buf, sizeof(buf));
     EXPECT_STREQ("dir/file", buf);
 }
 TEST(FileBuildPath, NullDstNullAll)
 {
-    EXPECT_NO_FATAL_FAILURE(file_build_path(nullptr, nullptr, nullptr, nullptr));
+    EXPECT_NO_FATAL_FAILURE(file_build_path(nullptr, nullptr, nullptr, nullptr, 0));
 }
 TEST(FileBuildPath, NameOnly)
 {
     char buf[260] = {};
-    file_build_path(nullptr, "GAME", nullptr, buf);
+    file_build_path(nullptr, "GAME", nullptr, buf, sizeof(buf));
     EXPECT_STREQ("GAME", buf);
 }
 

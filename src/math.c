@@ -58,29 +58,25 @@ static unsigned short sine_lookup_cache_key = 9999;
  */
 static void heapify(int* heap, int* data, int start, int end)
 {
-	int last = ((end + 1) >> 1);
-	while (start < last) {
-		int lson = (start << 1) + 1;
-		int rson = lson + 1;
+	int last_parent = ((end + 1) >> 1);
+	while (start < last_parent) {
+		int left_child  = (start << 1) + 1;
+		int right_child = left_child + 1;
 		int smallest;
 
-		if (rson <= end) {
-			if (heap[lson] >= heap[rson]) {
-				smallest = rson;
-			} else {
-				smallest = lson;
-			}
+		if (right_child <= end) {
+			smallest = (heap[left_child] >= heap[right_child]) ? right_child : left_child;
 		} else {
-			smallest = lson;
+			smallest = left_child;
 		}
 
 		if (heap[smallest] <= heap[start]) {
-			int temp = heap[start];
+			int temp    = heap[start];
 			heap[start] = heap[smallest];
 			heap[smallest] = temp;
 
-			temp = data[start];
-			data[start] = data[smallest];
+			temp         = data[start];
+			data[start]  = data[smallest];
 			data[smallest] = temp;
 			start = smallest;
 		} else {

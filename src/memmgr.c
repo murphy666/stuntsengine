@@ -56,7 +56,7 @@ static void mmgr_store_entry(const char* name, void* ptr, size_t size) {
         if (g_mmgr_entries[i].ptr == ptr) {
             if (chunk_name != NULL) {
                 memset(g_mmgr_entries[i].name, 0, sizeof(g_mmgr_entries[i].name));
-                strncpy(g_mmgr_entries[i].name, chunk_name, 12);
+                snprintf(g_mmgr_entries[i].name, sizeof(g_mmgr_entries[i].name), "%s", chunk_name);
             }
             g_mmgr_entries[i].size = size;
             return;
@@ -75,7 +75,7 @@ static void mmgr_store_entry(const char* name, void* ptr, size_t size) {
         MMGR_ENTRY* entry = &g_mmgr_entries[g_mmgr_count++];
         memset(entry, 0, sizeof(*entry));
         if (chunk_name != NULL) {
-            strncpy(entry->name, chunk_name, 12);
+            snprintf(entry->name, sizeof(entry->name), "%s", chunk_name);
         }
         entry->ptr = ptr;
         entry->size = size;
@@ -144,6 +144,10 @@ void * mmgr_alloc_pages(const char* chunk_name, unsigned short size_paras) {
 
     size_t bytes = ((size_t)size_paras) << 4;
     void* ptr = malloc(bytes == 0 ? 1 : bytes);
+    if (ptr == NULL) {
+        fatal_error("mmgr_alloc_pages: out of memory for '%s'", chunk_name);
+        return NULL;
+    }
     mmgr_store_entry(chunk_name, ptr, bytes);
     return ptr;
 }
@@ -156,6 +160,10 @@ void * mmgr_alloc_resbytes(const char* name, long int size) {
 
     size_t bytes = (size <= 0) ? 1u : (size_t)size;
     void* ptr = malloc(bytes);
+    if (ptr == NULL) {
+        fatal_error("mmgr_alloc_resbytes: out of memory for '%s'", name);
+        return NULL;
+    }
     mmgr_store_entry(name, ptr, bytes);
     return ptr;
 }

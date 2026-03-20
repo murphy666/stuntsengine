@@ -96,6 +96,8 @@ typedef struct AUDIO_VCE_INSTRUMENT {
     unsigned char op0[12];
     /* Op1 (carrier)   12 fields at rec[82]: same layout */
     unsigned char op1[12];
+    /* Drum group flag: rec[5]==5 triggers per-note instrument remap (seg028) */
+    unsigned char drum_flag;
     /* Legacy fields */
     unsigned char brightness;
 } AUDIO_VCE_INSTRUMENT;
@@ -195,6 +197,8 @@ static int g_audio_menu_note_transpose = -12;
 static unsigned int g_audio_menu_duration_scale = 1u;
 static int g_audio_menu_gain = 9000;
 static unsigned int g_audio_menu_note_ticks = 24u;
+static unsigned char g_audio_debug_music = 0;
+static unsigned int g_audio_debug_music_lines = 0u;
 static unsigned char g_audio_menu_resource_notes[AUDIO_MENU_RESOURCE_NOTES_MAX];
 static unsigned short g_audio_menu_resource_durations[AUDIO_MENU_RESOURCE_NOTES_MAX];
 static unsigned char g_audio_menu_resource_instruments[AUDIO_MENU_RESOURCE_NOTES_MAX];
@@ -244,6 +248,11 @@ static const signed char audio_kms_cmd_extra[18]; /* forward decl */
  */
 
 static void audio_opl2_silence_channel(int ch);   /* forward decl */
+static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune,
+                                       int carrier_mult_reg, int keyon);
+static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
+                                    const AUDIO_VCE_INSTRUMENT *ins);
+static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins);
 static void audio_sfx_parse_directory(void *sfxres);
 static short audio_sfx_find_chunk(const char *name4);
 static unsigned char audio_sfx_duration_ticks(short chunk_id);
@@ -756,6 +765,10 @@ static const unsigned short s_ad15_fnum_table[12] = {
     86, 91, 96, 102, 108, 114, 121, 128, 136, 144, 153, 162
 };
 
+static const unsigned char s_opl2_mult_x2[16] = {
+    1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 20, 24, 24, 30, 30
+};
+
 /**
  * @brief Convert an AD15 pitch value to Hz using the original fnum table.
  *
@@ -763,18 +776,21 @@ static const unsigned short s_ad15_fnum_table[12] = {
  * block = pitch / 12;  fnum = table[pitch % 12];
  * Hz = fnum * 49716 / 2^(20-block).
  *
- * @param pitch  AD15 pitch (KMS note byte + VCE transpose), clamped to 0-95.
+ * The OPL2 block register is 3 bits, so the original hardware wraps
+ * block >= 8 via (block & 7).  Pitches above 95 (block 8+) wrap to
+ * block 0-2, producing very low (inaudible) frequencies — this is how
+ * the original game encodes silent "rest" notes.
+ *
+ * @param pitch  AD15 pitch (KMS note byte + VCE transpose).
  * @return Frequency in Hz.
  */
 static unsigned int audio_ad15_pitch_to_hz(int pitch) {
-    int block, idx;
-    unsigned int fnum;
-    if (pitch < 0) pitch = 0;
-    if (pitch > 95) pitch = 95;
-    block = pitch / 12;
-    idx   = pitch % 12;
-    fnum  = (unsigned int)s_ad15_fnum_table[idx];
-    return fnum * 49716u / (1u << (20 - block));
+    /* Match x86 unsigned-byte arithmetic: ADD AL wraps at 256. */
+    unsigned int p     = (unsigned int)pitch & 0xFFu;
+    unsigned int block = (p / 12u) & 7u;   /* OPL2 block register = 3 bits */
+    unsigned int idx   = p % 12u;
+    unsigned int fnum  = (unsigned int)s_ad15_fnum_table[idx];
+    return fnum * 49716u / (1u << (20u - block));
 }
 
 /**
@@ -889,6 +905,8 @@ static unsigned short audio_parse_vce_instruments(void *voiceptr) {
         inst->name[4] = '\0';
         inst->record_size = (unsigned short)record_size;
         inst->brightness = (unsigned char)((rec[34] >> 4u) & 15u);
+        /* rec[5]: drum group flag (5 = drum kit → per-note instrument remap) */
+        inst->drum_flag = (record_size > 5u) ? rec[5u] : 0u;
         /** rec[14]/rec[15]: RPM-to-Fnum mapping (audio_update_engine_sound seg007.asm) */
         inst->freq_div  = rec[14u];
         inst->freq_base = rec[15u];
@@ -999,6 +1017,18 @@ static AUDIO_KMS_NOTE       g_audio_kms_evt_pool[AUDIO_KMS_EVENTS_POOL];
 static AUDIO_KMS_TRACK_INFO g_audio_kms_tracks[AUDIO_KMS_MAX_TRACKS];
 static unsigned int         g_audio_kms_n_tracks = 0u;
 static AUDIO_KMS_VOICE      g_audio_kms_voices[AUDIO_KMS_MAX_TRACKS];
+
+/* OPL2 channel assigned to each KMS music track (0-8, or -1 if none) */
+static int g_audio_kms_opl2_ch[AUDIO_KMS_MAX_TRACKS];
+/* VCE instrument index currently programmed on each track's OPL2 channel */
+static int g_audio_kms_opl2_cur_inst[AUDIO_KMS_MAX_TRACKS];
+
+/* Drum pitch → VCE instrument index (seg028 off_38E7E, pitches 24-39).
+ * Default for out-of-range = 9 (TOMM). */
+static const int s_drum_pitch_to_vce[16] = {
+    6, 9, 5, 9, 9, 9, 21, 9, 22, 9, 22, 9, 9, 23, 9, 24
+    /* BASD TOMM SNAR TOMM TOMM TOMM CHHT TOMM OHHT TOMM OHHT TOMM TOMM RIDE TOMM CRSH */
+};
 
 /**
  * @brief Parse a single KMS track into an array of note events.
@@ -1151,6 +1181,13 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
     g_audio_kms_music_hz = 48u;  /* reset to default before parsing */
     memset(g_audio_kms_voices, 0, sizeof(g_audio_kms_voices));
     memset(g_audio_kms_tracks, 0, sizeof(g_audio_kms_tracks));
+    {
+        int ci;
+        for (ci = 0; ci < AUDIO_KMS_MAX_TRACKS; ci++) {
+            g_audio_kms_opl2_ch[ci] = -1;
+            g_audio_kms_opl2_cur_inst[ci] = -1;
+        }
+    }
 
     /* Reset legacy sequencer state */
     g_audio_menu_resource_count = 0;
@@ -1226,7 +1263,7 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
 
     if (g_audio_kms_n_tracks == 0u) return 0u;
 
-    /* Initialise per-voice playback state */
+    /* Initialise per-voice playback state and assign OPL2 channels */
     unsigned int rate = g_audio_output_rate_hz;
     if (rate == 0u) rate = 22050u;
     for (t = 0u; t < g_audio_kms_n_tracks; t++) {
@@ -1236,6 +1273,9 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
         audio_kms_gap_for_event(&g_audio_kms_tracks[t], 0u, rate,
                                 &g_audio_kms_voices[t].gap_frames,
                                 &g_audio_kms_voices[t].snd_frames);
+        /* Assign one OPL2 channel per track (max 9 channels) */
+        g_audio_kms_opl2_ch[t] = (t < 9u) ? (int)t : -1;
+        g_audio_kms_opl2_cur_inst[t] = -1;
     }
 
     /* Set g_audio_menu_resource_count so the >= 8 guard in the caller passes */
@@ -2073,6 +2113,81 @@ static void audio_opl2_silence_channel(int ch) {
     opl2_write(176 + ch, 0);    /* key-off */
 }
 
+/**
+ * @brief Set OPL2 music pitch from AD15.DRV fnum table.
+ *
+ * AD15.DRV 0x06F9: block = pitch/12, idx = pitch%12, fnum = table[idx],
+ * packed = (block<<10)|fnum + fine_tune.
+ * Writes A0+ch (fnum low) and B0+ch (key-on | block | fnum high).
+ */
+static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune,
+                                       int carrier_mult_reg, int keyon) {
+    unsigned int p = (unsigned int)pitch & 0xFFu;
+    unsigned int idx = p % 12u;
+    unsigned int fnum = (unsigned int)s_ad15_fnum_table[idx];
+    unsigned int block = (p / 12u) & 7u;
+    unsigned int mult_x2;
+    unsigned int linear;
+    unsigned int packed;
+
+    /* AD15 writes (block<<10)|fnum directly, then applies fine_tune. */
+    packed = (block << 10u) | (fnum & 1023u);
+    packed = (unsigned int)((int)packed + fine_tune) & 0x1FFFu;
+
+    /* Compensate for carrier MULT so instrument timbre does not shift
+     * perceived pitch upward by 1-2 octaves on menu tracks. */
+    mult_x2 = (unsigned int)s_opl2_mult_x2[carrier_mult_reg & 15];
+    if (mult_x2 != 0u) {
+        linear = (packed & 1023u) << ((packed >> 10u) & 7u);
+        linear = (linear * 2u + (mult_x2 / 2u)) / mult_x2;
+        block = 0u;
+        while (linear > 1023u && block < 7u) {
+            linear = (linear + 1u) >> 1u;
+            block++;
+        }
+        if (linear == 0u) {
+            linear = 1u;
+        }
+        packed = (block << 10u) | (linear & 1023u);
+    }
+
+    opl2_write(160 + ch, (int)(packed & 0xFFu));
+    opl2_write(176 + ch, ((keyon ? 1 : 0) << 5) | (int)((packed >> 8u) & 0x1Fu));
+}
+
+/**
+ * @brief Set OPL2 music volume matching AD15.DRV 0x0730.
+ *
+ * scale = (channel_volume * velocity) >> 6, rounded.
+ * Carrier TL always scaled.  Modulator TL only scaled for AM (opl_con==1).
+ * Formula: attn = scale * (63 - base_TL) >> 6, rounded; TL = 63 - attn.
+ */
+static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
+                                    const AUDIO_VCE_INSTRUMENT *ins) {
+    int scale = (channel_volume * velocity + 32) >> 6;
+    if (scale > 127) scale = 127;
+    /* Carrier (op1) */
+    {
+        int base_tl = (int)ins->op1[OPL2F_TL];
+        int range = 63 - base_tl;
+        int attn = (scale * range + 32) >> 6;
+        if (attn > 63) attn = 63;
+        if (attn < 0) attn = 0;
+        int tl = 63 - attn;
+        opl2_write(64 + s_opl2_op1_reg[ch], ((int)ins->op1[OPL2F_KSL] << 6) | tl);
+    }
+    /* Modulator (op0) — only for AM (additive, opl_con==1) */
+    if (ins->opl_con) {
+        int base_tl = (int)ins->op0[OPL2F_TL];
+        int range = 63 - base_tl;
+        int attn = (scale * range + 32) >> 6;
+        if (attn > 63) attn = 63;
+        if (attn < 0) attn = 0;
+        int tl = 63 - attn;
+        opl2_write(64 + s_opl2_op0_reg[ch], ((int)ins->op0[OPL2F_KSL] << 6) | tl);
+    }
+}
+
 /*
  * Map an active_chunk index to the right SFX instrument for the given handle.
  * In the original game SKID/SKI2 → SKID inst; SCRA/crash1 → SCRA;
@@ -2845,6 +2960,7 @@ void audio_driver_timer(void) {
 
 short audio_load_driver(const char* driver, short a2, short a3) {
     const char * backend;
+    const char * debug_music_env;
     const char * menu_gain_env;
     const char * menu_note_ticks_env;
     const char * refresh_hz_env;
@@ -2855,11 +2971,14 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     (void)a3;
 
     backend = getenv("STUNTS_AUDIO_BACKEND");
+    debug_music_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC");
     menu_gain_env = getenv("STUNTS_AUDIO_MENU_GAIN");
     menu_note_ticks_env = getenv("STUNTS_AUDIO_MENU_NOTE_TICKS");
     refresh_hz_env = getenv("STUNTS_AUDIO_REFRESH_HZ");
     menu_transpose_env = getenv("STUNTS_AUDIO_MENU_TRANSPOSE");
     menu_duration_scale_env = getenv("STUNTS_AUDIO_MENU_DURATION_SCALE");
+    g_audio_debug_music = (unsigned char)((debug_music_env != 0 && *debug_music_env != '\0' && atoi(debug_music_env) != 0) ? 1 : 0);
+    g_audio_debug_music_lines = 0u;
     if (menu_gain_env != 0 && *menu_gain_env != '\0') {
         int gain = atoi(menu_gain_env);
         if (gain < 1000) {
@@ -2894,7 +3013,7 @@ short audio_load_driver(const char* driver, short a2, short a3) {
         }
         g_audio_menu_note_transpose = semitones;
     } else {
-        g_audio_menu_note_transpose = 0;
+        g_audio_menu_note_transpose = -12;
     }
     if (menu_duration_scale_env != 0 && *menu_duration_scale_env != '\0') {
         int scale = atoi(menu_duration_scale_env);
@@ -3002,6 +3121,14 @@ void audiodrv_atexit(void) {
  * KMS playback state so it starts fresh next time a menu loads. */
 void audio_driver_func3F(int mode) {
     (void)mode;
+    /* Silence OPL2 music channels before stopping */
+    if (opl2_is_ready()) {
+        unsigned int t2;
+        for (t2 = 0u; t2 < g_audio_kms_n_tracks && t2 < 9u; t2++) {
+            if (g_audio_kms_opl2_ch[t2] >= 0)
+                audio_opl2_silence_channel(g_audio_kms_opl2_ch[t2]);
+        }
+    }
     /* Stop menu music and reset KMS playback */
     g_audio_menu_music_enabled = 0;
     g_audio_menu_music_paused  = 0;

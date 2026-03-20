@@ -23,6 +23,8 @@
 #ifndef RESSOURCES_H
 #define RESSOURCES_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -31,7 +33,7 @@ const char* file_find(const char* query);
 const char* file_find_next(void);
 const char* file_find_next_alt(void);
 
-void file_build_path(const char* dir, const char* name, const char* ext, char* dst);
+void file_build_path(const char* dir, const char* name, const char* ext, char* dst, size_t dst_size);
 const char* file_combine_and_find(const char* dir, const char* name, const char* ext);
 
 unsigned short file_paras(const char* filename, int fatal);
