@@ -813,8 +813,8 @@ void update_frame(int view_index, struct RECTANGLE* clip_rect) {
 						
 					if (state.opponentstate.car_surfaceWhl[0] != 4 || state.opponentstate.car_surfaceWhl[1] != 4 || state.opponentstate.car_surfaceWhl[2] != 4 || state.opponentstate.car_surfaceWhl[3] != 4) {
 						temp_vec_a.x = 0;
-						temp_vec_a.y = 0;
-						temp_vec_a.z = 30000;
+						temp_vec_a.z = 0;
+						temp_vec_a.y = 30000;
 						mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_c);
 						mat_mul_vector(&temp_vec_c, &mat_temp, &temp_vec_a);
 						if (temp_vec_a.z <= 0) {
