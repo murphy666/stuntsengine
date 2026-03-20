@@ -1487,8 +1487,6 @@ static void car_on_render(UIScreen *self)
 			&& st->prev_car_index != st->car_index) {
 			sprite_select_wnd_as_sprite1();
 			if (video_flag5_is0 == 0) {
-				nullsub_2(opp_res,
-						  (unsigned short)(st->opponenttype + '0'));
 				sprite_putimage_transparent(
 					oppresources[st->opponenttype],
 					MENU_OPP_CAR_PANEL_X, 0);
@@ -1619,7 +1617,6 @@ static UIScreen *make_car_screen(
 	ensure_file_exists(2);
 	findfile = file_combine_and_find(0, "car*", ".res");
 	if (findfile == 0) {
-		nullsub_1();
 		free(st);
 		return NULL;
 	}
@@ -1640,8 +1637,6 @@ static UIScreen *make_car_screen(
 		}
 		findfile = file_find_next_alt();
 	} while (findfile != 0);
-
-	nullsub_1();
 
 	if (st->car_count > 1) {
 		unsigned char ii, jj;
@@ -1689,7 +1684,6 @@ static UIScreen *make_car_screen(
 										   MENU_SCREEN_DEPTH);
 			setup_mcgawnd2();
 			sprite_clear_sprite1_color(0);
-			nullsub_2(opp_res, (unsigned short)(opponenttype + '0'));
 			sprite_putimage_transparent(oppresources[opponenttype], 0, 0);
 			sprite_clear_shape_alt(st->opp_wnd->sprite_bitmapptr, 0, 0);
 		}

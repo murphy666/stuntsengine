@@ -2229,44 +2229,6 @@ void load_palandcursor(void)
 	sprite_copy_2_to_1();
 }
 
-/** @brief Minimal palette-only loader without cursor sprites
- */
-static void __attribute__((unused)) load_palandcursor_minimal(void)
-{
-	unsigned char palette[STN_PALETTE_BYTES];
-	char * shapedata;
-	char * palptr;
-	struct SHAPE2D * palshape;
-	unsigned char * paldata;
-	unsigned long palbytes;
-	unsigned short i;
-
-	shapedata = file_load_shape2d_fatal_thunk("sdmain");
-	palptr = locate_shape_fatal(shapedata, "!pal");
-	palshape = (struct SHAPE2D *)palptr;
-	paldata = (unsigned char *)palptr + sizeof(struct SHAPE2D);
-	palbytes = (unsigned long)palshape->s2d_width * (unsigned long)palshape->s2d_height;
-	if (palbytes > STN_PALETTE_BYTES) {
-		palbytes = STN_PALETTE_BYTES;
-	}
-	memset(palette, 0, sizeof(palette));
-	for (i = 0; i < (unsigned short)palbytes; i++) {
-		palette[i] = paldata[i];
-	}
-
-	video_set_palette(0, STN_PALETTE_COLORS, palette);
-	mmgr_free(shapedata);
-}
-
-/**
-/** @brief Functions.
- * @param nullsub_1 Parameter `nullsub_1`.
- * @param nullsub_1 Parameter `nullsub_1`.
- * @return Function result.
- */
-void nullsub_1(void) { }
-void nullsub_2(void * resptr, unsigned short idx) { (void)resptr; (void)idx; }
-
 /** @brief Main initialization for keyboard, video, audio and timing
  * @param argc Argument count
  * @param argv Argument vector
@@ -2341,9 +2303,7 @@ void init_main(int argc, char* argv[])
 	}
 	
 	video_sdl_init();
-	(void)argmode4;
-	(void)argnounknown;
-	
+
 	sprite_copy_2_to_1_clear();
 
 	mouse_init(320, 200);

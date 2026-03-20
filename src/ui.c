@@ -1951,9 +1951,7 @@ file_search_loop:
 	/* Search for files matching pattern */
 	find_result_path = file_combine_and_find(pathbuf, "*", (char*)ext);
 	if (find_result_path == 0) {
-		nullsub_1();
 		
-// ...existing code...
 		/* No files found or need to re-enter filename */
 		font_set_colors(dialog_fnt_colour, dialog_text_color);
 		
@@ -2000,8 +1998,6 @@ file_search_loop:
 			file_count++;
 		}
 	}
-	
-	nullsub_1();  /* Close file search */
 	
 	/* Sort file list alphabetically using bubble sort */
 	if (file_count > 1) {
