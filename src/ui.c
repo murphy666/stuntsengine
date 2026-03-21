@@ -40,7 +40,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <strings.h>
+#include "compat_fs.h"
 #include <stdlib.h>
 #include <time.h>
 #include "stunts.h"
@@ -1968,7 +1968,7 @@ file_search_loop:
 	/* Parse first file found into file list */
 	parse_filepath_separators_dosptr(find_result_path, resID_byte1);
 	for (si = 0; si < file_count; si++) {
-		if (strcasecmp(&file_names[si][0], resID_byte1) == 0) {
+		if (fs_strcasecmp(&file_names[si][0], resID_byte1) == 0) {
 			break;
 		}
 	}
@@ -1986,7 +1986,7 @@ file_search_loop:
 		
 		parse_filepath_separators_dosptr(find_result_path, resID_byte1);
 		for (si = 0; si < file_count; si++) {
-			if (strcasecmp(&file_names[si][0], resID_byte1) == 0) {
+			if (fs_strcasecmp(&file_names[si][0], resID_byte1) == 0) {
 				break;
 			}
 		}

@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <strings.h>
+#include "compat_fs.h"
 #define SHAPE2D_IMPL
 #include "stunts.h"
 #include "memmgr.h"
@@ -1561,7 +1561,7 @@ void * file_load_shape2d(char* shapename, int fatal) {
 		snprintf(strptr, remaining, "%s", extlist[counter]);
 
 		if (file_find(str)) {
-			if (strcasecmp(strptr, ".PVS") == 0) {
+			if (fs_strcasecmp(strptr, ".PVS") == 0) {
 				memchunk = file_decomp(str, fatal);
 				if (!memchunk) return NULL;
 				
@@ -1572,10 +1572,10 @@ void * file_load_shape2d(char* shapename, int fatal) {
 				
 				return memchunk;
 			}
-			else if (strcasecmp(strptr, ".XVS") == 0) {
+			else if (fs_strcasecmp(strptr, ".XVS") == 0) {
 				return file_decomp(str, fatal);
 			}
-			else if (strcasecmp(strptr, ".PES") == 0) {
+			else if (fs_strcasecmp(strptr, ".PES") == 0) {
 				memchunk = file_decomp(str, fatal);
 				if (!memchunk) return NULL;
 				
@@ -1584,7 +1584,7 @@ void * file_load_shape2d(char* shapename, int fatal) {
 				mmgr_release(mempages);
 				return file_load_shape2d_esh(memchunk, str);
 			}
-			else if (strcasecmp(strptr, ".ESH") == 0) {
+			else if (fs_strcasecmp(strptr, ".ESH") == 0) {
 				memchunk = file_load_binary(str, fatal);
 				if (!memchunk) return NULL;
 
