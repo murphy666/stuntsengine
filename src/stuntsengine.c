@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#define STUNTS_IMPL
 #include "stunts.h"
 #include "game_timing.h"
 #include "ressources.h"
@@ -2236,7 +2235,7 @@ void load_palandcursor(void)
 void init_main(int argc, char* argv[])
 {
 	unsigned int i;
-	unsigned char argmode4, argnosound, argnounknown;
+	unsigned char argmode4, argnosound;
 	unsigned long timerdelta1, timerdelta2, timerdelta3;
 
 	// Keyboard
@@ -2269,7 +2268,6 @@ void init_main(int argc, char* argv[])
 	// Parse arguments.
 	argmode4 = 0;
 	argnosound = 0;
-	argnounknown = 0;
 	
 	for (i = 1; i < (unsigned int)argc; ++i) {
 		if (argv[i][0] == '/') {
@@ -2281,9 +2279,6 @@ void init_main(int argc, char* argv[])
 				case 'n':
 					if (argv[i][2] == 's') {
 						argnosound = 1;
-					}
-					else if (argv[i][2] == 'd') {
-						argnounknown = 1;
 					}
 					break;
 

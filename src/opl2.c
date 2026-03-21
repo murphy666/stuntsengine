@@ -33,9 +33,6 @@
 
 #include "nukedopl.h"
 
-/* OPL2 clock: standard AdLib / SoundBlaster AdLib-compatible rate */
-#define OPL2_CLOCK 3579545
-
 static opl3_chip s_opl;
 static int     s_ready = 0;
 static int     s_sample_rate = 49716;
@@ -51,7 +48,6 @@ void opl2_init(int sample_rate) {
 
     s_sample_rate = sample_rate;
 
-    (void)OPL2_CLOCK;
     OPL3_Reset(&s_opl, (uint32_t)sample_rate);
 
     /* Force OPL2-compatible mode (disable OPL3 mode bit). */
