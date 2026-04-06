@@ -1245,22 +1245,16 @@ compute_elem_crds:
 
             {
                 int angle = polarAngle(px_adj, pz_adj);
-                int step_raw;
                 int wallStep;
                 angle &= BTO_POLAR_ANGLE_MASK_LOW;
                 angle = angle * BTO_POLAR_ANGLE_STEP_MULT;
                 tempValue22 = angle;
                 angle = angle >> 8;
-                step_raw = angle;              /* raw arc step 0..17 */
                 wallStep = -(angle - BTO_POLAR_ANGLE_STEP_BASE);       /* reversed for wall index */
 
-                /* FIX: use raw step for planindex instead of reversed angle.
-                 * The original asm had: planindex = -(step-17) + 7 = 24 - step
-                 * But the plane resource data is ordered step_raw + 7, so the
-                 * negation maps south-end cars to east-end planes (ip ~700)
-                 * instead of the correct south-end planes (ip ~0).
-                 */
-                planindex = step_raw + 7;
+                /* Original bank-corner plane selection uses the reversed arc step.
+                 * Keeping planindex aligned with the DOS code avoids gaps at tile seams. */
+                planindex = wallStep + 7;
                 current_surf_type = surfaceType;
 
                 if (turnRadius <= BTO_BANK_CORNER_WALL_MIN) goto code_bto_blank;
