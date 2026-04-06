@@ -1842,6 +1842,8 @@ void run_game(void) {
 				*(char*)&lap_completion_trigger_flag = 0; // byte ptr!
 				game_pause_counter = 1;
 				mouse_minmax_position(mouse_motion_state_flag);
+				check_input();
+				kbormouse = 0;
 				game_replay_mode = 1;
 				
 				state.playerstate.car_posWorld1.lx += multiply_and_scale(sin_fast(track_angle), -240) << STN_WORLD_SCALE_SHIFT;
