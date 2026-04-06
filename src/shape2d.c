@@ -3597,17 +3597,19 @@ void sprite_clear_shape_alt(void * shapeptr, unsigned short x, unsigned short y)
 void putpixel_iconMask(void * icon, unsigned short x, unsigned short y) {
 	unsigned short * icondata = (unsigned short *)icon;
 	unsigned int width, height;
-	unsigned int words_per_row;
-	int has_trailing_byte;
-	unsigned short * srcptr;
+	unsigned char * srcrow;
 	unsigned char * bitmapptr;
 	unsigned int * lineofs;
 	unsigned int destofs;
 	int pitch;
+	int draw_x;
+	int draw_y;
+	int src_skip_x;
+	int src_skip_y;
+	int draw_width;
+	int draw_height;
 	int row;
-	unsigned int col;
-	unsigned short * destword;
-	unsigned char * destbyte;
+	int col;
 
 	if (icon == 0) {
 		return;
@@ -3615,53 +3617,64 @@ void putpixel_iconMask(void * icon, unsigned short x, unsigned short y) {
 	
 	width = icondata[0];
 	height = icondata[1];
+	if (width == 0 || height == 0) {
+		return;
+	}
 	
 	/* Get sprite1 info */
 	lineofs = shape2d_lineofs_flat((unsigned int*)sprite1.sprite_lineofs);
 	bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
 	pitch = sprite1.sprite_pitch;
+	if (bitmapptr == 0 || pitch <= 0) {
+		return;
+	}
+
+	draw_x = (int)(short)x;
+	draw_y = (int)(short)y;
+	src_skip_x = 0;
+	src_skip_y = 0;
+	draw_width = (int)width;
+	draw_height = (int)height;
+
+	if (draw_y < sprite1.sprite_top) {
+		src_skip_y = sprite1.sprite_top - draw_y;
+		draw_height -= src_skip_y;
+		draw_y = sprite1.sprite_top;
+	}
+	if (draw_y + draw_height > sprite1.sprite_height) {
+		draw_height = sprite1.sprite_height - draw_y;
+	}
+	if (draw_height <= 0) {
+		return;
+	}
+
+	if (draw_x < sprite1.sprite_left) {
+		src_skip_x = sprite1.sprite_left - draw_x;
+		draw_width -= src_skip_x;
+		draw_x = sprite1.sprite_left;
+	}
+	if (draw_x + draw_width > sprite1.sprite_right) {
+		draw_width = sprite1.sprite_right - draw_x;
+	}
+	if (draw_width <= 0) {
+		return;
+	}
 	
-	/* Calculate destination */
-	destofs = lineofs[y] + x;
-	
-	/* Source pixels start at offset 16 (skip header) */
-	srcptr = (unsigned short *)((unsigned char *)icondata + SHAPE2D_HEADER_BYTES);
-	
-	/* Calculate words per row and check for trailing byte */
-	words_per_row = width >> 1;
-	has_trailing_byte = width & 1;
-	
-	/* Handle three cases based on width */
-	if (has_trailing_byte && words_per_row > 0) {
-		/* Case 1: Odd width > 1 - loop words + 1 trailing byte per row */
-		for (row = 0; row < (int)height; row++) {
-			destword = (unsigned short *)(bitmapptr + destofs);
-			for (col = 0; col < words_per_row; col++) {
-				*destword++ &= *srcptr++;
-			}
-			/* Trailing byte */
-			destbyte = (unsigned char *)destword;
-			*destbyte &= *(unsigned char *)srcptr;
-			srcptr = (unsigned short *)((unsigned char *)srcptr + 1);
-			destofs += pitch;
+	/* Source pixels start after the header. Track icons are byte-packed rows. */
+	srcrow = ((unsigned char *)icondata + SHAPE2D_HEADER_BYTES) +
+		(unsigned int)src_skip_y * width + (unsigned int)src_skip_x;
+	destofs = lineofs[draw_y] + (unsigned int)draw_x;
+
+	for (row = 0; row < draw_height; row++) {
+		unsigned char * destrow = bitmapptr + destofs;
+		unsigned char * srcpixel = srcrow;
+
+		for (col = 0; col < draw_width; col++) {
+			destrow[col] &= srcpixel[col];
 		}
-	} else if (!has_trailing_byte && words_per_row > 0) {
-		/* Case 2: Even width >= 2 - loop words only */
-		for (row = 0; row < (int)height; row++) {
-			destword = (unsigned short *)(bitmapptr + destofs);
-			for (col = 0; col < words_per_row; col++) {
-				*destword++ &= *srcptr++;
-			}
-			destofs += pitch;
-		}
-	} else {
-		/* Case 3: Width is 1 - single byte per row */
-		for (row = 0; row < (int)height; row++) {
-			destbyte = bitmapptr + destofs;
-			*destbyte &= *(unsigned char *)srcptr;
-			srcptr = (unsigned short *)((unsigned char *)srcptr + 1);
-			destofs += pitch;
-		}
+
+		srcrow += width;
+		destofs += pitch;
 	}
 }
 
@@ -3674,17 +3687,19 @@ void putpixel_iconMask(void * icon, unsigned short x, unsigned short y) {
 void putpixel_iconFillings(void * icon, unsigned short x, unsigned short y) {
 	unsigned short * icondata = (unsigned short *)icon;
 	unsigned int width, height;
-	unsigned int words_per_row;
-	int has_trailing_byte;
-	unsigned short * srcptr;
+	unsigned char * srcrow;
 	unsigned char * bitmapptr;
 	unsigned int * lineofs;
 	unsigned int destofs;
 	int pitch;
+	int draw_x;
+	int draw_y;
+	int src_skip_x;
+	int src_skip_y;
+	int draw_width;
+	int draw_height;
 	int row;
-	unsigned int col;
-	unsigned short * destword;
-	unsigned char * destbyte;
+	int col;
 
 	if (icon == 0) {
 		return;
@@ -3692,53 +3707,64 @@ void putpixel_iconFillings(void * icon, unsigned short x, unsigned short y) {
 	
 	width = icondata[0];
 	height = icondata[1];
+	if (width == 0 || height == 0) {
+		return;
+	}
 	
 	/* Get sprite1 info */
 	lineofs = shape2d_lineofs_flat((unsigned int*)sprite1.sprite_lineofs);
 	bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
 	pitch = sprite1.sprite_pitch;
+	if (bitmapptr == 0 || pitch <= 0) {
+		return;
+	}
+
+	draw_x = (int)(short)x;
+	draw_y = (int)(short)y;
+	src_skip_x = 0;
+	src_skip_y = 0;
+	draw_width = (int)width;
+	draw_height = (int)height;
+
+	if (draw_y < sprite1.sprite_top) {
+		src_skip_y = sprite1.sprite_top - draw_y;
+		draw_height -= src_skip_y;
+		draw_y = sprite1.sprite_top;
+	}
+	if (draw_y + draw_height > sprite1.sprite_height) {
+		draw_height = sprite1.sprite_height - draw_y;
+	}
+	if (draw_height <= 0) {
+		return;
+	}
+
+	if (draw_x < sprite1.sprite_left) {
+		src_skip_x = sprite1.sprite_left - draw_x;
+		draw_width -= src_skip_x;
+		draw_x = sprite1.sprite_left;
+	}
+	if (draw_x + draw_width > sprite1.sprite_right) {
+		draw_width = sprite1.sprite_right - draw_x;
+	}
+	if (draw_width <= 0) {
+		return;
+	}
 	
-	/* Calculate destination */
-	destofs = lineofs[y] + x;
-	
-	/* Source pixels start at offset 16 (skip header) */
-	srcptr = (unsigned short *)((unsigned char *)icondata + SHAPE2D_HEADER_BYTES);
-	
-	/* Calculate words per row and check for trailing byte */
-	words_per_row = width >> 1;
-	has_trailing_byte = width & 1;
-	
-	/* Handle three cases based on width */
-	if (has_trailing_byte && words_per_row > 0) {
-		/* Case 1: Odd width > 1 - loop words + 1 trailing byte per row */
-		for (row = 0; row < (int)height; row++) {
-			destword = (unsigned short *)(bitmapptr + destofs);
-			for (col = 0; col < words_per_row; col++) {
-				*destword++ |= *srcptr++;
-			}
-			/* Trailing byte */
-			destbyte = (unsigned char *)destword;
-			*destbyte |= *(unsigned char *)srcptr;
-			srcptr = (unsigned short *)((unsigned char *)srcptr + 1);
-			destofs += pitch;
+	/* Source pixels start after the header. Track icons are byte-packed rows. */
+	srcrow = ((unsigned char *)icondata + SHAPE2D_HEADER_BYTES) +
+		(unsigned int)src_skip_y * width + (unsigned int)src_skip_x;
+	destofs = lineofs[draw_y] + (unsigned int)draw_x;
+
+	for (row = 0; row < draw_height; row++) {
+		unsigned char * destrow = bitmapptr + destofs;
+		unsigned char * srcpixel = srcrow;
+
+		for (col = 0; col < draw_width; col++) {
+			destrow[col] |= srcpixel[col];
 		}
-	} else if (!has_trailing_byte && words_per_row > 0) {
-		/* Case 2: Even width >= 2 - loop words only */
-		for (row = 0; row < (int)height; row++) {
-			destword = (unsigned short *)(bitmapptr + destofs);
-			for (col = 0; col < words_per_row; col++) {
-				*destword++ |= *srcptr++;
-			}
-			destofs += pitch;
-		}
-	} else {
-		/* Case 3: Width is 1 - single byte per row */
-		for (row = 0; row < (int)height; row++) {
-			destbyte = bitmapptr + destofs;
-			*destbyte |= *(unsigned char *)srcptr;
-			srcptr = (unsigned short *)((unsigned char *)srcptr + 1);
-			destofs += pitch;
-		}
+
+		srcrow += width;
+		destofs += pitch;
 	}
 }
 
