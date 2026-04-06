@@ -3567,10 +3567,10 @@ void shape3d_free_car_shapes() {
  */
 void preRender_line(unsigned short startX, unsigned short startY,
                     unsigned short endX, unsigned short endY, unsigned short color) {
-    int x0 = (int)startX;
-    int y0 = (int)startY;
-    int x1 = (int)endX;
-    int y1 = (int)endY;
+    int x0 = (int)(int16_t)startX;
+    int y0 = (int)(int16_t)startY;
+    int x1 = (int)(int16_t)endX;
+    int y1 = (int)(int16_t)endY;
     int dx = (x1 > x0) ? (x1 - x0) : (x0 - x1);
     int dy = (y1 > y0) ? (y1 - y0) : (y0 - y1);
     int sx = (x0 < x1) ? 1 : -1;
