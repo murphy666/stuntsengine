@@ -292,9 +292,10 @@ void frame_callback(void)
 	if (checkpoint_lap_trigger != 0) goto done;
 
 	if (is_in_replay != 0 && game_replay_mode == 2) {
-		if (replay_autoplay_active == 0)
-			goto done;
-		/* auto-play: fall through to frame advancement */
+		/* ASM: unconditional skip when viewing replay.
+		 * Frame advancement during replay is driven by
+		 * loop_game(3) user interaction, not the timer. */
+		goto done;
 	}
 
 	if (game_replay_mode == 0) {
@@ -1511,11 +1512,12 @@ input_loop:
 
 		/* if not in replay and no input, update frame time display */
 		if (is_in_replay == 0) {
-			if (inputCode == 0 && replaybar_enabled != 0) {
-				loop_game(1, state.game_frame, state.game_frame);
+			if (inputCode == 0) {
+				if (replaybar_enabled != 0)
+					loop_game(1, state.game_frame, state.game_frame);
 				return;
 			}
-			return;
+			/* non-zero input while playing — fall through to action handler */
 		}
 
 		if (replaybar_enabled == 0) {
@@ -1608,198 +1610,69 @@ do_zoom_out:
 			goto do_update;
 		}
 
-		/* Enter/Space = action on selected button */
+		/* Enter/Space = action on replay bar button (ASM: off_24D20 dispatch) */
 		if (inputCode == 13 || inputCode == 32 || inputCode == 7181 || inputCode == 14624) {
 			if ((unsigned char)minimum_bump_counter <= 6) {
 				switch (minimum_bump_counter) {
-				case 0: /* Retire */
-					update_crash_state(0, 4);
-					game_finish_state = 2;
-					return;
-				case 1: /* Restart */
-					check_input();
-					framespersec = framespersec2;
-					*(unsigned char*)&gameconfig.game_framespersec = (unsigned char)framespersec2;
-					init_game_state(-1);
-					replay_frame_counter = 0;
-					gameconfig.game_recordedframes = 0;
-					*(unsigned char*)&lap_completion_trigger_flag = 0;
-					replay_mode_state_flag = 1;
-					goto setup_drive;
-				case 2: /* Continue */
-					if (replay_mode_state_flag & 2) {
-						replay_mode_state_flag = 3;
-					} else {
-						if (replay_frame_counter != gameconfig.game_recordedframes) {
-							unsigned short dlg_result;
-							dlg_result = ui_dialog_show_restext(UI_DIALOG_CONFIRM, 0,
-								locate_text_res(gameresptr, "con"),
-								UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-							if ((int)dlg_result < 1)
-								goto after_dialog;
-						}
-						replay_mode_state_flag = 1;
+				case 0: /* Fast Forward ~5 s (ASM: loc_24830) */
+					{
+						unsigned short step = (unsigned short)(framespersec * 5);
+						unsigned short cur = (unsigned short)state.game_frame;
+						unsigned short tgt = cur + step;
+						if (tgt > (unsigned short)gameconfig.game_recordedframes)
+							tgt = (unsigned short)gameconfig.game_recordedframes;
+						is_in_replay = 1;
+						audio_sync_car_audio();
+						loop_game(2, 0, 0);
+						restore_gamestate(tgt);
+						replay_frame_counter = state.game_frame;
+						loop_game(2, 4, 0);
+						loop_game(1, state.game_frame, state.game_frame);
 					}
-					replay_frame_counter = state.game_frame;
-					gameconfig.game_recordedframes = state.game_frame;
-
-setup_drive:
-					dashb_toggle = 1;
-					show_penalty_counter = 0;
-					followOpponentFlag = 0;
-					game_replay_mode = 0;
-					cameramode = 0;
-					state.game_3F6autoLoadEvalFlag = 0;
-					state.game_frame_in_sec = 0;
-					screen_shake_intensity = 0;
-					loop_game(2, 3, 0);
+					return;
+				case 1: /* Rewind ~5 s (ASM: loc_24A28) */
+					{
+						unsigned short step = (unsigned short)(framespersec * 5);
+						unsigned short cur = (unsigned short)state.game_frame;
+						unsigned short tgt = (cur > step) ? (unsigned short)(cur - step) : 0;
+						is_in_replay = 1;
+						audio_sync_car_audio();
+						loop_game(2, 1, 0);
+						restore_gamestate(tgt);
+						replay_frame_counter = state.game_frame;
+						loop_game(2, 4, 0);
+						loop_game(1, state.game_frame, state.game_frame);
+					}
+					return;
+				case 2: /* Play at 2x speed (ASM: loc_24D04 — screen_shake_intensity=3) */
+					screen_shake_intensity = 3;
 					is_in_replay = 0;
-					mouse_minmax_position((int)(char)mouse_motion_state_flag);
-					check_input();
-					kbormouse = 0;
-					goto after_dialog;
-
-				case 3: /* Load Replay */
-					replay_mode_state_flag = 0;
-					audio_sync_car_audio();
-					{
-						void * textres = locate_text_res(mainresptr, "rep");
-						si = do_fileselect_dialog(replay_file_path_buffer, aDefault_1, ".rpl", textres);
-					}
-					if (!si) goto after_dialog;
-
-					waitflag = 150;
-					show_waiting();
-					{
-						int j;
-						/* Actually: save 26 bytes from gameconfig beginning */
-						for (j = 0; j < 26; j++)
-							savedGameconfigSnapshot[j] = ((char*)&gameconfig)[j];
-					}
-
-					/* save sky ID */
-					{
-						unsigned char * elemMap = (unsigned char *)track_elem_map;
-						savedSkyId = elemMap[900];
-					}
-
-					file_load_replay(replay_file_path_buffer, aDefault_1);
-					if (gameconfig.game_recordedframes == 0) {
-						/* that didn't work, I guess */
-					}
-
-					dashb_toggle = 0;
-					track_setup();
-					{
-						unsigned char * elemMap = (unsigned char *)track_elem_map;
-						si = 0;
-						if (elemMap[900] != (unsigned char)savedSkyId)
-							si = 1;
-					}
-
-					/* check if car changed */
-					if (gameconfig.game_playercarid[0] != savedGameconfigSnapshot[0] ||
-						gameconfig.game_playercarid[1] != savedGameconfigSnapshot[1] ||
-						gameconfig.game_playercarid[2] != savedGameconfigSnapshot[2] ||
-						gameconfig.game_playercarid[3] != savedGameconfigSnapshot[3]) {
-						si = 1;
-					} else {
-						if (gameconfig.game_opponenttype != savedGameconfigSnapshot[8]) {
-							si = 1;
-						} else if (gameconfig.game_opponenttype != 0) {
-							if (gameconfig.game_opponentcarid[0] != savedGameconfigSnapshot[9] ||
-								gameconfig.game_opponentcarid[1] != savedGameconfigSnapshot[10] ||
-								gameconfig.game_opponentcarid[2] != savedGameconfigSnapshot[11] ||
-								gameconfig.game_opponentcarid[3] != savedGameconfigSnapshot[12]) {
-								si = 1;
-							} else {
-								ensure_file_exists(2);
-								load_opponent_data();
-							}
-						}
-					}
-
-					if (si) {
-						free_player_cars();
-						setup_player_cars();
-					}
-
-					*(unsigned char*)&gameconfig.game_framespersec = (unsigned char)gameconfig.game_framespersec;
-					framespersec = (unsigned char)gameconfig.game_framespersec;
-					init_game_state(-1);
-					goto after_dialog;
-
-				case 4: /* Save Replay */
-					audio_sync_car_audio();
-					saveDialogState = 0;
-save_retry:
-					if (saveDialogState != 0) goto after_dialog;
-					{
-						void * textres = locate_text_res(mainresptr, "rep");
-						si = do_savefile_dialog(replay_file_path_buffer, aDefault_1, textres);
-					}
-					if (!si) {
-						saveDialogState = 255;
-						goto save_check;
-					}
-
-					file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf, sizeof(g_path_buf));
-					saveDialogState = 1;
-					g_is_busy = 1;
-
-					if (file_find(g_path_buf)) {
-						si = ui_dialog_show_restext(UI_DIALOG_CONFIRM, 0,
-							locate_text_res(mainresptr, "fex"),
-							UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-						if (si == -1) {
-							saveDialogState = 255;
-						} else if (si == 0) {
-							saveDialogState = 0;
-						}
-					}
-					g_is_busy = 0;
-save_check:
-					if (saveDialogState != 1) goto save_retry;
-
-					file_write_replay(g_path_buf);
-					/* buttonIndex = result, but ignored */
-
-					ui_dialog_show_restext(UI_DIALOG_INFO, 0,
-						locate_text_res(mainresptr, "ser"),
-						UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-					goto save_retry;
-
-				case 5: /* Options */
-					{
-						int k;
-						for (k = 0; k < 16; k++)
-							dialogFlags[k] = 0;
-						for (k = 0; k < 5; k++)
-							dialogFlags[k * 2] = 1;
-						if (gameconfig.game_opponenttype == 0)
-							dialogFlags[4 * 2] = 0; /* disable follow-opponent if no opponent */
-					}
-					{
-						void * textres = locate_text_res(gameresptr, "mdo");
-						dialogChoice = (char)ui_dialog_show_restext(UI_DIALOG_CONFIRM, 0, textres, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, (unsigned short *)dialogFlags, 0);
-					}
-					switch (dialogChoice) {
-					case 0: dashb_toggle ^= 1; break;
-					case 1: replaybar_toggle ^= 1; break;
-					case 2:
-						cameramode++;
-						if (cameramode == 4) cameramode = 0;
-						break;
-					case 3: do_mrl_textres(); break;
-					case 4: followOpponentFlag ^= 1; break;
-					}
-					goto after_dialog;
-
-				case 6: /* Quit race */
-					update_crash_state(0, 4);
-					replay_mode_state_flag = 0;
-					game_finish_state = 2;
+					loop_game(2, 2, 0);
 					return;
+				case 3: /* Play at normal speed (ASM: loc_24C5A — screen_shake_intensity=0) */
+					screen_shake_intensity = 0;
+					is_in_replay = 0;
+					loop_game(2, 3, 0);
+					return;
+				case 4: /* Pause at current frame (ASM: loc_24C74) */
+					is_in_replay = 1;
+					audio_sync_car_audio();
+					loop_game(2, 4, 0);
+					loop_game(1, state.game_frame, state.game_frame);
+					return;
+				case 5: /* Go to beginning (ASM: loc_24CA6) */
+					is_in_replay = 1;
+					audio_sync_car_audio();
+					loop_game(2, 5, 0);
+					loop_game(1, state.game_frame, state.game_frame);
+					restore_gamestate(0);
+					replay_frame_counter = state.game_frame;
+					loop_game(2, 4, 0);
+					loop_game(1, state.game_frame, state.game_frame);
+					return;
+				case 6: /* Open ESC/pause menu (ASM: loc_24346) */
+					inputCode = 27;
+					goto handle_esc_dialog;
 				}
 			}
 		}
@@ -1886,6 +1759,21 @@ case_continue:
 			replay_frame_counter = state.game_frame;
 			gameconfig.game_recordedframes = state.game_frame;
 			goto setup_drive;
+setup_drive:
+			dashb_toggle = 1;
+			show_penalty_counter = 0;
+			followOpponentFlag = 0;
+			game_replay_mode = 0;
+			cameramode = 0;
+			state.game_3F6autoLoadEvalFlag = 0;
+			state.game_frame_in_sec = 0;
+			screen_shake_intensity = 0;
+			loop_game(2, 3, 0);
+			is_in_replay = 0;
+			mouse_minmax_position((int)(char)mouse_motion_state_flag);
+			check_input();
+			kbormouse = 0;
+			goto after_dialog;
 case_loadreplay:
 			replay_mode_state_flag = 0;
 			audio_sync_car_audio();

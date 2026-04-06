@@ -921,7 +921,7 @@ void update_gamestate() {
 	if (var_carInputByte != 0) {
 		state.game_inputmode = 1;
 	}
-	
+
 	if ((state.game_frame % fps_times_thirty) == 0) {
 		get_kevinrandom_seed(state.kevinseed);
 	
@@ -1852,15 +1852,6 @@ void run_game(void) {
 				}
 
 				replay_frame_counter = gameconfig.game_recordedframes;
-
-				/* Rewind to frame 0 and enable auto-play so the user
-				 * sees the replay animate from the beginning.
-				 * is_in_replay stays 1 so the replay bar remains
-				 * interactive; replay_autoplay_active lets
-				 * frame_callback bypass the is_in_replay gate. */
-				restore_gamestate(0);
-				replay_frame_counter = 0;
-				replay_autoplay_active = 1;
 			}
 		}
 
@@ -2028,7 +2019,6 @@ void run_game(void) {
 
 			if (idle_expired == 0) {
 				if (game_finish_state != 0) {
-
 					if ((game_replay_mode != 0 || state.game_3F6autoLoadEvalFlag == 4) && game_finish_state != 2) {
 						game_finish_state = 0;
 						game_replay_mode = 2;
@@ -2374,7 +2364,7 @@ int main(int argc, char* argv[]) {
 	int i, result;
 	int regsi;
 	char var_A;
-	
+
 	//return stuntsmain_(argc, argv);
 	init_main(argc, argv);
 	init_row_tables();
