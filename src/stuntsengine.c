@@ -1704,8 +1704,9 @@ int setup_player_cars(void) {
 	audio_replay_apply_state = 0;
 	player_audio_state = 0;
 	opponent_audio_state = 0;
+	audio_opponent_engine_handle = 0;
 	if (gameconfig.game_opponenttype != 0) {
-		audio_engine_sound_handle = audio_init_engine(32, &audio_mt32_config, eng1ptr, engptr);
+		audio_opponent_engine_handle = audio_init_engine(32, &audio_mt32_config, eng1ptr, engptr);
 	}
 
 	audio_frame_index = 0;

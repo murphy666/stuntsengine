@@ -144,6 +144,7 @@ extern struct GAMESTATE state;
 
 /* --- data_game.c globals (additional) --- */
 extern short            angle_rotation_state[];
+extern int              audio_opponent_engine_handle;
 extern int              audio_engine_sound_handle;
 extern short            audio_frame_index;
 extern char             audio_replay_apply_state;

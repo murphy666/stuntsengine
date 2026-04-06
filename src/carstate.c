@@ -1979,10 +1979,10 @@ void audio_sync_car_audio(void) {
 			}
 			if (gameconfig.game_opponenttype) {
                 if (opponent_audio_state & 6) {
-                    audio_clear_chunk_fx(audio_engine_sound_handle);
+                    audio_clear_chunk_fx(audio_opponent_engine_handle);
 				}
 				if (opponent_audio_state & 1) {
-                    audio_stop_engine_note(audio_engine_sound_handle);
+                    audio_stop_engine_note(audio_opponent_engine_handle);
 				}
 			}
 			audio_replay_apply_state = 0;
@@ -2078,6 +2078,33 @@ void audio_sync_car_audio(void) {
 		carCount = 1;
 	}
 
+	/* Keep engine tone volume/pitch in sync during live gameplay. The replay
+	 * path already reconstructs these fields and forwards them through
+	 * audio_replay_update_engine_sounds(). */
+	audio_update_engine_sound(
+		crash_sound_handle,
+		bx[15],
+		bx[3],
+		bx[4],
+		bx[5],
+		bx[6],
+		bx[7],
+		bx[8],
+		1);
+
+	if (gameconfig.game_opponenttype) {
+		audio_update_engine_sound(
+			audio_opponent_engine_handle,
+			bx[16],
+			bx[9],
+			bx[10],
+			bx[11],
+			bx[12],
+			bx[13],
+			bx[14],
+			1);
+	}
+
 	/* Process sound effects for each car */
 	for (carIndex = 0; carIndex < carCount; carIndex++) {
 		struct CARSTATE *cs;
@@ -2089,7 +2116,7 @@ void audio_sync_car_audio(void) {
 			soundFlags = player_audio_state;
 		} else {
 			cs = &state.opponentstate;
-			audioHandle = audio_engine_sound_handle;
+			audioHandle = audio_opponent_engine_handle;
 			soundFlags = opponent_audio_state;
 		}
 
@@ -3065,7 +3092,7 @@ void update_player_state(struct CARSTATE* playerState, struct SIMD* playerSimd, 
 			if (isOpponentCar == 0)
 				audio_apply_crash_flags(playerState->car_position_initialized, crash_sound_handle);
 			else
-				audio_apply_crash_flags(playerState->car_position_initialized, audio_engine_sound_handle);
+				audio_apply_crash_flags(playerState->car_position_initialized, audio_opponent_engine_handle);
 		}
 
 		/* ====== Section 17: Secondary collision check loop ====== */
@@ -3257,7 +3284,7 @@ void audio_replay_update_engine_sounds(unsigned short* info, unsigned short soun
 
     if (gameconfig.game_opponenttype != 0) {
         audio_update_engine_sound(
-            audio_engine_sound_handle,
+			audio_opponent_engine_handle,
             info[16],
             info[9],
             info[10],
@@ -3310,7 +3337,7 @@ void update_crash_state(int crash_type, int isOpponentCar) {
 			if (isOpponentCar == 0)
 				audio_select_crash2_fx_and_restart(crash_sound_handle);
 			else
-				audio_select_crash2_fx_and_restart(audio_engine_sound_handle);
+				audio_select_crash2_fx_and_restart(audio_opponent_engine_handle);
 		}
 	} else if (crash_type == 2) {
 		/* Suspension / scrape crash: play sound first, then set flag and stop car. */
@@ -3318,7 +3345,7 @@ void update_crash_state(int crash_type, int isOpponentCar) {
 			if (isOpponentCar == 0)
 				audio_select_crash2_fx_and_restart(crash_sound_handle);
 			else
-				audio_select_crash2_fx_and_restart(audio_engine_sound_handle);
+				audio_select_crash2_fx_and_restart(audio_opponent_engine_handle);
 		}
 		crashCarState->car_crashBmpFlag = 2;
 		stopVehicleOnCrash = 1;

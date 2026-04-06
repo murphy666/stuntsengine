@@ -194,6 +194,7 @@ static unsigned int g_audio_music_note_index = 0;
 static unsigned char g_audio_menu_music_enabled = 0;
 static unsigned char g_audio_menu_music_paused = 0;
 static char g_audio_menu_music_name[5] = { 0, 0, 0, 0, 0 };
+static int g_audio_engine_gain = 160;
 static int g_audio_menu_note_transpose = -12;
 static unsigned int g_audio_menu_duration_scale = 1u;
 static int g_audio_menu_gain = 9000;
@@ -1541,6 +1542,22 @@ static unsigned short audio_clamp_u7(int value) {
     return (unsigned short)value;
 }
 
+static int audio_apply_gain_u7(int value, int gain) {
+    int scaled = (value * gain + 64) / 128;
+
+    if (scaled < 0) {
+        return 0;
+    }
+    if (scaled > 127) {
+        return 127;
+    }
+    return scaled;
+}
+
+static int audio_engine_radius3d(int x, int y, int z) {
+    return polarRadius2D(polarRadius2D(x, z), y);
+}
+
 /**
  * @brief Enqueue a command into the lock-free SB DSP command ring.
  *
@@ -1779,7 +1796,9 @@ static void audio_sb_process_commands(void) {
                     h->volume = (short)audio_clamp_u7(cmd.value0);
                     h->dirty = 1;
                     if (h->opl2_channel >= 0 && h->has_engi_inst && opl2_is_ready()) {
-                        audio_opl2_set_volume_ch(h->opl2_channel, (int)h->volume, &h->engi_inst);
+                        audio_opl2_set_volume_ch(h->opl2_channel,
+                                                 audio_apply_gain_u7((int)h->volume, g_audio_engine_gain),
+                                                 &h->engi_inst);
                     }
                     if (h->opl2_skid_channel >= 0 && h->opl2_skid_keyon &&
                         h->has_skid_inst && opl2_is_ready()) {
@@ -3030,7 +3049,11 @@ void audio_stop_engine_note(short handle_id) {
 
 void audio_update_engine_sound(short handle_id, short rpm, short distance_x, short distance_y, short distance_z, short unused_a, short unused_c, short unused_e, short distance_divisor) {
     AUDIO_HANDLE_STUB * handle;
-    int distance_metric;
+    int near_metric;
+    int far_metric;
+    int pitch_delta;
+    int pitch_code;
+    int pitch_denominator;
     int scaled;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3039,47 +3062,54 @@ void audio_update_engine_sound(short handle_id, short rpm, short distance_x, sho
     handle = &g_audio_handles[handle_id];
     handle->rpm = rpm;
 
-    distance_metric = distance_x;
-    if (distance_metric < 0) {
-        distance_metric = -distance_metric;
-    }
-    if (distance_y < 0) {
-        distance_metric += -distance_y;
-    } else {
-        distance_metric += distance_y;
-    }
-    if (distance_z < 0) {
-        distance_metric += -distance_z;
-    } else {
-        distance_metric += distance_z;
-    }
-
     if (distance_divisor <= 0) {
         distance_divisor = 1;
     }
 
-    scaled = 127 - (distance_metric / distance_divisor);
-    if (scaled < 0) {
+    near_metric = audio_engine_radius3d((int)unused_a, (int)unused_e, (int)unused_c);
+    if (near_metric > 6000) {
         scaled = 0;
-    }
-    if (scaled > 127) {
-        scaled = 127;
-    }
-    if (rpm > 0 && scaled < 8) {
-        scaled = 8;
+        pitch_code = -1;
+    } else {
+        far_metric = audio_engine_radius3d((int)distance_x, (int)distance_z, (int)distance_y);
+        pitch_delta = (100 / distance_divisor) * (far_metric - near_metric);
+
+        scaled = 127 - (127 * near_metric) / 6000;
+        if (pitch_delta > 0) {
+            scaled -= scaled >> 4;
+        }
+        if (scaled < 0) {
+            scaled = 0;
+        }
+        if (scaled > 127) {
+            scaled = 127;
+        }
+
+        if (handle->freq_div > 0) {
+            pitch_code = rpm / (int)handle->freq_div + ((int)handle->freq_base << 4);
+            pitch_denominator = 6000 - pitch_delta;
+            if (pitch_denominator != 0) {
+                pitch_code = (6000 * pitch_code) / pitch_denominator;
+            }
+            pitch_code -= ((int)handle->freq_base << 4);
+            if (pitch_code < 0) {
+                pitch_code = 0;
+            }
+            pitch_code *= (int)handle->freq_div;
+        } else {
+            pitch_code = rpm;
+        }
     }
 
     audio_sb_queue_command(AUDIO_SB_CMD_SET_VOLUME, handle_id, (short)scaled, 0);
-    audio_sb_queue_command(AUDIO_SB_CMD_SET_PITCH, handle_id, rpm, 0);
-    handle->rpm = rpm;
+    if (pitch_code >= 0) {
+        audio_sb_queue_command(AUDIO_SB_CMD_SET_PITCH, handle_id, (short)pitch_code, 0);
+        handle->rpm = (short)pitch_code;
+    }
     handle->engine_active_ticks = 30;
     if (rpm > 0 && !handle->playing) {
         audio_sb_queue_command(AUDIO_SB_CMD_NOTE_ON, handle_id, 0, 0);
     }
-
-    (void)unused_a;
-    (void)unused_c;
-    (void)unused_e;
 }
 
 /**
@@ -3412,6 +3442,7 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     const char * backend;
     const char * debug_music_env;
     const char * debug_music_inst_only_env;
+    const char * engine_gain_env;
     const char * menu_gain_env;
     const char * menu_note_ticks_env;
     const char * refresh_hz_env;
@@ -3425,6 +3456,7 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     backend = getenv("STUNTS_AUDIO_BACKEND");
     debug_music_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC");
     debug_music_inst_only_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC_INST_ONLY");
+    engine_gain_env = getenv("STUNTS_AUDIO_ENGINE_GAIN");
     menu_gain_env = getenv("STUNTS_AUDIO_MENU_GAIN");
     menu_note_ticks_env = getenv("STUNTS_AUDIO_MENU_NOTE_TICKS");
     refresh_hz_env = getenv("STUNTS_AUDIO_REFRESH_HZ");
@@ -3435,6 +3467,17 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     g_audio_debug_music_inst_only = (unsigned char)((debug_music_inst_only_env != 0 && *debug_music_inst_only_env != '\0' && atoi(debug_music_inst_only_env) != 0) ? 1 : 0);
     g_audio_debug_music_lines = 0u;
     g_audio_debug_music_max_lines = 400u;
+    g_audio_engine_gain = 160;
+    if (engine_gain_env != 0 && *engine_gain_env != '\0') {
+        int gain = atoi(engine_gain_env);
+        if (gain < 64) {
+            gain = 64;
+        }
+        if (gain > 256) {
+            gain = 256;
+        }
+        g_audio_engine_gain = gain;
+    }
     if (debug_music_lines_env != 0 && *debug_music_lines_env != '\0') {
         unsigned int limit = (unsigned int)atoi(debug_music_lines_env);
         if (limit < 100u) {
