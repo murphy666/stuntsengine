@@ -476,8 +476,12 @@ static void hiscore_on_render(UIScreen *self)
 
 	if (st->prev_button != st->sel_button) {
 		st->prev_button = st->sel_button;
+		/* ASM (loc_14188): restore clean sprite from sprite2, redraw button
+		 * row from wndsprite, then let the blink routine draw the outline. */
+		sprite_copy_2_to_1();
 		mouse_draw_opaque_check();
-		sprite_blit_to_video(wndsprite, 254);
+		sprite_putimage(wndsprite->sprite_bitmapptr);
+		mouse_draw_transparent_check();
 	}
 
 	replay_delta = mouse_update_menu_blink(
@@ -691,7 +695,14 @@ unsigned short  end_hiscore(void) {
 	}
 
 	if (has_track_match) {
-		if (highscore_write_a_(0) == 0 && highscore_write_a_(1) == 0) {
+		/* ASM (loc_139BA): try read first; only write defaults if read fails.
+		 * highscore_write_a_ returns 0 on success, nonzero on failure. */
+		if (highscore_write_a_(0) != 0) {
+			if (highscore_write_a_(1) != 0) {
+				need_highscore_entry = 255;
+			}
+		}
+		if (need_highscore_entry != 255) {
 			if (gState_total_finish_time != 0 && (replay_mode_state_flag & 6) == 0) {
 				unsigned short best_time = *((unsigned short *)highscore_data + 181);
 				if (best_time == 65535 || gState_total_finish_time < best_time) {
@@ -703,22 +714,11 @@ unsigned short  end_hiscore(void) {
 		need_highscore_entry = 255;
 	}
 
-	// Render opponent animation once if present.
-	if (allow_animation && opp_anim_shape != 0 && opp_text_res != 0) {
-		unsigned short anim_y = 8;
-		unsigned char loop_frames = (race_result == 0) ? 1 : 3;
-		unsigned char frame = anim_frame % loop_frames;
-		char anim_name[4];
-		char * anim_txt;
-		anim_name[0] = (char)anim_letter;
-		anim_name[1] = (char)('1' + frame);
-		anim_name[2] = 'a';
-		anim_name[3] = 0;
-		anim_txt = locate_text_res(opp_text_res, anim_name);
-		font_set_fontdef2(fontnptr);
-		hiscore_draw_text((char*)anim_txt, 16, anim_y, dialog_fnt_colour, 0);
-		font_set_fontdef();
-	}
+	/* NOTE: The ASM evaluation phase (opponent animation + text in the top
+	 * panel) is a separate interactive loop (loc_13A42-loc_13ECD) that runs
+	 * before the highscore table/menu.  It redraws the top panel background
+	 * on exit.  Without the full evaluation phase ported, skip the initial
+	 * animation render to avoid overlapping the highscore title. */
 
 	// Draw highscores if available.
 	if (need_highscore_entry != 255) {
@@ -754,7 +754,7 @@ unsigned short  end_hiscore(void) {
 	button_y2[3] = hiscore_buttons_y2[3];
 
 	for (i = 0; i < 4; ++i) {
-		button_x2[i] = (unsigned short)(button_x1[i] + 70);
+		button_x2[i] = (unsigned short)(button_x1[i] + 71);
 	}
 
 	{
@@ -772,6 +772,9 @@ unsigned short  end_hiscore(void) {
 	// Menu loop — event-driven via UIScreen.
 	mouse_draw_opaque_check();
 	sprite_blit_to_video(wndsprite, 65535);
+	/* ASM: sprite_copy_2_to_1 after initial blit saves clean state for
+	 * restoring during the menu loop (button highlight needs a clean backup). */
+	sprite_copy_2_to_1();
 	{
 		HiscoreMenuState *hst = (HiscoreMenuState *)calloc(1, sizeof(HiscoreMenuState));
 		UIScreen *scr;
@@ -782,7 +785,10 @@ unsigned short  end_hiscore(void) {
 		hst->opp_text_res = opp_text_res;
 		hst->opp_anim_shape = opp_anim_shape;
 		hst->small_wnd    = small_wnd;
-		hst->allow_animation = allow_animation;
+		/* ASM (loc_1420F): animation in menu loop is gated by var_14
+		 * (show_eval_only). Without the evaluation phase loop, var_14
+		 * stays 1, so menu-loop animation never runs in the original. */
+		hst->allow_animation = 0;
 		hst->race_result  = race_result;
 		hst->anim_letter  = anim_letter;
 		hst->anim_frame   = anim_frame;
@@ -791,6 +797,9 @@ unsigned short  end_hiscore(void) {
 		memcpy(hst->button_x2, button_x2, sizeof(button_x2));
 		memcpy(hst->button_y1, button_y1, sizeof(button_y1));
 		memcpy(hst->button_y2, button_y2, sizeof(button_y2));
+		/* ASM: var_selectedmenu=1 (View Replay), var_78=1 initially. */
+		hst->sel_button = 1;
+		hst->prev_button = 255;  /* force first-frame redraw */
 
 		scr = ui_screen_alloc();
 		scr->on_event   = hiscore_on_event;
