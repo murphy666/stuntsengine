@@ -861,8 +861,18 @@ void init_game_state(short arg)
 			-track_angle);
 
 		if (gameconfig.game_opponenttype && arg != -2) {
+			short opponent_path_index = 0;
+			short opponent_seq_index = state.opponentstate.car_waypoint_seq_index;
+
+			if ((unsigned short)opponent_seq_index < (unsigned short)(STN_TRACKDATA_BLOCK_MAIN / (int)sizeof(short))) {
+				opponent_path_index = ((short*)track_waypoint_order)[opponent_seq_index];
+				if ((unsigned short)opponent_path_index >= STN_TRACKDATA_BLOCK_PATH) {
+					opponent_path_index = 0;
+				}
+			}
+
 			track_waypoint_lookup(
-				((short*)track_waypoint_order)[state.opponentstate.car_waypoint_seq_index],
+				opponent_path_index,
 				&state.opponentstate.car_waypoint_target,
 				state.opponentstate.car_track_waypoint_index,
 				(short*)&state.game_track_lookup_temp);

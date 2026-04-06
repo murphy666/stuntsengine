@@ -131,8 +131,41 @@ enum {
 	STATECAR_TRACK_BOUND_MIN         = 3840,    /* track world-space lower boundary (3840) */
 	STATECAR_TRACK_GRID_SIZE         = 30,     /* track grid dimension (30) */
 	STATECAR_TRACK_GRID_OFFSET       = 29,     /* track grid row scaling offset (29) */
-	STATECAR_POLE_OFFSET_DIST        = 126      /* start/finish pole lateral offset (126) */
+	STATECAR_POLE_OFFSET_DIST        = 126,      /* start/finish pole lateral offset (126) */
+	STATECAR_TRACK_PATH_COUNT        = 901,
+	STATECAR_ROUTE_ORDER_COUNT       = 901
 };
+
+static short opponent_route_path_index(short seq_index)
+{
+	short path_index;
+
+	if ((unsigned short)seq_index >= STATECAR_ROUTE_ORDER_COUNT) {
+		return 0;
+	}
+
+	path_index = ((short *)track_waypoint_order)[seq_index];
+	if ((unsigned short)path_index >= STATECAR_TRACK_PATH_COUNT) {
+		return 0;
+	}
+
+	return path_index;
+}
+
+static void track_waypoint_lookup_clear_output(struct VECTOR* waypoint_out)
+{
+	short* outShorts;
+	int i;
+
+	if (waypoint_out == 0) {
+		return;
+	}
+
+	outShorts = (short*)waypoint_out;
+	for (i = 0; i < 10; i++) {
+		outShorts[i] = 0;
+	}
+}
 
 
 /** @brief Update rpm from speed.
@@ -1312,7 +1345,7 @@ advance_waypoint:
 			short idx = state.opponentstate.car_waypoint_seq_index;
 			short ce = (short)(unsigned char)state.opponentstate.car_track_waypoint_index;
 			state.opponentstate.car_track_waypoint_index++;
-			trackval = ((short *)track_waypoint_order)[idx];
+			trackval = opponent_route_path_index(idx);
             if (track_waypoint_lookup(trackval, &state.opponentstate.car_waypoint_target, ce, (short*)&state.game_track_lookup_temp) != 0) {
 				state.opponentstate.car_waypoint_seq_index++;
 				if (((short *)track_waypoint_order)[state.opponentstate.car_waypoint_seq_index] == 0) {
@@ -1423,7 +1456,7 @@ compute_angle:
 			short idx = state.opponentstate.car_waypoint_seq_index;
 			short ce = (short)(unsigned char)state.opponentstate.car_track_waypoint_index;
 			state.opponentstate.car_track_waypoint_index++;
-			trackval = ((short *)track_waypoint_order)[idx];
+			trackval = opponent_route_path_index(idx);
             if (track_waypoint_lookup(trackval, &state.opponentstate.car_waypoint_target, ce, (short*)&state.game_track_lookup_temp) != 0) {
 				state.opponentstate.car_waypoint_seq_index++;
 				if (((short *)track_waypoint_order)[state.opponentstate.car_waypoint_seq_index] == 0) {
@@ -1727,6 +1760,13 @@ short track_waypoint_lookup(short path_index, struct VECTOR* waypoint_out, short
 	short tmp;
 	unsigned char col, row;
 	short* outShorts = (short*)waypoint_out;
+	const unsigned char* trkObjInfoBase;
+	state_trkobjinfo_raw rootInfo;
+
+	if ((unsigned short)path_index >= STATECAR_TRACK_PATH_COUNT) {
+		track_waypoint_lookup_clear_output(waypoint_out);
+		return 1;
+	}
 
 	/* Look up track element and sub-object index */
 	tileElem = track_elem_ordered[path_index];
@@ -1736,7 +1776,8 @@ short track_waypoint_lookup(short path_index, struct VECTOR* waypoint_out, short
 	/* Decode raw 16-bit dseg-based TRACKOBJECT/TRKOBJINFO entries */
 	trkObjBytes = (const unsigned char*)trkObjectList;
 	if (!state_trackobject_raw_decode(trkObjBytes, (unsigned int)tileElem, &trkObj)) {
-        fatal_error("track_waypoint_lookup: bad trackobject decode elem=%u", (unsigned)tileElem);
+		track_waypoint_lookup_clear_output(waypoint_out);
+		return 1;
 	}
 /** @brief Trkobjinfo.
  * @param tile Parameter value.
@@ -1748,10 +1789,17 @@ short track_waypoint_lookup(short path_index, struct VECTOR* waypoint_out, short
 	if (trkObj.trkobj_info_ofs == 0) {
 		return 0;
 	}
-	if (!state_trkobjinfo_raw_decode((const unsigned char*)state_seg_ptr16(0, trkObj.trkobj_info_ofs), (unsigned int)td18subTOI, &toInfo)) {
-        fatal_error("track_waypoint_lookup: bad trkobjinfo decode elem=%u sub=%u",
-			(unsigned)tileElem,
-			(unsigned)td18subTOI);
+	trkObjInfoBase = (const unsigned char*)state_seg_ptr16(0, trkObj.trkobj_info_ofs);
+	if (!state_trkobjinfo_raw_decode(trkObjInfoBase, 0, &rootInfo)) {
+		track_waypoint_lookup_clear_output(waypoint_out);
+		return 1;
+	}
+	if (td18subTOI >= rootInfo.no_of_blocks) {
+		td18subTOI = 0;
+	}
+	if (!state_trkobjinfo_raw_decode(trkObjInfoBase, (unsigned int)td18subTOI, &toInfo)) {
+		track_waypoint_lookup_clear_output(waypoint_out);
+		return 1;
 	}
 
 	opponentFlag = 0;

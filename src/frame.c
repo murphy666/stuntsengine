@@ -820,7 +820,16 @@ void update_frame(int view_index, struct RECTANGLE* clip_rect) {
 						if (temp_vec_a.z <= 0) {
 							opponent_sort_bias = -2048; //63488; // signed number!
 						} else {
-							opponent_sort_bias = 2048;
+							/* Original DOS uses +0x800 here. That works when the
+							 * camera follows this car, but from the player's chase
+							 * camera it pushes the opponent behind ramp-overlay
+							 * walls and similar vertical track borders. Keep a
+							 * small front bias in the normal chase-camera case,
+							 * while preserving the original value for the other
+							 * camera modes. */
+							opponent_sort_bias = (cameramode == 0 && followOpponentFlag == 0)
+								? -FRAME_SORT_BIAS_OVERLAY
+								: FRAME_SORT_BIAS;
 						}
 					}
 				}

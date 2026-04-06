@@ -71,6 +71,8 @@ static unsigned char phys_model_0x22_points[24] = { 23, 0, 0, 0, 1, 255, 97, 0, 
 enum {
     BTO_TRACK_SIZE = 30,
     BTO_TRACK_LAST_INDEX = BTO_TRACK_SIZE - 1,
+    BTO_TRACKDATA_PATH_COUNT = 901,
+    BTO_TRACK_WAYPOINT_ORDER_CAPACITY = 901,
     BTO_WORLD_TO_TILE_SHIFT = 10,
     BTO_MARKER_CORNER = 253,
     BTO_MARKER_VERTICAL = 254,
@@ -2446,14 +2448,29 @@ void load_opponent_data(void)
     char oppname[5] = "opp1";
     oppname[3] = gameconfig.game_opponenttype + '0';
 
+    /* Default to a minimal valid route so stale memory is never consumed if
+       the search fails to produce a better path. */
+    ((short *)track_waypoint_order)[0] = 0;
+    ((short *)track_waypoint_order)[1] = 1;
+    for (si = 2; si < BTO_TRACK_WAYPOINT_ORDER_CAPACITY; si++) {
+        ((short *)track_waypoint_order)[si] = 0;
+    }
+
     /* Load resource file */
     resourcePtr = (char *)file_load_resfile(oppname);
+    if (resourcePtr == 0) {
+        return;
+    }
 
     /* Extract opponent name */
     copy_string(player_name_buffer, locate_text_res(resourcePtr, "nam"));
 
     /* Extract speed data pointer */
     speedDataPtr = locate_shape_alt(resourcePtr, "sped");
+    if (speedDataPtr == 0) {
+        unload_resource(resourcePtr);
+        return;
+    }
 
     /* Copy 16 bytes of speed data */
     for (si = 0; si < 16; si++) {
@@ -2470,6 +2487,32 @@ void load_opponent_data(void)
 
     /* Branch-and-bound path search loop */
     for (;;) {
+        if (si < 0 || si >= BTO_TRACKDATA_PATH_COUNT) {
+            if (stackDepth == 0) {
+                unload_resource(resourcePtr);
+                return;
+            }
+
+            stackDepth--;
+            si = siArr[stackDepth];
+            nodeCount = cntArr[stackDepth];
+            runningCost = costArr[stackDepth];
+            continue;
+        }
+
+        if (nodeCount >= BTO_TRACK_WAYPOINT_ORDER_CAPACITY - 2) {
+            if (stackDepth == 0) {
+                unload_resource(resourcePtr);
+                return;
+            }
+
+            stackDepth--;
+            si = siArr[stackDepth];
+            nodeCount = cntArr[stackDepth];
+            runningCost = costArr[stackDepth];
+            continue;
+        }
+
         isEndNode = 0;
         currentNode = track_waypoint_next[si];
 
@@ -2512,7 +2555,8 @@ void load_opponent_data(void)
         if (!isEndNode) {
             /* Not at end: check for branch point */
             branchNode = track_waypoint_alt[si];
-            if (branchNode != -1) {
+            if (branchNode != -1 && branchNode >= 0 && branchNode < BTO_TRACKDATA_PATH_COUNT &&
+                stackDepth < (int)(sizeof(siArr) / sizeof(siArr[0]))) {
                 /* Push branch state onto stack */
                 siArr[stackDepth] = branchNode;
                 cntArr[stackDepth] = nodeCount;
@@ -2527,7 +2571,7 @@ void load_opponent_data(void)
         /* At end: check if this path is the best */
         if (nextNode != 0) {
             long bestCost = ((long)(unsigned short)bestCostHigh << 16) | (unsigned long)(unsigned short)bestCostLow;
-            if (runningCost < bestCost) {
+            if (runningCost < bestCost && nodeCount + 1 < BTO_TRACK_WAYPOINT_ORDER_CAPACITY) {
                 /* Record termination marker */
                 pathNodes[nodeCount] = 0;
                 nodeCount++;

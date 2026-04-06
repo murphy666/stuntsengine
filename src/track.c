@@ -3337,6 +3337,10 @@ static uint16_t read_u16(const unsigned char* p)
 	return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
 }
 
+enum {
+	STATE_TRACKOBJECT_RAW_COUNT = 215u
+};
+
 /** @brief State trackobject raw decode.
  * @param table Parameter `table`.
  * @param index Parameter `index`.
@@ -3347,7 +3351,7 @@ int state_trackobject_raw_decode(const unsigned char* table, unsigned int index,
 {
 	const unsigned char* p;
 
-	if (table == 0 || out == 0) {
+	if (table == 0 || out == 0 || index >= STATE_TRACKOBJECT_RAW_COUNT) {
 		return 0;
 	}
 
