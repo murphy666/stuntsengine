@@ -25,6 +25,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "compat_fs.h"
 #include "ressources.h"
 
@@ -372,6 +375,7 @@ static int file_resolve_case_insensitive(const char* input, char* out, size_t ou
 }
 
 /* Case-insensitive wildcard match (*, ?) */
+#if !defined(_WIN32) || defined(HAVE_DIRENT_H)
 static int file_match_pattern_ci(const char* pattern, const char* text)
 {
 	const char* star = NULL, *star_text = NULL;
@@ -387,6 +391,7 @@ static int file_match_pattern_ci(const char* pattern, const char* text)
 	while (*pattern == '*') pattern++;
 	return *pattern == '\0';
 }
+#endif
 
 /* Split path into directory + basename at the last separator */
 static const char* path_split_dir(const char* path, char* dirout, size_t dirsize)
@@ -412,9 +417,44 @@ static int file_resolve_wildcard_path(const char* query, char* out, size_t out_s
 	g_find_match_index = 0;
 
 #if defined(_WIN32) && !defined(HAVE_DIRENT_H)
-	(void)query;
-	(void)out;
-	(void)out_size;
+	for (int i = 0; g_file_search_prefixes[i]; i++) {
+		char candidate[FS_PATH_MAX], dirpath[FS_PATH_MAX];
+		const char* pattern;
+		WIN32_FIND_DATAA find_data;
+		HANDLE find_handle;
+
+		snprintf(candidate, sizeof(candidate), "%s%s", g_file_search_prefixes[i], query);
+		pattern = path_split_dir(candidate, dirpath, sizeof(dirpath));
+		if (!pattern) continue;
+
+		find_handle = FindFirstFileA(candidate, &find_data);
+		if (find_handle == INVALID_HANDLE_VALUE) continue;
+
+		do {
+			int k, n;
+			if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0)
+				continue;
+			if (g_find_match_count >= 256) break;
+
+			if (strcmp(dirpath, ".") == 0)
+				n = snprintf(g_find_matches[g_find_match_count], FS_PATH_MAX, "%s", find_data.cFileName);
+			else
+				n = snprintf(g_find_matches[g_find_match_count], FS_PATH_MAX, "%s/%s", dirpath, find_data.cFileName);
+			if (n < 0 || n >= FS_PATH_MAX) continue;
+
+			for (k = 0; k < g_find_match_count; ++k)
+				if (fs_strcasecmp(g_find_matches[k], g_find_matches[g_find_match_count]) == 0) break;
+
+			if (k == g_find_match_count) g_find_match_count++;
+		} while (FindNextFileA(find_handle, &find_data) != 0);
+
+		FindClose(find_handle);
+	}
+
+	if (g_find_match_count > 0) {
+		snprintf(out, out_size, "%s", g_find_matches[0]);
+		return 1;
+	}
 	return 0;
 #else
 
