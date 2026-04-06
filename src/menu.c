@@ -1313,6 +1313,22 @@ static int car_on_event(UIScreen *self, const UIEvent *ev)
 	return 0;
 }
 
+static void car_draw_opponent_portrait(CarMenuState *st)
+{
+	if (st->opponenttype == 0) {
+		return;
+	}
+
+	if (video_flag5_is0 == 0) {
+		sprite_putimage_transparent(
+			oppresources[st->opponenttype],
+			MENU_OPP_CAR_PANEL_X, 0);
+	} else if (st->opp_wnd != 0) {
+		sprite_putimage_and_alt(st->opp_wnd->sprite_bitmapptr,
+								MENU_OPP_CAR_PANEL_X, 0);
+	}
+}
+
 static void car_on_render(UIScreen *self)
 {
 	CarMenuState *st = (CarMenuState *)self->userdata;
@@ -1483,23 +1499,12 @@ static void car_on_render(UIScreen *self)
 		sprite_set_1_size(st->update_rc.left, st->update_rc.right,
 						  st->update_rc.top, st->update_rc.bottom);
 		st->rect_union_rc = st->rect_clip;
-		if (st->opponenttype != 0
-			&& st->prev_car_index != st->car_index) {
-			sprite_select_wnd_as_sprite1();
-			if (video_flag5_is0 == 0) {
-				sprite_putimage_transparent(
-					oppresources[st->opponenttype],
-					MENU_OPP_CAR_PANEL_X, 0);
-			} else {
-				sprite_putimage_and_alt(st->opp_wnd->sprite_bitmapptr,
-										MENU_OPP_CAR_PANEL_X, 0);
-			}
-		}
 		sprite_copy_2_to_1();
 		sprite_set_1_size(st->update_rc.left, st->update_rc.right,
 						  st->update_rc.top, st->update_rc.bottom);
 		mouse_draw_opaque_check();
 		sprite_putimage(wndsprite->sprite_bitmapptr);
+		car_draw_opponent_portrait(st);
 		mouse_draw_transparent_check();
 		st->prev_car_index = st->car_index;
 	}
@@ -1518,6 +1523,7 @@ static void car_on_render(UIScreen *self)
 								 + MENU_CAR_HOVER_OUTLINE_PAD_Y));
 			mouse_draw_opaque_check();
 			sprite_putimage(wndsprite->sprite_bitmapptr);
+			car_draw_opponent_portrait(st);
 			mouse_draw_transparent_check();
 			video_refresh();
 			sprite_copy_2_to_1();
