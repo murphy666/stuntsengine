@@ -89,6 +89,30 @@ TEST(Timer, SubticksDoubleRate)
     EXPECT_EQ(0UL, accum);
 }
 
+TEST(Timer, MenuMusic48HzAcrossOneSecond)
+{
+    unsigned long accum = 0;
+    unsigned long total = 0;
+
+    for (int i = 0; i < 100; i++) {
+        total += timer_get_subticks_for_rate(48UL, &accum);
+    }
+    EXPECT_EQ(48UL, total);
+    EXPECT_EQ(0UL, accum);
+}
+
+TEST(Timer, MenuMusic48HzAcrossTenSeconds)
+{
+    unsigned long accum = 0;
+    unsigned long total = 0;
+
+    for (int i = 0; i < 1000; i++) {
+        total += timer_get_subticks_for_rate(48UL, &accum);
+    }
+    EXPECT_EQ(480UL, total);
+    EXPECT_EQ(0UL, accum);
+}
+
 /* ------------------------------------------------------------------ */
 /* Timer.SubticksNullGuard                                              */
 /* ------------------------------------------------------------------ */

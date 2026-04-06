@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <SDL2/SDL.h>
 #include "opl2.h"
@@ -198,7 +199,10 @@ static unsigned int g_audio_menu_duration_scale = 1u;
 static int g_audio_menu_gain = 9000;
 static unsigned int g_audio_menu_note_ticks = 24u;
 static unsigned char g_audio_debug_music = 0;
+static unsigned char g_audio_debug_music_inst_only = 0;
 static unsigned int g_audio_debug_music_lines = 0u;
+static unsigned int g_audio_debug_music_max_lines = 400u;
+static unsigned char g_audio_debug_inst_seen[AUDIO_VCE_MAX_INSTRUMENTS];
 static unsigned char g_audio_menu_resource_notes[AUDIO_MENU_RESOURCE_NOTES_MAX];
 static unsigned short g_audio_menu_resource_durations[AUDIO_MENU_RESOURCE_NOTES_MAX];
 static unsigned char g_audio_menu_resource_instruments[AUDIO_MENU_RESOURCE_NOTES_MAX];
@@ -228,14 +232,17 @@ static unsigned char g_audio_sfx_chunk_duration[AUDIO_SFX_MAX_CHUNKS]; /* KMS by
 
 static int audio_is_valid_handle(short handle_id);
 static int audio_str_ieq(const char *a, const char *b);
-static unsigned int audio_note_to_hz(unsigned char note);
+static int audio_find_vce_instrument_index_by_name(const char *name4);
+static void audio_debug_music_log(const char *fmt, ...);
 static unsigned int audio_read_u32_le(const unsigned char *ptr);
-static unsigned short audio_extract_menu_resource_notes(void *songptr);
+static unsigned short audio_extract_menu_resource_notes(void *songptr, const char *menu_name);
 static unsigned short audio_parse_vce_instruments(void *voiceptr);
 /** @brief Program an OPL2 channel with instrument operator settings. */
 static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins);
 /** @brief Apply channel volume to OPL2 carrier/modulator operators. */
 static void audio_opl2_set_volume_ch(int ch, int volume, const AUDIO_VCE_INSTRUMENT *ins);
+static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
+                                    const AUDIO_VCE_INSTRUMENT *ins);
 static void audio_opl2_set_freq(int ch, unsigned int rpm, const AUDIO_VCE_INSTRUMENT *ins, int keyon);
 /** @brief Start a one-shot OPL2 SFX note on the selected channel. */
 static void audio_opl2_sfx_keyon(int ch, const AUDIO_VCE_INSTRUMENT *ins, int vol);
@@ -248,10 +255,6 @@ static const signed char audio_kms_cmd_extra[18]; /* forward decl */
  */
 
 static void audio_opl2_silence_channel(int ch);   /* forward decl */
-static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune,
-                                       int carrier_mult_reg, int keyon);
-static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
-                                    const AUDIO_VCE_INSTRUMENT *ins);
 static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins);
 static void audio_sfx_parse_directory(void *sfxres);
 static short audio_sfx_find_chunk(const char *name4);
@@ -722,41 +725,6 @@ static unsigned int audio_read_u32_le(const unsigned char *ptr) {
            ((unsigned int)ptr[3] << 24u);
 }
 
-/**
- * @brief Convert a MIDI note number to a frequency in Hz.
- *
- * Applies g_audio_menu_note_transpose before the lookup, then clamps
- * the transposed note to [0..127] before indexing the LUT.
- *
-* @param note  Raw MIDI note (0-127).
- * @return Frequency in Hz.
- */
-
-static unsigned int audio_note_to_hz(unsigned char note) {
-    static const unsigned short midi_hz_lut[128] = {
-        8, 9, 9, 10, 10, 11, 12, 12, 13, 14, 15, 15,
-        16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31,
-        33, 35, 37, 39, 41, 44, 46, 49, 52, 55, 58, 62,
-        65, 69, 73, 78, 82, 87, 92, 98, 104, 110, 117, 123,
-        131, 139, 147, 156, 165, 175, 185, 196, 208, 220, 233, 247,
-        262, 277, 294, 311, 330, 349, 370, 392, 415, 440, 466, 494,
-        523, 554, 587, 622, 659, 698, 740, 784, 831, 880, 932, 988,
-        1047, 1109, 1175, 1245, 1319, 1397, 1480, 1568, 1661, 1760, 1865, 1976,
-        2093, 2217, 2349, 2489, 2637, 2794, 2960, 3136, 3322, 3520, 3729, 3951,
-        4186, 4435, 4699, 4978, 5274, 5588, 5920, 6272, 6645, 7040, 7459, 7902,
-        8372, 8870, 9397, 9956, 10548, 11175, 11840, 12544
-    };
-    int midi_note = (int)note + g_audio_menu_note_transpose;
-
-    if (midi_note < 0) {
-        midi_note = 0;
-    }
-    if (midi_note > 127) {
-        midi_note = 127;
-    }
-    return (unsigned int)midi_hz_lut[midi_note];
-}
-
 /* -----------------------------------------------------------------------
  * Original AD15.DRV Fnum table (12 entries, one per semitone C..B)
  * Verified from disassembly at CS:0x8B2 of AD15.DRV binary.
@@ -764,69 +732,6 @@ static unsigned int audio_note_to_hz(unsigned char note) {
 static const unsigned short s_ad15_fnum_table[12] = {
     86, 91, 96, 102, 108, 114, 121, 128, 136, 144, 153, 162
 };
-
-static const unsigned char s_opl2_mult_x2[16] = {
-    1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 20, 24, 24, 30, 30
-};
-
-/**
- * @brief Convert an AD15 pitch value to Hz using the original fnum table.
- *
- * The AD15 driver uses pitch = KMS_note + VCE_transpose.
- * block = pitch / 12;  fnum = table[pitch % 12];
- * Hz = fnum * 49716 / 2^(20-block).
- *
- * The OPL2 block register is 3 bits, so the original hardware wraps
- * block >= 8 via (block & 7).  Pitches above 95 (block 8+) wrap to
- * block 0-2, producing very low (inaudible) frequencies — this is how
- * the original game encodes silent "rest" notes.
- *
- * @param pitch  AD15 pitch (KMS note byte + VCE transpose).
- * @return Frequency in Hz.
- */
-static unsigned int audio_ad15_pitch_to_hz(int pitch) {
-    /* Match x86 unsigned-byte arithmetic: ADD AL wraps at 256. */
-    unsigned int p     = (unsigned int)pitch & 0xFFu;
-    unsigned int block = (p / 12u) & 7u;   /* OPL2 block register = 3 bits */
-    unsigned int idx   = p % 12u;
-    unsigned int fnum  = (unsigned int)s_ad15_fnum_table[idx];
-    return fnum * 49716u / (1u << (20u - block));
-}
-
-/**
- * @brief Fast integer parabolic sine approximation.
- *
-* Uses x*(32768-|x|)>>13 on a 16-bit phase (wraps at 65536).
- *
- * @param phase  Phase counter (0-65535 maps to 0-2pi).
- * @return Signed sine value.
- */
-
-static int audio_parabolic_sine(uint32_t phase) {
-    int x = (int)(phase & 65535u);
-    if (x >= 32768) x -= 65536;
-    int ax = (x < 0) ? -x : x;
-    return (x * (32768 - ax)) >> 13;
-}
-
-/**
-* @brief Bright multi-harmonic waveform (sawtooth approximation).
- *
- * Sums harmonics 1-4 of a parabolic sine to produce an OPL2 FM-like timbre.
- *
- * @param phase  Phase counter (0-65535).
- * @return Mixed signed audio sample.
- */
-
-static int audio_soft_wave(uint32_t phase) {
-    /* Sawtooth approximation: all harmonics (1 - 1/2 + 1/3 - 1/4).
-     * Produces the bright OPL2 FM timbre vs a hollow pure sine. */
-    int h1 = audio_parabolic_sine(phase);
-    int h2 = audio_parabolic_sine(phase * 2u) / 2;
-    int h3 = audio_parabolic_sine(phase * 3u) / 3;
-    int h4 = audio_parabolic_sine(phase * 4u) / 4;
-    return (h1 - h2 + h3 - h4) * 4 / 5;
-}
 
 /**
  * @brief Parse the VCE voice/instrument resource into the global table.
@@ -982,6 +887,8 @@ typedef struct {
     unsigned char velocity;   /* 0-127 */
     unsigned short dur;  /* music ticks */
     uint32_t abs_tick;
+    short instrument_idx;
+    unsigned char channel_volume;
 } AUDIO_KMS_NOTE;
 
 #define AUDIO_KMS_TMP_MAX 512
@@ -1009,26 +916,197 @@ typedef struct {
     uint32_t     gap_frames;
     uint32_t     snd_frames;
     uint32_t     lfsr;
+    uint32_t     tick_pos;
+    uint32_t     note_end_tick;
     unsigned int prev_ei;          /* previous event index for transition detect */
     unsigned char note_active;     /* 1 if OPL2 note currently keyed on */
+    unsigned char active_pitch;
+    unsigned char active_velocity;
+    unsigned char active_channel_volume;
+    unsigned short active_requested_dur;
+    unsigned short active_effective_dur;
+    short         active_instrument_idx;
 } AUDIO_KMS_VOICE;
 
 static AUDIO_KMS_NOTE       g_audio_kms_evt_pool[AUDIO_KMS_EVENTS_POOL];
 static AUDIO_KMS_TRACK_INFO g_audio_kms_tracks[AUDIO_KMS_MAX_TRACKS];
 static unsigned int         g_audio_kms_n_tracks = 0u;
 static AUDIO_KMS_VOICE      g_audio_kms_voices[AUDIO_KMS_MAX_TRACKS];
+static unsigned long        g_audio_music_tick_accum = 0u;
 
 /* OPL2 channel assigned to each KMS music track (0-8, or -1 if none) */
 static int g_audio_kms_opl2_ch[AUDIO_KMS_MAX_TRACKS];
 /* VCE instrument index currently programmed on each track's OPL2 channel */
 static int g_audio_kms_opl2_cur_inst[AUDIO_KMS_MAX_TRACKS];
-
-/* Drum pitch → VCE instrument index (seg028 off_38E7E, pitches 24-39).
- * Default for out-of-range = 9 (TOMM). */
-static const int s_drum_pitch_to_vce[16] = {
-    6, 9, 5, 9, 9, 9, 21, 9, 22, 9, 22, 9, 9, 23, 9, 24
-    /* BASD TOMM SNAR TOMM TOMM TOMM CHHT TOMM OHHT TOMM OHHT TOMM TOMM RIDE TOMM CRSH */
+static int g_audio_kms_hdr1_inst_map[32];
+static unsigned int g_audio_kms_hdr1_inst_count = 0u;
+static const char * const s_kms_drum_names[16] = {
+    "BASD", "TOMM", "SNAR", "TOMM", "TOMM", "TOMM", "CHHT", "TOMM",
+    "OHHT", "TOMM", "OHHT", "TOMM", "TOMM", "RIDE", "TOMM", "CRSH"
 };
+
+static int audio_chunk_name_eq4(const unsigned char *lhs, const char *rhs) {
+    int i;
+
+    if (lhs == 0 || rhs == 0) {
+        return 0;
+    }
+    for (i = 0; i < 4; i++) {
+        unsigned char l = (unsigned char)tolower(lhs[i]);
+        unsigned char r = (unsigned char)tolower((unsigned char)rhs[i]);
+        if (l != r) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int audio_container_get_chunk_ci(const unsigned char *container, const char *name4,
+                                        const unsigned char **out_chunk,
+                                        unsigned int *out_size) {
+    unsigned int total_size;
+    unsigned int count;
+    unsigned int names_base;
+    unsigned int offs_base;
+    unsigned int data_base;
+    unsigned int i;
+
+    if (out_chunk != 0) {
+        *out_chunk = 0;
+    }
+    if (out_size != 0) {
+        *out_size = 0u;
+    }
+    if (container == 0 || name4 == 0) {
+        return 0;
+    }
+
+    total_size = audio_read_u32_le(container);
+    count = (unsigned int)container[4] | ((unsigned int)container[5] << 8u);
+    names_base = 6u;
+    offs_base = names_base + count * 4u;
+    data_base = offs_base + count * 4u;
+    if (count == 0u || data_base >= total_size) {
+        return 0;
+    }
+
+    for (i = 0u; i < count; i++) {
+        if (audio_chunk_name_eq4(container + names_base + i * 4u, name4)) {
+            unsigned int rel = audio_read_u32_le(container + offs_base + i * 4u);
+            const unsigned char *chunk;
+            unsigned int chunk_size;
+
+            if (data_base + rel + 4u > total_size) {
+                return 0;
+            }
+            chunk = container + data_base + rel;
+            chunk_size = audio_read_u32_le(chunk);
+            if (chunk_size < 4u || data_base + rel + chunk_size > total_size) {
+                return 0;
+            }
+            if (out_chunk != 0) {
+                *out_chunk = chunk;
+            }
+            if (out_size != 0) {
+                *out_size = chunk_size;
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void audio_debug_music_log(const char *fmt, ...) {
+    va_list args;
+
+    if (!g_audio_debug_music) {
+        return;
+    }
+    if (g_audio_debug_music_inst_only && strncmp(fmt, "audio: inst_", 12u) != 0) {
+        return;
+    }
+    if (g_audio_debug_music_lines >= g_audio_debug_music_max_lines) {
+        return;
+    }
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    g_audio_debug_music_lines++;
+}
+
+static int audio_debug_music_is_trace_track(const AUDIO_KMS_TRACK_INFO *tr,
+                                            const AUDIO_VCE_INSTRUMENT *ins) {
+    if (tr != 0 && tr->synth_type != 0) {
+        return 1;
+    }
+    if (ins != 0 && (ins->drum_flag == 5u ||
+                     memcmp(ins->name, "CHHT", 4u) == 0 ||
+                     memcmp(ins->name, "OHHT", 4u) == 0 ||
+                     memcmp(ins->name, "CRSH", 4u) == 0 ||
+                     memcmp(ins->name, "RIDE", 4u) == 0 ||
+                     memcmp(ins->name, "SNAR", 4u) == 0 ||
+                     memcmp(ins->name, "TOMM", 4u) == 0 ||
+                     memcmp(ins->name, "BASD", 4u) == 0)) {
+        return 1;
+    }
+    return 0;
+}
+
+static void audio_debug_music_dump_instrument(const char *prefix,
+                                              const AUDIO_KMS_TRACK_INFO *tr,
+                                              int ch,
+                                              const AUDIO_VCE_INSTRUMENT *ins,
+                                              int resolved_index,
+                                              const AUDIO_KMS_NOTE *ev,
+                                              unsigned int effective_channel_volume,
+                                              unsigned int effective_note_ticks) {
+    if (!audio_debug_music_is_trace_track(tr, ins)) {
+        return;
+    }
+    audio_debug_music_log(
+        "%s track=%.19s synth=%d ch=%d inst=%d(%.4s) drum=%u pitch=%u vel=%u chvol=%u reqdur=%u effdur=%u transp=%d fine=%d con=%u fb=%u op0[m=%u tl=%u rr=%u ws=%u] op1[m=%u tl=%u rr=%u ws=%u]\n",
+        prefix,
+        tr != 0 ? tr->name : "",
+        tr != 0 ? tr->synth_type : -1,
+        ch,
+        resolved_index,
+        ins != 0 ? ins->name : "NONE",
+        ins != 0 ? (unsigned int)ins->drum_flag : 0u,
+        ev != 0 ? (unsigned int)ev->pitch : 0u,
+        ev != 0 ? (unsigned int)ev->velocity : 0u,
+        effective_channel_volume,
+        ev != 0 ? (unsigned int)ev->dur : 0u,
+        effective_note_ticks,
+        ins != 0 ? (int)ins->transpose : 0,
+        ins != 0 ? (int)ins->fine_tune : 0,
+        ins != 0 ? (unsigned int)ins->opl_con : 0u,
+        ins != 0 ? (unsigned int)ins->opl_fb : 0u,
+        ins != 0 ? (unsigned int)ins->op0[6] : 0u,
+        ins != 0 ? (unsigned int)ins->op0[4] : 0u,
+        ins != 0 ? (unsigned int)ins->op0[3] : 0u,
+        ins != 0 ? (unsigned int)ins->op0[11] : 0u,
+        ins != 0 ? (unsigned int)ins->op1[6] : 0u,
+        ins != 0 ? (unsigned int)ins->op1[4] : 0u,
+        ins != 0 ? (unsigned int)ins->op1[3] : 0u,
+        ins != 0 ? (unsigned int)ins->op1[11] : 0u);
+}
+
+static int audio_opl2_music_compute_scale(int velocity, int channel_volume) {
+    int scale = (channel_volume * velocity + 63) / 127;
+
+    if (scale > 127) scale = 127;
+    if (scale < 0) scale = 0;
+    return scale;
+}
+
+static unsigned int audio_opl2_music_compute_tl(unsigned int base_tl, int scale) {
+    int range = 63 - (int)base_tl;
+    int attn = (scale * range + 63) / 127;
+
+    if (attn > 63) attn = 63;
+    if (attn < 0) attn = 0;
+    return (unsigned int)(63 - attn);
+}
 
 /**
  * @brief Parse a single KMS track into an array of note events.
@@ -1050,7 +1128,8 @@ static unsigned int audio_kms_parse_track(
         AUDIO_KMS_NOTE *tmp, unsigned int max_tmp,
         uint32_t *out_loop_ticks,
         int *out_instrument_idx, int *out_channel_volume,
-        int *out_tempo) {
+    int *out_tempo,
+    const int *instrument_map, unsigned int instrument_map_count) {
     size_t pos = start;
     uint32_t abs_tick = 0u;
     uint32_t loop_end = 0u;
@@ -1074,9 +1153,15 @@ static unsigned int audio_kms_parse_track(
             signed char extra = audio_kms_cmd_extra[event - 217u];
             if (extra < 0) break;
             if (pos + (size_t)extra > end) break;
-            /* DC (220): instrument change — 1 extra byte = VCE index */
-            if (event == 220u && extra >= 1)
-                inst_idx = (int)data[pos];
+            /* DC (220): instrument change — 1 extra byte = HDR1 instrument slot */
+            if (event == 220u && extra >= 1) {
+                unsigned int instrument_slot = (unsigned int)data[pos];
+                if (instrument_map != 0 && instrument_slot < instrument_map_count) {
+                    inst_idx = instrument_map[instrument_slot];
+                } else {
+                    inst_idx = -1;
+                }
+            }
             /* DD (221): tempo — 1 extra byte = tempo param */
             if (event == 221u && extra >= 1 && tempo < 0)
                 tempo = (int)data[pos];
@@ -1098,6 +1183,8 @@ static unsigned int audio_kms_parse_track(
         tmp[count].velocity = vel;
         tmp[count].dur      = (unsigned short)(dur > 65535u ? 65535u : dur);
         tmp[count].abs_tick = abs_tick;
+        tmp[count].instrument_idx = (short)inst_idx;
+        tmp[count].channel_volume = (unsigned char)ch_vol;
         count++;
 
         uint32_t et = abs_tick + dur;
@@ -1140,21 +1227,19 @@ static void audio_kms_gap_for_event(
     *out_snd_frames = snd_f;
 }
 
-/**
-* @brief Classify a KMS track as tonal (0), percussive (1), or hi-hat (2).
- *
- * Classification is based on the track name string.
- *
- * @param name  Track name string.
- * @return 0=tone, 1=perc (kick/snare/tom), 2=hat/cymbal.
- */
-
 static int audio_kms_synth_type(const char *name) {
-    if (strstr(name, "Kick")  || strstr(name, "kick")  || strstr(name, "KICK")  ||
-        strstr(name, "Snare") || strstr(name, "snare") || strstr(name, "SNARE") ||
-        strstr(name, "Tom")   || strstr(name, "tom")   || strstr(name, "TOM"))   return 1;
-    if (strstr(name, "Hat")   || strstr(name, "hat")   || strstr(name, "HAT")   ||
-        strstr(name, "Cym")   || strstr(name, "cym")   || strstr(name, "CYM"))   return 2;
+    if (name == 0) {
+        return 0;
+    }
+    if (strstr(name, "Kick") != 0 || strstr(name, "kick") != 0 || strstr(name, "KICK") != 0 ||
+        strstr(name, "Snare") != 0 || strstr(name, "snare") != 0 || strstr(name, "SNARE") != 0 ||
+        strstr(name, "Tom") != 0 || strstr(name, "tom") != 0 || strstr(name, "TOM") != 0) {
+        return 1;
+    }
+    if (strstr(name, "Hat") != 0 || strstr(name, "hat") != 0 || strstr(name, "HAT") != 0 ||
+        strstr(name, "Cym") != 0 || strstr(name, "cym") != 0 || strstr(name, "CYM") != 0) {
+        return 2;
+    }
     return 0;
 }
 
@@ -1169,16 +1254,22 @@ static int audio_kms_synth_type(const char *name) {
  * @return Total note events loaded across all tracks, or 0 on error.
  */
 
-static unsigned short audio_extract_menu_resource_notes(void *songptr) {
+static unsigned short audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
     const unsigned char *song;
-    unsigned int size;
+    const unsigned char *menu_chunk;
+    const unsigned char *hdr_chunk;
+    unsigned int hdr_size;
     unsigned int pool_used;
     unsigned int t;
     static AUDIO_KMS_NOTE kms_tmp[AUDIO_KMS_TMP_MAX];
 
     /* Reset multi-track pool */
     g_audio_kms_n_tracks = 0u;
-    g_audio_kms_music_hz = 48u;  /* reset to default before parsing */
+    g_audio_kms_music_hz = 48u;
+    g_audio_music_tick_accum = 0u;
+    g_audio_kms_hdr1_inst_count = 0u;
+    memset(g_audio_debug_inst_seen, 0, sizeof(g_audio_debug_inst_seen));
+    memset(g_audio_kms_hdr1_inst_map, 0xFF, sizeof(g_audio_kms_hdr1_inst_map));
     memset(g_audio_kms_voices, 0, sizeof(g_audio_kms_voices));
     memset(g_audio_kms_tracks, 0, sizeof(g_audio_kms_tracks));
     {
@@ -1202,63 +1293,125 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
     g_audio_menu_lp_state = 0;
     g_audio_menu_mod_phase = 0;
 
-    if (songptr == 0) return 0;
+    if (songptr == 0 || menu_name == 0) return 0;
 
     song = (const unsigned char *)songptr;
-    size = audio_read_u32_le(song);
-    if (size < 32u || size > (256u * 1024u)) size = 16384u;
+    if (!audio_container_get_chunk_ci(song, menu_name, &menu_chunk, &hdr_size)) {
+        return 0u;
+    }
+    if (!audio_container_get_chunk_ci(menu_chunk, "HDR1", &hdr_chunk, &hdr_size)) {
+        return 0u;
+    }
+    audio_debug_music_log("audio: menu %s hdr1_size=%u\n", menu_name, hdr_size);
 
-    /* Scan for E7 track headers, parse each track into flat pool */
-    pool_used = 0u;
-    size_t si = 0u;
-    while (si < (size_t)size && g_audio_kms_n_tracks < AUDIO_KMS_MAX_TRACKS) {
-        if (song[si] != 231u) { si++; continue; }
-        size_t nlen = (si + 1u < (size_t)size) ? (size_t)song[si + 1u] : 0u;
-        size_t ts   = si + 2u + nlen;
+    {
+        unsigned int instrument_count = (unsigned int)hdr_chunk[6];
+        unsigned int inst_pos = 7u;
+        unsigned int track_pos;
+        unsigned int track_count;
+        unsigned int i;
 
-        AUDIO_KMS_TRACK_INFO *tr = &g_audio_kms_tracks[g_audio_kms_n_tracks];
-        unsigned int nc = (nlen < 19u) ? (unsigned int)nlen : 19u;
-        unsigned int ni;
-        for (ni = 0u; ni < nc; ni++) tr->name[ni] = (char)song[si + 2u + ni];
-        tr->name[nc] = '\0';
-
-        /* Find where this track's stream ends (next E7 or EOF) */
-        size_t te = (size_t)size;
-        size_t sj = ts;
-        while (sj < (size_t)size) { if (song[sj] == 231u) { te = sj; break; } sj++; }
-
-        /* Parse into kms_tmp then copy into pool */
-        unsigned int avail = (AUDIO_KMS_EVENTS_POOL > pool_used)
-            ? (AUDIO_KMS_EVENTS_POOL - pool_used) : 0u;
-        unsigned int maxn = (avail < AUDIO_KMS_TMP_MAX) ? avail : AUDIO_KMS_TMP_MAX;
-        uint32_t lt = 0u;
-        int trk_inst = -1;
-        int trk_vol = 127;
-        int trk_tempo = -1;
-        unsigned int cnt = audio_kms_parse_track(song, ts, te, kms_tmp, maxn, &lt,
-                                                 &trk_inst, &trk_vol, &trk_tempo);
-
-        unsigned int slot = pool_used;
-        for (ni = 0u; ni < cnt && pool_used < AUDIO_KMS_EVENTS_POOL; ni++, pool_used++)
-            g_audio_kms_evt_pool[pool_used] = kms_tmp[ni];
-
-        tr->start_idx  = slot;
-        tr->count      = pool_used - slot;
-        tr->loop_ticks = lt;
-        tr->synth_type = audio_kms_synth_type(tr->name);
-        tr->instrument_idx = trk_inst;
-        tr->channel_volume = trk_vol;
-
-        /* Capture per-song tempo from the first DD command found */
-        if (trk_tempo > 0 && g_audio_kms_music_hz == 48u) {
-            unsigned int hz = (unsigned int)trk_tempo * 2u / 5u;
-            if (hz < 10u) hz = 10u;
-            if (hz > 200u) hz = 200u;
-            g_audio_kms_music_hz = hz;
+        if (instrument_count > 32u) {
+            instrument_count = 32u;
+        }
+        g_audio_kms_hdr1_inst_count = instrument_count;
+        for (i = 0u; i < instrument_count; i++) {
+            char inst_name[5];
+            int inst_idx;
+            memcpy(inst_name, hdr_chunk + inst_pos + i * 4u, 4u);
+            inst_name[4] = '\0';
+            inst_idx = audio_find_vce_instrument_index_by_name(inst_name);
+            g_audio_kms_hdr1_inst_map[i] = inst_idx;
+            audio_debug_music_log("audio: hdr1 inst %u %.4s -> %d\n", i, inst_name, inst_idx);
         }
 
-        if (tr->count > 0u) g_audio_kms_n_tracks++;
-        si = ts;
+        pool_used = 0u;
+        track_pos = inst_pos + instrument_count * 4u;
+        track_count = (unsigned int)hdr_chunk[track_pos++];
+        for (i = 0u; i < track_count && g_audio_kms_n_tracks < AUDIO_KMS_MAX_TRACKS; i++, track_pos += 5u) {
+            char track_name[5];
+            const unsigned char *track_chunk;
+            unsigned int track_size;
+            AUDIO_KMS_TRACK_INFO *tr;
+            unsigned int avail;
+            unsigned int maxn;
+            uint32_t lt = 0u;
+            int trk_inst = -1;
+            int trk_vol = 127;
+            int trk_tempo = -1;
+            unsigned int cnt;
+            unsigned int slot;
+            unsigned int ni;
+
+            memcpy(track_name, hdr_chunk + track_pos, 4u);
+            track_name[4] = '\0';
+            if (!audio_container_get_chunk_ci(menu_chunk, track_name, &track_chunk, &track_size) ||
+                track_size <= 7u || track_chunk[5] != 231u) {
+                audio_debug_music_log("audio: hdr1 track %.4s missing or invalid\n", track_name);
+                continue;
+            }
+
+            tr = &g_audio_kms_tracks[g_audio_kms_n_tracks];
+            memset(tr, 0, sizeof(*tr));
+            {
+                unsigned int name_len = (unsigned int)track_chunk[6];
+                unsigned int copy_len = (name_len < 19u) ? name_len : 19u;
+                memcpy(tr->name, track_chunk + 7u, copy_len);
+                tr->name[copy_len] = '\0';
+            }
+
+            avail = (AUDIO_KMS_EVENTS_POOL > pool_used) ? (AUDIO_KMS_EVENTS_POOL - pool_used) : 0u;
+            maxn = (avail < AUDIO_KMS_TMP_MAX) ? avail : AUDIO_KMS_TMP_MAX;
+            cnt = audio_kms_parse_track(track_chunk,
+                                        7u + (size_t)track_chunk[6],
+                                        track_size,
+                                        kms_tmp,
+                                        maxn,
+                                        &lt,
+                                        &trk_inst,
+                                        &trk_vol,
+                                        &trk_tempo,
+                                        g_audio_kms_hdr1_inst_map,
+                                        g_audio_kms_hdr1_inst_count);
+            slot = pool_used;
+            for (ni = 0u; ni < cnt && pool_used < AUDIO_KMS_EVENTS_POOL; ni++, pool_used++) {
+                g_audio_kms_evt_pool[pool_used] = kms_tmp[ni];
+            }
+
+            tr->start_idx = slot;
+            tr->count = pool_used - slot;
+            tr->loop_ticks = lt;
+            tr->synth_type = audio_kms_synth_type(tr->name);
+            tr->instrument_idx = trk_inst;
+            tr->channel_volume = trk_vol;
+
+            if (trk_tempo > 0 && g_audio_kms_music_hz == 48u) {
+                unsigned int hz = (unsigned int)trk_tempo * 2u / 5u;
+                if (hz < 10u) hz = 10u;
+                if (hz > 200u) hz = 200u;
+                g_audio_kms_music_hz = hz;
+                audio_debug_music_log("audio: hdr1 tempo raw=%d derived_hz=%u\n",
+                                      trk_tempo, g_audio_kms_music_hz);
+            }
+
+            if (tr->count > 0u) {
+                audio_debug_music_log(
+                            "audio: hdr1 track %.4s label=%s events=%u inst=%d vol=%d tempo_hz=%u\n",
+                            track_name, tr->name, tr->count, tr->instrument_idx,
+                            tr->channel_volume, g_audio_kms_music_hz);
+                {
+                    unsigned int sample_events = tr->count < 3u ? tr->count : 3u;
+                    for (ni = 0u; ni < sample_events; ni++) {
+                        const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[slot + ni];
+                        audio_debug_music_log(
+                            "audio:   ev%u tick=%u dur=%u pitch=%u inst=%d vel=%u chvol=%u\n",
+                            ni, ev->abs_tick, ev->dur, ev->pitch, ev->instrument_idx,
+                            ev->velocity, ev->channel_volume);
+                    }
+                }
+                g_audio_kms_n_tracks++;
+            }
+        }
     }
 
     if (g_audio_kms_n_tracks == 0u) return 0u;
@@ -1268,6 +1421,8 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr) {
     if (rate == 0u) rate = 22050u;
     for (t = 0u; t < g_audio_kms_n_tracks; t++) {
         g_audio_kms_voices[t].lfsr = 2900361217u + t * 2654435769u;
+        g_audio_kms_voices[t].tick_pos = 0u;
+        g_audio_kms_voices[t].note_end_tick = 0u;
         g_audio_kms_voices[t].prev_ei = (unsigned int)-1; /* force first note-on */
         g_audio_kms_voices[t].note_active = 0u;
         audio_kms_gap_for_event(&g_audio_kms_tracks[t], 0u, rate,
@@ -1728,7 +1883,7 @@ static void audio_sb_generate_dma_samples(unsigned int sample_count) {
      * were programmed in audio_init_engine / keyon/off / freq-update. */
     {
         unsigned int opl2_n = (sample_count < 4096u) ? sample_count : 4096u;
-        if (!g_audio_menu_music_enabled && opl2_is_ready()) {
+        if (opl2_is_ready()) {
             opl2_generate(g_opl2_sample_buf, (int)opl2_n);
         } else {
             unsigned int si2;
@@ -1740,9 +1895,13 @@ static void audio_sb_generate_dma_samples(unsigned int sample_count) {
         int mixed = 0;
         short handle_id;
 
-        /* Engine sound: OPL2 FM synthesis output */
-        if (!g_audio_menu_music_enabled) {
-            mixed += (int)g_opl2_sample_buf[sample_index < 4096u ? sample_index : 0u];
+        {
+            int opl_sample = (int)g_opl2_sample_buf[sample_index < 4096u ? sample_index : 0u];
+
+            if (g_audio_menu_music_enabled && !g_audio_menu_music_paused) {
+                opl_sample = (opl_sample * g_audio_menu_gain + 2600) / 5200;
+            }
+            mixed += opl_sample;
         }
 
 /* Chunk FX renderer: render crash slot (active_chunk) and skid slot
@@ -1840,128 +1999,6 @@ static void audio_sb_generate_dma_samples(unsigned int sample_count) {
             }
         }
 
-        if (g_audio_menu_music_enabled && !g_audio_menu_music_paused && g_audio_kms_n_tracks > 0u) {
-            unsigned int t2;
-            unsigned int sr = g_audio_output_rate_hz;
-            if (sr == 0u) sr = 22050u;
-            int32_t music_mixed = 0;
-            int32_t music_contributors = 0;
-
-            for (t2 = 0u; t2 < g_audio_kms_n_tracks; t2++) {
-                AUDIO_KMS_TRACK_INFO *tr2 = &g_audio_kms_tracks[t2];
-                AUDIO_KMS_VOICE      *v   = &g_audio_kms_voices[t2];
-                if (tr2->count == 0u || tr2->loop_ticks == 0u) continue;
-
-                /* Advance cursor when gap exhausted */
-                while (v->frame_in_gap >= v->gap_frames) {
-                    v->frame_in_gap -= v->gap_frames;
-                    v->ei++;
-                    if (v->ei >= tr2->count) v->ei = 0u;
-                    audio_kms_gap_for_event(tr2, v->ei, sr,
-                                           &v->gap_frames, &v->snd_frames);
-                }
-
-                if (v->frame_in_gap < v->snd_frames) {
-                    const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[tr2->start_idx + v->ei];
-                    if (ev->pitch > 0u) {
-                        /* xorshift32 noise */
-                        v->lfsr ^= v->lfsr << 13u;
-                        v->lfsr ^= v->lfsr >> 17u;
-                        v->lfsr ^= v->lfsr << 5u;
-                        int noise = (int)(int16_t)(v->lfsr >> 16u);
-                        uint32_t fp = v->frame_in_gap;
-                        uint32_t sf = v->snd_frames;
-
-                        if (tr2->synth_type == 2) {
-                            /* Hi-hat: pure noise burst, 18 ms, linear decay */
-                            uint32_t cap = sr * 18u / 1000u;
-                            uint32_t eff = (sf < cap) ? sf : cap;
-                            if (fp < eff) {
-                                int env = (int)(52u * (eff - fp) / eff);
-                                music_mixed += (noise >> 3) * env / 128;
-                                music_contributors++;
-                            }
-                        } else if (tr2->synth_type == 1) {
-                            unsigned int nhz = audio_note_to_hz(ev->pitch);
-                            unsigned int stp = (unsigned int)(
-                                ((uint64_t)nhz << 16u) / (uint64_t)sr);
-                            if (ev->pitch <= 25u) {
-                                /* Kick: noise + pitched tone, 80 ms, quadratic decay */
-                                uint32_t cap = sr * 80u / 1000u;
-                                uint32_t eff = (sf < cap) ? sf : cap;
-                                if (fp < eff) {
-                                    uint32_t rem = eff - fp;
-                                    int env = (int)(
-                                        (uint64_t)110u * rem * rem / ((uint64_t)eff * eff));
-                                    v->phase += stp;
-                                    int tone = audio_parabolic_sine(v->phase);
-                                    music_mixed += (noise / 2 + tone / 2) * env / 128;
-                                    music_contributors++;
-                                }
-                            } else {
-                                /* Snare/Tom: 70% noise + 30% tone x2, 65 ms, linear decay */
-                                uint32_t cap = sr * 65u / 1000u;
-                                uint32_t eff = (sf < cap) ? sf : cap;
-                                if (fp < eff) {
-                                    int env = (int)(85u * (eff - fp) / eff);
-                                    v->phase += stp * 2u;
-                                    int tone = audio_parabolic_sine(v->phase);
-                                    music_mixed += (noise * 7 / 10 + tone * 3 / 10) * env / 128;
-                                    music_contributors++;
-                                }
-                            }
-                        } else {
-                            /* Melodic: sawtooth + OPL2-style ADSR
-                             * Pitch uses per-instrument VCE transpose + AD15.DRV fnum table
-                             * instead of the global g_audio_menu_note_transpose. */
-                            const AUDIO_VCE_INSTRUMENT *mus_ins = NULL;
-                            int ad15_pitch = (int)ev->pitch;
-                            if (tr2->instrument_idx >= 0 &&
-                                tr2->instrument_idx < (int)g_audio_vce_instrument_count) {
-                                mus_ins = &g_audio_vce_instruments[tr2->instrument_idx];
-                                ad15_pitch += (int)mus_ins->transpose;
-                            }
-                            unsigned int nhz = audio_ad15_pitch_to_hz(ad15_pitch);
-                            unsigned int stp = (unsigned int)(
-                                ((uint64_t)nhz << 16u) / (uint64_t)sr);
-                            /* Volume: scale envelope by channel_volume and velocity.
-                             * Matches AD15.DRV scaling: instruments with vel_sensitivity=0
-                             * use max velocity (127), otherwise actual note velocity. */
-                            int mus_vel = (mus_ins && mus_ins->vel_sensitivity)
-                                          ? (int)ev->velocity : 127;
-                            int vol_scale = (tr2->channel_volume * mus_vel + 64) >> 7;
-                            if (vol_scale < 0) vol_scale = 0;
-                            if (vol_scale > 127) vol_scale = 127;
-                            unsigned int peak    = 120u * (unsigned int)vol_scale / 127u;
-                            unsigned int sustain =  68u * (unsigned int)vol_scale / 127u;
-                            unsigned int attack  = (sr * 3u / 1000u) + 1u;
-                            unsigned int decay   = (sf / 8u) + 1u;
-                            unsigned int release = (sf / 6u) + 1u;
-                            unsigned int env;
-                            if (fp < attack) {
-                                env = (fp * peak) / attack;
-                            } else if (fp < (uint32_t)(attack + decay)) {
-                                uint32_t dp = fp - (uint32_t)attack;
-                                env = peak - (unsigned int)(dp * (peak - sustain) / decay);
-                            } else if (sf > fp && (sf - fp) < release) {
-                                env = ((sf - fp) * sustain) / release;
-                            } else {
-                                env = sustain;
-                            }
-                            v->phase += stp;
-                            music_mixed += (int32_t)audio_soft_wave(v->phase) * (int32_t)env / 128;
-                            music_contributors++;
-                        }
-                    }
-                }
-                v->frame_in_gap++;
-            }
-
-            if (music_contributors > 0)
-                music_mixed /= (int32_t)g_audio_kms_n_tracks;
-            mixed += (int)music_mixed;
-        }
-
         if (mixed > 32767) {
             mixed = 32767;
         }
@@ -1997,6 +2034,70 @@ static int audio_is_valid_handle(short handle_id) {
         return 0;
     }
     return g_audio_handles[handle_id].allocated != 0;
+}
+
+static int audio_find_vce_instrument_index_by_name(const char *name4) {
+    unsigned short i;
+
+    if (name4 == 0) {
+        return -1;
+    }
+    for (i = 0; i < g_audio_vce_instrument_count; i++) {
+        if (g_audio_vce_instruments[i].valid &&
+            memcmp(g_audio_vce_instruments[i].name, name4, 4u) == 0) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+static const AUDIO_VCE_INSTRUMENT *audio_kms_resolve_instrument(const AUDIO_KMS_NOTE *ev,
+                                                                int *resolved_index) {
+    int base_instrument_idx;
+    int instrument_idx;
+
+    if (resolved_index != 0) {
+        *resolved_index = -1;
+    }
+    if (ev == 0) {
+        return 0;
+    }
+
+    instrument_idx = (int)ev->instrument_idx;
+    base_instrument_idx = instrument_idx;
+    if (instrument_idx < 0 || instrument_idx >= (int)g_audio_vce_instrument_count) {
+        return 0;
+    }
+    if (g_audio_vce_instruments[instrument_idx].drum_flag == 5u &&
+        ev->pitch >= 24u && ev->pitch <= 39u) {
+        const char *drum_name = s_kms_drum_names[ev->pitch - 24u];
+        int drum_index = audio_find_vce_instrument_index_by_name(drum_name);
+
+        if (g_audio_debug_music && audio_debug_music_is_trace_track(0, &g_audio_vce_instruments[instrument_idx])) {
+            audio_debug_music_log(
+                "audio: drum_map base=%d(%.4s) pitch=%u target=%.4s resolved=%d%s\n",
+                base_instrument_idx,
+                g_audio_vce_instruments[base_instrument_idx].name,
+                (unsigned int)ev->pitch,
+                drum_name,
+                drum_index,
+                (drum_index >= 0 && drum_index < (int)g_audio_vce_instrument_count) ?
+                    g_audio_vce_instruments[drum_index].name : "MISS");
+        }
+        if (drum_index >= 0) {
+            instrument_idx = drum_index;
+        }
+    }
+    if (instrument_idx < 0 || instrument_idx >= (int)g_audio_vce_instrument_count) {
+        return 0;
+    }
+    if (!g_audio_vce_instruments[instrument_idx].valid || !g_audio_vce_instruments[instrument_idx].has_fm) {
+        return 0;
+    }
+    if (resolved_index != 0) {
+        *resolved_index = instrument_idx;
+    }
+    return &g_audio_vce_instruments[instrument_idx];
 }
 
 /* -----------------------------------------------------------------------
@@ -2052,6 +2153,95 @@ static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins) 
     opl2_write(224+s1, ins->op1[OPL2F_WS]&3);
 }
 
+static unsigned int audio_opl2_music_compute_packed_pitch(int pitch, int fine_tune) {
+    unsigned int p = (unsigned int)pitch & 0xFFu;
+    unsigned int idx = p % 12u;
+    unsigned int fnum = (unsigned int)s_ad15_fnum_table[idx];
+    unsigned int block = (p / 12u) & 7u;
+    unsigned int packed = (block << 10u) | (fnum & 1023u);
+
+    packed = (unsigned int)((int)packed + fine_tune) & 0x1FFFu;
+    return packed;
+}
+
+static void audio_debug_music_dump_opl_registers(const AUDIO_KMS_TRACK_INFO *tr,
+                                                 int ch,
+                                                 const AUDIO_VCE_INSTRUMENT *ins,
+                                                 int resolved_index,
+                                                 const AUDIO_KMS_NOTE *ev,
+                                                 int velocity,
+                                                 int effective_channel_volume) {
+    unsigned int packed;
+    unsigned int reg20_op0;
+    unsigned int reg20_op1;
+    unsigned int reg40_op0;
+    unsigned int reg40_op1;
+    unsigned int reg60_op0;
+    unsigned int reg60_op1;
+    unsigned int reg80_op0;
+    unsigned int reg80_op1;
+    unsigned int regE0_op0;
+    unsigned int regE0_op1;
+    unsigned int regC0;
+    int scale;
+
+    if (!audio_debug_music_is_trace_track(tr, ins) || ins == 0 || ev == 0) {
+        return;
+    }
+
+    packed = audio_opl2_music_compute_packed_pitch((int)ev->pitch + (int)ins->transpose,
+                                                   (int)ins->fine_tune);
+    scale = audio_opl2_music_compute_scale(velocity, effective_channel_volume);
+    reg20_op0 = (unsigned int)((ins->op0[OPL2F_AM] << 7) |
+                               (ins->op0[OPL2F_VIB] << 6) |
+                               (ins->op0[OPL2F_EGT] << 5) |
+                               (ins->op0[OPL2F_KSR] << 4) |
+                               ins->op0[OPL2F_MULT]);
+    reg20_op1 = (unsigned int)((ins->op1[OPL2F_AM] << 7) |
+                               (ins->op1[OPL2F_VIB] << 6) |
+                               (ins->op1[OPL2F_EGT] << 5) |
+                               (ins->op1[OPL2F_KSR] << 4) |
+                               ins->op1[OPL2F_MULT]);
+    reg40_op0 = (unsigned int)((ins->op0[OPL2F_KSL] << 6) |
+                               (ins->opl_con ? (int)audio_opl2_music_compute_tl(ins->op0[OPL2F_TL], scale)
+                                             : (int)ins->op0[OPL2F_TL]));
+    reg40_op1 = (unsigned int)((ins->op1[OPL2F_KSL] << 6) |
+                               (int)audio_opl2_music_compute_tl(ins->op1[OPL2F_TL], scale));
+    reg60_op0 = (unsigned int)((ins->op0[OPL2F_AR] << 4) | ins->op0[OPL2F_DR]);
+    reg60_op1 = (unsigned int)((ins->op1[OPL2F_AR] << 4) | ins->op1[OPL2F_DR]);
+    reg80_op0 = (unsigned int)((ins->op0[OPL2F_SL] << 4) | ins->op0[OPL2F_RR]);
+    reg80_op1 = (unsigned int)((ins->op1[OPL2F_SL] << 4) | ins->op1[OPL2F_RR]);
+    regE0_op0 = (unsigned int)(ins->op0[OPL2F_WS] & 3u);
+    regE0_op1 = (unsigned int)(ins->op1[OPL2F_WS] & 3u);
+    regC0 = (unsigned int)((ins->opl_fb << 1) | ins->opl_con);
+    audio_debug_music_log(
+        "audio: note_regs track=%.19s synth=%d ch=%d inst=%d(%.4s) scale=%d a0=%u b0=%u c0=%u op0[20=%u 40=%u 60=%u 80=%u e0=%u] op1[20=%u 40=%u 60=%u 80=%u e0=%u]\n",
+        tr != 0 ? tr->name : "",
+        tr != 0 ? tr->synth_type : -1,
+        ch,
+        resolved_index,
+        ins->name,
+        scale,
+        packed & 255u,
+        32u | ((packed >> 8u) & 31u),
+        regC0,
+        reg20_op0,
+        reg40_op0,
+        reg60_op0,
+        reg80_op0,
+        regE0_op0,
+        reg20_op1,
+        reg40_op1,
+        reg60_op1,
+        reg80_op1,
+        regE0_op1);
+}
+
+static void audio_opl2_write_packed_pitch(int ch, unsigned int packed, int keyon) {
+    opl2_write(160 + ch, (int)(packed & 0xFFu));
+    opl2_write(176 + ch, ((keyon ? 1 : 0) << 5) | (int)((packed >> 8u) & 0x1Fu));
+}
+
 /*
  * Update carrier TL on channel 'ch' to reflect 0-127 volume.
  * TL=0 = loudest, TL=63 = nearly silent.
@@ -2083,6 +2273,328 @@ static void audio_opl2_set_freq(int ch, unsigned int rpm,
     opl2_write(176+ch, ((keyon?1:0)<<5)|(block<<2)|(int)((fnum>>8u)&3u));
 }
 
+static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune,
+                                       int carrier_mult_reg, int keyon) {
+    unsigned int packed = audio_opl2_music_compute_packed_pitch(pitch, fine_tune);
+
+    (void)carrier_mult_reg;
+    audio_opl2_write_packed_pitch(ch, packed, keyon);
+}
+
+static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
+                                    const AUDIO_VCE_INSTRUMENT *ins) {
+    int scale = audio_opl2_music_compute_scale(velocity, channel_volume);
+    int s0 = s_opl2_op0_reg[ch];
+    int s1 = s_opl2_op1_reg[ch];
+
+    if (scale > 127) scale = 127;
+    if (scale < 0) scale = 0;
+
+    {
+        int base_tl = (int)ins->op1[OPL2F_TL];
+        int tl = (int)audio_opl2_music_compute_tl((unsigned int)base_tl, scale);
+        opl2_write(64 + s1, ((int)ins->op1[OPL2F_KSL] << 6) | tl);
+    }
+    if (ins->opl_con) {
+        int base_tl = (int)ins->op0[OPL2F_TL];
+        int tl = (int)audio_opl2_music_compute_tl((unsigned int)base_tl, scale);
+        opl2_write(64 + s0, ((int)ins->op0[OPL2F_KSL] << 6) | tl);
+    }
+}
+
+static void audio_kms_note_off(unsigned int track_index) {
+    int ch;
+    AUDIO_KMS_VOICE *voice;
+    const AUDIO_KMS_TRACK_INFO *tr;
+
+    if (track_index >= g_audio_kms_n_tracks) {
+        return;
+    }
+    voice = &g_audio_kms_voices[track_index];
+    tr = &g_audio_kms_tracks[track_index];
+    ch = g_audio_kms_opl2_ch[track_index];
+    if (ch >= 0 && ch < 9 && voice->note_active) {
+        if (g_audio_debug_music) {
+            int active_index = (int)voice->active_instrument_idx;
+            const AUDIO_VCE_INSTRUMENT *active_ins = 0;
+
+            if (active_index >= 0 && active_index < (int)g_audio_vce_instrument_count) {
+                active_ins = &g_audio_vce_instruments[active_index];
+            }
+            if (audio_debug_music_is_trace_track(tr, active_ins)) {
+                audio_debug_music_log(
+                    "audio: note_off track=%.19s synth=%d ch=%d inst=%d pitch=%u vel=%u chvol=%u tick=%u end=%u reqdur=%u effdur=%u\n",
+                    tr->name,
+                    tr->synth_type,
+                    ch,
+                    active_index,
+                    (unsigned int)voice->active_pitch,
+                    (unsigned int)voice->active_velocity,
+                    (unsigned int)voice->active_channel_volume,
+                    voice->tick_pos,
+                    voice->note_end_tick,
+                    (unsigned int)voice->active_requested_dur,
+                    (unsigned int)voice->active_effective_dur);
+            }
+        }
+        audio_opl2_silence_channel(ch);
+    }
+    voice->note_active = 0u;
+}
+
+static void audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
+    const AUDIO_VCE_INSTRUMENT *ins;
+    const AUDIO_VCE_INSTRUMENT *prev_ins;
+    int resolved_index;
+    int previous_index;
+    int ch;
+    int velocity;
+    int effective_channel_volume;
+    unsigned int effective_note_ticks;
+    const AUDIO_KMS_TRACK_INFO *tr;
+    AUDIO_KMS_VOICE *voice;
+
+    if (track_index >= g_audio_kms_n_tracks || ev == 0 || !opl2_is_ready()) {
+        return;
+    }
+    tr = &g_audio_kms_tracks[track_index];
+    voice = &g_audio_kms_voices[track_index];
+    ch = g_audio_kms_opl2_ch[track_index];
+    if (ch < 0 || ch >= 9) {
+        return;
+    }
+    previous_index = g_audio_kms_opl2_cur_inst[track_index];
+    prev_ins = 0;
+    if (previous_index >= 0 && previous_index < (int)g_audio_vce_instrument_count) {
+        prev_ins = &g_audio_vce_instruments[previous_index];
+    }
+
+    ins = audio_kms_resolve_instrument(ev, &resolved_index);
+    if (ins == 0) {
+        audio_kms_note_off(track_index);
+        return;
+    }
+
+    velocity = ins->vel_sensitivity ? (int)ev->velocity : 127;
+    if (ev->velocity > 0u && velocity > (int)ev->velocity) {
+        int adjusted_velocity = velocity;
+
+        if (tr->synth_type == 2) {
+            adjusted_velocity = (int)ev->velocity;
+        } else if (tr->synth_type == 0) {
+            adjusted_velocity = (velocity + (int)ev->velocity + 1) / 2;
+        }
+        if (adjusted_velocity < velocity) {
+            if (g_audio_debug_music && audio_debug_music_is_trace_track(tr, ins)) {
+                audio_debug_music_log(
+                    "audio: menu_vel_override track=%.19s synth=%d inst=%d(%.4s) raw_vel=%u forced_vel=%d play_vel=%d\n",
+                    tr->name,
+                    tr->synth_type,
+                    resolved_index,
+                    ins->name,
+                    (unsigned int)ev->velocity,
+                    velocity,
+                    adjusted_velocity);
+            }
+            velocity = adjusted_velocity;
+        }
+    }
+    effective_channel_volume = (int)ev->channel_volume;
+    if (tr->synth_type == 2) {
+        effective_channel_volume = effective_channel_volume * 3 / 5;
+    } else if (tr->synth_type == 1) {
+        effective_channel_volume = effective_channel_volume * 4 / 5;
+    }
+    if (effective_channel_volume < 8) {
+        effective_channel_volume = 8;
+    }
+    effective_note_ticks = (unsigned int)ev->dur;
+    if (tr->synth_type == 2 && effective_note_ticks > 2u) {
+        effective_note_ticks = 2u;
+    } else if (tr->synth_type == 1 && effective_note_ticks > 4u) {
+        effective_note_ticks = 4u;
+    }
+    if (g_audio_debug_music) {
+        if (resolved_index >= 0 && resolved_index < AUDIO_VCE_MAX_INSTRUMENTS &&
+            g_audio_debug_inst_seen[resolved_index] == 0u) {
+            g_audio_debug_inst_seen[resolved_index] = 1u;
+            audio_debug_music_log(
+                "audio: inst_first tick=%u abs=%u track=%.19s synth=%d ch=%d inst=%d(%.4s) pitch=%u raw_vel=%u play_vel=%d chvol=%u reqdur=%u effdur=%u\n",
+                voice->tick_pos,
+                (unsigned int)ev->abs_tick,
+                tr->name,
+                tr->synth_type,
+                ch,
+                resolved_index,
+                ins->name,
+                (unsigned int)ev->pitch,
+                (unsigned int)ev->velocity,
+                velocity,
+                (unsigned int)effective_channel_volume,
+                (unsigned int)ev->dur,
+                effective_note_ticks);
+        }
+        if (previous_index != resolved_index) {
+            audio_debug_music_log(
+                "audio: inst_switch tick=%u abs=%u track=%.19s synth=%d ch=%d prev=%d(%.4s) inst=%d(%.4s) pitch=%u raw_vel=%u play_vel=%d chvol=%u reqdur=%u effdur=%u\n",
+                voice->tick_pos,
+                (unsigned int)ev->abs_tick,
+                tr->name,
+                tr->synth_type,
+                ch,
+                previous_index,
+                prev_ins != 0 ? prev_ins->name : "NONE",
+                resolved_index,
+                ins->name,
+                (unsigned int)ev->pitch,
+                (unsigned int)ev->velocity,
+                velocity,
+                (unsigned int)effective_channel_volume,
+                (unsigned int)ev->dur,
+                effective_note_ticks);
+            } else if (tr->synth_type == 0 &&
+                   (!voice->note_active || voice->active_pitch != ev->pitch ||
+                    voice->active_requested_dur != ev->dur)) {
+                audio_debug_music_log(
+                "audio: inst_note tick=%u abs=%u track=%.19s synth=%d ch=%d inst=%d(%.4s) prev_pitch=%u pitch=%u raw_vel=%u play_vel=%d chvol=%u reqdur=%u effdur=%u\n",
+                voice->tick_pos,
+                (unsigned int)ev->abs_tick,
+                tr->name,
+                tr->synth_type,
+                ch,
+                resolved_index,
+                ins->name,
+                (unsigned int)voice->active_pitch,
+                (unsigned int)ev->pitch,
+                (unsigned int)ev->velocity,
+                velocity,
+                (unsigned int)effective_channel_volume,
+                (unsigned int)ev->dur,
+                effective_note_ticks);
+        }
+    }
+    audio_opl2_program_channel(ch, ins);
+    audio_opl2_music_volume(ch, velocity, effective_channel_volume, ins);
+    audio_opl2_music_set_pitch(ch,
+                               (int)ev->pitch + (int)ins->transpose,
+                               (int)ins->fine_tune,
+                               (int)ins->op1[OPL2F_MULT],
+                               1);
+    audio_debug_music_dump_instrument("audio: note_prog",
+                                      tr,
+                                      ch,
+                                      ins,
+                                      resolved_index,
+                                      ev,
+                                      (unsigned int)effective_channel_volume,
+                                      effective_note_ticks);
+    audio_debug_music_log(
+        "audio: note_on track=%u ch=%d pitch=%u transp=%d fine=%d mul=%u inst=%d(%.4s) vel=%d chvol=%u tick=%u\n",
+        track_index,
+        ch,
+        ev->pitch,
+        (int)ins->transpose,
+        (int)ins->fine_tune,
+        (unsigned int)ins->op1[OPL2F_MULT],
+        resolved_index,
+        ins->name,
+        velocity,
+        (unsigned int)effective_channel_volume,
+        voice->tick_pos);
+    audio_debug_music_dump_opl_registers(tr,
+                                         ch,
+                                         ins,
+                                         resolved_index,
+                                         ev,
+                                         velocity,
+                                         effective_channel_volume);
+    voice->note_active = 1u;
+    voice->active_pitch = ev->pitch;
+    voice->active_velocity = (unsigned char)velocity;
+    voice->active_channel_volume = (unsigned char)effective_channel_volume;
+    voice->active_requested_dur = ev->dur;
+    voice->active_effective_dur = (unsigned short)effective_note_ticks;
+    voice->active_instrument_idx = (short)resolved_index;
+    g_audio_kms_opl2_cur_inst[track_index] = resolved_index;
+}
+
+static void audio_kms_reset_playback(void) {
+    unsigned int t;
+
+    g_audio_music_tick_accum = 0u;
+    for (t = 0u; t < g_audio_kms_n_tracks; t++) {
+        audio_kms_note_off(t);
+        g_audio_kms_voices[t].ei = 0u;
+        g_audio_kms_voices[t].frame_in_gap = 0u;
+        g_audio_kms_voices[t].phase = 0u;
+        g_audio_kms_voices[t].gap_frames = 0u;
+        g_audio_kms_voices[t].snd_frames = 0u;
+        g_audio_kms_voices[t].tick_pos = 0u;
+        g_audio_kms_voices[t].note_end_tick = 0u;
+        g_audio_kms_voices[t].prev_ei = (unsigned int)-1;
+        g_audio_kms_voices[t].active_pitch = 0u;
+        g_audio_kms_voices[t].active_velocity = 0u;
+        g_audio_kms_voices[t].active_channel_volume = 0u;
+        g_audio_kms_voices[t].active_requested_dur = 0u;
+        g_audio_kms_voices[t].active_effective_dur = 0u;
+        g_audio_kms_voices[t].active_instrument_idx = -1;
+        g_audio_kms_opl2_cur_inst[t] = -1;
+    }
+}
+
+static void audio_kms_advance_ticks(unsigned int ticks) {
+    unsigned int step;
+
+    for (step = 0u; step < ticks; step++) {
+        unsigned int t;
+        for (t = 0u; t < g_audio_kms_n_tracks; t++) {
+            AUDIO_KMS_TRACK_INFO *tr = &g_audio_kms_tracks[t];
+            AUDIO_KMS_VOICE *voice = &g_audio_kms_voices[t];
+
+            if (tr->count == 0u || tr->loop_ticks == 0u) {
+                continue;
+            }
+            if (voice->note_active && voice->tick_pos >= voice->note_end_tick) {
+                audio_kms_note_off(t);
+            }
+            while (voice->ei < tr->count &&
+                   g_audio_kms_evt_pool[tr->start_idx + voice->ei].abs_tick <= voice->tick_pos) {
+                const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[tr->start_idx + voice->ei];
+                uint32_t note_ticks = (uint32_t)ev->dur;
+
+                if (tr->synth_type == 2 && note_ticks > 2u) {
+                    note_ticks = 2u;
+                } else if (tr->synth_type == 1 && note_ticks > 4u) {
+                    note_ticks = 4u;
+                }
+                audio_kms_note_on(t, ev);
+                voice->note_end_tick = ev->abs_tick + note_ticks;
+                if (g_audio_debug_music && tr->synth_type != 0) {
+                    audio_debug_music_log(
+                        "audio: note_window track=%.19s ch=%d tick=%u abs=%u end=%u reqdur=%u effdur=%u\n",
+                        tr->name,
+                        g_audio_kms_opl2_ch[t],
+                        voice->tick_pos,
+                        (unsigned int)ev->abs_tick,
+                        voice->note_end_tick,
+                        (unsigned int)ev->dur,
+                        (unsigned int)note_ticks);
+                }
+                voice->prev_ei = voice->ei;
+                voice->ei++;
+            }
+            voice->tick_pos++;
+            if (voice->tick_pos >= tr->loop_ticks) {
+                audio_kms_note_off(t);
+                voice->tick_pos = 0u;
+                voice->note_end_tick = 0u;
+                voice->ei = 0u;
+                voice->prev_ei = (unsigned int)-1;
+            }
+        }
+    }
+}
+
 /*
  * Key-on an OPL2 SFX channel with the given instrument at fixed pitch.
 * Uses freq_base*16 as Fnum (same parameterisation as audio_opl2_set_freq
@@ -2111,81 +2623,6 @@ static void audio_opl2_silence_channel(int ch) {
     opl2_write(64 + s0, 63); /* op0 TL=63 (max attenuation) */
     opl2_write(64 + s1, 63); /* op1 TL=63 (max attenuation) */
     opl2_write(176 + ch, 0);    /* key-off */
-}
-
-/**
- * @brief Set OPL2 music pitch from AD15.DRV fnum table.
- *
- * AD15.DRV 0x06F9: block = pitch/12, idx = pitch%12, fnum = table[idx],
- * packed = (block<<10)|fnum + fine_tune.
- * Writes A0+ch (fnum low) and B0+ch (key-on | block | fnum high).
- */
-static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune,
-                                       int carrier_mult_reg, int keyon) {
-    unsigned int p = (unsigned int)pitch & 0xFFu;
-    unsigned int idx = p % 12u;
-    unsigned int fnum = (unsigned int)s_ad15_fnum_table[idx];
-    unsigned int block = (p / 12u) & 7u;
-    unsigned int mult_x2;
-    unsigned int linear;
-    unsigned int packed;
-
-    /* AD15 writes (block<<10)|fnum directly, then applies fine_tune. */
-    packed = (block << 10u) | (fnum & 1023u);
-    packed = (unsigned int)((int)packed + fine_tune) & 0x1FFFu;
-
-    /* Compensate for carrier MULT so instrument timbre does not shift
-     * perceived pitch upward by 1-2 octaves on menu tracks. */
-    mult_x2 = (unsigned int)s_opl2_mult_x2[carrier_mult_reg & 15];
-    if (mult_x2 != 0u) {
-        linear = (packed & 1023u) << ((packed >> 10u) & 7u);
-        linear = (linear * 2u + (mult_x2 / 2u)) / mult_x2;
-        block = 0u;
-        while (linear > 1023u && block < 7u) {
-            linear = (linear + 1u) >> 1u;
-            block++;
-        }
-        if (linear == 0u) {
-            linear = 1u;
-        }
-        packed = (block << 10u) | (linear & 1023u);
-    }
-
-    opl2_write(160 + ch, (int)(packed & 0xFFu));
-    opl2_write(176 + ch, ((keyon ? 1 : 0) << 5) | (int)((packed >> 8u) & 0x1Fu));
-}
-
-/**
- * @brief Set OPL2 music volume matching AD15.DRV 0x0730.
- *
- * scale = (channel_volume * velocity) >> 6, rounded.
- * Carrier TL always scaled.  Modulator TL only scaled for AM (opl_con==1).
- * Formula: attn = scale * (63 - base_TL) >> 6, rounded; TL = 63 - attn.
- */
-static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
-                                    const AUDIO_VCE_INSTRUMENT *ins) {
-    int scale = (channel_volume * velocity + 32) >> 6;
-    if (scale > 127) scale = 127;
-    /* Carrier (op1) */
-    {
-        int base_tl = (int)ins->op1[OPL2F_TL];
-        int range = 63 - base_tl;
-        int attn = (scale * range + 32) >> 6;
-        if (attn > 63) attn = 63;
-        if (attn < 0) attn = 0;
-        int tl = 63 - attn;
-        opl2_write(64 + s_opl2_op1_reg[ch], ((int)ins->op1[OPL2F_KSL] << 6) | tl);
-    }
-    /* Modulator (op0) — only for AM (additive, opl_con==1) */
-    if (ins->opl_con) {
-        int base_tl = (int)ins->op0[OPL2F_TL];
-        int range = 63 - base_tl;
-        int attn = (scale * range + 32) >> 6;
-        if (attn > 63) attn = 63;
-        if (attn < 0) attn = 0;
-        int tl = 63 - attn;
-        opl2_write(64 + s_opl2_op0_reg[ch], ((int)ins->op0[OPL2F_KSL] << 6) | tl);
-    }
 }
 
 /*
@@ -2356,6 +2793,7 @@ static void audio_reset_runtime_state(void) {
     g_audio_refresh_accum = 0u;
     g_audio_music_phase = 0;
     g_audio_music_tick_counter = 0;
+    g_audio_music_tick_accum = 0u;
     g_audio_music_note_index = 0;
     g_audio_menu_music_enabled = 0;
     g_audio_menu_music_paused = 0;
@@ -2825,21 +3263,33 @@ void audio_driver_timer(void) {
         active_handles = 0u;
 
         audio_sb_process_commands();
-        g_audio_music_tick_counter++;
-
-        if (g_audio_kms_n_tracks == 0u && g_audio_menu_music_enabled && !g_audio_menu_music_paused && g_audio_menu_use_resource && g_audio_menu_resource_count > 0u) {
-            if (g_audio_menu_resource_ticks_left == 0u) {
-                g_audio_menu_resource_index = (unsigned short)((g_audio_menu_resource_index + 1u) % g_audio_menu_resource_count);
-                g_audio_menu_resource_current_note = g_audio_menu_resource_notes[g_audio_menu_resource_index];
-                g_audio_menu_resource_ticks_left = g_audio_menu_resource_durations[g_audio_menu_resource_index];
-                g_audio_menu_resource_ticks_total = g_audio_menu_resource_durations[g_audio_menu_resource_index];
-                g_audio_menu_resource_tick_pos = 0;
-                g_audio_menu_resource_current_instrument = g_audio_menu_resource_instruments[g_audio_menu_resource_index];
-                g_audio_menu_resource_current_velocity = g_audio_menu_resource_velocities[g_audio_menu_resource_index];
+        if (g_audio_menu_music_enabled && !g_audio_menu_music_paused) {
+            unsigned int music_ticks = (unsigned int)timer_get_subticks_for_rate(
+                g_audio_kms_music_hz > 0u ? (unsigned long)g_audio_kms_music_hz : 48UL,
+                &g_audio_music_tick_accum);
+            if (music_ticks > 16u) {
+                music_ticks = 16u;
             }
-            if (g_audio_menu_resource_ticks_left > 0u) {
-                g_audio_menu_resource_ticks_left--;
-                g_audio_menu_resource_tick_pos++;
+            if (g_audio_kms_n_tracks > 0u && music_ticks > 0u) {
+                audio_kms_advance_ticks(music_ticks);
+                g_audio_music_tick_counter += music_ticks;
+            } else if (g_audio_kms_n_tracks == 0u && g_audio_menu_use_resource && g_audio_menu_resource_count > 0u) {
+                while (music_ticks-- > 0u) {
+                    g_audio_music_tick_counter++;
+                    if (g_audio_menu_resource_ticks_left == 0u) {
+                        g_audio_menu_resource_index = (unsigned short)((g_audio_menu_resource_index + 1u) % g_audio_menu_resource_count);
+                        g_audio_menu_resource_current_note = g_audio_menu_resource_notes[g_audio_menu_resource_index];
+                        g_audio_menu_resource_ticks_left = g_audio_menu_resource_durations[g_audio_menu_resource_index];
+                        g_audio_menu_resource_ticks_total = g_audio_menu_resource_durations[g_audio_menu_resource_index];
+                        g_audio_menu_resource_tick_pos = 0;
+                        g_audio_menu_resource_current_instrument = g_audio_menu_resource_instruments[g_audio_menu_resource_index];
+                        g_audio_menu_resource_current_velocity = g_audio_menu_resource_velocities[g_audio_menu_resource_index];
+                    }
+                    if (g_audio_menu_resource_ticks_left > 0u) {
+                        g_audio_menu_resource_ticks_left--;
+                        g_audio_menu_resource_tick_pos++;
+                    }
+                }
             }
         }
 
@@ -2961,24 +3411,40 @@ void audio_driver_timer(void) {
 short audio_load_driver(const char* driver, short a2, short a3) {
     const char * backend;
     const char * debug_music_env;
+    const char * debug_music_inst_only_env;
     const char * menu_gain_env;
     const char * menu_note_ticks_env;
     const char * refresh_hz_env;
     const char * menu_transpose_env;
     const char * menu_duration_scale_env;
+    const char * debug_music_lines_env;
     (void)driver;
     (void)a2;
     (void)a3;
 
     backend = getenv("STUNTS_AUDIO_BACKEND");
     debug_music_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC");
+    debug_music_inst_only_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC_INST_ONLY");
     menu_gain_env = getenv("STUNTS_AUDIO_MENU_GAIN");
     menu_note_ticks_env = getenv("STUNTS_AUDIO_MENU_NOTE_TICKS");
     refresh_hz_env = getenv("STUNTS_AUDIO_REFRESH_HZ");
     menu_transpose_env = getenv("STUNTS_AUDIO_MENU_TRANSPOSE");
     menu_duration_scale_env = getenv("STUNTS_AUDIO_MENU_DURATION_SCALE");
+    debug_music_lines_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC_LINES");
     g_audio_debug_music = (unsigned char)((debug_music_env != 0 && *debug_music_env != '\0' && atoi(debug_music_env) != 0) ? 1 : 0);
+    g_audio_debug_music_inst_only = (unsigned char)((debug_music_inst_only_env != 0 && *debug_music_inst_only_env != '\0' && atoi(debug_music_inst_only_env) != 0) ? 1 : 0);
     g_audio_debug_music_lines = 0u;
+    g_audio_debug_music_max_lines = 400u;
+    if (debug_music_lines_env != 0 && *debug_music_lines_env != '\0') {
+        unsigned int limit = (unsigned int)atoi(debug_music_lines_env);
+        if (limit < 100u) {
+            limit = 100u;
+        }
+        if (limit > 10000u) {
+            limit = 10000u;
+        }
+        g_audio_debug_music_max_lines = limit;
+    }
     if (menu_gain_env != 0 && *menu_gain_env != '\0') {
         int gain = atoi(menu_gain_env);
         if (gain < 1000) {
@@ -2989,7 +3455,7 @@ short audio_load_driver(const char* driver, short a2, short a3) {
         }
         g_audio_menu_gain = gain;
     } else {
-        g_audio_menu_gain = 5200;
+        g_audio_menu_gain = 9000;
     }
     if (menu_note_ticks_env != 0 && *menu_note_ticks_env != '\0') {
         int ticks = atoi(menu_note_ticks_env);
@@ -3061,6 +3527,14 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     g_audio_dsp.time_constant = audio_sb_time_constant_for_rate(g_audio_output_rate_hz);
     /* Initialise OPL2 emulator at the SDL sample rate */
     opl2_init((int)g_audio_output_rate_hz);
+    audio_debug_music_log(
+        "audio: driver backend=%s output_hz=%u dsp_rate=%u time_constant=%u dispatch_hz=%lu refresh_hz=%u\n",
+        backend != 0 ? backend : "default",
+        g_audio_output_rate_hz,
+        (unsigned int)g_audio_dsp.sample_rate_hz,
+        (unsigned int)g_audio_dsp.time_constant,
+        timer_get_dispatch_hz(),
+        g_audio_refresh_hz);
     g_audio_menu_music_enabled = 0;
     g_audio_menu_music_paused = 0;
     g_audio_menu_resource_count = 0;
@@ -3068,6 +3542,7 @@ short audio_load_driver(const char* driver, short a2, short a3) {
     g_audio_menu_resource_ticks_left = 0;
     g_audio_menu_resource_current_note = 60;
     g_audio_menu_use_resource = 0;
+    g_audio_music_tick_accum = 0u;
     audio_sb_write_port(556u, 209u);
     audio_sb_write_port(556u, 64u);
     audio_sb_write_port(556u, (unsigned char)g_audio_dsp.time_constant);
@@ -3136,6 +3611,7 @@ void audio_driver_func3F(int mode) {
     memset(g_audio_kms_voices, 0, sizeof(g_audio_kms_voices));
     memset(g_audio_kms_tracks, 0, sizeof(g_audio_kms_tracks));
     g_audio_menu_use_resource  = 0;
+    g_audio_music_tick_accum   = 0u;
 }
 
 /**
@@ -3196,7 +3672,7 @@ void * init_audio_resources(void * songptr, void * voiceptr, const char* name) {
     audio_menu_music_set_name(name);
     vce_count = audio_parse_vce_instruments(voiceptr);
     {
-        unsigned short extracted = audio_extract_menu_resource_notes(songptr);
+        unsigned short extracted = audio_extract_menu_resource_notes(songptr, name);
         g_audio_menu_use_resource = (unsigned char)(extracted >= 8u ? 1u : 0u);
         (void)vce_count;
     }
@@ -3218,6 +3694,7 @@ void load_audio_finalize(void * audiores) {
     if (!g_audio_last_init_is_menu) {
         return;
     }
+    audio_kms_reset_playback();
     g_audio_menu_music_enabled = g_audio_menu_use_resource;
     g_audio_menu_music_paused = 0;
     if (g_audio_menu_music_enabled) {

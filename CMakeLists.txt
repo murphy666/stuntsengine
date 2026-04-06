@@ -455,6 +455,27 @@ if(STUNTS_TESTS)
     stunts_add_sdl_gtest(test_intro_music_audio
         tests/test_intro_music_audio.cc)
 
+    stunts_add_gtest(test_audio_menu_basics
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        tests/test_audio_menu_basics.cc)
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_opl2_backend.cc")
+        add_executable(test_opl2_backend
+            tests/test_opl2_backend.cc
+            src/opl2.c
+            $<TARGET_OBJECTS:fmopl_obj>)
+        target_include_directories(test_opl2_backend PRIVATE src include library/adplug/src)
+        target_link_libraries(test_opl2_backend PRIVATE GTest::gtest_main)
+        if(NOT MSVC)
+            target_link_libraries(test_opl2_backend PRIVATE m)
+        endif()
+        gtest_discover_tests(test_opl2_backend
+            EXTRA_ARGS --gtest_color=yes
+            PROPERTIES ENVIRONMENT "GTEST_COLOR=yes")
+        list(APPEND STUNTS_TEST_TARGETS test_opl2_backend)
+        set_property(TARGET test_opl2_backend PROPERTY STUNTS_WORKING_DIR "${CMAKE_BINARY_DIR}")
+    endif()
+
     stunts_add_gtest(test_timer
         tests/test_timer.cc
         src/timer.c)

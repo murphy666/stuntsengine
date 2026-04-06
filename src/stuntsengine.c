@@ -2235,7 +2235,7 @@ void load_palandcursor(void)
 void init_main(int argc, char* argv[])
 {
 	unsigned int i;
-	unsigned char argmode4, argnosound;
+	unsigned char argnosound;
 	unsigned long timerdelta1, timerdelta2, timerdelta3;
 
 	// Keyboard
@@ -2266,14 +2266,12 @@ void init_main(int argc, char* argv[])
 	textresprefix = 'e';
 	
 	// Parse arguments.
-	argmode4 = 0;
 	argnosound = 0;
 	
 	for (i = 1; i < (unsigned int)argc; ++i) {
 		if (argv[i][0] == '/') {
 			switch (argv[i][1]) {
 				case 'h':
-					argmode4 = 4;
 					break;
 
 				case 'n':
