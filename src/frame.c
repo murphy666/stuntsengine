@@ -404,6 +404,29 @@ static inline unsigned char trkobj_physical(const unsigned char* obj)
 	return trkobj_u8_field(obj, TRACKOBJECT_PHYS_OFFSET);
 }
 
+static inline int frame_multitile_contains_tile(int anchor_col, int anchor_row, unsigned char multi_tile_flag, int target_col, int target_row)
+{
+	if (target_col == anchor_col && target_row == anchor_row) {
+		return 1;
+	}
+
+	if (multi_tile_flag == 1) {
+		return target_col == anchor_col && target_row == anchor_row + 1;
+	}
+
+	if (multi_tile_flag == 2) {
+		return target_col == anchor_col + 1 && target_row == anchor_row;
+	}
+
+	if (multi_tile_flag == 3) {
+		return (target_col == anchor_col + 1 && target_row == anchor_row) ||
+			(target_col == anchor_col && target_row == anchor_row + 1) ||
+			(target_col == anchor_col + 1 && target_row == anchor_row + 1);
+	}
+
+	return 0;
+}
+
 /** @brief Update frame.
  * @param view_index Parameter `view_index`.
  * @param clip_rect Parameter `clip_rect`.
@@ -428,6 +451,7 @@ void update_frame(int view_index, struct RECTANGLE* clip_rect) {
 	int tile_row_bias, tile_col_bias;
 	int tile_row, tile_col;
 	int tile_row_adj, tile_col_adj;
+	int focus_tile_col = 0, focus_tile_row = 0;
 	int player_tile_col = 0, player_tile_row = 0;
 	unsigned char tile_terrain_ids[48];
 	char tile_scan_state[48];
@@ -638,6 +662,13 @@ void update_frame(int view_index, struct RECTANGLE* clip_rect) {
 	tile_row_bias = -((camera_pos.z >> 10) - FRAME_TILE_MAX_INDEX);
 	player_tile_col = state.playerstate.car_posWorld1.lx >> 16;
 	player_tile_row = FRAME_TILE_MAX_INDEX - (state.playerstate.car_posWorld1.lz >> 16);
+	if (followOpponentFlag == 0) {
+		focus_tile_col = player_tile_col;
+		focus_tile_row = player_tile_row;
+	} else {
+		focus_tile_col = state.opponentstate.car_posWorld1.lx >> 16;
+		focus_tile_row = FRAME_TILE_MAX_INDEX - (state.opponentstate.car_posWorld1.lz >> 16);
+	}
 
 	for (si = 0; si < FRAME_TILE_SCAN_COUNT; si++) {
 		tile_scan_state[si] = 0;
@@ -700,6 +731,10 @@ void update_frame(int view_index, struct RECTANGLE* clip_rect) {
 					const unsigned char* tile_obj = trkobj_entry_legacy_scene_index(elem_map_value);
 					if (tile_obj != 0) {
 						multi_tile_value = trkobj_multi(tile_obj);
+						if (multi_tile_value != 0 &&
+							frame_multitile_contains_tile(tile_col, tile_row, (unsigned char)multi_tile_value, focus_tile_col, focus_tile_row)) {
+							tile_detail_levels[si] = 0;
+						}
 					} else {
 						multi_tile_value = 0;
 					}
