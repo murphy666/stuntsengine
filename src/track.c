@@ -134,8 +134,12 @@ enum {
 	TRACK_TRACKDATA_ELEM_BYTES = 900,
 	TRACK_TRACKDATA_TOTAL_BYTES = 901,
 	TRACK_FILE_SAVE_BYTES = 1802,
+	/* Original DOS loop seeds the blink accumulator above threshold so the
+	 * current selection is shown immediately on editor-loop entry. */
 	TRACK_CURSOR_BLINK_START = 99,
-	TRACK_CURSOR_BLINK_THRESHOLD = 15,
+	/* Original DOS compares against 15 timer ticks. The port timer advances
+	 * in 5-unit steps per tick, so scale to preserve the original cadence. */
+	TRACK_CURSOR_BLINK_THRESHOLD = 75,
 	TRACK_SETUP_TCOMP_BYTES = 896,
 	TRACK_SETUP_DEPTH_MAX = 64,
 	TRACK_CONN_CODE_SENTINEL = 99,
@@ -861,6 +865,20 @@ static unsigned char collision_response_code[2] = { 29, 9 };
 /* String constant for terrain templates */
 static char aTer0[] = "ter0";
 
+static void track_editor_copy_window_bitmap(struct SPRITE* dst, const struct SPRITE* src)
+{
+	size_t bitmap_bytes;
+
+	if (dst == 0 || src == 0 || dst->sprite_bitmapptr == 0 || src->sprite_bitmapptr == 0) {
+		return;
+	}
+
+	bitmap_bytes = (size_t)src->sprite_pitch * (size_t)src->sprite_height;
+	memcpy((unsigned char*)dst->sprite_bitmapptr,
+		(unsigned char*)src->sprite_bitmapptr,
+		bitmap_bytes);
+}
+
 /*--------------------------------------------------------------
  * load_tracks_menu_shapes - Main Track Editor Menu Function
  /*--------------------------------------------------------------*/
@@ -877,9 +895,10 @@ void load_tracks_menu_shapes(void)
 	void * tnam_ptr;
 	void * terrain_template_ptr;
 	struct SHAPE2D * shape;
+	struct SPRITE * wndsprite_base;
 
-	/* Cursor window pointers stored as offset:segment pairs */
-	void * crs_wnd[4];
+	/* Cursor window sprites used to cache the composed map cursor bitmap. */
+	struct SPRITE * crs_wnd[4];
 
 	/* State variables */
 	unsigned char last_place_col;		  /* last cursor col for swap detection */
@@ -888,6 +907,7 @@ void load_tracks_menu_shapes(void)
 	unsigned char redraw_map;		  /* redraw map flag */
 	unsigned char redraw_scrollbars;		  /* redraw scrollbars flag */
 	unsigned char redraw_cursor;		  /* redraw cursor flag */
+	unsigned char redraw_window_base;	  /* redraw stable window snapshot flag */
 	unsigned char blit_state;		  /* blit flag */
 	unsigned char keep_running;		  /* keep running flag */
 	unsigned char current_category;		  /* current category (0=terrain, 1-10=elements) */
@@ -928,8 +948,15 @@ void load_tracks_menu_shapes(void)
 	unsigned short input_code;		  /* input code */
 	unsigned short cursor_screen_x;		  /* cursor screen X */
 	unsigned short cursor_screen_y;		  /* cursor screen Y */
+	unsigned short prev_cursor_screen_x;	  /* previous cursor screen X */
+	unsigned short prev_cursor_screen_y;	  /* previous cursor screen Y */
 	unsigned char cursor_draw_height;		  /* cursor draw height */
 	unsigned char cursor_draw_width;		  /* cursor draw width */
+	unsigned char prev_cursor_draw_height;	  /* previous cursor draw height */
+	unsigned char prev_cursor_draw_width;	  /* previous cursor draw width */
+	unsigned char prev_cursor_shape_index;	  /* previous cursor shape index */
+	unsigned char prev_picker_mode;		  /* previous picker/map mode */
+	unsigned char prev_selected_element;	  /* previous selected element for cursor sprite */
 
 	/* Arrays for element display state */
 	unsigned char elem_dirty_flags[132];	/* element dirty flags - 132 bytes */
@@ -980,6 +1007,7 @@ void load_tracks_menu_shapes(void)
 
 	/* Create main window sprite (320x200) */
 	wndsprite = sprite_make_wnd(TRACK_EDITOR_WINDOW_W, TRACK_EDITOR_WINDOW_H, 15);
+	wndsprite_base = sprite_make_wnd(TRACK_EDITOR_WINDOW_W, TRACK_EDITOR_WINDOW_H, 15);
 
 	/* Locate UI shapes */
 	pboxshape = (unsigned char *)locate_shape_alt(tedit_res, "pbox");
@@ -1023,6 +1051,7 @@ void load_tracks_menu_shapes(void)
 	redraw_map = 1;
 	redraw_scrollbars = 1;
 	redraw_cursor = 1;
+	redraw_window_base = 1;
 	blit_state = TRACK_U8_INVALID;
 	keep_running = 1;
 	current_category = 1;
@@ -1047,6 +1076,13 @@ void load_tracks_menu_shapes(void)
 	swap_element = 0;
 	last_mouse_x = TRACK_U16_INVALID;
 	last_mouse_y = TRACK_U16_INVALID;
+	prev_cursor_screen_x = TRACK_U16_INVALID;
+	prev_cursor_screen_y = TRACK_U16_INVALID;
+	prev_cursor_draw_height = TRACK_U8_INVALID;
+	prev_cursor_draw_width = TRACK_U8_INVALID;
+	prev_cursor_shape_index = TRACK_U8_INVALID;
+	prev_picker_mode = TRACK_U8_INVALID;
+	prev_selected_element = TRACK_U8_INVALID;
 
 	/*========================================
 	 * SECTION 3: Draw initial UI
@@ -1088,12 +1124,17 @@ void load_tracks_menu_shapes(void)
 	draw_button(locate_text_res(tedit_res, "bex"),
 		269, 172, 46, 14,
 		button_text_color, button_shadow_color, button_highlight_color, 0);
+	track_editor_copy_window_bitmap(wndsprite_base, (struct SPRITE *)wndsprite);
+	redraw_window_base = 0;
 
 	/*========================================
 	 * SECTION 4: Main event loop
 	 *========================================*/
 
 	while (keep_running != 0) {
+		if (redraw_window_base != 0) {
+			track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
+		}
 
 		/*----------------------------------------
 		 * Update cursor size based on element type
@@ -1177,6 +1218,7 @@ void load_tracks_menu_shapes(void)
 		 /*--------------------------------------------------------------*/
 		if (prev_category != current_category) {
 			redraw_cursor = 1;
+			redraw_window_base = 1;
 			prev_category = current_category;
 
 			/* Adjust picker position to valid element */
@@ -1244,8 +1286,7 @@ void load_tracks_menu_shapes(void)
 				sprite_set_1_from_argptr(crs_wnd[cursor_shape_index]);
 
 				if (current_category == 0) {
-					/* Terrain mode - draw terrain shape */
-					sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index], 0, 0);
+					/* Terrain mode - draw terrain tile only; border is added below. */
 					sprite_shape_to_1((void *)tracksmenushapes1[selected_element], 0, 0);
 					/* Draw border */
 					preRender_line(1, 0, 15, 0, performGraphColor);
@@ -1253,8 +1294,8 @@ void load_tracks_menu_shapes(void)
 					preRender_line(1, 0, 1, 14, performGraphColor);
 					preRender_line(15, 0, 15, 14, performGraphColor);
 				} else {
-					/* Element mode - draw cursor and element icon */
-					sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index], 0, 0);
+					/* Element mode - build the cursor from the normal cursor art plus tile icon. */
+					sprite_shape_to_1((void *)tracksmenushapes2[cursor_shape_index], 0, 0);
 
 					if (selected_element != 0) {
 						putpixel_iconMask(tracksmenushape2dunk2[selected_element], 0, 0);
@@ -1263,6 +1304,8 @@ void load_tracks_menu_shapes(void)
 				}
 					sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
 			}
+
+			redraw_window_base = 1;
 		}
 
 		/*----------------------------------------
@@ -1396,6 +1439,29 @@ void load_tracks_menu_shapes(void)
 			mouse_draw_transparent_check();
 		}
 
+		if (redraw_window_base != 0) {
+			track_editor_copy_window_bitmap(wndsprite_base, (struct SPRITE *)wndsprite);
+			redraw_window_base = 0;
+		}
+
+		if (prev_cursor_screen_x != cursor_screen_x
+			|| prev_cursor_screen_y != cursor_screen_y
+			|| prev_cursor_draw_height != cursor_draw_height
+			|| prev_cursor_draw_width != cursor_draw_width
+			|| prev_cursor_shape_index != cursor_shape_index
+			|| prev_picker_mode != picker_mode
+			|| prev_selected_element != selected_element) {
+			blink_timer = TRACK_CURSOR_BLINK_START;
+			cursor_blink_toggle = 0;
+			prev_cursor_screen_x = cursor_screen_x;
+			prev_cursor_screen_y = cursor_screen_y;
+			prev_cursor_draw_height = cursor_draw_height;
+			prev_cursor_draw_width = cursor_draw_width;
+			prev_cursor_shape_index = cursor_shape_index;
+			prev_picker_mode = picker_mode;
+			prev_selected_element = selected_element;
+		}
+
 		/*----------------------------------------
 		 * Handle cursor blinking
 		 /*--------------------------------------------------------------*/
@@ -1408,14 +1474,15 @@ void load_tracks_menu_shapes(void)
 loc_2AE73:
 		if (blink_timer > TRACK_CURSOR_BLINK_THRESHOLD) {
 			mouse_draw_opaque_check();
+			track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
 			sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
 			if (picker_mode == 0) {
 				if (cursor_blink_toggle != 0) {
 					sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index], cursor_screen_x, cursor_screen_y);
 				} else {
-					sprite_shape_to_1(crs_wnd[cursor_shape_index], cursor_screen_x, cursor_screen_y);
+					sprite_shape_to_1(crs_wnd[cursor_shape_index]->sprite_bitmapptr, cursor_screen_x, cursor_screen_y);
 				}
-			} else {
+			} else if (cursor_blink_toggle == 0) {
 				sprite_draw_rect_outline(cursor_screen_x,
 					(unsigned short)(cursor_screen_y - 1),
 					(unsigned short)(cursor_screen_x + cursor_draw_width),
@@ -1531,13 +1598,17 @@ loc_2AE73:
 					else if (temp_col >= 3) temp_col = 3;
 					else temp_col = 0;
 				}
-				picker_col = temp_col;
-				picker_row = temp_row;
-				picker_mode = 1;
-				if (input_code == 32) {
+				if (picker_mode != 1 || picker_col != temp_col || picker_row != temp_row) {
+					picker_col = temp_col;
+					picker_row = temp_row;
+					picker_mode = 1;
+					if (input_code == 32) {
+						input_code = 13;
+					} else {
+						input_code = 1;
+					}
+				} else if (input_code == 32) {
 					input_code = 13;
-				} else {
-					input_code = 1;
 				}
 			}
 
@@ -1549,6 +1620,7 @@ loc_2AE73:
 			last_place_col = TRACK_U8_INVALID;
 			redraw_map = 1;
 			redraw_cursor = 1;
+			redraw_window_base = 1;
 		}
 
 		/* If no input and animation active, continue animation */
@@ -1571,6 +1643,7 @@ loc_2AE73:
 		 /*--------------------------------------------------------------*/
 		if (cursor_blink_toggle != 0 || cursor_mode_for_blink == 0) {
 			mouse_draw_opaque_check();
+			track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
 			sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
 
 			if (cursor_screen_x > TRACK_VIEWPORT_MAX_X) {
@@ -1584,9 +1657,9 @@ loc_2AE73:
 				if (cursor_blink_toggle != 0) {
 					sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index], cursor_screen_x, cursor_screen_y);
 				} else {
-					sprite_shape_to_1(crs_wnd[cursor_shape_index], cursor_screen_x, cursor_screen_y);
+					sprite_shape_to_1(crs_wnd[cursor_shape_index]->sprite_bitmapptr, cursor_screen_x, cursor_screen_y);
 				}
-			} else if (cursor_blink_toggle != 0) {
+			} else if (cursor_blink_toggle == 0) {
 				sprite_draw_rect_outline(cursor_screen_x,
 					(unsigned short)(cursor_screen_y - 1),
 					(unsigned short)(cursor_screen_x + cursor_draw_width),
@@ -2194,6 +2267,7 @@ loc_2BD20:
 	/*========================================
 	 * SECTION 5: Cleanup
 	 *========================================*/
+	sprite_free_wnd(wndsprite_base);
 	sprite_free_wnd(wndsprite);
 	sprite_free_wnd(crs_wnd[3]);
 	sprite_free_wnd(crs_wnd[2]);
