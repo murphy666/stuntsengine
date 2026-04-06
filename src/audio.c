@@ -1554,8 +1554,8 @@ static int audio_apply_gain_u7(int value, int gain) {
     return scaled;
 }
 
-static int audio_engine_radius3d(int x, int y, int z) {
-    return polarRadius2D(polarRadius2D(x, z), y);
+static int audio_engine_radius3d(int inner_z, int outer_y, int inner_y) {
+    return polarRadius2D(polarRadius2D(inner_z, inner_y), outer_y);
 }
 
 /**
@@ -3066,12 +3066,12 @@ void audio_update_engine_sound(short handle_id, short rpm, short distance_x, sho
         distance_divisor = 1;
     }
 
-    near_metric = audio_engine_radius3d((int)unused_a, (int)unused_e, (int)unused_c);
+    near_metric = audio_engine_radius3d((int)unused_a, (int)unused_c, (int)unused_e);
     if (near_metric > 6000) {
         scaled = 0;
         pitch_code = -1;
     } else {
-        far_metric = audio_engine_radius3d((int)distance_x, (int)distance_z, (int)distance_y);
+        far_metric = audio_engine_radius3d((int)distance_x, (int)distance_y, (int)distance_z);
         pitch_delta = (100 / distance_divisor) * (far_metric - near_metric);
 
         scaled = 127 - (127 * near_metric) / 6000;
