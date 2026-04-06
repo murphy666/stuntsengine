@@ -141,6 +141,14 @@ The output (`stunts.exe` + `SDL2.dll`) can be copied directly to a Windows machi
 | `linux-coverage` | Linux | Debug + gcov line-coverage |
 | `windows-x64` | Windows (MinGW) | Release |
 
+### GitHub Releases
+
+GitHub Actions release builds are defined in [.github/workflows/release.yml](.github/workflows/release.yml).
+
+- Pushing a tag matching `v*` builds Linux and Windows release artifacts and publishes them to a GitHub release.
+- Running the workflow manually with `workflow_dispatch` builds the same artifacts and uploads them to the workflow run.
+- The Windows artifact is produced with the existing `windows-x64` MinGW cross-compile preset on Ubuntu, matching the documented local build flow.
+
 ### CMake options
 
 | Option | Default | Description |

@@ -411,6 +411,13 @@ static int file_resolve_wildcard_path(const char* query, char* out, size_t out_s
 	g_find_match_count = 0;
 	g_find_match_index = 0;
 
+#if defined(_WIN32) && !defined(HAVE_DIRENT_H)
+	(void)query;
+	(void)out;
+	(void)out_size;
+	return 0;
+#else
+
 	for (int i = 0; g_file_search_prefixes[i]; i++) {
 		char candidate[FS_PATH_MAX], dirpath[FS_PATH_MAX];
 		const char* pattern;
@@ -450,6 +457,7 @@ static int file_resolve_wildcard_path(const char* query, char* out, size_t out_s
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 /* ── Path resolution (prefix search + case-insensitive fallback) ──── */
