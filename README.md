@@ -26,9 +26,7 @@ directly comparing the two.
 
 Yes the code is generated in major part with Copilot but I reviewed and update code as needed to a more usable and modern source code. But still the code is a weird mix of a lot old logics code with hardcoded values and "ASM like" C functions, Many globals and some new modern refactor SDL2 logics. But now with this foundation it is easy to debug and doing refactor and clean-up as needed. 
 
-The game is playable but with many bugs, for example opponents are not really working and there is many visual glitches.
-
-This is considered as ALPHA code release. A lot need to be updated before being a stunts replica.
+The game is playable with most of the features fully implemented.
 
 ## Enhancements
 
