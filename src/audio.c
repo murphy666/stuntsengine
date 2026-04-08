@@ -39,7 +39,72 @@
 #define AUDIO_CMD_QUEUE_SIZE          256
 #define AUDIO_DMA_RING_SAMPLES        16384
 #define AUDIO_MENU_RESOURCE_NOTES_MAX 512
+#define AUDIO_OPL2_SAMPLE_BUF_SAMPLES 4096
 #define AUDIO_VCE_MAX_INSTRUMENTS     64
+#define AUDIO_SB_CLOCK_HZ             1000000u
+#define AUDIO_SB_TIME_CONSTANT_BASE   256u
+#define AUDIO_SAMPLE_RATE_MIN_HZ      4000u
+#define AUDIO_SAMPLE_RATE_MAX_HZ      48000u
+#define AUDIO_REFRESH_HZ_MIN          30u
+#define AUDIO_REFRESH_HZ_MAX          200u
+#define AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ 22050u
+#define AUDIO_SDL_BUFFER_SAMPLES      1024u
+#define AUDIO_SDL_STEREO_FRAME_BYTES  4u
+#define AUDIO_SDL_MIN_QUEUE_BYTES     4096u
+#define AUDIO_SDL_MIN_FRAME_BUDGET    256
+#define AUDIO_SDL_MAX_FRAME_BUDGET    AUDIO_OPL2_SAMPLE_BUF_SAMPLES
+#define AUDIO_SB_DSP_WRITE_PORT       556u
+#define AUDIO_SB_DSP_OP_SPEAKER_ON    209u
+#define AUDIO_SB_DSP_OP_SPEAKER_OFF   211u
+#define AUDIO_SB_DSP_OP_STOP_DMA      218u
+#define AUDIO_SB_DSP_OP_SET_TIME_CONSTANT 64u
+#define AUDIO_SB_DSP_OP_START_DMA_SINGLE 20u
+#define AUDIO_SB_DSP_OP_START_DMA_AUTO 72u
+#define AUDIO_SB_DSP_OP_CONTINUE_DMA_AUTO 28u
+#define AUDIO_MENU_DEFAULT_GAIN       9000
+#define AUDIO_MENU_DEFAULT_NOTE       60u
+#define AUDIO_MENU_DEFAULT_VELOCITY   96u
+#define AUDIO_MENU_RESOURCE_MIN_EVENTS 8u
+#define AUDIO_MENU_NOTE_TICKS_MIN     8
+#define AUDIO_MENU_NOTE_TICKS_MAX     80
+#define AUDIO_KMS_DEFAULT_MUSIC_HZ    48u
+#define AUDIO_KMS_DEFAULT_EVENT_VELOCITY AUDIO_MENU_DEFAULT_VELOCITY
+#define AUDIO_KMS_TEMPO_SCALE_NUMERATOR   2u
+#define AUDIO_KMS_TEMPO_SCALE_DENOMINATOR 5u
+#define AUDIO_KMS_TEMPO_MIN_HZ        10u
+#define AUDIO_KMS_MIN_EFFECTIVE_CHANNEL_VOLUME 8
+#define AUDIO_KMS_CYMBAL_VOLUME_SCALE_NUMERATOR     3
+#define AUDIO_KMS_PERCUSSION_VOLUME_SCALE_NUMERATOR 4
+#define AUDIO_KMS_VOLUME_SCALE_DENOMINATOR         5
+#define AUDIO_KMS_CYMBAL_MAX_NOTE_TICKS     2u
+#define AUDIO_KMS_PERCUSSION_MAX_NOTE_TICKS 4u
+#define AUDIO_MENU_GAIN_NORMALIZE_ROUNDING  2600
+#define AUDIO_MENU_GAIN_NORMALIZE_DIVISOR   5200
+#define AUDIO_FX_MIN_VOLUME           48
+#define AUDIO_NOISE_AMP_SKID_BASE     26000
+#define AUDIO_NOISE_AMP_CRASH_BASE    24000
+#define AUDIO_NOISE_AMP_SCRAPE_BASE   22000
+#define AUDIO_NOISE_AMP_VOLUME_STEP   4
+#define AUDIO_NOISE_HOLD_SKID_SAMPLES   48
+#define AUDIO_NOISE_HOLD_CRASH_SAMPLES  20
+#define AUDIO_NOISE_HOLD_SCRAPE_SAMPLES 36
+#define AUDIO_NOISE_LPF_SHIFT_SKID    3
+#define AUDIO_NOISE_LPF_SHIFT_CRASH   2
+#define AUDIO_NOISE_LPF_SHIFT_SCRAPE  3
+#define AUDIO_NOISE_LFSR_SHIFT_LEFT_A 13
+#define AUDIO_NOISE_LFSR_SHIFT_RIGHT  17
+#define AUDIO_NOISE_LFSR_SHIFT_LEFT_B 5
+#define AUDIO_NOISE_SAMPLE_SHIFT      15
+#define AUDIO_OPL2_OWNER_SKID_FLAG    0x100
+#define AUDIO_OPL2_OWNER_CRASH_FLAG   0x200
+#define AUDIO_ENGINE_DEFAULT_FREQ_DIV 6
+#define AUDIO_ENGINE_IDLE_RPM         1800u
+
+typedef enum AUDIO_KMS_SYNTH_TYPE {
+    AUDIO_KMS_SYNTH_TYPE_MELODIC = 0,
+    AUDIO_KMS_SYNTH_TYPE_PERCUSSION,
+    AUDIO_KMS_SYNTH_TYPE_CYMBAL
+} AUDIO_KMS_SYNTH_TYPE;
 
 typedef enum AUDIO_SB_CMD {
     AUDIO_SB_CMD_NONE = 0,
@@ -181,8 +246,8 @@ static SDL_AudioDeviceID g_audio_sdl_dev = 0;
 /* Per-channel OPL2 ownership: g_opl2_ch_owner[ch] = handle_id, or -1 if free */
 static int g_opl2_ch_owner[9] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 /* Shared render buffer for OPL2 engine samples (all channels mixed by the chip) */
-static short g_opl2_sample_buf[4096];
-static unsigned int g_audio_output_rate_hz = 22050u;
+static short g_opl2_sample_buf[AUDIO_OPL2_SAMPLE_BUF_SAMPLES];
+static unsigned int g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
 static unsigned int g_audio_samples_generated = 0;
 static unsigned int g_audio_samples_consumed = 0;
 static unsigned int g_audio_samples_emitted = 0;
@@ -197,7 +262,7 @@ static char g_audio_menu_music_name[5] = { 0, 0, 0, 0, 0 };
 static int g_audio_engine_gain = 160;
 static int g_audio_menu_note_transpose = -12;
 static unsigned int g_audio_menu_duration_scale = 1u;
-static int g_audio_menu_gain = 9000;
+static int g_audio_menu_gain = AUDIO_MENU_DEFAULT_GAIN;
 static unsigned int g_audio_menu_note_ticks = 24u;
 static bool g_audio_debug_music = false;
 static bool g_audio_debug_music_inst_only = false;
@@ -211,9 +276,9 @@ static unsigned char g_audio_menu_resource_velocities[AUDIO_MENU_RESOURCE_NOTES_
 static unsigned short g_audio_menu_resource_count = 0;
 static unsigned short g_audio_menu_resource_index = 0;
 static unsigned short g_audio_menu_resource_ticks_left = 0;
-static unsigned char g_audio_menu_resource_current_note = 60;
+static unsigned char g_audio_menu_resource_current_note = AUDIO_MENU_DEFAULT_NOTE;
 static unsigned char g_audio_menu_resource_current_instrument = 0;
-static unsigned char g_audio_menu_resource_current_velocity = 96;
+static unsigned char g_audio_menu_resource_current_velocity = AUDIO_MENU_DEFAULT_VELOCITY;
 static bool g_audio_menu_use_resource = false;
 static uint32_t g_audio_menu_phase2 = 0;
 static int g_audio_menu_lp_state = 0;
@@ -278,20 +343,20 @@ static unsigned short
 audio_sb_time_constant_for_rate(unsigned int rate_hz) {
     unsigned int div;
     unsigned int tc;
-    if (rate_hz < 4000u) {
-        rate_hz = 4000u;
+    if (rate_hz < AUDIO_SAMPLE_RATE_MIN_HZ) {
+        rate_hz = AUDIO_SAMPLE_RATE_MIN_HZ;
     }
-    if (rate_hz > 48000u) {
-        rate_hz = 48000u;
+    if (rate_hz > AUDIO_SAMPLE_RATE_MAX_HZ) {
+        rate_hz = AUDIO_SAMPLE_RATE_MAX_HZ;
     }
-    div = 1000000u / rate_hz;
+    div = AUDIO_SB_CLOCK_HZ / rate_hz;
     if (div >= 255u) {
         div = 255u;
     }
     if (div < 1u) {
         div = 1u;
     }
-    tc = 256u - div;
+    tc = AUDIO_SB_TIME_CONSTANT_BASE - div;
     if (tc > 255u) {
         tc = 255u;
     }
@@ -307,11 +372,11 @@ audio_sb_time_constant_for_rate(unsigned int rate_hz) {
 static unsigned int
 audio_default_refresh_hz(void) {
     unsigned long hz = timer_get_dispatch_hz();
-    if (hz < 30UL) {
-        hz = 30UL;
+    if (hz < AUDIO_REFRESH_HZ_MIN) {
+        hz = AUDIO_REFRESH_HZ_MIN;
     }
-    if (hz > 200UL) {
-        hz = 200UL;
+    if (hz > AUDIO_REFRESH_HZ_MAX) {
+        hz = AUDIO_REFRESH_HZ_MAX;
     }
     return (unsigned int)hz;
 }
@@ -897,7 +962,8 @@ audio_parse_vce_instruments(void *voiceptr) {
  *   - music tick rate computed from DD param: Hz = param * 2 / 5
  *     (e.g. DD=120 → 48 Hz, DD=185 → 74 Hz, DD=160 → 64 Hz)
  * --------------------------------------------------------------------- */
-static unsigned int g_audio_kms_music_hz = 48u; /* music ticks/sec, set from DD command */
+static unsigned int g_audio_kms_music_hz
+    = AUDIO_KMS_DEFAULT_MUSIC_HZ; /* music ticks/sec, set from DD command */
 
 static const signed char audio_kms_cmd_extra[18] = {
     /* D9  DA  DB  DC  DD  DE  DF  E0  E1  E2  E3  E4  E5  E6  E7  E8  E9  EA */
@@ -1083,7 +1149,7 @@ audio_debug_music_log(const char *fmt, ...) {
 
 static int
 audio_debug_music_is_trace_track(const AUDIO_KMS_TRACK_INFO *tr, const AUDIO_VCE_INSTRUMENT *ins) {
-    if (tr != 0 && tr->synth_type != 0) {
+    if (tr != 0 && tr->synth_type != AUDIO_KMS_SYNTH_TYPE_MELODIC) {
         return 1;
     }
     if (ins != 0
@@ -1212,7 +1278,7 @@ audio_kms_parse_track(const unsigned char *data, size_t start, size_t end, AUDIO
         }
 
         unsigned char pitch = event & 127u;
-        unsigned char vel = 96u;
+        unsigned char vel = AUDIO_KMS_DEFAULT_EVENT_VELOCITY;
         if (event > 128u && pos < end)
             vel = data[pos++];
 
@@ -1263,7 +1329,8 @@ audio_kms_gap_for_event(const AUDIO_KMS_TRACK_INFO *tr, unsigned int ei, unsigne
                             : tr->loop_ticks;
     uint32_t gap_ticks = (next_abs > ev->abs_tick) ? (next_abs - ev->abs_tick) : (uint32_t)ev->dur;
     uint32_t snd_ticks = ((uint32_t)ev->dur < gap_ticks) ? (uint32_t)ev->dur : gap_ticks;
-    unsigned int music_hz = g_audio_kms_music_hz > 0u ? g_audio_kms_music_hz : 48u;
+    unsigned int music_hz
+        = g_audio_kms_music_hz > 0u ? g_audio_kms_music_hz : AUDIO_KMS_DEFAULT_MUSIC_HZ;
     uint32_t gap_f = gap_ticks * sample_rate / music_hz;
     uint32_t snd_f = snd_ticks * sample_rate / music_hz;
     if (gap_f < 1u)
@@ -1275,18 +1342,18 @@ audio_kms_gap_for_event(const AUDIO_KMS_TRACK_INFO *tr, unsigned int ei, unsigne
 static int
 audio_kms_synth_type(const char *name) {
     if (name == 0) {
-        return 0;
+        return AUDIO_KMS_SYNTH_TYPE_MELODIC;
     }
     if (strstr(name, "Kick") != 0 || strstr(name, "kick") != 0 || strstr(name, "KICK") != 0
         || strstr(name, "Snare") != 0 || strstr(name, "snare") != 0 || strstr(name, "SNARE") != 0
         || strstr(name, "Tom") != 0 || strstr(name, "tom") != 0 || strstr(name, "TOM") != 0) {
-        return 1;
+        return AUDIO_KMS_SYNTH_TYPE_PERCUSSION;
     }
     if (strstr(name, "Hat") != 0 || strstr(name, "hat") != 0 || strstr(name, "HAT") != 0
         || strstr(name, "Cym") != 0 || strstr(name, "cym") != 0 || strstr(name, "CYM") != 0) {
-        return 2;
+        return AUDIO_KMS_SYNTH_TYPE_CYMBAL;
     }
-    return 0;
+    return AUDIO_KMS_SYNTH_TYPE_MELODIC;
 }
 
 /**
@@ -1312,7 +1379,7 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
 
     /* Reset multi-track pool */
     g_audio_kms_n_tracks = 0u;
-    g_audio_kms_music_hz = 48u;
+    g_audio_kms_music_hz = AUDIO_KMS_DEFAULT_MUSIC_HZ;
     g_audio_music_tick_accum = 0u;
     g_audio_kms_hdr1_inst_count = 0u;
     memset(g_audio_debug_inst_seen, 0, sizeof(g_audio_debug_inst_seen));
@@ -1333,9 +1400,9 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
     g_audio_menu_resource_ticks_left = 0;
     g_audio_menu_resource_ticks_total = 0;
     g_audio_menu_resource_tick_pos = 0;
-    g_audio_menu_resource_current_note = 60;
+    g_audio_menu_resource_current_note = AUDIO_MENU_DEFAULT_NOTE;
     g_audio_menu_resource_current_instrument = 0;
-    g_audio_menu_resource_current_velocity = 96;
+    g_audio_menu_resource_current_velocity = AUDIO_MENU_DEFAULT_VELOCITY;
     g_audio_menu_phase2 = 0;
     g_audio_menu_lp_state = 0;
     g_audio_menu_mod_phase = 0;
@@ -1426,12 +1493,13 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
             tr->instrument_idx = trk_inst;
             tr->channel_volume = trk_vol;
 
-            if (trk_tempo > 0 && g_audio_kms_music_hz == 48u) {
-                unsigned int hz = (unsigned int)trk_tempo * 2u / 5u;
-                if (hz < 10u)
-                    hz = 10u;
-                if (hz > 200u)
-                    hz = 200u;
+            if (trk_tempo > 0 && g_audio_kms_music_hz == AUDIO_KMS_DEFAULT_MUSIC_HZ) {
+                unsigned int hz = (unsigned int)trk_tempo * AUDIO_KMS_TEMPO_SCALE_NUMERATOR
+                                  / AUDIO_KMS_TEMPO_SCALE_DENOMINATOR;
+                if (hz < AUDIO_KMS_TEMPO_MIN_HZ)
+                    hz = AUDIO_KMS_TEMPO_MIN_HZ;
+                if (hz > AUDIO_REFRESH_HZ_MAX)
+                    hz = AUDIO_REFRESH_HZ_MAX;
                 g_audio_kms_music_hz = hz;
                 audio_debug_music_log("audio: hdr1 tempo raw=%d derived_hz=%u\n", trk_tempo,
                                       g_audio_kms_music_hz);
@@ -1463,7 +1531,7 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
     /* Initialise per-voice playback state and assign OPL2 channels */
     unsigned int rate = g_audio_output_rate_hz;
     if (rate == 0u)
-        rate = 22050u;
+        rate = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
     for (t = 0u; t < g_audio_kms_n_tracks; t++) {
         g_audio_kms_voices[t].lfsr = 2900361217u + t * 2654435769u;
         g_audio_kms_voices[t].tick_pos = 0u;
@@ -1477,7 +1545,7 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
         g_audio_kms_opl2_cur_inst[t] = -1;
     }
 
-    /* Set g_audio_menu_resource_count so the >= 8 guard in the caller passes */
+    /* Set g_audio_menu_resource_count so the minimum-event guard in the caller passes. */
     g_audio_menu_resource_count = (unsigned short)pool_used;
     return (unsigned short)pool_used;
 }
@@ -1508,7 +1576,7 @@ audio_sdl_unlock(void) {
 }
 
 /**
-* @brief Open the SDL audio output device (22050 Hz, S16, stereo, queued).
+ * @brief Open the SDL audio output device (default rate, S16, stereo, queued).
  *
  * Initialises the SDL audio subsystem if needed, opens the default output
  * device, records the obtained sample rate, and unpauses the device.
@@ -1534,10 +1602,10 @@ audio_sdl_open_device(void) {
 
     SDL_zero(desired);
     SDL_zero(obtained);
-    desired.freq = 22050;
+    desired.freq = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
     desired.format = AUDIO_S16SYS;
     desired.channels = 2;
-    desired.samples = 1024;
+    desired.samples = AUDIO_SDL_BUFFER_SAMPLES;
     desired.callback = 0;
     desired.userdata = 0;
 
@@ -1553,7 +1621,7 @@ audio_sdl_open_device(void) {
         g_audio_output_rate_hz = (unsigned int)obtained.freq;
     }
     else {
-        g_audio_output_rate_hz = 22050u;
+        g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
     }
 
     SDL_PauseAudioDevice(g_audio_sdl_dev, 0);
@@ -1570,7 +1638,7 @@ audio_sdl_close_device(void) {
         SDL_CloseAudioDevice(g_audio_sdl_dev);
         g_audio_sdl_dev = 0;
     }
-    g_audio_output_rate_hz = 22050u;
+    g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
 }
 
 /**
@@ -1679,7 +1747,7 @@ audio_dma_ring_read_sample(int16_t *out_sample) {
 
 static void
 audio_sdl_queue_from_ring(void) {
-    int16_t interleaved[8192];
+    int16_t interleaved[AUDIO_OPL2_SAMPLE_BUF_SAMPLES * 2];
     int frame_count;
     int frame_budget;
     Uint32 queued_bytes;
@@ -1690,24 +1758,24 @@ audio_sdl_queue_from_ring(void) {
     }
 
     queued_bytes = SDL_GetQueuedAudioSize(g_audio_sdl_dev);
-    if (queued_bytes > (Uint32)(g_audio_output_rate_hz * 4u)) {
+    if (queued_bytes > (Uint32)(g_audio_output_rate_hz * AUDIO_SDL_STEREO_FRAME_BYTES)) {
         return;
     }
 
-    target_bytes = (Uint32)((g_audio_output_rate_hz * 4u) / 5u);
-    if (target_bytes < 4096u) {
-        target_bytes = 4096u;
+    target_bytes = (Uint32)((g_audio_output_rate_hz * AUDIO_SDL_STEREO_FRAME_BYTES * 4u) / 5u);
+    if (target_bytes < AUDIO_SDL_MIN_QUEUE_BYTES) {
+        target_bytes = AUDIO_SDL_MIN_QUEUE_BYTES;
     }
     if (queued_bytes >= target_bytes) {
         return;
     }
 
-    frame_budget = (int)((target_bytes - queued_bytes) / 4u);
-    if (frame_budget < 256) {
-        frame_budget = 256;
+    frame_budget = (int)((target_bytes - queued_bytes) / AUDIO_SDL_STEREO_FRAME_BYTES);
+    if (frame_budget < AUDIO_SDL_MIN_FRAME_BUDGET) {
+        frame_budget = AUDIO_SDL_MIN_FRAME_BUDGET;
     }
-    if (frame_budget > 4096) {
-        frame_budget = 4096;
+    if (frame_budget > AUDIO_SDL_MAX_FRAME_BUDGET) {
+        frame_budget = AUDIO_SDL_MAX_FRAME_BUDGET;
     }
 
     frame_count = 0;
@@ -1728,18 +1796,18 @@ audio_sdl_queue_from_ring(void) {
 }
 
 /**
- * @brief Emulate a SoundBlaster DSP port write to I/O port 556.
+ * @brief Emulate a SoundBlaster DSP port write to the DSP write port.
  *
 * Processes single-byte DSP commands (D1 speaker-on, D3 speaker-off,
  * DA stop DMA, 1C start auto-init DMA, 40/14/48 with pending data bytes).
  *
- * @param port   I/O port address (only 556 is handled).
+ * @param port   I/O port address (only the DSP write port is handled).
  * @param value  Byte written to the port.
  */
 
 static void
 audio_sb_write_port(unsigned short port, unsigned char value) {
-    if (port != 556u) {
+    if (port != AUDIO_SB_DSP_WRITE_PORT) {
         return;
     }
 
@@ -1747,18 +1815,20 @@ audio_sb_write_port(unsigned short port, unsigned char value) {
         g_audio_dsp.pending_data[g_audio_dsp.pending_bytes_count] = value;
         g_audio_dsp.pending_bytes_count++;
         if (g_audio_dsp.pending_bytes_count >= g_audio_dsp.pending_bytes_expected) {
-            if (g_audio_dsp.pending_cmd == 64u) {
+            if (g_audio_dsp.pending_cmd == AUDIO_SB_DSP_OP_SET_TIME_CONSTANT) {
                 g_audio_dsp.time_constant = (unsigned short)value;
                 g_audio_dsp.sample_rate_hz
-                    = (unsigned short)(1000000u / (256u - (unsigned short)value));
+                    = (unsigned short)(AUDIO_SB_CLOCK_HZ
+                                       / (AUDIO_SB_TIME_CONSTANT_BASE - (unsigned short)value));
                 audio_sb_queue_command(AUDIO_SB_CMD_SET_TIME_CONSTANT, -1,
                                        (short)g_audio_dsp.time_constant,
                                        (short)g_audio_dsp.sample_rate_hz);
             }
-            else if (g_audio_dsp.pending_cmd == 20u || g_audio_dsp.pending_cmd == 72u) {
+            else if (g_audio_dsp.pending_cmd == AUDIO_SB_DSP_OP_START_DMA_SINGLE
+                     || g_audio_dsp.pending_cmd == AUDIO_SB_DSP_OP_START_DMA_AUTO) {
                 g_audio_dsp.dma_block_len = (unsigned short)g_audio_dsp.pending_data[0]
                                             | ((unsigned short)g_audio_dsp.pending_data[1] << 8u);
-                if (g_audio_dsp.pending_cmd == 20u) {
+                if (g_audio_dsp.pending_cmd == AUDIO_SB_DSP_OP_START_DMA_SINGLE) {
                     audio_sb_queue_command(AUDIO_SB_CMD_START_DMA, -1,
                                            (short)g_audio_dsp.dma_block_len, 0);
                 }
@@ -1771,27 +1841,27 @@ audio_sb_write_port(unsigned short port, unsigned char value) {
     }
 
     switch (value) {
-    case 209u:
+    case AUDIO_SB_DSP_OP_SPEAKER_ON:
         audio_sb_queue_command(AUDIO_SB_CMD_SPEAKER_ON, -1, 0, 0);
         break;
-    case 211u:
+    case AUDIO_SB_DSP_OP_SPEAKER_OFF:
         audio_sb_queue_command(AUDIO_SB_CMD_SPEAKER_OFF, -1, 0, 0);
         break;
-    case 218u:
+    case AUDIO_SB_DSP_OP_STOP_DMA:
         audio_sb_queue_command(AUDIO_SB_CMD_STOP_DMA, -1, 0, 0);
         break;
-    case 64u:
+    case AUDIO_SB_DSP_OP_SET_TIME_CONSTANT:
         g_audio_dsp.pending_cmd = value;
         g_audio_dsp.pending_bytes_expected = 1;
         g_audio_dsp.pending_bytes_count = 0;
         break;
-    case 20u:
-    case 72u:
+    case AUDIO_SB_DSP_OP_START_DMA_SINGLE:
+    case AUDIO_SB_DSP_OP_START_DMA_AUTO:
         g_audio_dsp.pending_cmd = value;
         g_audio_dsp.pending_bytes_expected = 2;
         g_audio_dsp.pending_bytes_count = 0;
         break;
-    case 28u:
+    case AUDIO_SB_DSP_OP_CONTINUE_DMA_AUTO:
         audio_sb_queue_command(AUDIO_SB_CMD_START_DMA, -1, (short)g_audio_dsp.dma_block_len, 1);
         break;
     default:
@@ -1967,7 +2037,9 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
      * All active engine handles share a single OPL2 chip instance whose channels
      * were programmed in audio_init_engine / keyon/off / freq-update. */
     {
-        unsigned int opl2_n = (sample_count < 4096u) ? sample_count : 4096u;
+        unsigned int opl2_n = (sample_count < AUDIO_OPL2_SAMPLE_BUF_SAMPLES)
+                                  ? sample_count
+                                  : AUDIO_OPL2_SAMPLE_BUF_SAMPLES;
         if (opl2_is_ready()) {
             opl2_generate(g_opl2_sample_buf, (int)opl2_n);
         }
@@ -1983,10 +2055,13 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
         short handle_id;
 
         {
-            int opl_sample = (int)g_opl2_sample_buf[sample_index < 4096u ? sample_index : 0u];
+            int opl_sample = (int)g_opl2_sample_buf[sample_index < AUDIO_OPL2_SAMPLE_BUF_SAMPLES
+                                                        ? sample_index
+                                                        : 0u];
 
             if (g_audio_menu_music_enabled && !g_audio_menu_music_paused) {
-                opl_sample = (opl_sample * g_audio_menu_gain + 2600) / 5200;
+                opl_sample = (opl_sample * g_audio_menu_gain + AUDIO_MENU_GAIN_NORMALIZE_ROUNDING)
+                             / AUDIO_MENU_GAIN_NORMALIZE_DIVISOR;
             }
             mixed += opl_sample;
         }
@@ -2042,8 +2117,8 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
                         }
                     }
 
-                    if (vol < 48) {
-                        vol = 48;
+                    if (vol < AUDIO_FX_MIN_VOLUME) {
+                        vol = AUDIO_FX_MIN_VOLUME;
                     }
 
                     if (fx_chunk == 5 || fx_chunk == 4) {
@@ -2051,27 +2126,27 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
                          * At 22050 Hz, hold=48 → target changes every ~2ms (460 Hz).
                          * lpf_shift=3 → 12.5% convergence/sample, mostly tracks target.
                          * amp calibrated so peak output ≈ 10000 (30% of full scale). */
-                        amp = 26000 + (vol * 4);
-                        hold_samples = 48;
-                        lpf_shift = 3;
+                        amp = AUDIO_NOISE_AMP_SKID_BASE + (vol * AUDIO_NOISE_AMP_VOLUME_STEP);
+                        hold_samples = AUDIO_NOISE_HOLD_SKID_SAMPLES;
+                        lpf_shift = AUDIO_NOISE_LPF_SHIFT_SKID;
                     }
                     else if (fx_chunk <= 2) {
                         /* BLOW/BUMP/CRAS: crash impact — fast harsh noise */
-                        amp = 24000 + (vol * 4);
-                        hold_samples = 20;
-                        lpf_shift = 2;
+                        amp = AUDIO_NOISE_AMP_CRASH_BASE + (vol * AUDIO_NOISE_AMP_VOLUME_STEP);
+                        hold_samples = AUDIO_NOISE_HOLD_CRASH_SAMPLES;
+                        lpf_shift = AUDIO_NOISE_LPF_SHIFT_CRASH;
                     }
                     else {
                         /* SCRA and others */
-                        amp = 22000 + (vol * 4);
-                        hold_samples = 36;
-                        lpf_shift = 3;
+                        amp = AUDIO_NOISE_AMP_SCRAPE_BASE + (vol * AUDIO_NOISE_AMP_VOLUME_STEP);
+                        hold_samples = AUDIO_NOISE_HOLD_SCRAPE_SAMPLES;
+                        lpf_shift = AUDIO_NOISE_LPF_SHIFT_SCRAPE;
                     }
 
                     if (*ns_hold == 0u) {
-                        state ^= (state << 13);
-                        state ^= (state >> 17);
-                        state ^= (state << 5);
+                        state ^= (state << AUDIO_NOISE_LFSR_SHIFT_LEFT_A);
+                        state ^= (state >> AUDIO_NOISE_LFSR_SHIFT_RIGHT);
+                        state ^= (state << AUDIO_NOISE_LFSR_SHIFT_LEFT_B);
                         state += (seed * 1103515245u) + 12345u;
                         *prng = state;
 
@@ -2085,7 +2160,7 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
 
                     *ns_state += (*ns_target - *ns_state) >> lpf_shift;
 
-                    sample = (*ns_state * amp) >> 15;
+                    sample = (*ns_state * amp) >> AUDIO_NOISE_SAMPLE_SHIFT;
                     mixed += sample;
                 }
             }
@@ -2464,10 +2539,10 @@ audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
     if (ev->velocity > 0u && velocity > (int)ev->velocity) {
         int adjusted_velocity = velocity;
 
-        if (tr->synth_type == 2) {
+        if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_CYMBAL) {
             adjusted_velocity = (int)ev->velocity;
         }
-        else if (tr->synth_type == 0) {
+        else if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_MELODIC) {
             adjusted_velocity = (velocity + (int)ev->velocity + 1) / 2;
         }
         if (adjusted_velocity < velocity) {
@@ -2481,21 +2556,27 @@ audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
         }
     }
     effective_channel_volume = (int)ev->channel_volume;
-    if (tr->synth_type == 2) {
-        effective_channel_volume = effective_channel_volume * 3 / 5;
+    if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_CYMBAL) {
+        effective_channel_volume = effective_channel_volume
+                                   * AUDIO_KMS_CYMBAL_VOLUME_SCALE_NUMERATOR
+                                   / AUDIO_KMS_VOLUME_SCALE_DENOMINATOR;
     }
-    else if (tr->synth_type == 1) {
-        effective_channel_volume = effective_channel_volume * 4 / 5;
+    else if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_PERCUSSION) {
+        effective_channel_volume = effective_channel_volume
+                                   * AUDIO_KMS_PERCUSSION_VOLUME_SCALE_NUMERATOR
+                                   / AUDIO_KMS_VOLUME_SCALE_DENOMINATOR;
     }
-    if (effective_channel_volume < 8) {
-        effective_channel_volume = 8;
+    if (effective_channel_volume < AUDIO_KMS_MIN_EFFECTIVE_CHANNEL_VOLUME) {
+        effective_channel_volume = AUDIO_KMS_MIN_EFFECTIVE_CHANNEL_VOLUME;
     }
     effective_note_ticks = (unsigned int)ev->dur;
-    if (tr->synth_type == 2 && effective_note_ticks > 2u) {
-        effective_note_ticks = 2u;
+    if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_CYMBAL
+        && effective_note_ticks > AUDIO_KMS_CYMBAL_MAX_NOTE_TICKS) {
+        effective_note_ticks = AUDIO_KMS_CYMBAL_MAX_NOTE_TICKS;
     }
-    else if (tr->synth_type == 1 && effective_note_ticks > 4u) {
-        effective_note_ticks = 4u;
+    else if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_PERCUSSION
+             && effective_note_ticks > AUDIO_KMS_PERCUSSION_MAX_NOTE_TICKS) {
+        effective_note_ticks = AUDIO_KMS_PERCUSSION_MAX_NOTE_TICKS;
     }
     if (g_audio_debug_music) {
         if (resolved_index >= 0 && resolved_index < AUDIO_VCE_MAX_INSTRUMENTS
@@ -2517,7 +2598,7 @@ audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
                 (unsigned int)effective_channel_volume, (unsigned int)ev->dur,
                 effective_note_ticks);
         }
-        else if (tr->synth_type == 0
+        else if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_MELODIC
                  && (!voice->note_active || voice->active_pitch != ev->pitch
                      || voice->active_requested_dur != ev->dur)) {
             audio_debug_music_log(
@@ -2598,15 +2679,17 @@ audio_kms_advance_ticks(unsigned int ticks) {
                 const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[tr->start_idx + voice->ei];
                 uint32_t note_ticks = (uint32_t)ev->dur;
 
-                if (tr->synth_type == 2 && note_ticks > 2u) {
-                    note_ticks = 2u;
+                if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_CYMBAL
+                    && note_ticks > AUDIO_KMS_CYMBAL_MAX_NOTE_TICKS) {
+                    note_ticks = AUDIO_KMS_CYMBAL_MAX_NOTE_TICKS;
                 }
-                else if (tr->synth_type == 1 && note_ticks > 4u) {
-                    note_ticks = 4u;
+                else if (tr->synth_type == AUDIO_KMS_SYNTH_TYPE_PERCUSSION
+                         && note_ticks > AUDIO_KMS_PERCUSSION_MAX_NOTE_TICKS) {
+                    note_ticks = AUDIO_KMS_PERCUSSION_MAX_NOTE_TICKS;
                 }
                 audio_kms_note_on(t, ev);
                 voice->note_end_tick = ev->abs_tick + note_ticks;
-                if (g_audio_debug_music && tr->synth_type != 0) {
+                if (g_audio_debug_music && tr->synth_type != AUDIO_KMS_SYNTH_TYPE_MELODIC) {
                     audio_debug_music_log(
                         "audio: note_window track=%.19s ch=%d tick=%u abs=%u end=%u reqdur=%u effdur=%u\n",
                         tr->name, g_audio_kms_opl2_ch[t], voice->tick_pos,
@@ -2717,8 +2800,8 @@ audio_reset_handle(short handle_id) {
     }
     handle = &g_audio_handles[handle_id];
     expected_owner_engine = (int)handle_id;
-    expected_owner_skid = ((int)handle_id) | 256;
-    expected_owner_crash = ((int)handle_id) | 512;
+    expected_owner_skid = ((int)handle_id) | AUDIO_OPL2_OWNER_SKID_FLAG;
+    expected_owner_crash = ((int)handle_id) | AUDIO_OPL2_OWNER_CRASH_FLAG;
     handle->allocated = false;
     handle->playing = false;
     handle->dirty = false;
@@ -2741,7 +2824,7 @@ audio_reset_handle(short handle_id) {
     handle->data_ptr = 0;
     handle->song_res = 0;
     handle->voice_res = 0;
-    handle->freq_div = 6; /* PCENG1 ENGI default: RPM/6 = Fnum */
+    handle->freq_div = AUDIO_ENGINE_DEFAULT_FREQ_DIV; /* PCENG1 ENGI default: RPM/6 = Fnum */
     handle->freq_base = 0;
     /* Release OPL2 channel */
     if (handle->allocated && handle->opl2_channel >= 0 && handle->opl2_channel < 9) {
@@ -2824,8 +2907,8 @@ audio_reset_runtime_state(void) {
     g_audio_dsp.pending_data[0] = 0;
     g_audio_dsp.pending_data[1] = 0;
     g_audio_dsp.dma_block_len = 0;
-    g_audio_dsp.sample_rate_hz = 22050;
-    g_audio_dsp.time_constant = audio_sb_time_constant_for_rate(22050u);
+    g_audio_dsp.sample_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
+    g_audio_dsp.time_constant = audio_sb_time_constant_for_rate(AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ);
     g_audio_dsp.dma_auto_init = false;
     g_audio_dsp.dma_bytes_remaining = 0;
     g_audio_dsp.sample_gen_accum = 0;
@@ -2835,7 +2918,7 @@ audio_reset_runtime_state(void) {
     g_audio_dma_ring_write = 0;
     g_audio_dma_ring_read = 0;
     g_audio_phase_accum = 0;
-    g_audio_output_rate_hz = 22050u;
+    g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
     g_audio_samples_generated = 0;
     g_audio_samples_consumed = 0;
     g_audio_samples_emitted = 0;
@@ -2990,7 +3073,8 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
                                          &handle->engi_inst);
                 handle->opl2_keyon = true;
                 /* Use idle RPM until the first audio_update_engine_sound call sets a real value */
-                audio_opl2_set_freq(handle->opl2_channel, 1800u, &handle->engi_inst, 1);
+                audio_opl2_set_freq(handle->opl2_channel, AUDIO_ENGINE_IDLE_RPM,
+                                    &handle->engi_inst, 1);
             }
 
             /* Cache SFX VCE instruments (SKID/SCRA/CRAS/BLOW/BUMP) and assign
@@ -3031,7 +3115,8 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
                 int ch;
                 for (ch = 0; ch < 9; ch++) {
                     if (g_opl2_ch_owner[ch] < 0) {
-                        g_opl2_ch_owner[ch] = (int)i | 256; /* mark as SFX-skid owner */
+                        g_opl2_ch_owner[ch]
+                            = (int)i | AUDIO_OPL2_OWNER_SKID_FLAG; /* SFX skid owner */
                         handle->opl2_skid_channel = ch;
                         break;
                     }
@@ -3042,7 +3127,8 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
                 int ch;
                 for (ch = 0; ch < 9; ch++) {
                     if (g_opl2_ch_owner[ch] < 0) {
-                        g_opl2_ch_owner[ch] = (int)i | 512; /* mark as SFX-crash owner */
+                        g_opl2_ch_owner[ch]
+                            = (int)i | AUDIO_OPL2_OWNER_CRASH_FLAG; /* SFX crash owner */
                         handle->opl2_crash_channel = ch;
                         break;
                     }
@@ -3340,11 +3426,11 @@ audio_driver_timer(void) {
     dispatch_hz = (unsigned int)timer_get_dispatch_hz();
 
     refresh_hz = g_audio_refresh_hz;
-    if (refresh_hz < 30u) {
-        refresh_hz = 30u;
+    if (refresh_hz < AUDIO_REFRESH_HZ_MIN) {
+        refresh_hz = AUDIO_REFRESH_HZ_MIN;
     }
-    if (refresh_hz > 200u) {
-        refresh_hz = 200u;
+    if (refresh_hz > AUDIO_REFRESH_HZ_MAX) {
+        refresh_hz = AUDIO_REFRESH_HZ_MAX;
     }
 
     refresh_ticks = (unsigned int)timer_get_subticks_for_rate((unsigned long)refresh_hz,
@@ -3587,15 +3673,15 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_menu_gain = gain;
     }
     else {
-        g_audio_menu_gain = 9000;
+        g_audio_menu_gain = AUDIO_MENU_DEFAULT_GAIN;
     }
     if (menu_note_ticks_env != 0 && *menu_note_ticks_env != '\0') {
         int ticks = atoi(menu_note_ticks_env);
-        if (ticks < 8) {
-            ticks = 8;
+        if (ticks < AUDIO_MENU_NOTE_TICKS_MIN) {
+            ticks = AUDIO_MENU_NOTE_TICKS_MIN;
         }
-        if (ticks > 80) {
-            ticks = 80;
+        if (ticks > AUDIO_MENU_NOTE_TICKS_MAX) {
+            ticks = AUDIO_MENU_NOTE_TICKS_MAX;
         }
         g_audio_menu_note_ticks = (unsigned int)ticks;
     }
@@ -3813,7 +3899,8 @@ init_audio_resources(void *songptr, void *voiceptr, const char *name) {
     vce_count = audio_parse_vce_instruments(voiceptr);
     {
         unsigned short extracted = audio_extract_menu_resource_notes(songptr, name);
-        g_audio_menu_use_resource = (unsigned char)(extracted >= 8u ? 1u : 0u);
+        g_audio_menu_use_resource
+            = (unsigned char)(extracted >= AUDIO_MENU_RESOURCE_MIN_EVENTS ? 1u : 0u);
         (void)vce_count;
     }
     return (void *)1;

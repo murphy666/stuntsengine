@@ -59,6 +59,7 @@ enum {
     SHAPE2D_RES_COUNT_LO_OFFSET = 4,
     SHAPE2D_RES_COUNT_HI_OFFSET = 5,
     SHAPE2D_RES_HEADER_BYTES = 6,
+    SHAPE2D_RES_OFFSET_ENTRY_BYTES = 8,
     SHAPE2D_RES_OFFSET_SHIFT = 2,
     SHAPE2D_RES_DATA_SHIFT = 3,
     SHAPE2D_BYTE_SHIFT_8 = 8,
@@ -88,6 +89,7 @@ enum {
     /* Font definition byte offsets */
     SHAPE2D_FONTDEF_CURSOR_X_OFFSET = 8,
     SHAPE2D_FONTDEF_CURSOR_Y_OFFSET = 10,
+    SHAPE2D_FONTDEF_BG_COLOR_OFFSET = 2,
     SHAPE2D_FONTDEF_PROPORTIONAL_OFFSET = 12,
     SHAPE2D_FONTDEF_HEIGHT_OFFSET = 14,
     SHAPE2D_FONTDEF_PROP1_WIDTH_OFFSET = 16,
@@ -95,10 +97,55 @@ enum {
     SHAPE2D_FONTDEF_CHAR_TABLE_OFFSET = 22,
 
     /* Misc */
-    SHAPE2D_DITHER_ROW_STRIDE_FACTOR = 12
+    SHAPE2D_DITHER_ROW_STRIDE_FACTOR = 12,
+    SHAPE2D_DITHER_LAST_ROW_INDEX = SHAPE2D_DITHER_ROW_STRIDE_FACTOR - 1,
+    SHAPE2D_DITHER_PHASE_COUNT = 4,
+    SHAPE2D_DITHER_PHASE_MASK = SHAPE2D_DITHER_PHASE_COUNT - 1,
+    SHAPE2D_BITPLANE_COUNT = 4,
+    SHAPE2D_PIXELS_PER_PACKED_BYTE = 8,
+    SHAPE2D_PACKED_BYTE_MSB_MASK = 128,
+    SHAPE2D_HIGH_NIBBLE_MASK = 240,
+    SHAPE2D_RLE_LITERAL_MAX = 3,
+    SHAPE2D_EXPAND_MAX_LENGTH = 8000,
+    SHAPE2D_PAGE_ROUNDING_BIAS_BYTES = 32,
+    SHAPE2D_PALETTE_ENTRY_COUNT = 16,
+    SHAPE2D_FONT_DEFAULT_GLYPH_DIMENSION = 8,
+    SHAPE2D_FONT_LINE_GAP = 2
 };
 
 static const unsigned long SHAPE2D_FIXED_ONE_16_16 = 65536UL;
+static const unsigned long SHAPE2D_FIXED_HALF_16_16 = 32768UL;
+static const unsigned long SHAPE2D_FIXED_FRAC_MASK_16_16 = 65535UL;
+
+enum Shape2DLineDrawMode {
+    SHAPE2D_LINE_MODE_HORIZONTAL = 0,
+    SHAPE2D_LINE_MODE_HORIZONTAL_ALT = 1,
+    SHAPE2D_LINE_MODE_VERTICAL = 2,
+    SHAPE2D_LINE_MODE_STEEP_LEFT = 3,
+    SHAPE2D_LINE_MODE_STEEP_RIGHT = 4,
+    SHAPE2D_LINE_MODE_SLOPE_LEFT = 5,
+    SHAPE2D_LINE_MODE_SLOPE_RIGHT = 6,
+    SHAPE2D_LINE_MODE_SHALLOW_LEFT = 7,
+    SHAPE2D_LINE_MODE_SHALLOW_RIGHT = 8,
+    SHAPE2D_LINE_MODE_SINGLE_PIXEL = 9,
+};
+
+enum Shape2DFlipMode {
+    SHAPE2D_FLIP_MODE_REGULAR = 0,
+    SHAPE2D_FLIP_MODE_INTERLACED = 1,
+    SHAPE2D_FLIP_MODE_UNHANDLED = 2,
+};
+
+enum Shape2DLineInfoIndex {
+    SHAPE2D_LINEINFO_X_FIXED_LO_INDEX = 0,
+    SHAPE2D_LINEINFO_X_FIXED_HI_INDEX = 1,
+    SHAPE2D_LINEINFO_Y_FIXED_LO_INDEX = 2,
+    SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX = 3,
+    SHAPE2D_LINEINFO_SLOPE_INDEX = 6,
+    SHAPE2D_LINEINFO_COUNT_INDEX = 7,
+    SHAPE2D_LINEINFO_COLOR_INDEX = 8,
+    SHAPE2D_LINEINFO_MODE_INDEX = 9,
+};
 
 static char g_shape2d_namebuf[100];
 static char *g_shapeexts_fallback[] = { ".PVS", ".XVS", ".PES", ".ESH", ".VSH", 0 };
@@ -1245,14 +1292,14 @@ file_unflip_shape2d(unsigned char *memchunk, char *mempages) {
         membitmapptr = ((char *)memshape) + sizeof(struct SHAPE2D);
 
         flag = memshape->s2d_plane_nibbles[3];
-        if ((flag & 240) == 0) {
+        if ((flag & SHAPE2D_HIGH_NIBBLE_MASK) == 0) {
             flag = memshape->s2d_plane_nibbles[2] >> SHAPE2D_NIBBLE_SHIFT;
             if (flag != 0) {
-                if (flag < 4) {
+                if (flag < SHAPE2D_BITPLANE_COUNT) {
                     width = memshape->s2d_width;
                     height = memshape->s2d_height;
                     switch (flag - 1) {
-                    case 0:
+                    case SHAPE2D_FLIP_MODE_REGULAR:
                         // regular flip
                         for (j = 0; j < height; j++) {    // height
                             for (i = 0; i < width; i++) { // width
@@ -1260,7 +1307,7 @@ file_unflip_shape2d(unsigned char *memchunk, char *mempages) {
                             }
                         }
                         break;
-                    case 1:
+                    case SHAPE2D_FLIP_MODE_INTERLACED:
                         // interlaced flip?
                         for (j = 0; j < height; j += 2) { // height
                             for (i = 0; i < width; i++) { // width
@@ -1274,7 +1321,7 @@ file_unflip_shape2d(unsigned char *memchunk, char *mempages) {
                             }
                         }
                         break;
-                    case 2:
+                    case SHAPE2D_FLIP_MODE_UNHANDLED:
                         // refer to loc_32BDE in the original function
                         fatal_error("unhandled flip type 2");
                         break;
@@ -1311,7 +1358,7 @@ file_unflip_shape2d_pes(unsigned char *memchunk, char *mempages) {
     for (i = 0; i < shapecount; ++i) {
         memshape = file_get_shape2d(memchunk, i);
 
-        if (!(memshape->s2d_plane_nibbles[3] & 240)) {
+        if (!(memshape->s2d_plane_nibbles[3] & SHAPE2D_HIGH_NIBBLE_MASK)) {
             val = (memshape->s2d_plane_nibbles[2] >> SHAPE2D_NIBBLE_SHIFT) & SHAPE2D_NIBBLE_MASK;
 
             if (val) {
@@ -1319,7 +1366,7 @@ file_unflip_shape2d_pes(unsigned char *memchunk, char *mempages) {
                 height = memshape->s2d_height;
                 membitmapptr = ((unsigned char *)memshape) + sizeof(struct SHAPE2D);
 
-                for (j = 0; j < 4; ++j) {
+                for (j = 0; j < SHAPE2D_BITPLANE_COUNT; ++j) {
                     if (val & 1) {
                         for (y = 0; y < height; ++y) {
                             for (x = 0; x < width; ++x) {
@@ -1381,35 +1428,35 @@ file_load_shape2d_expand(unsigned char *memchunk, char *mempages) {
         length = srcshape->s2d_width * srcshape->s2d_height;
 
         offsets[i] = nextoffset;
-        nextoffset += sizeof(struct SHAPE2D) + length * 8;
+        nextoffset += sizeof(struct SHAPE2D) + length * SHAPE2D_PIXELS_PER_PACKED_BYTE;
 
         dstshape = file_get_shape2d((unsigned char *)mempages, i);
         *dstshape = *srcshape;
 
-        dstshape->s2d_width *= 8;
+        dstshape->s2d_width *= SHAPE2D_PIXELS_PER_PACKED_BYTE;
 
-        if (length && length <= 8000) {
+        if (length && length <= SHAPE2D_EXPAND_MAX_LENGTH) {
             mempagesptr = (unsigned char *)dstshape + sizeof(struct SHAPE2D);
 
             val = srcshape->s2d_plane_nibbles[1] >> 4;
             val |= val << 8;
 
-            for (j = 0; j < length * 4; ++j) {
+            for (j = 0; j < length * SHAPE2D_BITPLANE_COUNT; ++j) {
                 unsigned short *dst16 = (unsigned short *)mempagesptr;
                 *dst16 = (unsigned short)val;
                 mempagesptr = (unsigned char *)(dst16 + 1);
             }
             memchunkptr = (unsigned char *)srcshape + sizeof(struct SHAPE2D);
 
-            for (j = 0; j < 4; ++j) {
+            for (j = 0; j < SHAPE2D_BITPLANE_COUNT; ++j) {
                 pat = srcshape->s2d_plane_nibbles[j] & SHAPE2D_NIBBLE_MASK;
 
                 if (pat) {
                     mempagesptr = (unsigned char *)dstshape + sizeof(struct SHAPE2D);
                     for (k = 0; k < length; ++k) {
                         px = *memchunkptr++;
-                        for (l = 0; l < 8; ++l) {
-                            if (px & 128) {
+                        for (l = 0; l < SHAPE2D_PIXELS_PER_PACKED_BYTE; ++l) {
+                            if (px & SHAPE2D_PACKED_BYTE_MSB_MASK) {
                                 *mempagesptr |= pat;
                             }
                             px <<= 1;
@@ -1425,7 +1472,9 @@ file_load_shape2d_expand(unsigned char *memchunk, char *mempages) {
     }
 
     // Final size.
-    *(uint32_t *)mempages = (uint32_t)(6 + (shapecount * 8) + nextoffset);
+    *(uint32_t *)mempages = (uint32_t)(SHAPE2D_RES_HEADER_BYTES
+                                       + (shapecount * SHAPE2D_RES_OFFSET_ENTRY_BYTES)
+                                       + nextoffset);
 }
 
 /**
@@ -1446,7 +1495,8 @@ file_get_unflip_size(unsigned char *memchunk) {
         if (memshape == 0) {
             break;
         }
-        size = (memshape->s2d_width * memshape->s2d_height + 32) >> 4;
+         size = (memshape->s2d_width * memshape->s2d_height + SHAPE2D_PAGE_ROUNDING_BIAS_BYTES)
+             >> SHAPE2D_NIBBLE_SHIFT;
         maxsize = (maxsize > size) ? maxsize : size;
     }
     return maxsize;
@@ -1465,17 +1515,18 @@ file_load_shape2d_expandedsize(void *memchunk) {
 
     shapecount = file_get_res_shape_count(memchunk);
 
-    size = (shapecount * 8) + sizeof(struct SHAPE2D);
+    size = (shapecount * SHAPE2D_RES_OFFSET_ENTRY_BYTES) + sizeof(struct SHAPE2D);
 
     for (i = 0; i < shapecount; ++i) {
         memshape = file_get_shape2d(memchunk, i);
         if (memshape == 0) {
             break;
         }
-        size += (memshape->s2d_width * memshape->s2d_height * 8) + sizeof(struct SHAPE2D);
+        size += (memshape->s2d_width * memshape->s2d_height * SHAPE2D_PIXELS_PER_PACKED_BYTE)
+                + sizeof(struct SHAPE2D);
     }
 
-    return (size + sizeof(struct SHAPE2D)) >> 4;
+    return (size + sizeof(struct SHAPE2D)) >> SHAPE2D_NIBBLE_SHIFT;
 }
 
 /**
@@ -1489,7 +1540,7 @@ void
 file_load_shape2d_palmap_init(unsigned char *pal) {
     int i;
 
-    for (i = 0; i < 16; ++i) {
+    for (i = 0; i < SHAPE2D_PALETTE_ENTRY_COUNT; ++i) {
         palmap[i] = pal[i];
     }
 }
@@ -1779,7 +1830,7 @@ parse_shape2d(void *memchunk_arg, void *mempages_arg) {
  * @return Function result.
  */
             /* Check for short skip (3 or fewer matching, and more pixels left) */
-            if (runlen <= 3 && scanleft > 0) {
+            if (runlen <= SHAPE2D_RLE_LITERAL_MAX && scanleft > 0) {
                 /* Accumulate skip count */
                 runptr++;
                 skipcount++;
@@ -1819,7 +1870,7 @@ parse_shape2d(void *memchunk_arg, void *mempages_arg) {
                 *outptr++ = *runptr;
                 runptr += SHAPE2D_RLE_MAX_SHORT;
             }
-            else if (runlen > 3) {
+            else if (runlen > SHAPE2D_RLE_LITERAL_MAX) {
                 /* Regular run */
                 pixelsleft -= runlen;
                 *outptr++ = (unsigned char)runlen;
@@ -2067,29 +2118,31 @@ sprite_draw_line_from_info(unsigned short *info) {
     unsigned long temp;
 
     /* Read x coordinate (32-bit) and add 32768 for rounding */
-    temp = ((unsigned long)info[1] << 16) | info[0];
-    temp += 32768UL;
-    x_fraction = (unsigned short)(temp & 65535); /* fractional part */
-    x_int = (unsigned short)(temp >> 16);   /* integer part */
+        temp = ((unsigned long)info[SHAPE2D_LINEINFO_X_FIXED_HI_INDEX] << SHAPE2D_BYTE_SHIFT_16)
+            | info[SHAPE2D_LINEINFO_X_FIXED_LO_INDEX];
+    temp += SHAPE2D_FIXED_HALF_16_16;
+    x_fraction = (unsigned short)(temp & SHAPE2D_FIXED_FRAC_MASK_16_16); /* fractional part */
+        x_int = (unsigned short)(temp >> SHAPE2D_BYTE_SHIFT_16); /* integer part */
 
     /* Read y coordinate (32-bit) and add 32768 for rounding */
-    temp = ((unsigned long)info[3] << 16) | info[2];
-    temp += 32768UL;
-    y_fraction = (unsigned short)(temp & 65535); /* fractional part */
-    y_int = (unsigned short)(temp >> 16);   /* integer part */
+        temp = ((unsigned long)info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX] << SHAPE2D_BYTE_SHIFT_16)
+            | info[SHAPE2D_LINEINFO_Y_FIXED_LO_INDEX];
+    temp += SHAPE2D_FIXED_HALF_16_16;
+    y_fraction = (unsigned short)(temp & SHAPE2D_FIXED_FRAC_MASK_16_16); /* fractional part */
+        y_int = (unsigned short)(temp >> SHAPE2D_BYTE_SHIFT_16); /* integer part */
 
-    color = (unsigned char)info[8]; /* field_10 */
-    slope = info[6];                /* field_0C */
-    count = info[7];                /* field_0E */
-    mode = info[9];                 /* field_12 */
+        color = (unsigned char)info[SHAPE2D_LINEINFO_COLOR_INDEX];
+        slope = info[SHAPE2D_LINEINFO_SLOPE_INDEX];
+        count = info[SHAPE2D_LINEINFO_COUNT_INDEX];
+        mode = info[SHAPE2D_LINEINFO_MODE_INDEX];
 
     /* Get bitmap pointers */
     bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
     lineofs = shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
 
     switch (mode) {
-    case 0:
-    case 1:
+    case SHAPE2D_LINE_MODE_HORIZONTAL:
+    case SHAPE2D_LINE_MODE_HORIZONTAL_ALT:
         /* Horizontal line - fill count pixels at (x_int, y_int) */
         ofs = lineofs[y_int] + x_int;
         for (i = 0; i < count; i++) {
@@ -2097,16 +2150,16 @@ sprite_draw_line_from_info(unsigned short *info) {
         }
         break;
 
-    case 9:
+    case SHAPE2D_LINE_MODE_SINGLE_PIXEL:
         /* Single pixel at (x_int, y_int) */
         ofs = lineofs[y_int] + x_int;
         bitmapptr[ofs] = color;
         break;
 
-    case 2:
+    case SHAPE2D_LINE_MODE_VERTICAL:
         /* Vertical line, y increasing, x fixed */
         /* y_int comes from info[3] = field_06 directly */
-        y_int = info[3];
+        y_int = info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
@@ -2114,9 +2167,9 @@ sprite_draw_line_from_info(unsigned short *info) {
         }
         break;
 
-    case 3:
+    case SHAPE2D_LINE_MODE_STEEP_LEFT:
         /* Steep diagonal, y increasing, x decreasing */
-        y_int = info[3];
+        y_int = info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
@@ -2125,9 +2178,9 @@ sprite_draw_line_from_info(unsigned short *info) {
         }
         break;
 
-    case 4:
+    case SHAPE2D_LINE_MODE_STEEP_RIGHT:
         /* Steep diagonal, y increasing, x increasing */
-        y_int = info[3];
+        y_int = info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
@@ -2136,10 +2189,10 @@ sprite_draw_line_from_info(unsigned short *info) {
         }
         break;
 
-    case 5:
+    case SHAPE2D_LINE_MODE_SLOPE_LEFT:
         /* Diagonal, y increasing, x decreasing with slope */
         /* subtract fractional x and borrow into the integer coordinate */
-        y_int = info[3];
+        y_int = info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
@@ -2152,24 +2205,24 @@ sprite_draw_line_from_info(unsigned short *info) {
         }
         break;
 
-    case 6:
+    case SHAPE2D_LINE_MODE_SLOPE_RIGHT:
         /* Diagonal, y increasing, x increasing with slope */
         /* add fractional x and carry into the integer coordinate */
-        y_int = info[3];
+        y_int = info[SHAPE2D_LINEINFO_Y_FIXED_HI_INDEX];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
             y_int++;
             /* Add slope to fractional x, carry to integer */
             temp = (unsigned long)x_fraction + slope;
-            if (temp > 65535) {
+            if (temp > SHAPE2D_FIXED_FRAC_MASK_16_16) {
                 x_int++; /* carry */
             }
             x_fraction = (unsigned short)temp;
         }
         break;
 
-    case 7:
+    case SHAPE2D_LINE_MODE_SHALLOW_LEFT:
         /* Shallow diagonal, x decreasing, y varies with slope */
         /* add fractional y and carry into the integer coordinate */
         for (i = 0; i < count; i++) {
@@ -2178,14 +2231,14 @@ sprite_draw_line_from_info(unsigned short *info) {
             x_int--;
             /* Add slope to fractional y, carry to integer */
             temp = (unsigned long)y_fraction + slope;
-            if (temp > 65535) {
+            if (temp > SHAPE2D_FIXED_FRAC_MASK_16_16) {
                 y_int++; /* carry */
             }
             y_fraction = (unsigned short)temp;
         }
         break;
 
-    case 8:
+    case SHAPE2D_LINE_MODE_SHALLOW_RIGHT:
         /* Shallow diagonal, x increasing, y varies with slope */
         /* add fractional y and carry into the integer coordinate */
         for (i = 0; i < count; i++) {
@@ -2194,7 +2247,7 @@ sprite_draw_line_from_info(unsigned short *info) {
             x_int++;
             /* Add slope to fractional y, carry to integer */
             temp = (unsigned long)y_fraction + slope;
-            if (temp > 65535) {
+            if (temp > SHAPE2D_FIXED_FRAC_MASK_16_16) {
                 y_int++; /* carry */
             }
             y_fraction = (unsigned short)temp;
@@ -2204,9 +2257,10 @@ sprite_draw_line_from_info(unsigned short *info) {
 }
 
 /* Dithering lookup tables for sprite_draw_dithered_pass */
-static const unsigned char dither_row_order_table[12] = { 11, 5, 8, 2, 10, 4, 7, 1, 9, 3, 6, 0 };
-static const unsigned char dither_skip_table[4] = { 1, 3, 0, 2 };
-static const unsigned char dither_step_table[4] = { 3, 1, 4, 2 };
+static const unsigned char dither_row_order_table[SHAPE2D_DITHER_ROW_STRIDE_FACTOR]
+    = { SHAPE2D_DITHER_LAST_ROW_INDEX, 5, 8, 2, 10, 4, 7, 1, 9, 3, 6, 0 };
+static const unsigned char dither_skip_table[SHAPE2D_DITHER_PHASE_COUNT] = { 1, 3, 0, 2 };
+static const unsigned char dither_step_table[SHAPE2D_DITHER_PHASE_COUNT] = { 3, 1, 4, 2 };
 
 /**
  * sprite_draw_dithered_pass - Draw dithered/interlaced sprite pattern
@@ -2293,7 +2347,7 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
     src_data = ((unsigned char *)shape) + SHAPE2D_HEADER_BYTES;
 
     /* Process 12 rows in dithered order */
-    for (dither_row_idx = 11; dither_row_idx >= 0; dither_row_idx--) {
+    for (dither_row_idx = SHAPE2D_DITHER_LAST_ROW_INDEX; dither_row_idx >= 0; dither_row_idx--) {
         /* Get row order from lookup table */
         row_order = dither_row_order_table[dither_row_idx];
 
@@ -2315,7 +2369,7 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
             dst_y = dst_y_cursor;
             if (dst_y < 0 || dst_y >= (int)sprite1.sprite_height) {
                 dither_phase++;
-                dst_y_cursor += 12;
+                dst_y_cursor += SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
                 si = saved_src_offset + src_row_stride;
                 continue;
             }
@@ -2330,7 +2384,7 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
             bx = dither_phase;
             while (cx > 0) {
                 /* Get skip and step values based on dither phase */
-                bx = bx & 3;
+                bx = bx & SHAPE2D_DITHER_PHASE_MASK;
                 skip = dither_skip_table[bx];
 
                 if (cx <= skip)
@@ -2362,7 +2416,7 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
             dither_phase++;
 
             /* Advance to next row (12 rows ahead in destination) */
-            dst_y_cursor += 12;
+            dst_y_cursor += SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
             si = saved_src_offset + src_row_stride;
         }
 
@@ -4501,7 +4555,7 @@ sprite_draw_text_opaque(char *text, int x, int y) {
         return;
     }
     unsigned char fg_color = fontdef[0];
-    unsigned char bg_color = fontdef[2]; /* fontdef[1] as unsigned short* = byte offset 2 */
+    unsigned char bg_color = fontdef[SHAPE2D_FONTDEF_BG_COLOR_OFFSET];
     unsigned char proportional = fontdef[SHAPE2D_FONTDEF_PROPORTIONAL_OFFSET];
     unsigned short prop1_width = *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_PROP1_WIDTH_OFFSET);
     unsigned short font_height = *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_HEIGHT_OFFSET);
@@ -4512,10 +4566,10 @@ sprite_draw_text_opaque(char *text, int x, int y) {
     if (font_height == 0) {
         font_height = fontdef_line_height;
         if (font_height == 0)
-            font_height = 8;
+            font_height = SHAPE2D_FONT_DEFAULT_GLYPH_DIMENSION;
     }
     if (default_charwidth == 0)
-        default_charwidth = 8;
+        default_charwidth = SHAPE2D_FONT_DEFAULT_GLYPH_DIMENSION;
 
     *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_X_OFFSET) = (unsigned short)x;
     *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_Y_OFFSET) = (unsigned short)y;
@@ -4525,11 +4579,12 @@ sprite_draw_text_opaque(char *text, int x, int y) {
         unsigned short char_ptr = char_table[ch];
         if (char_ptr == 0) {
             if (ch == 13 || ch == 10) {
-                *(unsigned short *)(fontdef + 10) += (unsigned short)(font_height + 2);
+                *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_Y_OFFSET)
+                    += (unsigned short)(font_height + SHAPE2D_FONT_LINE_GAP);
             }
             continue;
         }
-        unsigned short char_x = *(unsigned short *)(fontdef + 8);
+        unsigned short char_x = *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_X_OFFSET);
         unsigned short char_pixel_width;
         if (has_width_byte) {
             char_pixel_width = fontdef[char_ptr];
@@ -4542,21 +4597,21 @@ sprite_draw_text_opaque(char *text, int x, int y) {
             char_pixel_width = default_charwidth;
         }
         unsigned short char_width_bytes = (char_pixel_width + 7) >> 3;
-        unsigned short char_y = *(unsigned short *)(fontdef + 10);
+        unsigned short char_y = *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_Y_OFFSET);
         unsigned char *src = fontdef + char_ptr;
         for (unsigned short i = 0; i < font_height; i++) {
             unsigned short di = lineofs[char_y + i] + char_x;
             for (unsigned short j = 0; j < char_width_bytes; j++) {
                 unsigned char byte = *src++;
-                for (unsigned short k = 0; k < 8; k++) {
+                for (unsigned short k = 0; k < SHAPE2D_PIXELS_PER_PACKED_BYTE; k++) {
                     /* Opaque render: paint both fg (bit=1) and bg (bit=0) */
-                    vram[di] = (byte & 128) ? fg_color : bg_color;
+                    vram[di] = (byte & SHAPE2D_PACKED_BYTE_MSB_MASK) ? fg_color : bg_color;
                     byte <<= 1;
                     di++;
                 }
             }
         }
-        *(unsigned short *)(fontdef + 8) += char_pixel_width;
+        *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_CURSOR_X_OFFSET) += char_pixel_width;
     }
 }
 

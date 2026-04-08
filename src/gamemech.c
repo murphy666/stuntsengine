@@ -44,6 +44,67 @@
 #include "font.h"
 #include "ui_widgets.h"
 
+enum {
+    GAMEMECH_FINISH_STATE_ENTER_REPLAY = 1,
+    GAMEMECH_FINISH_STATE_EXIT_RACE = 2,
+    GAMEMECH_CRASH_TYPE_HARD = 1,
+    GAMEMECH_CRASH_TYPE_FREEZE = 4,
+    GAMEMECH_REPLAY_PLAYBACK_SKIP_CADENCE = 2,
+    GAMEMECH_REPLAY_PLAYBACK_FAST_CADENCE = 3,
+    GAMEMECH_REPLAY_CAPTURE_SKIP_INTERVAL = 2,
+    GAMEMECH_REPLAY_AUDIO_FRAME_STRIDE = 34,
+    GAMEMECH_REPLAY_AUDIO_BUFFER_BASE_OFFSET = 38876,
+    GAMEMECH_REPLAY_AUDIO_FRAME_COUNT = 40,
+    GAMEMECH_REPLAY_STEERING_HISTORY_SIZE = 64,
+    GAMEMECH_REPLAY_STEERING_HISTORY_MASK = GAMEMECH_REPLAY_STEERING_HISTORY_SIZE - 1,
+    GAMEMECH_REPLAY_MAX_DURATION_SECONDS = 1500,
+    GAMEMECH_REPLAY_ROLLOVER_TRIGGER_FRAME = 12000,
+    GAMEMECH_REPLAY_ROLLOVER_WINDOW_SECONDS = 30,
+    GAMEMECH_REPLAY_CVX_BLOCK_SIZE = 1120,
+    GAMEMECH_REPLAY_CVX_BLOCK_OFFSET = 1440,
+    GAMEMECH_MOUSE_STEER_CENTER_X = 160,
+    GAMEMECH_MOUSE_STEER_DEADZONE = 18,
+    GAMEMECH_MOUSE_BUTTON_LEFT = 1,
+    GAMEMECH_MOUSE_BUTTON_RIGHT = 2,
+    GAMEMECH_INPUT_NONSTEERING_MASK = 0x33,
+    GAMEMECH_INPUT_SHIFT_UP_MASK = 16,
+    GAMEMECH_INPUT_SHIFT_DOWN_MASK = 32,
+    GAMEMECH_INPUT_STEER_RIGHT_MASK = 4,
+    GAMEMECH_INPUT_STEER_LEFT_MASK = 8,
+    GAMEMECH_STEERING_BUCKET_SHIFT = 3,
+    GAMEMECH_STEERING_BUCKET_THRESHOLD = 10,
+    GAMEMECH_STEERING_STATE_LEFT = 0,
+    GAMEMECH_STEERING_STATE_CENTER = 1,
+    GAMEMECH_STEERING_STATE_RIGHT = 2,
+    GAMEMECH_REPLAY_STEER_RESPONSE_SHIFT = 10,
+    GAMEMECH_REPLAY_STEER_RESPONSE_ALIGN_MASK = 252,
+    GAMEMECH_REPLAY_STEER_TOLERANCE = 1,
+    GAMEMECH_REPLAY_STEER_RESPONSE_BOOST_SHIFT = 2,
+    GAMEMECH_FOLLOW_CAMERA_FORWARD_HEADING_MIN = 128,
+    GAMEMECH_FOLLOW_CAMERA_FORWARD_HEADING_MAX = 896,
+    GAMEMECH_FOLLOW_CAMERA_TARGET_HEIGHT_OFFSET = 270,
+    GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT = 30,
+    GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD = 450,
+    GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20 = 120,
+    GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS30 = 80,
+    GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_LEGACY = 240,
+    GAMEMECH_FOLLOW_CAMERA_NEAREST_TRACK_INIT = 10000,
+    GAMEMECH_REPLAY_BAR_SPECIAL_BUTTON_START = 7,
+    GAMEMECH_REPLAY_BAR_SLIDER_BUTTON = 7,
+    GAMEMECH_REPLAY_CAMERA_PITCH_STEP = 16,
+    GAMEMECH_REPLAY_CAMERA_PITCH_LIMIT = 256,
+    GAMEMECH_REPLAY_CAMERA_ORBIT_HEIGHT_MAX = 900,
+    GAMEMECH_REPLAY_CAMERA_ZOOM_MIN = 120,
+    GAMEMECH_REPLAY_CAMERA_ZOOM_MAX = 1500,
+    GAMEMECH_REPLAY_CAMERA_ZOOM_STEP = 30,
+    GAMEMECH_REPLAY_SEEK_STEP_SECONDS = 5,
+    GAMEMECH_BUTTON_HIT_NONE = 255,
+    GAMEMECH_KEY_F1 = 15104,
+    GAMEMECH_KEY_F2 = 15360,
+    GAMEMECH_KEY_F3 = 15616,
+    GAMEMECH_KEY_F4 = 15872,
+};
+
 /* Variables moved from data_game.c */
 static void *digshapes[10] = { 0 };
 static void *gnobshapes[6] = { 0 };
@@ -161,11 +222,11 @@ int
 handle_ingame_kb_shortcuts(int command) {
     int ax = command;
 
-    if (ax == 283 || ax == 27) { /* ESC */
+    if (UI_IS_CANCEL(ax)) {
         if (game_replay_mode == 0) {
-            update_crash_state(0, 4);
+            update_crash_state(0, GAMEMECH_CRASH_TYPE_FREEZE);
         }
-        game_finish_state = 1;
+        game_finish_state = GAMEMECH_FINISH_STATE_ENTER_REPLAY;
         return 1;
     }
 
@@ -209,19 +270,19 @@ handle_ingame_kb_shortcuts(int command) {
         return 1;
     }
 
-    if (ax == 15104) { /* F1 */
+    if (ax == GAMEMECH_KEY_F1) {
         cameramode = 0;
         return 1;
     }
-    if (ax == 15360) { /* F2 */
+    if (ax == GAMEMECH_KEY_F2) {
         cameramode = 1;
         return 1;
     }
-    if (ax == 15616) { /* F3 */
+    if (ax == GAMEMECH_KEY_F3) {
         cameramode = 2;
         return 1;
     }
-    if (ax == 15872) { /* F4 */
+    if (ax == GAMEMECH_KEY_F4) {
         cameramode = 3;
         return 1;
     }
@@ -290,11 +351,13 @@ frame_callback(void) {
     if (sprite_row_offset_table >= inverse_fps_hundredths) {
         if (audio_frame_index != menu_selection_buffer) {
             audio_replay_update_engine_sounds(
-                (unsigned short *)(replay_audio_frame_buffer + 34 * audio_frame_index),
-                34 * audio_frame_index + 38876);
+                (unsigned short *)(replay_audio_frame_buffer
+                                   + GAMEMECH_REPLAY_AUDIO_FRAME_STRIDE * audio_frame_index),
+                GAMEMECH_REPLAY_AUDIO_FRAME_STRIDE * audio_frame_index
+                    + GAMEMECH_REPLAY_AUDIO_BUFFER_BASE_OFFSET);
             sprite_row_offset_table = 0;
             audio_frame_index++;
-            if (audio_frame_index == 40)
+            if (audio_frame_index == GAMEMECH_REPLAY_AUDIO_FRAME_COUNT)
                 audio_frame_index = 0;
         }
     }
@@ -327,15 +390,15 @@ frame_callback(void) {
     game_mode_state_register++;
 
     if (game_replay_mode == 2) {
-        if (screen_shake_intensity == 2) {
+        if (screen_shake_intensity == GAMEMECH_REPLAY_PLAYBACK_SKIP_CADENCE) {
             replay_capture_frame_skip_counter--;
             if (replay_capture_frame_skip_counter != 0)
                 goto done;
             replay_capture_frame_input(0);
-            replay_capture_frame_skip_counter = 2;
+            replay_capture_frame_skip_counter = GAMEMECH_REPLAY_CAPTURE_SKIP_INTERVAL;
             goto done;
         }
-        else if (screen_shake_intensity == 3) {
+        else if (screen_shake_intensity == GAMEMECH_REPLAY_PLAYBACK_FAST_CADENCE) {
             replay_capture_frame_input(0);
         }
     }
@@ -379,7 +442,7 @@ replay_capture_frame_input(int command) {
             goto set_end;
         is_in_replay = true;
         audio_sync_car_audio();
-        game_finish_state = 1;
+        game_finish_state = GAMEMECH_FINISH_STATE_ENTER_REPLAY;
         return;
     }
 
@@ -399,7 +462,7 @@ replay_capture_frame_input(int command) {
     /* anti-piracy check */
     if (!passed_security && game_pause_counter == 0) {
         if ((unsigned short)(framespersec << 2) < (unsigned short)state.game_frame) {
-            update_crash_state(0, 1);
+            update_crash_state(0, GAMEMECH_CRASH_TYPE_HARD);
         }
     }
 
@@ -409,22 +472,22 @@ replay_capture_frame_input(int command) {
             mouse_get_state((unsigned short *)&mouse_butstate, (unsigned short *)&mouse_xpos,
                             (unsigned short *)&mouse_ypos);
 
-            di = mouse_xpos - 160;
-            if (abs(di) < 18) {
+            di = mouse_xpos - GAMEMECH_MOUSE_STEER_CENTER_X;
+            if (abs(di) < GAMEMECH_MOUSE_STEER_DEADZONE) {
                 di = 0;
             }
             else if (di > 0) {
-                di -= 18;
+                di -= GAMEMECH_MOUSE_STEER_DEADZONE;
             }
             else {
-                di += 18;
+                di += GAMEMECH_MOUSE_STEER_DEADZONE;
             }
             car_track_interaction_state = (unsigned char)di;
 
-            if (mouse_butstate & 1) {
+            if (mouse_butstate & GAMEMECH_MOUSE_BUTTON_LEFT) {
                 si = 2;
             }
-            else if (mouse_butstate & 2) {
+            else if (mouse_butstate & GAMEMECH_MOUSE_BUTTON_RIGHT) {
                 si = 1;
             }
             else {
@@ -446,11 +509,11 @@ replay_capture_frame_input(int command) {
                         = -(char)collision_surface_type[(int)(unsigned char)neg_al];
                 }
             }
-            si = get_kb_or_joy_flags() & 51;
+            si = get_kb_or_joy_flags() & GAMEMECH_INPUT_NONSTEERING_MASK;
         }
 
         /* store steering data into circular buffer */
-        di = replay_frame_counter & 63;
+        di = replay_frame_counter & GAMEMECH_REPLAY_STEERING_HISTORY_MASK;
         *((char *)&sprite_offset_table + di) = (char)car_track_interaction_state;
         *((char *)&sprite_palette_indices + di) = 1;
     }
@@ -460,22 +523,22 @@ replay_capture_frame_input(int command) {
 
     /* check 'A' key (scan 30) = flag 16 */
     if (kb_get_key_state(30))
-        si |= 16;
+        si |= GAMEMECH_INPUT_SHIFT_UP_MASK;
     /* check 'Z' key (scan 44) = flag 32 */
     if (kb_get_key_state(44))
-        si |= 32;
+        si |= GAMEMECH_INPUT_SHIFT_DOWN_MASK;
 
 store_input:
     /* time limit check: 1500 * framespersec ticks */
-    replayTimeLimit = 1500 * framespersec;
+    replayTimeLimit = GAMEMECH_REPLAY_MAX_DURATION_SECONDS * framespersec;
     if ((unsigned short)replayTimeLimit <= (unsigned short)(replay_frame_counter + elapsed_time1)) {
-        update_crash_state(0, 4);
-        game_finish_state = 1;
+        update_crash_state(0, GAMEMECH_CRASH_TYPE_FREEZE);
+        game_finish_state = GAMEMECH_FINISH_STATE_ENTER_REPLAY;
         return;
     }
 
     /* at the 12000-tick mark, check for half-lap */
-    if (replay_frame_counter == 12000) {
+    if (replay_frame_counter == GAMEMECH_REPLAY_ROLLOVER_TRIGGER_FRAME) {
         if (elapsed_time1 == 0 && !lap_completion_trigger_flag) {
             lap_completion_trigger_flag = true;
             checkpoint_lap_trigger = true;
@@ -487,8 +550,8 @@ store_input:
             int replayShiftFrames;
             int segCount, i;
 
-            replayShiftFrames = 30 * framespersec;
-            segCount = 12000 / replayShiftFrames - 1;
+            replayShiftFrames = GAMEMECH_REPLAY_ROLLOVER_WINDOW_SECONDS * framespersec;
+            segCount = GAMEMECH_REPLAY_ROLLOVER_TRIGGER_FRAME / replayShiftFrames - 1;
 
             for (i = 0; i < segCount; i++) {
                 unsigned char *base = (unsigned char *)cvxptr;
@@ -498,7 +561,8 @@ store_input:
                 /* each block = 1120 bytes, offset starts at 1440 */
                 /* Subtract replayShiftFrames from dst block at computed offset */
                 {
-                    dst = base + (unsigned short)((long)1120 * i + 1440);
+                    dst = base + (unsigned short)((long)GAMEMECH_REPLAY_CVX_BLOCK_SIZE * i
+                                                  + GAMEMECH_REPLAY_CVX_BLOCK_OFFSET);
                     *(short *)dst -= (short)replayShiftFrames;
                 }
 
@@ -508,15 +572,20 @@ store_input:
                     unsigned char *srcBlock;
                     unsigned char *dstBlock;
                     int j;
-                    srcBlock = base + (unsigned short)((long)1120 * (i + 1));
-                    dstBlock = base + (unsigned short)((long)1120 * i);
-                    for (j = 0; j < 1120; j++)
+                    srcBlock = base
+                               + (unsigned short)((long)GAMEMECH_REPLAY_CVX_BLOCK_SIZE * (i + 1));
+                    dstBlock = base
+                               + (unsigned short)((long)GAMEMECH_REPLAY_CVX_BLOCK_SIZE * i);
+                    for (j = 0; j < GAMEMECH_REPLAY_CVX_BLOCK_SIZE; j++)
                         dstBlock[j] = srcBlock[j];
                 }
             }
 
             /* shift replay buffer down */
-            for (i = 0; (unsigned short)i < (unsigned short)(12000 - replayShiftFrames); i++) {
+            for (i = 0;
+                 (unsigned short)i
+                 < (unsigned short)(GAMEMECH_REPLAY_ROLLOVER_TRIGGER_FRAME - replayShiftFrames);
+                 i++) {
                 unsigned char *rpl = (unsigned char *)replay_buffer;
                 rpl[i] = rpl[i + replayShiftFrames];
             }
@@ -540,7 +609,7 @@ store_input:
 set_end:
     is_in_replay = true;
     audio_sync_car_audio();
-    game_finish_state = 1;
+    game_finish_state = GAMEMECH_FINISH_STATE_ENTER_REPLAY;
 }
 
 
@@ -614,7 +683,8 @@ update_follow_camera_vectors(void) {
             goto use_pos;
         if (pState->car_waypoint_seq_index == -1)
             goto use_pos;
-        if (carHeadingAngle > 128 && carHeadingAngle < 896) {
+        if (carHeadingAngle > GAMEMECH_FOLLOW_CAMERA_FORWARD_HEADING_MIN
+            && carHeadingAngle < GAMEMECH_FOLLOW_CAMERA_FORWARD_HEADING_MAX) {
             /* use temporary projected vector as-is */
             goto after_pos;
         }
@@ -627,16 +697,16 @@ update_follow_camera_vectors(void) {
 
         /* height adjustment */
         {
-            int target_y = carPosY + 270;
+            int target_y = carPosY + GAMEMECH_FOLLOW_CAMERA_TARGET_HEIGHT_OFFSET;
             struct VECTOR *vec1 = &state.game_vec1[si];
 
             cameraYOffset = vec1->y - target_y;
             if (cameraYOffset != 0) {
                 di = cameraYOffset;
-                if (di > 30)
-                    di = 30;
-                else if (di < -30)
-                    di = -30;
+                if (di > GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
+                    di = GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
+                else if (di < -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
+                    di = -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
                 vec1->y -= di;
             }
         }
@@ -649,21 +719,21 @@ update_follow_camera_vectors(void) {
             di = polarRadius2D(carPosZ - vec1->z, carPosX - vec1->x);
         }
 
-        /* move camera toward target if distance > 450 */
-        if (di > 450) {
-            int move = di - 450;
+        /* move camera toward target if distance exceeds the follow threshold */
+        if (di > GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD) {
+            int move = di - GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD;
             struct VECTOR *vec1 = &state.game_vec1[si];
             if (framespersec == 20) {
-                if (move > 120)
-                    move = 120;
+                if (move > GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20)
+                    move = GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20;
             }
             else if (framespersec >= 30) {
-                if (move > 80)
-                    move = 80;
+                if (move > GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS30)
+                    move = GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS30;
             }
             else {
-                if (move > 240)
-                    move = 240;
+                if (move > GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_LEGACY)
+                    move = GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_LEGACY;
             }
             vec1->x += multiply_and_scale(move, sin_fast(targetAngle));
             vec1->z += multiply_and_scale(move, cos_fast(targetAngle));
@@ -679,7 +749,7 @@ update_follow_camera_vectors(void) {
                 continue;
         }
 
-        nearestTrackDistance = 10000;
+        nearestTrackDistance = GAMEMECH_FOLLOW_CAMERA_NEAREST_TRACK_INIT;
         trackIndex = 0;
 
         while ((char)trackIndex < (char)game_exit_request_flag) {
@@ -857,17 +927,17 @@ setup_car_shapes(int command) {
             int sa = state.playerstate.car_steeringAngle;
             if (sa < 0)
                 sa = -sa;
-            steeringBucket = sa >> 3;
+            steeringBucket = sa >> GAMEMECH_STEERING_BUCKET_SHIFT;
             if (state.playerstate.car_steeringAngle < 0)
                 steeringBucket = -steeringBucket;
         }
 
-        steeringState = 1; /* center */
-        if (steeringBucket < -10) {
-            steeringState = 0; /* left */
+        steeringState = GAMEMECH_STEERING_STATE_CENTER;
+        if (steeringBucket < -GAMEMECH_STEERING_BUCKET_THRESHOLD) {
+            steeringState = GAMEMECH_STEERING_STATE_LEFT;
         }
-        else if (steeringBucket > 10) {
-            steeringState = 2; /* right */
+        else if (steeringBucket > GAMEMECH_STEERING_BUCKET_THRESHOLD) {
+            steeringState = GAMEMECH_STEERING_STATE_RIGHT;
         }
 
         /* Gear shift knob */
@@ -1216,7 +1286,7 @@ replay_apply_steering_correction(void) {
     int si, di;
     char responseStep, correctionMask;
 
-    si = state.game_frame & 63;
+    si = state.game_frame & GAMEMECH_REPLAY_STEERING_HISTORY_MASK;
 
     if (*((unsigned char *)&sprite_palette_indices + si) == 0)
         return;
@@ -1225,22 +1295,24 @@ replay_apply_steering_correction(void) {
 
     /* compute response rate from speed */
     responseStep = *((unsigned char *)steerWhlRespTable_ptr
-                     + ((state.playerstate.car_speed2 >> 10) & 252) + 1);
+                     + ((state.playerstate.car_speed2 >> GAMEMECH_REPLAY_STEER_RESPONSE_SHIFT)
+                        & GAMEMECH_REPLAY_STEER_RESPONSE_ALIGN_MASK)
+                     + 1);
 
     /* double response if steering same direction */
     if (state.playerstate.car_steeringAngle < di) {
-        if (state.playerstate.car_steeringAngle < -1)
-            responseStep <<= 2;
+        if (state.playerstate.car_steeringAngle < -GAMEMECH_REPLAY_STEER_TOLERANCE)
+            responseStep <<= GAMEMECH_REPLAY_STEER_RESPONSE_BOOST_SHIFT;
     }
     else if (state.playerstate.car_steeringAngle > di) {
-        if (state.playerstate.car_steeringAngle > 1)
-            responseStep <<= 2;
+        if (state.playerstate.car_steeringAngle > GAMEMECH_REPLAY_STEER_TOLERANCE)
+            responseStep <<= GAMEMECH_REPLAY_STEER_RESPONSE_BOOST_SHIFT;
     }
 
     /* determine corrective action */
     if (state.playerstate.car_steeringAngle > di) {
         if (state.playerstate.car_steeringAngle - (int)(char)responseStep >= di) {
-            correctionMask = 8; /* steer left */
+            correctionMask = GAMEMECH_INPUT_STEER_LEFT_MASK;
         }
         else {
             correctionMask = 0;
@@ -1248,7 +1320,7 @@ replay_apply_steering_correction(void) {
     }
     else if (state.playerstate.car_steeringAngle < di) {
         if (state.playerstate.car_steeringAngle + (int)(char)responseStep <= di) {
-            correctionMask = 4; /* steer right */
+            correctionMask = GAMEMECH_INPUT_STEER_RIGHT_MASK;
         }
         else {
             correctionMask = 0;
@@ -1495,23 +1567,23 @@ loop_game(int command, int context_value, int frame_value) {
             game_camera_buttons_count[(int)(unsigned char)cameramode] + 1, game_camera_buttons_x1,
             game_camera_buttons_x2, game_camera_buttons_y1, game_camera_buttons_y2);
 
-        if (buttonIndex != 255) {
+        if (buttonIndex != GAMEMECH_BUTTON_HIT_NONE) {
             if (buttonIndex != minimum_bump_counter) {
                 if (inputCode == 0)
                     inputCode = 1;
             }
             minimum_bump_counter = buttonIndex;
 
-            if (inputCode == 32 || inputCode == 13) {
-                /* Only convert to directional for buttons >= 7 (special controls) */
-                if (minimum_bump_counter >= 7) {
-                    if (minimum_bump_counter == 7) {
+            if (inputCode == UI_KEY_SPACE || inputCode == UI_KEY_ENTER) {
+                /* Only convert to directional for the special replay-bar controls. */
+                if (minimum_bump_counter >= GAMEMECH_REPLAY_BAR_SPECIAL_BUTTON_START) {
+                    if (minimum_bump_counter == GAMEMECH_REPLAY_BAR_SLIDER_BUTTON) {
                         /* button 7: up/down slider based on mouse position */
                         int mid = (lighting_intensity_lookup + lap_time_accumulator) / 2;
                         if (mouse_ypos >= mid)
-                            inputCode = 20480;
+                            inputCode = UI_KEY_DOWN;
                         else
-                            inputCode = 18432;
+                            inputCode = UI_KEY_UP;
                     }
                     else {
                         /* button 8+: dial control based on angle */
@@ -1521,28 +1593,28 @@ loop_game(int command, int context_value, int frame_value) {
                         angle = (angle + 128) & 1023;
                         angle >>= 8;
                         if (angle == 0)
-                            inputCode = 18432;
+                            inputCode = UI_KEY_UP;
                         else if (angle == 1)
-                            inputCode = 19712;
+                            inputCode = UI_KEY_RIGHT;
                         else if (angle == 2)
-                            inputCode = 20480;
+                            inputCode = UI_KEY_DOWN;
                         else if (angle == 3)
-                            inputCode = 19200;
+                            inputCode = UI_KEY_LEFT;
                     }
                 }
-                /* For buttons 0-6, inputCode stays as 32/13 for action handling */
+                /* For buttons 0-6, confirm keys fall through to action handling. */
             }
         }
         else {
             /* hit-test secondary button */
             buttonIndex = mouse_multi_hittest(1, &gameunk_button_x1, &gameunk_button_x2,
                                               &gameunk_button_y1, &gameunk_button_y2);
-            if (buttonIndex == 0 && (inputCode == 32 || inputCode == 13))
+            if (buttonIndex == 0 && (inputCode == UI_KEY_SPACE || inputCode == UI_KEY_ENTER))
                 inputCode = 99; /* 'c' */
         }
 
         /* pass to keyboard shortcut handler */
-        if (inputCode != 0 && inputCode != 283 && inputCode != 27) {
+        if (inputCode != 0 && !UI_IS_CANCEL(inputCode)) {
             if (handle_ingame_kb_shortcuts(inputCode))
                 return;
         }
@@ -1597,24 +1669,26 @@ loop_game(int command, int context_value, int frame_value) {
                 goto do_zoom_in;
             if (inputCode == '-')
                 goto do_zoom_out;
-            if (inputCode == 18432) { /* Up */
-                if (rotation_y_angle + (short)16 < (short)256) {
-                    rotation_y_angle += 16;
+            if (inputCode == UI_KEY_UP) {
+                if (rotation_y_angle + (short)GAMEMECH_REPLAY_CAMERA_PITCH_STEP
+                    < (short)GAMEMECH_REPLAY_CAMERA_PITCH_LIMIT) {
+                    rotation_y_angle += GAMEMECH_REPLAY_CAMERA_PITCH_STEP;
                     return;
                 }
                 inputCode = 0;
             }
-            if (inputCode == 19200) { /* Left */
-                rotation_z_angle -= 16;
+            if (inputCode == UI_KEY_LEFT) {
+                rotation_z_angle -= GAMEMECH_REPLAY_CAMERA_PITCH_STEP;
                 return;
             }
-            if (inputCode == 19712) { /* Right */
-                rotation_z_angle += 16;
+            if (inputCode == UI_KEY_RIGHT) {
+                rotation_z_angle += GAMEMECH_REPLAY_CAMERA_PITCH_STEP;
                 return;
             }
-            if (inputCode == 20480) { /* Down */
-                if ((short)rotation_y_angle - (short)16 >= (short)-256) {
-                    rotation_y_angle -= 16;
+            if (inputCode == UI_KEY_DOWN) {
+                if ((short)rotation_y_angle - (short)GAMEMECH_REPLAY_CAMERA_PITCH_STEP
+                    >= (short)-GAMEMECH_REPLAY_CAMERA_PITCH_LIMIT) {
+                    rotation_y_angle -= GAMEMECH_REPLAY_CAMERA_PITCH_STEP;
                     return;
                 }
                 inputCode = 0;
@@ -1625,14 +1699,14 @@ loop_game(int command, int context_value, int frame_value) {
         if (inputCode == '+') {
         do_zoom_in:
             if (cameramode == 3) {
-                if (camera_y_offset >= (short)900)
+                if (camera_y_offset >= (short)GAMEMECH_REPLAY_CAMERA_ORBIT_HEIGHT_MAX)
                     goto input_loop;
-                camera_y_offset += 30;
+                camera_y_offset += GAMEMECH_REPLAY_CAMERA_ZOOM_STEP;
             }
             else {
-                if (rotation_x_angle <= (short)120)
+                if (rotation_x_angle <= (short)GAMEMECH_REPLAY_CAMERA_ZOOM_MIN)
                     goto input_loop;
-                rotation_x_angle -= 30;
+                rotation_x_angle -= GAMEMECH_REPLAY_CAMERA_ZOOM_STEP;
             }
             return;
         }
@@ -1642,45 +1716,46 @@ loop_game(int command, int context_value, int frame_value) {
             if (cameramode == 3) {
                 if (camera_y_offset <= 0)
                     goto input_loop;
-                camera_y_offset -= 30;
+                camera_y_offset -= GAMEMECH_REPLAY_CAMERA_ZOOM_STEP;
             }
             else {
-                if (rotation_x_angle >= (short)1500)
+                if (rotation_x_angle >= (short)GAMEMECH_REPLAY_CAMERA_ZOOM_MAX)
                     goto input_loop;
-                rotation_x_angle += 30;
+                rotation_x_angle += GAMEMECH_REPLAY_CAMERA_ZOOM_STEP;
             }
             return;
         }
 
         /* navigation */
-        if (inputCode == 19200) { /* Left */
+        if (inputCode == UI_KEY_LEFT) {
             minimum_bump_counter = sprite_animation_frame[(int)(unsigned char)minimum_bump_counter];
             goto do_update;
         }
-        if (inputCode == 19712) { /* Right */
+        if (inputCode == UI_KEY_RIGHT) {
             minimum_bump_counter = particle_effect_state[(int)(unsigned char)minimum_bump_counter];
             goto do_update;
         }
-        if (inputCode == 18432) { /* Up */
-            if (minimum_bump_counter == 7)
+        if (inputCode == UI_KEY_UP) {
+            if (minimum_bump_counter == GAMEMECH_REPLAY_BAR_SLIDER_BUTTON)
                 goto do_zoom_in;
             minimum_bump_counter = light_level_table[(int)(unsigned char)minimum_bump_counter];
             goto do_update;
         }
-        if (inputCode == 20480) { /* Down */
-            if (minimum_bump_counter == 7)
+        if (inputCode == UI_KEY_DOWN) {
+            if (minimum_bump_counter == GAMEMECH_REPLAY_BAR_SLIDER_BUTTON)
                 goto do_zoom_out;
             minimum_bump_counter = shadow_render_flags[(int)(unsigned char)minimum_bump_counter];
             goto do_update;
         }
 
         /* Enter/Space = action on replay bar button (ASM: off_24D20 dispatch) */
-        if (inputCode == 13 || inputCode == 32 || inputCode == 7181 || inputCode == 14624) {
-            if ((unsigned char)minimum_bump_counter <= 6) {
+        if (UI_IS_CONFIRM(inputCode)) {
+            if ((unsigned char)minimum_bump_counter < GAMEMECH_REPLAY_BAR_SPECIAL_BUTTON_START) {
                 switch (minimum_bump_counter) {
                 case 0: /* Fast Forward ~5 s (ASM: loc_24830) */
                 {
-                    unsigned short step = (unsigned short)(framespersec * 5);
+                    unsigned short step
+                        = (unsigned short)(framespersec * GAMEMECH_REPLAY_SEEK_STEP_SECONDS);
                     unsigned short cur = (unsigned short)state.game_frame;
                     unsigned short tgt = cur + step;
                     if (tgt > (unsigned short)gameconfig.game_recordedframes)
@@ -1696,7 +1771,8 @@ loop_game(int command, int context_value, int frame_value) {
                     return;
                 case 1: /* Rewind ~5 s (ASM: loc_24A28) */
                 {
-                    unsigned short step = (unsigned short)(framespersec * 5);
+                    unsigned short step
+                        = (unsigned short)(framespersec * GAMEMECH_REPLAY_SEEK_STEP_SECONDS);
                     unsigned short cur = (unsigned short)state.game_frame;
                     unsigned short tgt = (cur > step) ? (unsigned short)(cur - step) : 0;
                     is_in_replay = true;
@@ -1709,7 +1785,7 @@ loop_game(int command, int context_value, int frame_value) {
                 }
                     return;
                 case 2: /* Play at 2x speed (ASM: loc_24D04 — screen_shake_intensity=3) */
-                    screen_shake_intensity = 3;
+                    screen_shake_intensity = GAMEMECH_REPLAY_PLAYBACK_FAST_CADENCE;
                     is_in_replay = false;
                     loop_game(2, 2, 0);
                     return;
@@ -1735,7 +1811,7 @@ loop_game(int command, int context_value, int frame_value) {
                     loop_game(1, state.game_frame, state.game_frame);
                     return;
                 case 6: /* Open ESC/pause menu (ASM: loc_24346) */
-                    inputCode = 27;
+                    inputCode = UI_KEY_ESCAPE;
                     goto handle_esc_dialog;
                 }
             }
@@ -1743,7 +1819,7 @@ loop_game(int command, int context_value, int frame_value) {
 
     handle_esc_dialog:
         /* ESC = show pause/menu dialog */
-        if (inputCode == 283 || inputCode == 27) {
+        if (UI_IS_CANCEL(inputCode)) {
             /* show pause dialog
 			 * Button layout (0 = dismiss/return, 1..7 = actions):
 			 *   1: Follow opponent (only in replay w/ opponent — always off in modern engine)
@@ -1803,8 +1879,8 @@ loop_game(int command, int context_value, int frame_value) {
             }
 
         case_retire:
-            update_crash_state(0, 4);
-            game_finish_state = 2;
+            update_crash_state(0, GAMEMECH_CRASH_TYPE_FREEZE);
+            game_finish_state = GAMEMECH_FINISH_STATE_EXIT_RACE;
             goto after_dialog;
         case_restart:
             check_input();
@@ -1981,9 +2057,9 @@ loop_game(int command, int context_value, int frame_value) {
             }
             goto after_dialog;
         case_quitrace:
-            update_crash_state(0, 4);
+            update_crash_state(0, GAMEMECH_CRASH_TYPE_FREEZE);
             replay_mode_state_flag = 0;
-            game_finish_state = 2;
+            game_finish_state = GAMEMECH_FINISH_STATE_EXIT_RACE;
             goto after_dialog;
         }
 
