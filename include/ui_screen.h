@@ -33,27 +33,27 @@
 
 /* -------- Event types ----------------------------------------------- */
 
-#define UI_EVENT_NONE        0
-#define UI_EVENT_KEY_DOWN    1   /* key pressed                         */
-#define UI_EVENT_KEY_UP      2   /* key released                        */
-#define UI_EVENT_MOUSE_MOVE  3   /* mouse moved                         */
-#define UI_EVENT_MOUSE_DOWN  4   /* mouse button pressed                */
-#define UI_EVENT_MOUSE_UP    5   /* mouse button released               */
-#define UI_EVENT_TICK        6   /* timer tick (per-frame update)        */
-#define UI_EVENT_ENTER       7   /* screen became topmost               */
-#define UI_EVENT_LEAVE       8   /* screen is no longer topmost         */
+#define UI_EVENT_NONE       0
+#define UI_EVENT_KEY_DOWN   1 /* key pressed                         */
+#define UI_EVENT_KEY_UP     2 /* key released                        */
+#define UI_EVENT_MOUSE_MOVE 3 /* mouse moved                         */
+#define UI_EVENT_MOUSE_DOWN 4 /* mouse button pressed                */
+#define UI_EVENT_MOUSE_UP   5 /* mouse button released               */
+#define UI_EVENT_TICK       6 /* timer tick (per-frame update)        */
+#define UI_EVENT_ENTER      7 /* screen became topmost               */
+#define UI_EVENT_LEAVE      8 /* screen is no longer topmost         */
 
 /*
  * UIEvent — unified input event, replacing the scattered polling of
  * kb_get_char / mouse_get_state / get_joy_flags.
  */
 typedef struct {
-    unsigned short type;           /* UI_EVENT_* constant               */
-    unsigned short key;            /* DOS BIOS key code (for KEY_DOWN/UP) */
-    unsigned short mouse_x;        /* Current mouse X                   */
-    unsigned short mouse_y;        /* Current mouse Y                   */
-    unsigned short mouse_buttons;  /* Bitmask: bit0=left, bit1=right    */
-    unsigned short delta;          /* Frame delta (for TICK events)      */
+    unsigned short type;          /* UI_EVENT_* constant               */
+    unsigned short key;           /* DOS BIOS key code (for KEY_DOWN/UP) */
+    unsigned short mouse_x;       /* Current mouse X                   */
+    unsigned short mouse_y;       /* Current mouse Y                   */
+    unsigned short mouse_buttons; /* Bitmask: bit0=left, bit1=right    */
+    unsigned short delta;         /* Frame delta (for TICK events)      */
 } UIEvent;
 
 /* -------- Screen struct --------------------------------------------- */
@@ -73,13 +73,13 @@ typedef struct {
  */
 typedef struct UIScreen UIScreen;
 struct UIScreen {
-    int  (*on_event)(UIScreen *self, const UIEvent *ev);
+    int (*on_event)(UIScreen *self, const UIEvent *ev);
     void (*on_render)(UIScreen *self);
     void (*on_destroy)(UIScreen *self);
     void *userdata;
 
     /* private — managed by the screen stack */
-    int   _modal_result;
+    int _modal_result;
     unsigned char _wants_pop;
 };
 

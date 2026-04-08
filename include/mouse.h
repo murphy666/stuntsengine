@@ -23,33 +23,37 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
-void mouse_get_state(unsigned short* buttons, unsigned short* x, unsigned short* y);
+void mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y);
 void mouse_set_pixratio(unsigned short hpix, unsigned short vpix);
 unsigned short mouse_init(unsigned short width, unsigned short height);
 void mouse_set_minmax(int hmin, int vmin, int hmax, int vmax);
 void mouse_set_position(int x, int y);
 void mouse_draw_transparent_check(void);
 void mouse_draw_opaque_check(void);
-short mouse_multi_hittest(short count, unsigned short* x1_array, unsigned short* x2_array, unsigned short* y1_array, unsigned short* y2_array);
+short mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short *x2_array,
+                          unsigned short *y1_array, unsigned short *y2_array);
 void mouse_draw_opaque(void);
 void mouse_draw_transparent(void);
-unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short* x1_arr, unsigned short* x2_arr, unsigned short* y1_arr, unsigned short* y2_arr, unsigned short sprite_hi, unsigned short sprite_lo);
+unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short *x1_arr,
+                                     unsigned short *x2_arr, unsigned short *y1_arr,
+                                     unsigned short *y2_arr, unsigned short sprite_hi,
+                                     unsigned short sprite_lo);
 
 /* Global state — defined in src/mouse.c */
 
 #ifdef MOUSE_IMPL
-#  define _MO_
+#define _MO_
 #else
-#  define _MO_ extern
+#define _MO_ extern
 #endif
 
-_MO_ char             kbormouse;
-_MO_ unsigned short   mouse_butstate;
-_MO_ char             mouse_isdirty;
-_MO_ char             mouse_motion_detected_flag;
-_MO_ char             mouse_motion_state_flag;
-_MO_ unsigned short   mouse_xpos;
-_MO_ unsigned short   mouse_ypos;
+_MO_ char kbormouse;
+_MO_ unsigned short mouse_butstate;
+_MO_ char mouse_isdirty;
+_MO_ char mouse_motion_detected_flag;
+_MO_ char mouse_motion_state_flag;
+_MO_ unsigned short mouse_xpos;
+_MO_ unsigned short mouse_ypos;
 
 #undef _MO_
 

@@ -27,9 +27,9 @@
 
 
 #ifdef DATA_MENU_TRACK_IMPL
-#  define _DMT_
+#define _DMT_
 #else
-#  define _DMT_ extern
+#define _DMT_ extern
 #endif
 
 _DMT_ unsigned short animation_duration_table[];

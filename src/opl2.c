@@ -34,8 +34,8 @@
 #include "nukedopl.h"
 
 static opl3_chip s_opl;
-static int     s_ready = 0;
-static int     s_sample_rate = 49716;
+static int s_ready = 0;
+static int s_sample_rate = 49716;
 
 /** @brief Initialize the OPL backend at the requested output sample rate.
  * @param sample_rate Output sample rate in Hz.

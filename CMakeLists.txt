@@ -589,3 +589,29 @@ if(STUNTS_TESTS)
     endif()
 
 endif() # STUNTS_TESTS
+
+# ---------------------------------------------------------------------------
+# clang-format targets: `format` (in-place) and `format-check` (dry-run)
+# ---------------------------------------------------------------------------
+find_program(CLANG_FORMAT_EXE NAMES clang-format clang-format-20 clang-format-19
+                                     clang-format-18 clang-format-17)
+if(CLANG_FORMAT_EXE)
+    file(GLOB_RECURSE STUNTS_FORMAT_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/src/*.c"
+        "${CMAKE_SOURCE_DIR}/include/*.h"
+    )
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i ${STUNTS_FORMAT_SOURCES}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running clang-format on src/ and include/"
+        VERBATIM
+    )
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${STUNTS_FORMAT_SOURCES}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Checking clang-format compliance (dry-run)"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found — format/format-check targets disabled")
+endif()

@@ -25,28 +25,28 @@
 
 
 #ifdef FONT_IMPL
-#  define _FO_
+#define _FO_
 #else
-#  define _FO_ extern
+#define _FO_ extern
 #endif
 
-_FO_ unsigned char* g_fontdef_ptr;
-_FO_ void * fontnptr;
-_FO_ void * fontdefptr;
+_FO_ unsigned char *g_fontdef_ptr;
+_FO_ void *fontnptr;
+_FO_ void *fontdefptr;
 _FO_ unsigned short fontdefseg;
-_FO_ void * fontledresptr;
+_FO_ void *fontledresptr;
 _FO_ unsigned short fontdef_line_height;
 _FO_ unsigned char font_x_position_base[2];
 
 #undef _FO_
 
-void font_set_fontdef2(void * data);
+void font_set_fontdef2(void *data);
 void font_set_fontdef(void);
-void set_fontdefseg(void * data);
+void set_fontdefseg(void *data);
 void font_set_colors(int fg_color, unsigned short bg_color);
-unsigned short font_op(char* text, unsigned short maxChars);
-unsigned short font_get_text_width(char* text);
-void font_draw_text(char* str, unsigned short x, unsigned short y);
-int font_get_centered_x(char* text);
+unsigned short font_op(char *text, unsigned short maxChars);
+unsigned short font_get_text_width(char *text);
+void font_draw_text(char *str, unsigned short x, unsigned short y);
+int font_get_centered_x(char *text);
 
 #endif /* FONT_H */

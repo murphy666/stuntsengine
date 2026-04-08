@@ -32,17 +32,17 @@
 #define FS_IS_SEP(c) ((c) == '/' || (c) == '\\')
 
 #ifdef _WIN32
-#  include <io.h>
-#  define fs_strcasecmp(a, b) _stricmp((a), (b))
+#include <io.h>
+#define fs_strcasecmp(a, b) _stricmp((a), (b))
 /* dirent emulation is provided by a third-party header on Windows;
  * if not available, the directory-scan functions are no-ops. */
-#  ifdef HAVE_DIRENT_H
-#    include <dirent.h>
-#  endif
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
 #else
-#  include <strings.h>   /* strcasecmp */
-#  include <dirent.h>    /* DIR, struct dirent, opendir, readdir, closedir */
-#  define fs_strcasecmp(a, b) strcasecmp((a), (b))
+#include <strings.h> /* strcasecmp */
+#include <dirent.h>  /* DIR, struct dirent, opendir, readdir, closedir */
+#define fs_strcasecmp(a, b) strcasecmp((a), (b))
 #endif
 
 #endif /* COMPAT_FS_H */

@@ -25,16 +25,14 @@
 #include <SDL2/SDL.h>
 #include <string.h>
 
-static uint8_t fb_expand_6_to_8(uint8_t v6)
-{
+static uint8_t fb_expand_6_to_8(uint8_t v6) {
     return (uint8_t)((v6 << 2) | (v6 >> 4));
 }
 
 /** @brief Fb init.
  * @param fb Parameter `fb`.
  */
-void fb_init(Framebuffer* fb)
-{
+void fb_init(Framebuffer *fb) {
     int i;
     if (fb == 0) {
         return;
@@ -54,8 +52,7 @@ void fb_init(Framebuffer* fb)
  * @param fb Parameter `fb`.
  * @param color_index Parameter `color_index`.
  */
-void fb_clear(Framebuffer* fb, uint8_t color_index)
-{
+void fb_clear(Framebuffer *fb, uint8_t color_index) {
     if (fb == 0) {
         return;
     }
@@ -68,8 +65,7 @@ void fb_clear(Framebuffer* fb, uint8_t color_index)
  * @param y Parameter `y`.
  * @param color_index Parameter `color_index`.
  */
-void fb_set_pixel(Framebuffer* fb, int x, int y, uint8_t color_index)
-{
+void fb_set_pixel(Framebuffer *fb, int x, int y, uint8_t color_index) {
     if (fb == 0) {
         return;
     }
@@ -85,8 +81,7 @@ void fb_set_pixel(Framebuffer* fb, int x, int y, uint8_t color_index)
  * @param y Parameter `y`.
  * @return Function result.
  */
-uint8_t fb_get_pixel(const Framebuffer* fb, int x, int y)
-{
+uint8_t fb_get_pixel(const Framebuffer *fb, int x, int y) {
     if (fb == 0) {
         return 0;
     }
@@ -103,9 +98,7 @@ uint8_t fb_get_pixel(const Framebuffer* fb, int x, int y)
  * @param g6 Parameter `g6`.
  * @param b6 Parameter `b6`.
  */
-void fb_set_palette_entry(Framebuffer* fb, uint8_t index,
-                              uint8_t r6, uint8_t g6, uint8_t b6)
-{
+void fb_set_palette_entry(Framebuffer *fb, uint8_t index, uint8_t r6, uint8_t g6, uint8_t b6) {
     if (fb == 0) {
         return;
     }
@@ -119,8 +112,7 @@ void fb_set_palette_entry(Framebuffer* fb, uint8_t index,
  * @param index Parameter `index`.
  * @return Function result.
  */
-uint32_t fb_palette_index_to_rgba(const Framebuffer* fb, uint8_t index)
-{
+uint32_t fb_palette_index_to_rgba(const Framebuffer *fb, uint8_t index) {
     uint8_t r;
     uint8_t g;
     uint8_t b;
@@ -141,8 +133,7 @@ uint32_t fb_palette_index_to_rgba(const Framebuffer* fb, uint8_t index)
  * @param out_rgba Parameter `out_rgba`.
  * @param out_len Parameter `out_len`.
  */
-void fb_to_rgba(const Framebuffer* fb, uint32_t* out_rgba, size_t out_len)
-{
+void fb_to_rgba(const Framebuffer *fb, uint32_t *out_rgba, size_t out_len) {
     size_t i;
     size_t n = FB_PIXELS;
 
@@ -165,8 +156,7 @@ void fb_to_rgba(const Framebuffer* fb, uint32_t* out_rgba, size_t out_len)
  * @param window_scale Parameter `window_scale`.
  * @return Function result.
  */
-int fb_sdl2_init(SDL2Context* ctx, const char* title, int window_scale)
-{
+int fb_sdl2_init(SDL2Context *ctx, const char *title, int window_scale) {
     int width;
     int height;
 
@@ -190,12 +180,8 @@ int fb_sdl2_init(SDL2Context* ctx, const char* title, int window_scale)
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
 
-    ctx->window = SDL_CreateWindow(title ? title : "stuntsengine",
-                                   SDL_WINDOWPOS_UNDEFINED,
-                                   SDL_WINDOWPOS_UNDEFINED,
-                                   width,
-                                   height,
-                                   SDL_WINDOW_SHOWN);
+    ctx->window = SDL_CreateWindow(title ? title : "stuntsengine", SDL_WINDOWPOS_UNDEFINED,
+                                   SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN);
     if (ctx->window == 0) {
         fb_sdl2_shutdown(ctx);
         return -1;
@@ -215,11 +201,8 @@ int fb_sdl2_init(SDL2Context* ctx, const char* title, int window_scale)
 
     SDL_RenderSetLogicalSize(ctx->renderer, FB_WIDTH, FB_HEIGHT);
 
-    ctx->texture = SDL_CreateTexture(ctx->renderer,
-                                     SDL_PIXELFORMAT_ARGB8888,
-                                     SDL_TEXTUREACCESS_STREAMING,
-                                     FB_WIDTH,
-                                     FB_HEIGHT);
+    ctx->texture = SDL_CreateTexture(ctx->renderer, SDL_PIXELFORMAT_ARGB8888,
+                                     SDL_TEXTUREACCESS_STREAMING, FB_WIDTH, FB_HEIGHT);
     if (ctx->texture == 0) {
         fb_sdl2_shutdown(ctx);
         return -1;
@@ -232,8 +215,7 @@ int fb_sdl2_init(SDL2Context* ctx, const char* title, int window_scale)
  * @param ctx Parameter `ctx`.
  * @param fb Parameter `fb`.
  */
-void fb_sdl2_present(SDL2Context* ctx, const Framebuffer* fb)
-{
+void fb_sdl2_present(SDL2Context *ctx, const Framebuffer *fb) {
     if (ctx == 0 || fb == 0 || ctx->texture == 0 || ctx->renderer == 0) {
         return;
     }
@@ -250,8 +232,7 @@ void fb_sdl2_present(SDL2Context* ctx, const Framebuffer* fb)
  * @param ctx Parameter `ctx`.
  * @param scale Parameter `scale`.
  */
-void fb_sdl2_set_scale(SDL2Context* ctx, int scale)
-{
+void fb_sdl2_set_scale(SDL2Context *ctx, int scale) {
     Uint32 flags;
     if (ctx == 0 || ctx->window == 0) {
         return;
@@ -267,8 +248,7 @@ void fb_sdl2_set_scale(SDL2Context* ctx, int scale)
 /** @brief Fb sdl2 toggle fullscreen.
  * @param ctx Parameter `ctx`.
  */
-void fb_sdl2_toggle_fullscreen(SDL2Context* ctx)
-{
+void fb_sdl2_toggle_fullscreen(SDL2Context *ctx) {
     Uint32 flags;
     if (ctx == 0 || ctx->window == 0) {
         return;
@@ -276,7 +256,8 @@ void fb_sdl2_toggle_fullscreen(SDL2Context* ctx)
     flags = SDL_GetWindowFlags(ctx->window);
     if (flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) {
         SDL_SetWindowFullscreen(ctx->window, 0);
-    } else {
+    }
+    else {
         SDL_SetWindowFullscreen(ctx->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
     }
 }
@@ -284,8 +265,7 @@ void fb_sdl2_toggle_fullscreen(SDL2Context* ctx)
 /** @brief Fb sdl2 shutdown.
  * @param ctx Parameter `ctx`.
  */
-void fb_sdl2_shutdown(SDL2Context* ctx)
-{
+void fb_sdl2_shutdown(SDL2Context *ctx) {
     if (ctx == 0) {
         return;
     }

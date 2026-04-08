@@ -25,31 +25,31 @@
 
 void kb_init_interrupt(void);
 void kb_exit_handler(void);
-void kb_int16_handler(unsigned bp, unsigned di, unsigned si,
-                                unsigned ds, unsigned es, unsigned dx,
-                                unsigned cx, unsigned bx, unsigned ax,
-                                unsigned ip, unsigned cs, unsigned flags);
+void kb_int16_handler(unsigned bp, unsigned di, unsigned si, unsigned ds, unsigned es, unsigned dx,
+                      unsigned cx, unsigned bx, unsigned ax, unsigned ip, unsigned cs,
+                      unsigned flags);
 int kb_get_key_state(int key);
 int kb_call_readchar_callback(void);
 int kb_read_char(void);
 int kb_checking(void);
 int kb_check(void);
-unsigned short  kb_read_key_or_joy(void);
+unsigned short kb_read_key_or_joy(void);
 void kb_poll_sdl_input(void);
 void kb_sdl_requeue_key(unsigned short key);
-void kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x, unsigned short max_y);
+void kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x,
+                             unsigned short max_y);
 void kb_sdl_set_mouse_position(unsigned short x, unsigned short y);
-void kb_sdl_get_mouse_state(unsigned short* buttons, unsigned short* x, unsigned short* y);
+void kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned short *y);
 
 /* Extended keyboard/input functions */
-int    kb_get_char(void);
-int    handle_ingame_kb_shortcuts(int);
-void   kb_reg_callback(unsigned short code, void (* callback)(void));
-void   kb_shift_checking2(void);
+int kb_get_char(void);
+int handle_ingame_kb_shortcuts(int);
+void kb_reg_callback(unsigned short code, void (*callback)(void));
+void kb_shift_checking2(void);
 
 /* Input polling and state checking */
-void           check_input(void);
-int            input_do_checking(int unk);
+void check_input(void);
+int input_do_checking(int unk);
 unsigned short input_repeat_check(unsigned short delay);
 unsigned short input_checking(unsigned short delta);
 #define input_checking input_checking
@@ -57,7 +57,7 @@ unsigned short input_checking(unsigned short delta);
 /* Joystick / combined input */
 short get_kb_or_joy_flags(void);
 short get_joy_flags(void);
-void  joystick_init_calibration(void);
+void joystick_init_calibration(void);
 short joystick_direction_lookup(unsigned short joy_flags);
 short joystick_get_scaled_x(void);
 

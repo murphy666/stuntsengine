@@ -57,22 +57,21 @@
 /* Global state — defined in src/stuntsengine.c */
 
 #ifdef STUNTS_IMPL
-#  define _SE_
+#define _SE_
 #else
-#  define _SE_ extern
+#define _SE_ extern
 #endif
 
-_SE_ char             aDefault_1[];
-_SE_ char             replay_file_path_buffer[];
-_SE_ struct SIMD      simd_opponent_rt;
-_SE_ char             track_highscore_path_buffer[];
+_SE_ char aDefault_1[];
+_SE_ char replay_file_path_buffer[];
+_SE_ struct SIMD simd_opponent_rt;
+_SE_ char track_highscore_path_buffer[];
 
 #undef _SE_
 
 /* Exit handler (defined in stunts.c) */
 void add_exit_handler(void (*handler)(void));
-void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w,
-                         unsigned short h, unsigned short col1,
-                         unsigned short col2, unsigned short col3);
+void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w, unsigned short h,
+                         unsigned short col1, unsigned short col2, unsigned short col3);
 
 #endif

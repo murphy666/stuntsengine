@@ -40,10 +40,10 @@
 #define UI_BTN_MAX 16
 
 /* -------- Navigation modes for ui_button_menu_run() ----------------- */
-#define UI_NAV_HORIZONTAL  0   /* Left/Right navigate, Up/Down ignored  */
-#define UI_NAV_VERTICAL    1   /* Up/Down navigate, Left/Right ignored  */
-#define UI_NAV_BOTH        2   /* Both axes navigate (original default) */
-#define UI_NAV_BOTH_LR_SWAP 3  /* Both axes, LEFT=next/RIGHT=prev       */
+#define UI_NAV_HORIZONTAL   0 /* Left/Right navigate, Up/Down ignored  */
+#define UI_NAV_VERTICAL     1 /* Up/Down navigate, Left/Right ignored  */
+#define UI_NAV_BOTH         2 /* Both axes navigate (original default) */
+#define UI_NAV_BOTH_LR_SWAP 3 /* Both axes, LEFT=next/RIGHT=prev       */
 
 /* -------- Button menu widget ---------------------------------------- */
 
@@ -63,9 +63,9 @@ typedef struct UIButtonMenu {
     unsigned short y2[UI_BTN_MAX]; /* Bottom edge of each button        */
     unsigned short sprite_hi;      /* Passed to mouse_update_menu_blink */
     unsigned short sprite_lo;      /* Passed to mouse_update_menu_blink */
-    unsigned char  default_sel;    /* Initially selected button index   */
+    unsigned char default_sel;     /* Initially selected button index   */
     unsigned short idle_timeout;   /* Ticks before auto-select (0=off)  */
-    unsigned char  nav_mode;       /* UI_NAV_HORIZONTAL / _VERTICAL / _BOTH */
+    unsigned char nav_mode;        /* UI_NAV_HORIZONTAL / _VERTICAL / _BOTH */
 
     /*
      * Optional per-iteration callback.  If non-NULL, called once per
@@ -135,7 +135,7 @@ typedef struct {
     unsigned short x, y, w, h;
     unsigned short border_color;
     unsigned short fill_color;
-    const char    *title;            /* NULL = no title bar             */
+    const char *title; /* NULL = no title bar             */
     unsigned short title_fg;
     unsigned short title_bg;
 } UIPanel;
@@ -148,8 +148,8 @@ void ui_draw_panel(const UIPanel *panel);
 
 /* -------- Text column table ----------------------------------------- */
 
-#define UI_TABLE_MAX_COLS   8
-#define UI_TABLE_MAX_ROWS   16
+#define UI_TABLE_MAX_COLS 8
+#define UI_TABLE_MAX_ROWS 16
 
 typedef struct {
     unsigned short num_columns;
@@ -159,7 +159,7 @@ typedef struct {
     unsigned short num_rows;
     unsigned short header_color;
     unsigned short text_color;
-    unsigned short highlight_row;   /* 255 = none                      */
+    unsigned short highlight_row; /* 255 = none                      */
     unsigned short highlight_color;
 } UITextTable;
 
@@ -169,9 +169,7 @@ typedef struct {
  * cells[] is a flat array: cells[row * num_columns + col].
  * headers[] has num_columns entries (may be NULL to skip header row).
  */
-void ui_draw_text_table(const UITextTable *table,
-                        const char *cells[],
-                        const char *headers[]);
+void ui_draw_text_table(const UITextTable *table, const char *cells[], const char *headers[]);
 
 /* -------- Dialog widget --------------------------------------------- */
 
@@ -179,15 +177,15 @@ void ui_draw_text_table(const UITextTable *table,
  * Dialog modes — these map directly to the show_dialog() type values
  * in the original engine but provide a cleaner, named interface.
  */
-#define UI_DIALOG_AUTO_POS   65535  /* Sentinel: auto-center dialog on axis */
+#define UI_DIALOG_AUTO_POS 65535 /* Sentinel: auto-center dialog on axis */
 
-#define UI_DIALOG_INFO       1   /* Show text, wait for any key         */
-#define UI_DIALOG_CONFIRM    2   /* Interactive button selection         */
-#define UI_DIALOG_TIMED      4   /* Show text briefly, auto-dismiss     */
+#define UI_DIALOG_INFO    1 /* Show text, wait for any key         */
+#define UI_DIALOG_CONFIRM 2 /* Interactive button selection         */
+#define UI_DIALOG_TIMED   4 /* Show text briefly, auto-dismiss     */
 
 /* Maximum limits for dialog content */
-#define UI_DIALOG_MAX_LINES     8
-#define UI_DIALOG_MAX_BUTTONS  10
+#define UI_DIALOG_MAX_LINES   8
+#define UI_DIALOG_MAX_BUTTONS 10
 
 /*
  * UIDialog — Describes a modal dialog with optional buttons.
@@ -200,21 +198,21 @@ void ui_draw_text_table(const UITextTable *table,
  * window push/pop handles both contexts.
  */
 typedef struct {
-    unsigned short mode;           /* UI_DIALOG_INFO / _CONFIRM / _TIMED */
-    unsigned short border_color;   /* 0 = use default dialogarg2         */
+    unsigned short mode;         /* UI_DIALOG_INFO / _CONFIRM / _TIMED */
+    unsigned short border_color; /* 0 = use default dialogarg2         */
 
     /* Dialog position (65535 = auto-center, matching show_dialog) */
     unsigned short x;
     unsigned short y;
 
     /* Text content — lines separated by ']' internally */
-    unsigned short  num_lines;
-    const char     *lines[UI_DIALOG_MAX_LINES];
+    unsigned short num_lines;
+    const char *lines[UI_DIALOG_MAX_LINES];
 
     /* Buttons (only used when mode == UI_DIALOG_CONFIRM) */
-    unsigned short  num_buttons;
-    const char     *buttons[UI_DIALOG_MAX_BUTTONS];
-    unsigned char   default_button;   /* Initially selected (0-based)   */
+    unsigned short num_buttons;
+    const char *buttons[UI_DIALOG_MAX_BUTTONS];
+    unsigned char default_button; /* Initially selected (0-based)   */
 
     /* Optional: coords_array for type-3 usage (advanced, usually NULL) */
     unsigned short *coords;
@@ -241,8 +239,7 @@ short ui_dialog_info(const char *text);
  * Returns the selected button index (0 = first, 1 = second),
  * or 255 if cancelled.
  */
-short ui_dialog_confirm(const char *text,
-                        const char *btn_yes, const char *btn_no);
+short ui_dialog_confirm(const char *text, const char *btn_yes, const char *btn_no);
 
 /*
  * Display a dialog using a pre-formatted resource text string.
@@ -264,12 +261,9 @@ short ui_dialog_confirm(const char *text,
  * Returns:
  *   Same as show_dialog(): button index for CONFIRM, 0 for others.
  */
-short ui_dialog_show_restext(unsigned short mode, unsigned short create_window,
-                             void *text_res_ptr,
-                             unsigned short x, unsigned short y,
-                             unsigned short border_color,
-                             unsigned short *coords,
-                             unsigned char default_button);
+short ui_dialog_show_restext(unsigned short mode, unsigned short create_window, void *text_res_ptr,
+                             unsigned short x, unsigned short y, unsigned short border_color,
+                             unsigned short *coords, unsigned char default_button);
 
 /*
  * Convenience wrappers for common resource-text dialog patterns.
@@ -289,7 +283,6 @@ short ui_dialog_info_restext(void *text_res_ptr);
 short ui_dialog_confirm_restext(void *text_res_ptr, unsigned char default_button);
 
 /* Coordinate/layout query (type 3) — returns button count. */
-short ui_dialog_layout(void *text_res_ptr, unsigned short border_color,
-                       unsigned short *coords);
+short ui_dialog_layout(void *text_res_ptr, unsigned short border_color, unsigned short *coords);
 
 #endif /* UI_WIDGETS_H */

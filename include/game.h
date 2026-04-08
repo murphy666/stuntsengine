@@ -44,17 +44,17 @@ unsigned short run_intro_looped_(void);
 
 /* Game state management (moved from stunts.c).
  * These implement the core game/physics update cycle and save-state. */
-void           reset_replay_runtime_state(void);
-void           init_carstate_from_simd(struct CARSTATE* playerstate, struct SIMD* simd,
-                       char transmission, long posX, long posY, long posZ, short track_angle);
-void           init_game_state(short arg);
-void           restore_gamestate(unsigned short frame);
-void           update_gamestate(void);
+void reset_replay_runtime_state(void);
+void init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char transmission,
+                             long posX, long posY, long posZ, short track_angle);
+void init_game_state(short arg);
+void restore_gamestate(unsigned short frame);
+void update_gamestate(void);
 
 /* Configurable render refresh rate.
  * game_set_refresh_rate(hz) overrides GAME_REFRESH_HZ at runtime (0 = reset to default).
  * game_get_refresh_rate()   returns the currently active rate in Hz. */
-void         game_set_refresh_rate(unsigned int hz);
+void game_set_refresh_rate(unsigned int hz);
 unsigned int game_get_refresh_rate(void);
 
 /* ------------------------------------------------------------------ */
@@ -68,20 +68,16 @@ unsigned int game_get_refresh_rate(void);
 /*    GAME_LOOP_SKIP     – physics-only step; skip render, loop again  */
 /*    GAME_LOOP_BREAK    – exit the loop                               */
 /* ------------------------------------------------------------------ */
-typedef enum {
-	GAME_LOOP_CONTINUE = 0,
-	GAME_LOOP_SKIP     = 2,
-	GAME_LOOP_BREAK    = 1
-} game_loop_status_t;
+typedef enum { GAME_LOOP_CONTINUE = 0, GAME_LOOP_SKIP = 2, GAME_LOOP_BREAK = 1 } game_loop_status_t;
 
 typedef game_loop_status_t (*game_loop_tick_cb)(void *ctx);
 typedef game_loop_status_t (*game_loop_render_cb)(void *ctx);
 
 typedef struct {
-	game_loop_tick_cb   tick;       /* physics/logic step; NULL = no tick   */
-	game_loop_render_cb render;     /* frame present;  NULL = no pacing     */
-	void               *ctx;       /* opaque context passed to callbacks    */
-	int                 fps_debug; /* 1 = log FPS to stdout once per second */
+    game_loop_tick_cb tick;     /* physics/logic step; NULL = no tick   */
+    game_loop_render_cb render; /* frame present;  NULL = no pacing     */
+    void *ctx;                  /* opaque context passed to callbacks    */
+    int fps_debug;              /* 1 = log FPS to stdout once per second */
 } game_loop_t;
 
 /* Run loop until a callback returns GAME_LOOP_BREAK.
@@ -92,31 +88,31 @@ void game_loop_run(const game_loop_t *loop);
  * Game setup / lifecycle helpers (moved from stunts.c)
  * ------------------------------------------------------------------ */
 /* DOS DS==SS segment check — always 1 in flat memory model */
-int    compare_ds_ss(void);
-void   show_waiting(void);
-void   call_exitlist2(void);
+int compare_ds_ss(void);
+void show_waiting(void);
+void call_exitlist2(void);
 unsigned short setup_intro(void);
-void   audio_unload(void);
-void   input_push_status(void);
-void   input_pop_status(void);
-void   setup_aero_trackdata(void *carresptr, int is_opponent);
-void   init_plantrak_(void);
-int    setup_player_cars(void);
-void   free_player_cars(void);
-void   load_palandcursor(void);
+void audio_unload(void);
+void input_push_status(void);
+void input_pop_status(void);
+void setup_aero_trackdata(void *carresptr, int is_opponent);
+void init_plantrak_(void);
+int setup_player_cars(void);
+void free_player_cars(void);
+void load_palandcursor(void);
 
 /* Kevin random number generator (defined in stunts.c) */
-void   init_kevinrandom(const char* seed);
-void   get_kevinrandom_seed(char* seed);
-int    get_kevinrandom(void);
-int    get_super_random(void);
+void init_kevinrandom(const char *seed);
+void get_kevinrandom_seed(char *seed);
+int get_kevinrandom(void);
+int get_super_random(void);
 
 /* Global state — defined in src/gamemech.c */
 
 #ifdef GAME_IMPL
-#  define _GAME_
+#define _GAME_
 #else
-#  define _GAME_ extern
+#define _GAME_ extern
 #endif
 
 _GAME_ void *g_dast_shape_ptr;
