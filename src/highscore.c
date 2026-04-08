@@ -37,14 +37,69 @@
 #include "ui_widgets.h"
 #include "ui_screen.h"
 
+enum {
+    HIGHSCORE_ENTRY_COUNT = 7,
+    HIGHSCORE_TEMP_ENTRY_INDEX = HIGHSCORE_ENTRY_COUNT - 1,
+    HIGHSCORE_SECONDARY_INDEX_COUNT = HIGHSCORE_ENTRY_COUNT - 1,
+    HIGHSCORE_ENTRY_SIZE = 52,
+    HIGHSCORE_TABLE_SIZE = HIGHSCORE_ENTRY_COUNT * HIGHSCORE_ENTRY_SIZE,
+    HIGHSCORE_ENTRY_NAME_CAPACITY = 17,
+    HIGHSCORE_ENTRY_DETAIL_OFFSET = 17,
+    HIGHSCORE_ENTRY_DETAIL_CAPACITY = 25,
+    HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET = 41,
+    HIGHSCORE_ENTRY_OPPONENT_OFFSET = 42,
+    HIGHSCORE_ENTRY_OPPONENT_PREFIX_CAPACITY = 3,
+    HIGHSCORE_ENTRY_OPPONENT_SEPARATOR_OFFSET = 44,
+    HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET = 45,
+    HIGHSCORE_ENTRY_OPPONENT_SUFFIX_CAPACITY = 5,
+    HIGHSCORE_ENTRY_SCORE_OFFSET = 50,
+    HIGHSCORE_EMPTY_SCORE = 65535,
+    HIGHSCORE_UI_INDEX_NONE = 255,
+    HIGHSCORE_FPS_DOUBLE_SCORE = 10,
+    HIGHSCORE_FPS_REDUCED_SCORE = 30,
+    HIGHSCORE_SCORE_REDUCED_NUMERATOR = 2,
+    HIGHSCORE_SCORE_REDUCED_DENOMINATOR = 3,
+    HIGHSCORE_ROW_Y_START = 25,
+    HIGHSCORE_ROW_Y_STEP = 10,
+    HIGHSCORE_RESULT_PLAYER_WIN = 0,
+    HIGHSCORE_RESULT_OPPONENT_WIN = 1,
+    HIGHSCORE_RESULT_DNF = 2,
+    HIGHSCORE_MENU_BUTTON_COUNT = 4,
+    HIGHSCORE_MENU_LAST_BUTTON = HIGHSCORE_MENU_BUTTON_COUNT - 1,
+    HIGHSCORE_ANIM_FRAMES_PLAYER_WIN = 1,
+    HIGHSCORE_ANIM_FRAMES_NON_WIN = 3,
+    HIGHSCORE_ANIM_DEFAULT_SPEED = 30,
+    HIGHSCORE_BUTTON_DRAW_WIDTH = 70,
+    HIGHSCORE_BUTTON_SPAN = 71,
+    HIGHSCORE_STAT_DIGITS = 3,
+    HIGHSCORE_TRACK_BYTES_TO_COMPARE = 901,
+};
+
+static unsigned char *
+highscore_entry_ptr(unsigned short index) {
+    return (unsigned char *)highscore_data + (index * HIGHSCORE_ENTRY_SIZE);
+}
+
+static unsigned short
+highscore_entry_score(const unsigned char *entry) {
+    return *(const unsigned short *)(entry + HIGHSCORE_ENTRY_SCORE_OFFSET);
+}
+
+static void
+highscore_set_entry_score(unsigned char *entry, unsigned short score) {
+    *(unsigned short *)(entry + HIGHSCORE_ENTRY_SCORE_OFFSET) = score;
+}
+
 /* Variables moved from data_game.c */
-static unsigned short highscore_secondary_indices[] = { 0, 0, 0, 0, 0, 0 };
+static unsigned short highscore_secondary_indices[HIGHSCORE_SECONDARY_INDEX_COUNT]
+    = { 0, 0, 0, 0, 0, 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static unsigned short end_hiscore_random = 0;
 static struct RECTANGLE hiscore_draw_text_rect = { 0, 0, 0, 0 };
 static unsigned char input_button_repeat_state = 0;
-static char input_replay_buffer[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static char input_replay_buffer[HIGHSCORE_ENTRY_NAME_CAPACITY]
+    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
 /* file-local data (moved from data_global.c) */
@@ -130,11 +185,11 @@ menu_reset_idle_timers(void) {
 unsigned short
 highscore_write_a_(unsigned short write_defaults) {
     unsigned short i;
-    unsigned char entry[52];
+    unsigned char entry[HIGHSCORE_ENTRY_SIZE];
     unsigned short j;
 
-    input_button_repeat_state = 255;
-    for (i = 0; i < 7; ++i) {
+    input_button_repeat_state = HIGHSCORE_UI_INDEX_NONE;
+    for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         highscore_primary_index[i] = i;
     }
 
@@ -153,18 +208,19 @@ highscore_write_a_(unsigned short write_defaults) {
         entry[j] = 0;
     }
     memcpy(entry, "....................", sizeof("...................."));
-    memcpy(entry + 17, ".......................", sizeof("......................."));
-    entry[41] = 0;
-    memcpy(entry + 42, "../....", sizeof("../...."));
-    *(unsigned short *)(entry + 50) = 65535;
+    memcpy(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET, ".......................",
+           sizeof("......................."));
+    entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = 0;
+    memcpy(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET, "../....", sizeof("../...."));
+    highscore_set_entry_score(entry, HIGHSCORE_EMPTY_SCORE);
 
-    for (i = 0; i < 7; ++i) {
+    for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         for (j = 0; j < sizeof(entry); ++j) {
-            ((unsigned char *)highscore_data)[(i * 52) + j] = entry[j];
+            highscore_entry_ptr(i)[j] = entry[j];
         }
     }
 
-    return file_write_fatal(g_path_buf, highscore_data, 364) ? 1 : 0;
+    return file_write_fatal(g_path_buf, highscore_data, HIGHSCORE_TABLE_SIZE) ? 1 : 0;
 }
 
 /* --- highscore_write_b --- */
@@ -176,15 +232,15 @@ highscore_write_a_(unsigned short write_defaults) {
 
 unsigned short
 highscore_write_b(void) {
-    unsigned char buffer[364];
+    unsigned char buffer[HIGHSCORE_TABLE_SIZE];
     unsigned short i;
     unsigned short j;
 
-    for (i = 0; i < 7; ++i) {
+    for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         unsigned short mapped_index = highscore_primary_index[i];
-        unsigned char *src = (unsigned char *)highscore_data + (mapped_index * 52);
-        unsigned char *dst = buffer + (i * 52);
-        for (j = 0; j < 52; ++j) {
+        unsigned char *src = highscore_entry_ptr(mapped_index);
+        unsigned char *dst = buffer + (i * HIGHSCORE_ENTRY_SIZE);
+        for (j = 0; j < HIGHSCORE_ENTRY_SIZE; ++j) {
             dst[j] = src[j];
         }
     }
@@ -193,7 +249,7 @@ highscore_write_b(void) {
                     sizeof(g_path_buf));
     g_is_busy = true;
     {
-        short ok = file_write_fatal(g_path_buf, buffer, 364);
+        short ok = file_write_fatal(g_path_buf, buffer, HIGHSCORE_TABLE_SIZE);
         g_is_busy = false;
         return ok ? 1 : 0;
     }
@@ -216,30 +272,30 @@ highscore_write_b(void) {
  */
 unsigned short
 enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
-    unsigned char entry[52];
+    unsigned char entry[HIGHSCORE_ENTRY_SIZE];
     unsigned short insertion = 0;
     unsigned short i;
     unsigned short dialog_coords[2] = { 0, 0 };
 
-    if (framespersec == 10) {
+    if (framespersec == HIGHSCORE_FPS_DOUBLE_SCORE) {
         score <<= 1;
     }
-    else if (framespersec >= 30) {
-        score = (unsigned short)(score * 2u / 3u);
+    else if (framespersec >= HIGHSCORE_FPS_REDUCED_SCORE) {
+        score = (unsigned short)(score * HIGHSCORE_SCORE_REDUCED_NUMERATOR
+                                 / HIGHSCORE_SCORE_REDUCED_DENOMINATOR);
     }
 
-    if (score >= *(unsigned short *)((unsigned char *)highscore_data + 362)) {
+    if (score >= highscore_entry_score(highscore_entry_ptr(HIGHSCORE_TEMP_ENTRY_INDEX))) {
         highscore_draw_screen();
         return 0;
     }
 
-    for (i = 0; i < 7; ++i) {
+    for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         highscore_primary_index[i] = i;
     }
 
-    while (insertion < 7) {
-        unsigned short existing
-            = *(unsigned short *)((unsigned char *)highscore_data + (insertion * 52) + 50);
+    while (insertion < HIGHSCORE_ENTRY_COUNT) {
+        unsigned short existing = highscore_entry_score(highscore_entry_ptr(insertion));
         if (score < existing) {
             break;
         }
@@ -248,11 +304,11 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
 
     input_button_repeat_state = (unsigned char)insertion;
 
-    for (i = insertion; i < 6; ++i) {
+    for (i = insertion; i < HIGHSCORE_TEMP_ENTRY_INDEX; ++i) {
         highscore_secondary_indices[i] = i;
     }
 
-    highscore_primary_index[insertion] = 6;
+    highscore_primary_index[insertion] = HIGHSCORE_TEMP_ENTRY_INDEX;
 
     {
         unsigned i;
@@ -260,21 +316,24 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
             entry[i] = 0;
         }
     }
-    snprintf((char *)(entry + 17), 25, "%s", gnam_string);
-    entry[41] = arg6;
+    snprintf((char *)(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET), HIGHSCORE_ENTRY_DETAIL_CAPACITY,
+             "%s", gnam_string);
+    entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = arg6;
 
     if (gameconfig.game_opponenttype != 0) {
-        snprintf((char *)(entry + 42), 3, "%s", player_name_buffer);
-        entry[44] = '/';
-        snprintf((char *)(entry + 45), 5, "%s", gsna_string);
+        snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET),
+                 HIGHSCORE_ENTRY_OPPONENT_PREFIX_CAPACITY, "%s", player_name_buffer);
+        entry[HIGHSCORE_ENTRY_OPPONENT_SEPARATOR_OFFSET] = '/';
+        snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET),
+                 HIGHSCORE_ENTRY_OPPONENT_SUFFIX_CAPACITY, "%s", gsna_string);
     }
     else {
-        memcpy(entry + 42, " ", 2);
+        memcpy(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET, " ", 2);
     }
 
-    *(unsigned short *)(entry + 50) = score;
+    highscore_set_entry_score(entry, score);
 
-    memcpy((void *)((unsigned char *)highscore_data + (6 * 52)), entry, sizeof(entry));
+    memcpy((void *)highscore_entry_ptr(HIGHSCORE_TEMP_ENTRY_INDEX), entry, sizeof(entry));
 
     sprite_select_wnd_as_sprite1();
     highscore_draw_screen();
@@ -285,13 +344,13 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
 
     check_input();
     {
-        call_read_line(input_replay_buffer, 16, dialog_coords[0], dialog_coords[1],
-                       terraincenterpos + 17);
+        call_read_line(input_replay_buffer, HIGHSCORE_ENTRY_NAME_CAPACITY - 1, dialog_coords[0],
+                       dialog_coords[1], terraincenterpos + HIGHSCORE_ENTRY_DETAIL_OFFSET);
     }
 
-    snprintf((char *)entry, 17, "%s", input_replay_buffer);
+    snprintf((char *)entry, HIGHSCORE_ENTRY_NAME_CAPACITY, "%s", input_replay_buffer);
 
-    memcpy((void *)((unsigned char *)highscore_data + (6 * 52)), entry, sizeof(entry));
+    memcpy((void *)highscore_entry_ptr(HIGHSCORE_TEMP_ENTRY_INDEX), entry, sizeof(entry));
 
     sprite_select_wnd_as_sprite1();
     highscore_draw_screen();
@@ -313,7 +372,7 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
 
 void
 print_highscore_entry_(unsigned short index, unsigned char *lengths) {
-    unsigned char entry[52];
+    unsigned char entry[HIGHSCORE_ENTRY_SIZE];
     unsigned short mapped_index;
     unsigned short offset;
     unsigned short i;
@@ -324,7 +383,7 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
     char *dst;
 
     mapped_index = highscore_primary_index[index];
-    src = (unsigned char *)highscore_data + (mapped_index * 52);
+    src = highscore_entry_ptr(mapped_index);
     for (i = 0; i < sizeof(entry); ++i) {
         entry[i] = src[i];
     }
@@ -340,23 +399,24 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
         lengths[1] = (unsigned char)offset;
     }
 
-    snprintf(dst + offset, 2048 - offset, "%s", (char *)entry + 17);
+    snprintf(dst + offset, 2048 - offset, "%s", (char *)entry + HIGHSCORE_ENTRY_DETAIL_OFFSET);
     offset = (unsigned short)(offset + strlen(dst + offset) + 1);
     if (lengths != NULL) {
         lengths[2] = (unsigned char)offset;
     }
     dst[offset] = '\0';
 
-    if (entry[41] == 1) {
+    if (entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] == 1) {
         size_t cur_len = strlen(dst + offset);
         snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "(");
     }
 
     {
         size_t cur_len = strlen(dst + offset);
-        snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "%s", (char *)entry + 42);
+        snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "%s",
+                 (char *)entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET);
     }
-    if (entry[41] == 1) {
+    if (entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] == 1) {
         size_t cur_len = strlen(dst + offset);
         snprintf(dst + offset + cur_len, 2048 - offset - cur_len, ")");
     }
@@ -366,10 +426,10 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
         lengths[3] = (unsigned char)offset;
     }
 
-    time_value = *(unsigned short *)(entry + 50);
+    time_value = highscore_entry_score(entry);
     old_framespersec = framespersec;
     framespersec = 20;
-    format_frame_as_string(frame_buf, time_value == 65535 ? 0 : time_value, 1);
+    format_frame_as_string(frame_buf, time_value == HIGHSCORE_EMPTY_SCORE ? 0 : time_value, 1);
     framespersec = old_framespersec;
 
     snprintf(dst + offset, 2048 - offset, "%s", frame_buf);
@@ -410,10 +470,10 @@ highscore_draw_screen(void) {
 
     font_set_fontdef2(fontnptr);
 
-    for (i = 0; i < 7; ++i) {
+    for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         print_highscore_entry_(i, lengths);
         color = (i == input_button_repeat_state) ? dialogarg2 : 0;
-        y = (unsigned short)(25 + (i * 10));
+        y = (unsigned short)(HIGHSCORE_ROW_Y_START + (i * HIGHSCORE_ROW_Y_STEP));
         font_set_colors(0, color);
         font_draw_text(resID_byte1 + lengths[0], 16, y);
         font_draw_text(resID_byte1 + lengths[1], 120, y);
@@ -457,18 +517,21 @@ hiscore_on_event(UIScreen *self, const UIEvent *ev) {
             return (int)st->sel_button + 1;
         }
         if (key == UI_KEY_LEFT) {
-            st->sel_button = (st->sel_button == 0) ? 3 : (unsigned short)(st->sel_button - 1);
+            st->sel_button = (st->sel_button == 0) ? HIGHSCORE_MENU_LAST_BUTTON
+                                                   : (unsigned short)(st->sel_button - 1);
         }
         if (key == UI_KEY_RIGHT) {
-            st->sel_button = (st->sel_button >= 3) ? 0 : (unsigned short)(st->sel_button + 1);
+            st->sel_button = (st->sel_button >= HIGHSCORE_MENU_LAST_BUTTON)
+                                 ? 0
+                                 : (unsigned short)(st->sel_button + 1);
         }
         return 0;
     }
 
     if (ev->type == UI_EVENT_MOUSE_MOVE || ev->type == UI_EVENT_MOUSE_DOWN) {
-        unsigned char hit = mouse_multi_hittest(4, st->button_x1, st->button_x2, st->button_y1,
-                                                st->button_y2);
-        if (hit != 255) {
+        unsigned char hit = mouse_multi_hittest(HIGHSCORE_MENU_BUTTON_COUNT, st->button_x1,
+                                                st->button_x2, st->button_y1, st->button_y2);
+        if (hit != HIGHSCORE_UI_INDEX_NONE) {
             st->sel_button = hit;
             if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse) {
                 return (int)st->sel_button + 1;
@@ -502,7 +565,9 @@ hiscore_on_render(UIScreen *self) {
     st->anim_timer += replay_delta;
     if (st->allow_animation && st->anim_timer >= st->anim_speed && st->opp_anim_shape != 0
         && st->opp_text_res != 0) {
-        unsigned char loop_frames = (st->race_result == 0) ? 1 : 3;
+        unsigned char loop_frames = (st->race_result == HIGHSCORE_RESULT_PLAYER_WIN)
+                                        ? HIGHSCORE_ANIM_FRAMES_PLAYER_WIN
+                                        : HIGHSCORE_ANIM_FRAMES_NON_WIN;
         char anim_name[4];
         char *anim_txt;
         st->anim_frame = (unsigned char)((st->anim_frame + 1) % loop_frames);
@@ -559,13 +624,13 @@ end_hiscore(void) {
     struct SPRITE *small_wnd = 0;
     unsigned short dialog_y = 107;
     unsigned short avg_speed = 0;
-    unsigned short anim_speed = 30;
-    unsigned short button_x1[4];
-    unsigned short button_x2[4];
-    unsigned short button_y1[4];
-    unsigned short button_y2[4];
+    unsigned short anim_speed = HIGHSCORE_ANIM_DEFAULT_SPEED;
+    unsigned short button_x1[HIGHSCORE_MENU_BUTTON_COUNT];
+    unsigned short button_x2[HIGHSCORE_MENU_BUTTON_COUNT];
+    unsigned short button_y1[HIGHSCORE_MENU_BUTTON_COUNT];
+    unsigned short button_y2[HIGHSCORE_MENU_BUTTON_COUNT];
     unsigned i;
-    unsigned char race_result = 2; // 0 = player win, 1 = opponent win, 2 = DNF/unknown
+    unsigned char race_result = HIGHSCORE_RESULT_DNF;
     unsigned char opponent_type = (unsigned char)gameconfig.game_opponenttype;
     unsigned char allow_animation = opponent_type;
     unsigned char anim_frame = 0;
@@ -621,7 +686,7 @@ end_hiscore(void) {
     }
 
     // Opponent result / winner determination.
-    race_result = 2;
+    race_result = HIGHSCORE_RESULT_DNF;
     if (opponent_type != 0) {
         if (gState_144 == 0) {
             copy_string(resID_byte1, locate_text_res(misc_res, "olt"));
@@ -630,20 +695,20 @@ end_hiscore(void) {
         else if (gState_total_finish_time == 0 || gState_144 < gState_total_finish_time) {
             copy_string(resID_byte1, locate_text_res(misc_res, "owt"));
             format_frame_as_string(resID_byte1 + strlen(resID_byte1), gState_144, 1);
-            race_result = 1; // opponent wins
+            race_result = HIGHSCORE_RESULT_OPPONENT_WIN;
         }
         else {
             copy_string(resID_byte1, locate_text_res(misc_res, "olt"));
             format_frame_as_string(resID_byte1 + strlen(resID_byte1), gState_144, 1);
         }
-        if (gState_total_finish_time != 0 && race_result != 1) {
-            race_result = 0; // player finished and opponent didn't beat them → victory
+        if (gState_total_finish_time != 0 && race_result != HIGHSCORE_RESULT_OPPONENT_WIN) {
+            race_result = HIGHSCORE_RESULT_PLAYER_WIN;
         }
         DRAW_LINE(resID_byte1);
     }
 
     // Pick and load victory/defeat audio.
-    if (race_result == 0) {
+    if (race_result == HIGHSCORE_RESULT_PLAYER_WIN) {
         file_load_audiores("skidvict", "skidms", "VICT");
     }
     else {
@@ -657,7 +722,8 @@ end_hiscore(void) {
         avg_speed = (unsigned short)((time_ticks != 0) ? (distance / time_ticks) : 0);
     }
     copy_string(resID_byte1, locate_text_res(misc_res, "avs"));
-    print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1), avg_speed, 0, 3);
+    print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1), avg_speed, 0,
+                  HIGHSCORE_STAT_DIGITS);
     copy_string(resID_byte1 + strlen(resID_byte1), locate_text_res(misc_res, "mph"));
     DRAW_LINE(resID_byte1);
 
@@ -665,7 +731,8 @@ end_hiscore(void) {
     if (gState_impactSpeed != 0) {
         copy_string(resID_byte1, locate_text_res(misc_res, "imp"));
         print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1),
-                                  (unsigned short)(gState_impactSpeed >> 8), 0, 3);
+                                  (unsigned short)(gState_impactSpeed >> 8), 0,
+                                  HIGHSCORE_STAT_DIGITS);
         copy_string(resID_byte1 + strlen(resID_byte1), locate_text_res(misc_res, "mph"));
         DRAW_LINE(resID_byte1);
     }
@@ -673,14 +740,16 @@ end_hiscore(void) {
     // Top speed.
     copy_string(resID_byte1, locate_text_res(misc_res, "top"));
     print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1),
-                              (unsigned short)(gState_topSpeed >> 8), 0, 3);
+                              (unsigned short)(gState_topSpeed >> 8), 0,
+                              HIGHSCORE_STAT_DIGITS);
     copy_string(resID_byte1 + strlen(resID_byte1), locate_text_res(misc_res, "mph"));
     DRAW_LINE(resID_byte1);
 
     // Jumps.
     if (gState_jumpCount != 0) {
         copy_string(resID_byte1, locate_text_res(misc_res, "jum"));
-        print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1), gState_jumpCount, 0, 3);
+        print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1), gState_jumpCount, 0,
+                                  HIGHSCORE_STAT_DIGITS);
         DRAW_LINE(resID_byte1);
     }
 
@@ -688,10 +757,15 @@ end_hiscore(void) {
     if (allow_animation != 0 && (replay_mode_state_flag & 4) == 0) {
         opp_text_res = opp_res;
         opp_anim_shape = (struct SHAPE2D *)locate_shape_alt(opp_res,
-                                                            (race_result == 0) ? "winn" : "lose");
-        anim_letter = (race_result == 0) ? 'v' : 'd';
+                                                            (race_result == HIGHSCORE_RESULT_PLAYER_WIN)
+                                                                ? "winn"
+                                                                : "lose");
+        anim_letter = (race_result == HIGHSCORE_RESULT_PLAYER_WIN) ? 'v' : 'd';
         anim_frame = end_hiscore_random
-            = (unsigned char)((get_kevinrandom() + gState_frame) & ((race_result == 0) ? 1 : 3));
+            = (unsigned char)((get_kevinrandom() + gState_frame)
+                              & ((race_result == HIGHSCORE_RESULT_PLAYER_WIN)
+                                     ? HIGHSCORE_ANIM_FRAMES_PLAYER_WIN
+                                     : HIGHSCORE_ANIM_FRAMES_NON_WIN));
     }
 
     // Verify current track matches loaded data; determine if we can update highscores.
@@ -703,7 +777,7 @@ end_hiscore(void) {
             void *track_res = file_load_resource(1, g_path_buf);
             if (track_res != 0) {
                 unsigned short i;
-                for (i = 0; i < 901; ++i) {
+                for (i = 0; i < HIGHSCORE_TRACK_BYTES_TO_COMPARE; ++i) {
                     if (*((unsigned char *)track_res + i)
                         != *((unsigned char *)track_elem_map + i)) {
                         has_track_match = false;
@@ -723,20 +797,21 @@ end_hiscore(void) {
 		 * highscore_write_a_ returns 0 on success, nonzero on failure. */
         if (highscore_write_a_(0) != 0) {
             if (highscore_write_a_(1) != 0) {
-                need_highscore_entry = 255;
+                need_highscore_entry = HIGHSCORE_UI_INDEX_NONE;
             }
         }
-        if (need_highscore_entry != 255) {
+        if (need_highscore_entry != HIGHSCORE_UI_INDEX_NONE) {
             if (gState_total_finish_time != 0 && (replay_mode_state_flag & 6) == 0) {
-                unsigned short best_time = *((unsigned short *)highscore_data + 181);
-                if (best_time == 65535 || gState_total_finish_time < best_time) {
+                unsigned short best_time
+                    = highscore_entry_score(highscore_entry_ptr(HIGHSCORE_TEMP_ENTRY_INDEX));
+                if (best_time == HIGHSCORE_EMPTY_SCORE || gState_total_finish_time < best_time) {
                     need_highscore_entry = 1;
                 }
             }
         }
     }
     else {
-        need_highscore_entry = 255;
+        need_highscore_entry = HIGHSCORE_UI_INDEX_NONE;
     }
 
     /* NOTE: The ASM evaluation phase (opponent animation + text in the top
@@ -746,7 +821,7 @@ end_hiscore(void) {
 	 * animation render to avoid overlapping the highscore title. */
 
     // Draw highscores if available.
-    if (need_highscore_entry != 255) {
+    if (need_highscore_entry != HIGHSCORE_UI_INDEX_NONE) {
         highscore_draw_screen();
     }
 
@@ -779,8 +854,8 @@ end_hiscore(void) {
     button_y2[2] = hiscore_buttons_y2[2];
     button_y2[3] = hiscore_buttons_y2[3];
 
-    for (i = 0; i < 4; ++i) {
-        button_x2[i] = (unsigned short)(button_x1[i] + 71);
+    for (i = 0; i < HIGHSCORE_MENU_BUTTON_COUNT; ++i) {
+        button_x2[i] = (unsigned short)(button_x1[i] + HIGHSCORE_BUTTON_SPAN);
     }
 
     {
@@ -789,16 +864,20 @@ end_hiscore(void) {
         char *label2 = locate_text_res(misc_res, (opponent_type != 0) ? "bra" : "bdr");
         char *label3 = locate_text_res(misc_res, "bmm");
 
-        draw_button(label0, (unsigned short)(button_x1[0] + 1), button_y1[0], 70,
+        draw_button(label0, (unsigned short)(button_x1[0] + 1), button_y1[0],
+                HIGHSCORE_BUTTON_DRAW_WIDTH,
                     (unsigned short)(button_y2[0] - button_y1[0]), button_text_color,
                     button_shadow_color, button_highlight_color, 0);
-        draw_button(label1, (unsigned short)(button_x1[1] + 1), button_y1[1], 70,
+        draw_button(label1, (unsigned short)(button_x1[1] + 1), button_y1[1],
+                HIGHSCORE_BUTTON_DRAW_WIDTH,
                     (unsigned short)(button_y2[1] - button_y1[1]), button_text_color,
                     button_shadow_color, button_highlight_color, 0);
-        draw_button(label2, (unsigned short)(button_x1[2] + 1), button_y1[2], 70,
+        draw_button(label2, (unsigned short)(button_x1[2] + 1), button_y1[2],
+                HIGHSCORE_BUTTON_DRAW_WIDTH,
                     (unsigned short)(button_y2[2] - button_y1[2]), button_text_color,
                     button_shadow_color, button_highlight_color, 0);
-        draw_button(label3, (unsigned short)(button_x1[3] + 1), button_y1[3], 70,
+        draw_button(label3, (unsigned short)(button_x1[3] + 1), button_y1[3],
+                HIGHSCORE_BUTTON_DRAW_WIDTH,
                     (unsigned short)(button_y2[3] - button_y1[3]), button_text_color,
                     button_shadow_color, button_highlight_color, 0);
     }
@@ -833,7 +912,7 @@ end_hiscore(void) {
         memcpy(hst->button_y2, button_y2, sizeof(button_y2));
         /* ASM: var_selectedmenu=1 (View Replay), var_78=1 initially. */
         hst->sel_button = 1;
-        hst->prev_button = 255; /* force first-frame redraw */
+        hst->prev_button = HIGHSCORE_UI_INDEX_NONE; /* force first-frame redraw */
 
         scr = ui_screen_alloc();
         scr->on_event = hiscore_on_event;

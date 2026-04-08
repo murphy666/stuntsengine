@@ -277,7 +277,17 @@ enum {
     STN_CAR_START_Y_LIFT = 1408,
     STN_PLANE_NORMAL_Y = 8192,
     STN_PLAN_START_ROW = 28,
-    STN_PLAN_SPEED_INIT = 200
+    STN_PLAN_SPEED_INIT = 200,
+    STN_INPUT_REPEAT_SPIN_GUARD_MAX = 2048,
+    STN_REPLAY_PAUSE_STATE_ROTATING = 1,
+    STN_REPLAY_PAUSE_STATE_RECOVERING = 2,
+    STN_REPLAY_PAUSE_ROTATION_TARGET = 450,
+    STN_REPLAY_PAUSE_ROTATION_RELEASE = 384,
+    STN_REPLAY_PAUSE_ROTATION_STEP = 8,
+    STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX = 228,
+    STN_REPLAY_PAUSE_SLOW_SPEED_THRESHOLD = 1280,
+    STN_REPLAY_RESTORE_ROTATION = 500,
+    STN_REPLAY_RENDER_LAG_MAX = 2
 };
 
 enum { STN_PERSIST_PATH_LEN = 82, STN_PERSIST_TRACKNAME_LEN = 9, STN_PERSIST_VERSION = 2 };
@@ -967,22 +977,23 @@ update_gamestate() {
         // if paused
         audio_sync_car_audio();
         if (game_pause_counter != 0) {
-            if (current_rotation_angle_value < 450) {
-                current_rotation_angle_value += 8;
+            if (current_rotation_angle_value < STN_REPLAY_PAUSE_ROTATION_TARGET) {
+                current_rotation_angle_value += STN_REPLAY_PAUSE_ROTATION_STEP;
             }
 
-            if (game_pause_counter == 1 && current_rotation_angle_value > 384) {
+            if (game_pause_counter == STN_REPLAY_PAUSE_STATE_ROTATING
+                && current_rotation_angle_value > STN_REPLAY_PAUSE_ROTATION_RELEASE) {
                 game_pause_counter++;
             }
 
-            if (game_pause_counter == 2) {
+            if (game_pause_counter == STN_REPLAY_PAUSE_STATE_RECOVERING) {
                 if (multiply_and_scale(cos_fast(track_angle),
                                        trackcenterpos[startrow2]
                                            - (state.playerstate.car_posWorld1.lz >> 6))
                         + multiply_and_scale(sin_fast(track_angle),
                                              trackcenterpos2[startcol2]
                                                  - (state.playerstate.car_posWorld1.lx >> 6))
-                    <= 228) {
+                    <= STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX) {
                     if (state.playerstate.car_speed != 0) {
                         update_player_car_state(2);
                     }
@@ -990,7 +1001,7 @@ update_gamestate() {
                         game_pause_counter = 0;
                     }
                 }
-                else if (state.playerstate.car_speed < 1280) {
+                else if (state.playerstate.car_speed < STN_REPLAY_PAUSE_SLOW_SPEED_THRESHOLD) {
                     update_player_car_state(1);
                 }
                 else {
@@ -1272,7 +1283,7 @@ input_repeat_check(unsigned short timeout) {
         delta = (unsigned short)timer_get_delta_alt();
         if (delta == 0) {
             spin_guard++;
-            if (spin_guard >= 2048) {
+            if (spin_guard >= STN_INPUT_REPEAT_SPIN_GUARD_MAX) {
                 delta = 1;
                 spin_guard = 0;
             }
@@ -1924,7 +1935,7 @@ run_game(void) {
                 init_game_state(-1);
                 sprite_animation_frame_counter = 0;
                 lap_completion_trigger_flag = false;
-                game_pause_counter = 1;
+                game_pause_counter = STN_REPLAY_PAUSE_STATE_ROTATING;
                 mouse_minmax_position(mouse_motion_state_flag);
                 check_input();
                 kbormouse = false;
@@ -1940,13 +1951,13 @@ run_game(void) {
             else {
                 cameramode = 0;
                 game_replay_mode = 2;
-                current_rotation_angle_value = 500;
+                current_rotation_angle_value = STN_REPLAY_RESTORE_ROTATION;
                 framespersec = gameconfig.game_framespersec;
                 restore_gamestate(0);
                 restore_gamestate(gameconfig.game_recordedframes);
 
                 while (gameconfig.game_recordedframes != state.game_frame) {
-                    if (input_do_checking(1) == 27)
+                    if (input_do_checking(1) == UI_KEY_ESCAPE)
                         break;
                     update_gamestate();
                 }
@@ -1967,7 +1978,7 @@ run_game(void) {
                 update_gamestate();
                 /* Safety valve: if physics is significantly behind rendering,
 				 * yield briefly so the render path is not starved. */
-                if ((int)(replay_frame_counter - state.game_frame) > 2) {
+                if ((int)(replay_frame_counter - state.game_frame) > STN_REPLAY_RENDER_LAG_MAX) {
                     struct timespec ts_yield = { 0, GAME_YIELD_NS };
                     nanosleep(&ts_yield, NULL);
                 }
@@ -2045,10 +2056,10 @@ run_game(void) {
                 }
                 else {
                     if (game_replay_mode != 2 || !replaybar_enabled) {
-                        height_above_replaybar = 200;
+                        height_above_replaybar = STN_SCREEN_HEIGHT;
                     }
                     else {
-                        height_above_replaybar = 151;
+                        height_above_replaybar = STN_DASH_REPLAYBAR_Y;
                     }
 
                     game_input_keyboard_state = true;
@@ -2224,7 +2235,7 @@ run_game(void) {
                     mouse_draw_transparent_check();
                 }
 
-                if (input_do_checking(1) == 27)
+                if (input_do_checking(1) == UI_KEY_ESCAPE)
                     break;
                 if (state.opponentstate.car_crashBmpFlag != 0)
                     break;

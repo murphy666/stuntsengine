@@ -196,7 +196,17 @@ enum {
     MENU_MAIN_SELECT_CAR = 1,
     MENU_OPTION_CASE_OFFSET = 1,
     MENU_OPTION_CASE_CANCEL = 0,
-    MENU_OPTION_CASE_EXIT = 7
+    MENU_OPTION_CASE_EXIT = 7,
+    MENU_INPUT_DEVICE_KEYBOARD = 0,
+    MENU_INPUT_DEVICE_JOYSTICK = 1,
+    MENU_INPUT_DEVICE_MOUSE = 2,
+    MENU_OPPONENT_TYPE_NONE = 0,
+    MENU_OPPONENT_TYPE_FIRST = 1,
+    MENU_OPPONENT_TYPE_LAST = 6,
+    MENU_OPPONENT_TYPE_WRAP_SENTINEL = 7,
+    MENU_CAR_RENDER_STATE_RENDER = 0,
+    MENU_CAR_RENDER_STATE_BLIT = 1,
+    MENU_CAR_RENDER_STATE_RENDER_AND_BLIT = 3
 };
 
 /** @brief Spin-wait until all keyboard and mouse buttons are released. */
@@ -482,13 +492,13 @@ run_option_menu_(void) {
             break;
         case 1:
             if (mouse_motion_state_flag) {
-                input_default = 2;
+                input_default = MENU_INPUT_DEVICE_MOUSE;
             }
             else if (joystick_assigned_flags) {
-                input_default = 1;
+                input_default = MENU_INPUT_DEVICE_JOYSTICK;
             }
             else {
-                input_default = 0;
+                input_default = MENU_INPUT_DEVICE_KEYBOARD;
             }
             wait_input_release_strict();
             dialog_result = ui_dialog_show_restext(
@@ -801,7 +811,9 @@ opp_update_hittest(OppMenuState *st) {
                                     opponentmenu_buttons_x2, opponentmenu_buttons_y1,
                                     opponentmenu_buttons_y2);
     if (hit >= 0 && hit < MENU_OPP_BUTTON_COUNT) {
-        if (kbormouse && !(gameconfig.game_opponenttype == 0 && hit == MENU_OPP_BTN_CAR)) {
+        if (kbormouse
+            && !(gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_NONE
+                 && hit == MENU_OPP_BTN_CAR)) {
             st->selected = (unsigned char)hit;
         }
     }
@@ -812,22 +824,22 @@ static int
 opp_activate(OppMenuState *st) {
     if (st->selected == MENU_OPP_BTN_PREV) {
         gameconfig.game_opponenttype--;
-        if (gameconfig.game_opponenttype < 1)
-            gameconfig.game_opponenttype = 6;
+        if (gameconfig.game_opponenttype < MENU_OPPONENT_TYPE_FIRST)
+            gameconfig.game_opponenttype = MENU_OPPONENT_TYPE_LAST;
         return 0;
     }
     if (st->selected == MENU_OPP_BTN_NEXT) {
         gameconfig.game_opponenttype++;
-        if (gameconfig.game_opponenttype == 7)
-            gameconfig.game_opponenttype = 1;
+        if (gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_WRAP_SENTINEL)
+            gameconfig.game_opponenttype = MENU_OPPONENT_TYPE_FIRST;
         return 0;
     }
     if (st->selected == MENU_OPP_BTN_CLEAR) {
-        gameconfig.game_opponenttype = 0;
+        gameconfig.game_opponenttype = MENU_OPPONENT_TYPE_NONE;
         return 0;
     }
     if (st->selected == MENU_OPP_BTN_CAR) {
-        if (gameconfig.game_opponenttype == 0)
+        if (gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_NONE)
             return 0;
         check_input();
         mouse_draw_opaque_check();
@@ -846,7 +858,7 @@ opp_activate(OppMenuState *st) {
         return 0;
     }
     if (st->selected == MENU_OPP_BTN_DONE) {
-        if (gameconfig.game_opponenttype != 0) {
+        if (gameconfig.game_opponenttype != MENU_OPPONENT_TYPE_NONE) {
             if ((unsigned char)gameconfig.game_opponentcarid[0] == MENU_SENTINEL_U8) {
                 memcpy(gameconfig.game_opponentcarid, gameconfig.game_playercarid,
                        sizeof(gameconfig.game_playercarid));
@@ -878,7 +890,8 @@ opp_on_event(UIScreen *self, const UIEvent *ev) {
         if (key == MENU_KEY_LEFT) {
             st->selected = (st->selected == MENU_OPP_BTN_PREV) ? MENU_OPP_BTN_DONE
                                                                : (unsigned char)(st->selected - 1);
-            if (gameconfig.game_opponenttype == 0 && st->selected == MENU_OPP_BTN_CAR) {
+            if (gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_NONE
+                && st->selected == MENU_OPP_BTN_CAR) {
                 st->selected = (st->selected == MENU_OPP_BTN_PREV)
                                    ? MENU_OPP_BTN_DONE
                                    : (unsigned char)(st->selected - 1);
@@ -889,7 +902,8 @@ opp_on_event(UIScreen *self, const UIEvent *ev) {
         if (key == MENU_KEY_RIGHT) {
             st->selected = (st->selected >= MENU_OPP_BTN_DONE) ? MENU_OPP_BTN_PREV
                                                                : (unsigned char)(st->selected + 1);
-            if (gameconfig.game_opponenttype == 0 && st->selected == MENU_OPP_BTN_CAR) {
+            if (gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_NONE
+                && st->selected == MENU_OPP_BTN_CAR) {
                 st->selected = (st->selected >= MENU_OPP_BTN_DONE)
                                    ? MENU_OPP_BTN_PREV
                                    : (unsigned char)(st->selected + 1);
@@ -933,7 +947,7 @@ opp_on_render(UIScreen *self) {
         }
 
         ensure_file_exists(4);
-        if (gameconfig.game_opponenttype != 0) {
+        if (gameconfig.game_opponenttype != MENU_OPPONENT_TYPE_NONE) {
             char oppname[5] = "opp1";
             oppname[3] = (char)('0' + gameconfig.game_opponenttype);
             st->opponent_resptr = file_load_resfile(oppname);
@@ -992,7 +1006,7 @@ opp_on_render(UIScreen *self) {
             sprite_select_wnd_as_sprite1();
         }
 
-        opponent_text = (gameconfig.game_opponenttype != 0)
+        opponent_text = (gameconfig.game_opponenttype != MENU_OPPONENT_TYPE_NONE)
                             ? locate_text_res(st->opponent_resptr, "des")
                             : locate_text_res(miscptr, "rac");
 
@@ -1205,11 +1219,11 @@ car_activate(CarMenuState *st) {
                     MENU_CAR_BTN_W, MENU_CAR_BTN_H, button_text_color, button_shadow_color,
                     button_highlight_color, 0);
         sprite_clear_shape_alt(wndsprite->sprite_bitmapptr, 0, 0);
-        st->redraw_state = 3;
+        st->redraw_state = MENU_CAR_RENDER_STATE_RENDER_AND_BLIT;
         return 0;
     case MENU_CAR_BTN_COLOR:
         (*st->materialofs)++;
-        st->redraw_state = 3;
+        st->redraw_state = MENU_CAR_RENDER_STATE_RENDER_AND_BLIT;
         return 0;
     default:
         return 0;
@@ -1271,7 +1285,7 @@ car_on_event(UIScreen *self, const UIEvent *ev) {
 
 static void
 car_draw_opponent_portrait(CarMenuState *st) {
-    if (st->opponenttype == 0) {
+    if (st->opponenttype == MENU_OPPONENT_TYPE_NONE) {
         return;
     }
 
@@ -1390,17 +1404,18 @@ car_on_render(UIScreen *self) {
         st->update_rc.top = 0;
         st->update_rc.bottom = MENU_SCREEN_HEIGHT;
         st->prev_hover = MENU_SENTINEL_U8;
-        st->redraw_state = 3;
+        st->redraw_state = MENU_CAR_RENDER_STATE_RENDER_AND_BLIT;
         st->rendered_flag = false;
     }
 
     /* ---- rotation animation ---- */
     st->rotation = (unsigned short)(st->rotation + st->rotation_delta);
 
-    need_blit = (st->redraw_state == 1);
+    need_blit = (st->redraw_state == MENU_CAR_RENDER_STATE_BLIT);
 
     /* ---- 3D render ---- */
-    if (st->redraw_state == 0 || st->redraw_state == 3) {
+    if (st->redraw_state == MENU_CAR_RENDER_STATE_RENDER
+        || st->redraw_state == MENU_CAR_RENDER_STATE_RENDER_AND_BLIT) {
         carpos_polar = (unsigned short)polarAngle(carmenu_carpos.y, carmenu_carpos.z);
         if (timertestflag_copy) {
             st->rect_clip = rect_invalid;
@@ -1423,17 +1438,17 @@ car_on_render(UIScreen *self) {
         rect_intersect(&menu_clip_rect, &st->rect_clip);
         rect_union(&st->update_rc, &st->rect_clip, &st->rect_union_rc);
 
-        if (st->redraw_state == 3) {
+        if (st->redraw_state == MENU_CAR_RENDER_STATE_RENDER_AND_BLIT) {
             need_blit = true;
         }
         else {
-            st->redraw_state = 1;
+            st->redraw_state = MENU_CAR_RENDER_STATE_BLIT;
         }
     }
 
     /* ---- blit to screen ---- */
     if (need_blit) {
-        st->redraw_state = 0;
+        st->redraw_state = MENU_CAR_RENDER_STATE_RENDER;
         st->rendered_flag = true;
         sprite_select_wnd_as_sprite1();
         sprite_set_1_size(st->update_rc.left, st->update_rc.right, st->update_rc.top,
@@ -1514,10 +1529,10 @@ car_on_destroy(UIScreen *self) {
     sprite_free_wnd(wndsprite);
     unload_resource(st->carres);
     shape3d_free_car_shapes();
-    if (st->opponenttype != 0 && video_flag5_is0 && st->opp_wnd != 0) {
+    if (st->opponenttype != MENU_OPPONENT_TYPE_NONE && video_flag5_is0 && st->opp_wnd != 0) {
         sprite_free_wnd(st->opp_wnd);
     }
-    if (st->opponenttype == 0) {
+    if (st->opponenttype == MENU_OPPONENT_TYPE_NONE) {
         unload_resource(miscptr);
     }
     mmgr_free(st->sdcsel_shape);
@@ -1614,11 +1629,11 @@ make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *trans
 
     st->sdcsel_shape = file_load_shape2d_fatal_thunk("sdcsel");
 
-    if (opponenttype == 0) {
+    if (opponenttype == MENU_OPPONENT_TYPE_NONE) {
         miscptr = file_load_resfile("misc");
     }
 
-    if (opponenttype != 0) {
+    if (opponenttype != MENU_OPPONENT_TYPE_NONE) {
         unsigned short opp_w = 0;
         unsigned short opp_h = 0;
         menu_clip_rect.right = MENU_OPP_CAR_PANEL_X;
@@ -1639,7 +1654,7 @@ make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *trans
 
     st->prev_car_index = MENU_SENTINEL_U8;
     st->prev_hover = MENU_SENTINEL_U8;
-    st->redraw_state = 3;
+    st->redraw_state = MENU_CAR_RENDER_STATE_RENDER_AND_BLIT;
     for (i = 0; i < MENU_CAR_BUTTON_COUNT; i++) {
         st->button_x1[i] = carmenu_buttons_y1[i];
         st->button_x2[i] = carmenu_buttons_y2[i];

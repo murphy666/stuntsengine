@@ -37,6 +37,19 @@
 /* Forward declarations are now in data_game.h and other module headers, included via stunts.h. */
 typedef void (*timer_callback_func_local)(void);
 
+enum {
+    TIMER_CALLBACK_SLOTS = 5,
+    TIMER_CALLBACK_LAST_INDEX = TIMER_CALLBACK_SLOTS - 1,
+    TIMER_DEADLINE_WORD_SHIFT = 16,
+    TIMER_DEADLINE_LOW_MASK = 65535,
+    TIMER_DISPLAY_HZ_MIN = 10,
+    TIMER_DISPLAY_HZ_MAX = 120,
+    TIMER_WAIT_RESYNC_TOLERANCE = 250,
+    TIMER_DISPATCH_BURST_MAX = 64,
+    TIMER_WAIT_SPIN_GUARD_MAX = 8388608,
+    TIMER_COUNTDOWN_QUEUE_RESET = 100,
+};
+
 /* Timer-private state — moved from data_global.c */
 static unsigned long timer_callback_counter = 0;
 static unsigned long last_timer_callback_counter = 0;
@@ -51,7 +64,7 @@ static unsigned sound_volume_control = 0;
 static unsigned char vibration_feedback_state = 0; /* was [2]={0,3}; byte 0 is the active value */
 static unsigned int animation_sequence_state = 0;
 static unsigned int animation_sequence_data = 0;
-static timer_callback_func_local g_timer_callbacks[5] = { 0, 0, 0, 0, 0 };
+static timer_callback_func_local g_timer_callbacks[TIMER_CALLBACK_SLOTS] = { 0, 0, 0, 0, 0 };
 static unsigned long g_timer_last_ms = 0;
 static bool g_timer_dispatching = false;
 static const unsigned long g_timer_counter_units_per_tick = 5UL;
@@ -71,7 +84,7 @@ timer_get_counter_from_words(void) {
     low = frame_timer_state;
     high = frame_counter_state;
 
-    return ((unsigned long)high << 16) | low;
+    return ((unsigned long)high << TIMER_DEADLINE_WORD_SHIFT) | low;
 }
 
 /* Test-seam: lets unit-tests inject the hardware-timer word state.    */
@@ -124,11 +137,11 @@ timer_get_display_hz(void) {
         unsigned long hz = GAME_DISPLAY_HZ;
         if (env_hz != 0 && *env_hz != '\0') {
             int parsed = atoi(env_hz);
-            if (parsed < 10) {
-                parsed = 10;
+            if (parsed < TIMER_DISPLAY_HZ_MIN) {
+                parsed = TIMER_DISPLAY_HZ_MIN;
             }
-            if (parsed > 120) {
-                parsed = 120;
+            if (parsed > TIMER_DISPLAY_HZ_MAX) {
+                parsed = TIMER_DISPLAY_HZ_MAX;
             }
             hz = (unsigned long)parsed;
         }
@@ -206,8 +219,8 @@ timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_counter,
     }
 
     current = timer_get_counter();
-    if (*next_counter == 0UL || current + 250UL < *next_counter
-        || current > *next_counter + 250UL) {
+    if (*next_counter == 0UL || current + TIMER_WAIT_RESYNC_TOLERANCE < *next_counter
+        || current > *next_counter + TIMER_WAIT_RESYNC_TOLERANCE) {
         *next_counter = current;
         *accum = 0UL;
     }
@@ -311,7 +324,7 @@ timer_wait_for_dx(void) {
     do {
         res = timer_get_counter();
         spin_guard++;
-        if (spin_guard >= 8388608UL) {
+        if (spin_guard >= TIMER_WAIT_SPIN_GUARD_MAX) {
             break;
         }
     } while (res < timer_copy_unk);
@@ -395,8 +408,8 @@ timer_dispatch_elapsed(void) {
         return;
     }
 
-    if (ticks_to_dispatch > 64UL) {
-        ticks_to_dispatch = 64UL;
+    if (ticks_to_dispatch > TIMER_DISPATCH_BURST_MAX) {
+        ticks_to_dispatch = TIMER_DISPATCH_BURST_MAX;
     }
 
     g_timer_last_ms += ticks_to_dispatch * GAME_TIMER_MS_EFF;
@@ -404,7 +417,7 @@ timer_dispatch_elapsed(void) {
     g_timer_dispatching = true;
     for (tick_index = 0; tick_index < ticks_to_dispatch; tick_index++) {
         timer_callback_counter += g_timer_counter_units_per_tick;
-        for (callback_index = 0; callback_index < 5; callback_index++) {
+        for (callback_index = 0; callback_index < TIMER_CALLBACK_SLOTS; callback_index++) {
             if (g_timer_callbacks[callback_index] != (timer_callback_func_local)0) {
                 g_timer_callbacks[callback_index]();
             }
@@ -427,7 +440,7 @@ timer_setup_interrupt(void) {
     audio_music_state = true;
 
     vibration_feedback_state = 0;
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < TIMER_CALLBACK_SLOTS; i++) {
         g_timer_callbacks[i] = (timer_callback_func_local)0;
     }
 
@@ -455,7 +468,7 @@ timer_stop_dispatch(void) {
 void
 timer_setup_interrupt_countdown(void) {
     timer_setup_interrupt();
-    sound_effects_queue = 100;
+    sound_effects_queue = TIMER_COUNTDOWN_QUEUE_RESET;
     audio_sfx_enabled_flag = true;
     audio_music_state = true;
 }
@@ -485,13 +498,13 @@ timer_reg_callback(void *callback) {
     timer_callback_func_local cb = (timer_callback_func_local)callback;
 
     /* Avoid duplicate registrations. */
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < TIMER_CALLBACK_SLOTS; i++) {
         if (g_timer_callbacks[i] == cb) {
             return;
         }
     }
 
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < TIMER_CALLBACK_SLOTS; i++) {
         if (g_timer_callbacks[i] == (timer_callback_func_local)0) {
             g_timer_callbacks[i] = cb;
             return;
@@ -515,12 +528,12 @@ timer_remove_callback(void *callback) {
     int i, j;
     timer_callback_func_local cb = (timer_callback_func_local)callback;
 
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < TIMER_CALLBACK_SLOTS; i++) {
         if (g_timer_callbacks[i] == cb) {
-            for (j = i; j < 4; j++) {
+            for (j = i; j < TIMER_CALLBACK_LAST_INDEX; j++) {
                 g_timer_callbacks[j] = g_timer_callbacks[j + 1];
             }
-            g_timer_callbacks[4] = (timer_callback_func_local)0;
+            g_timer_callbacks[TIMER_CALLBACK_LAST_INDEX] = (timer_callback_func_local)0;
             return;
         }
     }
@@ -543,9 +556,9 @@ set_add_value(unsigned int delta_lo, unsigned int delta_hi) {
     unsigned long curr, deadline;
 
     curr = timer_get_counter();
-    deadline = curr + ((unsigned long)delta_hi << 16) + delta_lo;
-    animation_sequence_state = (unsigned int)(deadline & 65535);
-    animation_sequence_data = (unsigned int)(deadline >> 16);
+    deadline = curr + ((unsigned long)delta_hi << TIMER_DEADLINE_WORD_SHIFT) + delta_lo;
+    animation_sequence_state = (unsigned int)(deadline & TIMER_DEADLINE_LOW_MASK);
+    animation_sequence_data = (unsigned int)(deadline >> TIMER_DEADLINE_WORD_SHIFT);
     /** @brief Wait.
  * @param animation_sequence_data Parameter `animation_sequence_data`.
  * @param timer_deadline_reached Parameter `timer_deadline_reached`.
@@ -566,7 +579,8 @@ timer_deadline_reached(void) {
     unsigned long curr, deadline;
 
     curr = timer_get_counter();
-    deadline = ((unsigned long)animation_sequence_data << 16) + animation_sequence_state;
+    deadline = ((unsigned long)animation_sequence_data << TIMER_DEADLINE_WORD_SHIFT)
+               + animation_sequence_state;
 
     return (curr >= deadline) ? 1 : 0;
 }

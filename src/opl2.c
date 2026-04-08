@@ -34,9 +34,14 @@
 
 #include "nukedopl.h"
 
+enum {
+    OPL2_DEFAULT_SAMPLE_RATE_HZ = 49716,
+    OPL2_STEREO_CHANNEL_COUNT = 2,
+};
+
 static opl3_chip s_opl;
 static bool s_ready = false;
-static int s_sample_rate = 49716;
+static int s_sample_rate = OPL2_DEFAULT_SAMPLE_RATE_HZ;
 
 /** @brief Initialize the OPL backend at the requested output sample rate.
  * @param sample_rate Output sample rate in Hz.
@@ -113,7 +118,7 @@ opl2_generate(short *buf, int n) {
 
         OPL3_GenerateResampled(&s_opl, lr);
         mixed = (int)lr[0] + (int)lr[1];
-        buf[i] = (short)(mixed / 2);
+        buf[i] = (short)(mixed / OPL2_STEREO_CHANNEL_COUNT);
     }
 }
 

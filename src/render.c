@@ -46,6 +46,8 @@
 #include "keyboard.h"
 #include "font.h"
 
+enum { RENDER_DIRTY_RECT_CAPACITY = 45 };
+
 /* Variables moved from data_game.c */
 static char dirty_rect_count = 0;
 static void *sdgame2ptr = 0;
@@ -56,11 +58,10 @@ static char texture_page_index = 0;
 /* Variables moved from data_game.c (private to this translation unit) */
 static short angular_velocity_state = 0;
 static short collision_detection_state = 0;
-static struct RECTANGLE dirty_rect_array[45] = { { 0 } };
-static short dirty_rect_indices[45] = { 0 };
+static struct RECTANGLE dirty_rect_array[RENDER_DIRTY_RECT_CAPACITY] = { { 0 } };
+static short dirty_rect_indices[RENDER_DIRTY_RECT_CAPACITY] = { 0 };
 static struct RECTANGLE intro_dirty_clip_rect = { 0, 0, 0, 0 };
 static short memory_pointer_boundary_max = 0;
-static short physics_constants_table = 16;
 static struct RECTANGLE rect_skybox = { 0, 0, 0, 0 };
 static char rect_sort_indices[15] = { 0 };
 static short skybox_current = 0;
@@ -194,12 +195,18 @@ enum {
     RENDER_WRAP_DELTA_MAX = 96,
     RENDER_INVALID_POINT_COORD = 32768,
     RENDER_RECT_ARRAY_COUNT = 15,
+    RENDER_SKYBOX_RECT_SLOT = 5,
     RENDER_SKYBOX_COUNT = 4,
     RENDER_TRACK_GRID_SIZE = 30,
     RENDER_STAR_COUNT = 100,
+    RENDER_INTRO_STAR_COLOR_CYCLE_LIMIT = 16,
     RENDER_COLOR_INDEX_SKY = 17,
     RENDER_COLOR_INDEX_GROUND = 16,
     RENDER_COLOR_INDEX_WATER = 100,
+    RENDER_SPHERE_SCALE_FACTOR_COS_45 = 11585,
+    RENDER_SPHERE_SCALE_FACTOR_90_PERCENT = 14654,
+    RENDER_SPHERE_SCALE_FACTOR_97_PERCENT = 15895,
+    RENDER_SPHERE_SCALE_FACTOR_80_PERCENT = 13107,
     RENDER_MATERIAL_ENTRY_COUNT = 129,
     RENDER_MATERIAL_ENTRY_STRIDE = 2,
     RENDER_MATERIAL_PTR_VALID_BASE = 1048576,
@@ -214,11 +221,20 @@ enum {
     RENDER_TRACK_MARKER_MIN = 253,
     RENDER_VISIBILITY_BASE = 1024,
     RENDER_STAR_MIN_Z = 200,
+    RENDER_SINKING_MAX_DURATION_SECONDS = 4,
+    RENDER_CRACK_SEGMENTS_PER_SECOND = 7,
+    RENDER_REPLAY_INDICATOR_DUTY_DIVISOR = 2,
     RENDER_INTRO_WND_DEPTH = 15,
+    RENDER_INTRO_DEFAULT_FPS = 30,
+    RENDER_INTRO_OPPONENT_TRACKING_SECONDS = 6,
+    RENDER_INTRO_END_PHASE_DELAY_SECONDS = 11,
+    RENDER_INTRO_TOTAL_DURATION_SECONDS = 23,
     RENDER_INTRO_CAMERA_CENTER = 1024,
     RENDER_INTRO_CAMERA_Y_START = 300,
     RENDER_INTRO_CAMERA_Y_CRUISE = 90,
+    RENDER_INTRO_CAMERA_Y_FOLLOW_OFFSET = 20,
     RENDER_INTRO_CAMERA_Y_STEP = 20,
+    RENDER_INTRO_CAMERA_Z_RETREAT_STEP = 5,
     RENDER_INTRO_CAMERA_ADJUST_STEP = 10,
     RENDER_INTRO_LOGO_FLAGS_TRACKED = 12
 };
@@ -461,11 +477,12 @@ struct RECTANGLE *
 do_sinking(int frame_count, int base_y, int sink_height) {
     int di, si;
 
-    di = framespersec << 2;
+    di = framespersec * RENDER_SINKING_MAX_DURATION_SECONDS;
     if (frame_count > di)
         frame_count = di;
 
-    si = (int)((long)sink_height * (long)frame_count / ((long)framespersec * 4L));
+    si = (int)((long)sink_height * (long)frame_count
+               / ((long)framespersec * RENDER_SINKING_MAX_DURATION_SECONDS));
 
     rect_ingame_text.left = RENDER_SCREEN_LEFT;
     rect_ingame_text.right = RENDER_SCREEN_WIDTH;
@@ -819,7 +836,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
     for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
         rect_sort_indices[si] = 1;
     }
-    rect_sort_indices[5] = 3;
+    rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
 
     slice_rect.top = RENDER_SCREEN_TOP;
     slice_rect.bottom = rect_skybox.top;
@@ -1017,23 +1034,27 @@ no_horizon:
         }
 
         if (angle_rotation_state[view_index] == view_yaw) {
-            if (((struct RECTANGLE *)rect_buffer_primary)[5].left == rect_skybox.left
-                && ((struct RECTANGLE *)rect_buffer_primary)[5].right == rect_skybox.right
-                && ((struct RECTANGLE *)rect_buffer_primary)[5].top == rect_skybox.top
-                && ((struct RECTANGLE *)rect_buffer_primary)[5].bottom == rect_skybox.bottom) {
-                rect_sort_indices[5] = 0;
+            if (((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].left
+                    == rect_skybox.left
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].right
+                       == rect_skybox.right
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].top
+                       == rect_skybox.top
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].bottom
+                       == rect_skybox.bottom) {
+                rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
             }
             else {
-                rect_sort_indices[5] = 3;
+                rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
             }
         }
         else {
-            rect_sort_indices[5] = 3;
+            rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
         }
 
         dirty_rect_count = 0;
-        rectlist_add_rects(15, rect_sort_indices, rect_buffer_primary, frame_dirty_rects, clip_rect,
-                           &dirty_rect_count, dirty_rect_array);
+        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
+                           frame_dirty_rects, clip_rect, &dirty_rect_count, dirty_rect_array);
 
         for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
             draw_skybox_rect_slice(&dirty_rect_array[di], view_yaw, sky_height);
@@ -1521,7 +1542,7 @@ replay_check:
         unsigned int frame_mod;
         si = state.game_frame;
         frame_mod = (unsigned)si % framespersec;
-        if ((int)(framespersec >> 1) <= (int)frame_mod)
+        if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) <= (int)frame_mod)
             goto done_text;
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
@@ -1557,7 +1578,7 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
     cracshape = locate_shape_alt(gameresptr, (char *)aCrak);
     cinfshape = locate_shape_alt(gameresptr, (char *)aCinf);
 
-    cx = framespersec / 7;
+    cx = framespersec / RENDER_CRACK_SEGMENTS_PER_SECOND;
     frame_index = frame_count / cx;
 
     count = *(short *)cinfshape;
@@ -1694,7 +1715,7 @@ setup_intro(void) {
      * framespersec is 0 at first launch (only set during gameplay), so initialise
      * it here when needed — same value the DOS speed-detection would have chosen. */
     if (framespersec == 0) {
-        framespersec = 30;
+        framespersec = RENDER_INTRO_DEFAULT_FPS;
     }
     inverse_fps_hundredths = 100 / framespersec;
     angular_velocity_state = 0;
@@ -1729,15 +1750,12 @@ setup_intro(void) {
 
             /* Check if intro should end */
             {
-                int limit;
-                limit = framespersec;
-                limit = ((limit << 2) + limit) << 1;
-                limit += framespersec; /* limit = framespersec * 11 */
+                int limit = framespersec * RENDER_INTRO_END_PHASE_DELAY_SECONDS;
                 intro_frame_counter++;
                 if (intro_frame_counter > limit) {
                     end_phase = true;
                     camera_y += RENDER_INTRO_CAMERA_Y_STEP;
-                    camera_z -= 5;
+                    camera_z -= RENDER_INTRO_CAMERA_Z_RETREAT_STEP;
 
                     /* Oscillate camera angle toward intro center */
                     camera_delta = camera_x - RENDER_INTRO_CAMERA_CENTER;
@@ -1783,23 +1801,17 @@ setup_intro(void) {
         opponent_z = (short)((long)state.opponentstate.car_posWorld1.lz >> 6);
 
         {
-            int early_limit;
-            early_limit = framespersec;
-            early_limit = (early_limit << 1) + early_limit;
-            early_limit <<= 1; /* framespersec * 6 */
+            int early_limit = framespersec * RENDER_INTRO_OPPONENT_TRACKING_SECONDS;
             if (intro_frame_counter < early_limit) {
                 draw_car_flag = false;
                 camera_yaw = state.opponentstate.car_rotate.x & 1023;
                 camera_pitch = 0;
                 camera_x = opponent_x;
-                camera_y = opponent_y + 20;
+                camera_y = opponent_y + RENDER_INTRO_CAMERA_Y_FOLLOW_OFFSET;
                 camera_z = opponent_z;
             }
             else {
-                int mid_limit;
-                mid_limit = framespersec;
-                mid_limit = ((mid_limit << 2) + mid_limit) << 1;
-                mid_limit += framespersec; /* framespersec * 11 */
+                int mid_limit = framespersec * RENDER_INTRO_END_PHASE_DELAY_SECONDS;
                 if (intro_frame_counter < mid_limit) {
                     camera_x = RENDER_INTRO_CAMERA_CENTER;
                     camera_z = RENDER_INTRO_CAMERA_CENTER;
@@ -1877,7 +1889,7 @@ setup_intro(void) {
             intro_interrupted = true;
             break;
         }
-        if (23 * framespersec <= intro_frame_counter) {
+        if (framespersec * RENDER_INTRO_TOTAL_DURATION_SECONDS <= intro_frame_counter) {
             break;
         }
     }
@@ -2027,7 +2039,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
             }
 
             intro_colorvalue++;
-            if (intro_colorvalue == physics_constants_table) {
+            if (intro_colorvalue == RENDER_INTRO_STAR_COLOR_CYCLE_LIMIT) {
                 intro_colorvalue = 1;
             }
         }
@@ -2084,11 +2096,15 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
 
     /* Check if rect at index 5 changed */
     if (collision_detection_state == sprite_transformation_angle
-        && rect_buffer_front[5].left == rect_buffer_back[5].left
-        && rect_buffer_front[5].right == rect_buffer_back[5].right
-        && rect_buffer_front[5].top == rect_buffer_back[5].top
-        && rect_buffer_front[5].bottom == rect_buffer_back[5].bottom) {
-        rect_sort_indices[5] = 0;
+         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].left
+             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].left
+         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].right
+             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].right
+         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].top
+             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].top
+         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].bottom
+             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].bottom) {
+         rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
     }
 
     dirty_rect_count = 0;
@@ -2182,50 +2198,50 @@ build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
     dy_three_quarters = half_dy + quarter_dy;
 
     /* Scale calculations with 11585 (approx 0.707 = sin/cos 45 degrees) */
-    d[8] = multiply_and_scale(d[16] + d[0], 11585);
-    d[9] = multiply_and_scale(d[1] + d[17], 11585);
+    d[8] = multiply_and_scale(d[16] + d[0], RENDER_SPHERE_SCALE_FACTOR_COS_45);
+    d[9] = multiply_and_scale(d[1] + d[17], RENDER_SPHERE_SCALE_FACTOR_COS_45);
 
     /* Scale calculations with 14654 (approx 0.900) */
-    d[4] = multiply_and_scale(d[0] + half_dx, 14654);
-    d[5] = multiply_and_scale(d[1] + half_dy, 14654);
-    d[12] = multiply_and_scale(d[16] + half_width, 14654);
-    d[13] = multiply_and_scale(d[17] + half_height, 14654);
+    d[4] = multiply_and_scale(d[0] + half_dx, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[5] = multiply_and_scale(d[1] + half_dy, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[12] = multiply_and_scale(d[16] + half_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[13] = multiply_and_scale(d[17] + half_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
 
     /* Scale calculations with 15895 (approx 0.970) */
-    d[2] = multiply_and_scale(d[0] + quarter_dx, 15895);
-    d[3] = multiply_and_scale(d[1] + quarter_dy, 15895);
-    d[14] = multiply_and_scale(d[16] + quarter_width, 15895);
-    d[15] = multiply_and_scale(d[17] + quarter_height, 15895);
+    d[2] = multiply_and_scale(d[0] + quarter_dx, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[3] = multiply_and_scale(d[1] + quarter_dy, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[14] = multiply_and_scale(d[16] + quarter_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[15] = multiply_and_scale(d[17] + quarter_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
 
     /* Scale calculations with 13107 (approx 0.800) */
-    d[6] = multiply_and_scale(d[0] + dx_three_quarters, 13107);
-    d[7] = multiply_and_scale(d[1] + dy_three_quarters, 13107);
-    d[10] = multiply_and_scale(d[16] + width_three_quarters, 13107);
-    d[11] = multiply_and_scale(d[17] + height_three_quarters, 13107);
+    d[6] = multiply_and_scale(d[0] + dx_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[7] = multiply_and_scale(d[1] + dy_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[10] = multiply_and_scale(d[16] + width_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[11] = multiply_and_scale(d[17] + height_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
 
     /* Second half: negative direction calculations */
     si_val = -d[0];
 
-    d[24] = multiply_and_scale(d[16] + si_val, 11585);
+    d[24] = multiply_and_scale(d[16] + si_val, RENDER_SPHERE_SCALE_FACTOR_COS_45);
     di_val = -d[1];
-    d[25] = multiply_and_scale(d[17] + di_val, 11585);
+    d[25] = multiply_and_scale(d[17] + di_val, RENDER_SPHERE_SCALE_FACTOR_COS_45);
 
-    d[28] = multiply_and_scale(half_dx + si_val, 14654);
-    d[29] = multiply_and_scale(half_dy + di_val, 14654);
-    d[20] = multiply_and_scale(d[16] - half_width, 14654);
-    d[21] = multiply_and_scale(d[17] - half_height, 14654);
+    d[28] = multiply_and_scale(half_dx + si_val, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[29] = multiply_and_scale(half_dy + di_val, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[20] = multiply_and_scale(d[16] - half_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[21] = multiply_and_scale(d[17] - half_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
 
     si_val = -d[0];
-    d[30] = multiply_and_scale(quarter_dx + si_val, 15895);
+    d[30] = multiply_and_scale(quarter_dx + si_val, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
     di_val = -d[1];
-    d[31] = multiply_and_scale(quarter_dy + di_val, 15895);
-    d[18] = multiply_and_scale(d[16] - quarter_width, 15895);
-    d[19] = multiply_and_scale(d[17] - quarter_height, 15895);
+    d[31] = multiply_and_scale(quarter_dy + di_val, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[18] = multiply_and_scale(d[16] - quarter_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[19] = multiply_and_scale(d[17] - quarter_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
 
-    d[26] = multiply_and_scale(dx_three_quarters + si_val, 13107);
-    d[27] = multiply_and_scale(dy_three_quarters + di_val, 13107);
-    d[22] = multiply_and_scale(d[16] - width_three_quarters, 13107);
-    d[23] = multiply_and_scale(d[17] - height_three_quarters, 13107);
+    d[26] = multiply_and_scale(dx_three_quarters + si_val, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[27] = multiply_and_scale(dy_three_quarters + di_val, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[22] = multiply_and_scale(d[16] - width_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[23] = multiply_and_scale(d[17] - height_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
 
     /* Final loop: create mirrored vertices */
     for (vertex_index = 0; vertex_index < 16; vertex_index++) {
