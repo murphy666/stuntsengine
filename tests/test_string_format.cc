@@ -24,13 +24,13 @@ static char* stunts_itoa(int value, char* str, int radix)
 {
     unsigned int uvalue, digit;
     char tmp[34];
-    int pos = 0, out = 0, negative = 0;
+    int pos = 0, out = 0, negative = false;
 
     if (str == nullptr)          return nullptr;
     if (radix < 2 || radix > 36) { str[0] = '\0'; return str; }
 
     if (value < 0 && radix == 10) {
-        negative = 1;
+        negative = true;
         uvalue = static_cast<unsigned int>(-value);
     } else {
         uvalue = static_cast<unsigned int>(value);

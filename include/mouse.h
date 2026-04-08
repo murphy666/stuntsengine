@@ -23,6 +23,8 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
+#include <stdbool.h>
+
 void mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y);
 void mouse_set_pixratio(unsigned short hpix, unsigned short vpix);
 unsigned short mouse_init(unsigned short width, unsigned short height);
@@ -47,11 +49,11 @@ unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short *x1_
 #define _MO_ extern
 #endif
 
-_MO_ char kbormouse;
+_MO_ bool kbormouse;
 _MO_ unsigned short mouse_butstate;
-_MO_ char mouse_isdirty;
-_MO_ char mouse_motion_detected_flag;
-_MO_ char mouse_motion_state_flag;
+_MO_ bool mouse_isdirty;
+_MO_ bool mouse_motion_detected_flag;
+_MO_ bool mouse_motion_state_flag;
 _MO_ unsigned short mouse_xpos;
 _MO_ unsigned short mouse_ypos;
 

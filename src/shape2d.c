@@ -236,7 +236,7 @@ struct SPRITE sprite2;
 unsigned char incnums[SHAPE2D_INCNUMS_COUNT];
 
 static unsigned int g_shape_lineoffsets[SHAPE2D_LINEOFFSETS_COUNT];
-static unsigned char g_shape_runtime_init_done = 0;
+static bool g_shape_runtime_init_done = false;
 
 /**
  * @brief Clamp sprite bounds to valid ranges.
@@ -302,7 +302,7 @@ static void
 shape2d_init_runtime_data(void) {
     int i;
 
-    if (g_shape_runtime_init_done != 0) {
+    if (g_shape_runtime_init_done) {
         return;
     }
 
@@ -332,7 +332,7 @@ shape2d_init_runtime_data(void) {
     sprite2 = sprite1;
     next_wnd_def = (char *)wnd_defs;
     g_wnd_stack_count = 0;
-    g_shape_runtime_init_done = 1;
+    g_shape_runtime_init_done = true;
 }
 
 /* Pattern variables for patterned line drawing */
@@ -3093,7 +3093,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     int sprite_left_val, sprite_right_val;
     int visible_rows, visible_cols;
     int skip_top_rows, skip_left_cols, skip_right_cols;
-    int needs_clipping;
+    bool needs_clipping;
     unsigned int lineptr_idx;
     unsigned int destofs;
     int pixels_left, count, total_skip;
@@ -3117,7 +3117,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     lineofs = shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
     bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
 
-    needs_clipping = 0;
+    needs_clipping = false;
     skip_top_rows = 0;
     skip_left_cols = 0;
     skip_right_cols = 0;
@@ -3127,7 +3127,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     /* Vertical clipping */
     if (pos_y < sprite_top_val) {
         /* Shape starts above visible area */
-        needs_clipping = 1;
+        needs_clipping = true;
         skip_top_rows = sprite_top_val - pos_y;
         visible_rows = shape_height - skip_top_rows;
         if (visible_rows <= 0)
@@ -3144,7 +3144,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     else {
         /* Check if shape extends past bottom */
         if (pos_y + visible_rows > sprite_height_val) {
-            needs_clipping = 1;
+            needs_clipping = true;
             visible_rows = sprite_height_val - pos_y;
             if (visible_rows <= 0)
                 return;
@@ -3154,7 +3154,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     /* Horizontal clipping */
     if (pos_x < sprite_left_val) {
         /* Shape starts left of visible area */
-        needs_clipping = 1;
+        needs_clipping = true;
         skip_left_cols = sprite_left_val - pos_x;
         visible_cols = shape_width - skip_left_cols;
         if (visible_cols <= 0)
@@ -3173,7 +3173,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
     else {
         /* Check if shape extends past right edge */
         if (pos_x + visible_cols > sprite_right_val) {
-            needs_clipping = 1;
+            needs_clipping = true;
             skip_right_cols = (pos_x + visible_cols) - sprite_right_val;
             visible_cols -= skip_right_cols;
             if (visible_cols <= 0)
@@ -3242,7 +3242,7 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
         int mode;       /* 0 = skip, 1 = draw */
         int run_len;
         unsigned char fill_byte = 0;
-        int is_fill;
+        bool is_fill;
         int n, i;
 
         draw_width = visible_cols;
@@ -3273,11 +3273,11 @@ shape2d_draw_rle_copy_clipped(void *shapeptr) {
             if (ctrl > 0) {
                 run_len = ctrl;
                 fill_byte = *srcptr++;
-                is_fill = 1;
+                is_fill = true;
             }
             else {
                 run_len = -ctrl;
-                is_fill = 0;
+                is_fill = false;
             }
 
             /* Process this run, potentially across multiple mode transitions */
@@ -3354,7 +3354,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     int sprite_left_val, sprite_right_val;
     int visible_rows, visible_cols;
     int skip_top_rows, skip_left_cols, skip_right_cols;
-    int needs_clipping;
+    bool needs_clipping;
     unsigned int lineptr_idx;
     unsigned int destofs;
     int pixels_left, count, total_skip;
@@ -3378,7 +3378,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     lineofs = shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
     bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
 
-    needs_clipping = 0;
+    needs_clipping = false;
     skip_top_rows = 0;
     skip_left_cols = 0;
     skip_right_cols = 0;
@@ -3388,7 +3388,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     /* Vertical clipping */
     if (pos_y < sprite_top_val) {
         /* Shape starts above visible area */
-        needs_clipping = 1;
+        needs_clipping = true;
         skip_top_rows = sprite_top_val - pos_y;
         visible_rows = shape_height - skip_top_rows;
         if (visible_rows <= 0)
@@ -3405,7 +3405,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     else {
         /* Check if shape extends past bottom */
         if (pos_y + visible_rows > sprite_height_val) {
-            needs_clipping = 1;
+            needs_clipping = true;
             visible_rows = sprite_height_val - pos_y;
             if (visible_rows <= 0)
                 return;
@@ -3415,7 +3415,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     /* Horizontal clipping */
     if (pos_x < sprite_left_val) {
         /* Shape starts left of visible area */
-        needs_clipping = 1;
+        needs_clipping = true;
         skip_left_cols = sprite_left_val - pos_x;
         visible_cols = shape_width - skip_left_cols;
         if (visible_cols <= 0)
@@ -3434,7 +3434,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
     else {
         /* Check if shape extends past right edge */
         if (pos_x + visible_cols > sprite_right_val) {
-            needs_clipping = 1;
+            needs_clipping = true;
             skip_right_cols = (pos_x + visible_cols) - sprite_right_val;
             visible_cols -= skip_right_cols;
             if (visible_cols <= 0)
@@ -3508,7 +3508,7 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
         int mode;       /* 0 = skip, 1 = draw */
         int run_len;
         unsigned char fill_byte = 0;
-        int is_fill;
+        bool is_fill;
         int n, i;
 
         draw_width = visible_cols;
@@ -3539,11 +3539,11 @@ shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned shor
             if (ctrl > 0) {
                 run_len = ctrl;
                 fill_byte = *srcptr++;
-                is_fill = 1;
+                is_fill = true;
             }
             else {
                 run_len = -ctrl;
-                is_fill = 0;
+                is_fill = false;
             }
 
             /* Process this run, potentially across multiple mode transitions */

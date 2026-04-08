@@ -946,13 +946,13 @@ load_tracks_menu_shapes(void) {
     unsigned char last_place_col;          /* last cursor col for swap detection */
     unsigned char last_place_row;          /* last cursor row for swap detection */
     unsigned char prev_category;           /* previous category */
-    unsigned char redraw_map;              /* redraw map flag */
-    unsigned char redraw_scrollbars;       /* redraw scrollbars flag */
-    unsigned char redraw_cursor;           /* redraw cursor flag */
-    unsigned char redraw_window_base;      /* redraw stable window snapshot flag */
-    unsigned char keep_running;            /* keep running flag */
+    bool redraw_map;              /* redraw map flag */
+    bool redraw_scrollbars;       /* redraw scrollbars flag */
+    bool redraw_cursor;           /* redraw cursor flag */
+    bool redraw_window_base;      /* redraw stable window snapshot flag */
+    bool keep_running;            /* keep running flag */
     unsigned char current_category;        /* current category (0=terrain, 1-10=elements) */
-    unsigned char needs_validation;        /* validate track flag */
+    bool needs_validation;        /* validate track flag */
     unsigned char picker_mode;             /* picker mode (0=map, 1=picker) */
     unsigned char selected_element;        /* selected element ID */
     unsigned short anim_index;             /* animation counter */
@@ -968,7 +968,7 @@ load_tracks_menu_shapes(void) {
     unsigned char cursor_width_tiles = 1;  /* cursor width (tiles) */
     unsigned char cursor_shape_index = 0;  /* cursor shape index */
     unsigned char cursor_element;          /* current element at cursor */
-    unsigned char track_modified;          /* track modified flag */
+    bool track_modified;          /* track modified flag */
     unsigned char swap_element;            /* swap element holder */
     unsigned char anim_saved_element;      /* animation element holder */
     unsigned char swap_temp_element;       /* temp element holder */
@@ -983,7 +983,7 @@ load_tracks_menu_shapes(void) {
 
     /* Working variables */
     unsigned short last_mouse_x, last_mouse_y;
-    unsigned short cursor_blink_toggle;    /* cursor blink toggle */
+    bool cursor_blink_toggle;    /* cursor blink toggle */
     unsigned short blink_timer;            /* timer accumulator */
     unsigned short input_code;             /* input code */
     unsigned short cursor_screen_x;        /* cursor screen X */
@@ -1046,7 +1046,7 @@ load_tracks_menu_shapes(void) {
     locate_shape_alt(tedit_res, "tnam");
 
     /* Initialize dirty flag arrays */
-    track_modified = 0;
+    track_modified = false;
     for (i = 0; i < TRACK_DIRTY_FLAG_COUNT; i++) {
         elem_dirty_flags[i] = TRACK_U8_INVALID;
         terr_dirty_flags[i] = TRACK_U8_INVALID;
@@ -1078,13 +1078,13 @@ load_tracks_menu_shapes(void) {
 	 *========================================*/
     last_place_col = TRACK_U8_INVALID;
     prev_category = TRACK_U8_INVALID;
-    redraw_map = 1;
-    redraw_scrollbars = 1;
-    redraw_cursor = 1;
-    redraw_window_base = 1;
-    keep_running = 1;
+    redraw_map = true;
+    redraw_scrollbars = true;
+    redraw_cursor = true;
+    redraw_window_base = true;
+    keep_running = true;
     current_category = 1;
-    needs_validation = 1;
+    needs_validation = true;
     picker_mode = 0;
     selected_element = 0;
     anim_index = 0;
@@ -1098,7 +1098,7 @@ load_tracks_menu_shapes(void) {
     cursor_col = sprite_render_state; /* Start cursor X */
     cursor_row = game_security_flag;  /* Start cursor Y */
     picker_row = 7;
-    cursor_blink_toggle = 0;
+    cursor_blink_toggle = false;
     cursor_mode_for_blink = 0;
     blink_timer = TRACK_CURSOR_BLINK_START;
     last_place_row = TRACK_U8_INVALID;
@@ -1148,21 +1148,21 @@ load_tracks_menu_shapes(void) {
     draw_button(locate_text_res(tedit_res, "bex"), 269, 172, 46, 14, button_text_color,
                 button_shadow_color, button_highlight_color, 0);
     track_editor_copy_window_bitmap(wndsprite_base, (struct SPRITE *)wndsprite);
-    redraw_window_base = 0;
+    redraw_window_base = false;
 
     /*========================================
 	 * SECTION 4: Main event loop
 	 *========================================*/
 
-    while (keep_running != 0) {
-        if (redraw_window_base != 0) {
+    while (keep_running) {
+        if (redraw_window_base) {
             track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
         }
 
         /*----------------------------------------
 		 * Update cursor size based on element type
 		 /*--------------------------------------------------------------*/
-        if (redraw_cursor != 0 || prev_category != current_category) {
+        if (redraw_cursor || prev_category != current_category) {
             cursor_height_tiles = 1; /* cursor height */
             cursor_width_tiles = 1;  /* cursor width */
             cursor_shape_index = 0;  /* cursor shape index */
@@ -1235,8 +1235,8 @@ load_tracks_menu_shapes(void) {
             if (last_scroll_x != map_scroll_x || last_scroll_y != map_scroll_y) {
                 last_scroll_x = map_scroll_x;
                 last_scroll_y = map_scroll_y;
-                redraw_map = 1;
-                redraw_scrollbars = 1;
+                redraw_map = true;
+                redraw_scrollbars = true;
             }
         }
 
@@ -1244,8 +1244,8 @@ load_tracks_menu_shapes(void) {
 		 * Handle category change
 		 /*--------------------------------------------------------------*/
         if (prev_category != current_category) {
-            redraw_cursor = 1;
-            redraw_window_base = 1;
+            redraw_cursor = true;
+            redraw_window_base = true;
             prev_category = current_category;
 
             /* Adjust picker position to valid element */
@@ -1280,22 +1280,22 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Handle track validation
 		 /*--------------------------------------------------------------*/
-        if (needs_validation != 0) {
-            needs_validation = 0;
+        if (needs_validation) {
+            needs_validation = false;
             validation_result = track_validate_elements_for_terrain();
         }
 
         /*----------------------------------------
 		 * Render map if needed
 		 /*--------------------------------------------------------------*/
-        if (redraw_map != 0 || redraw_cursor != 0) {
+        if (redraw_map || redraw_cursor) {
             sprite_select_wnd_as_sprite1();
 
-            if (redraw_map != 0) {
-                redraw_map = 0;
+            if (redraw_map) {
+                redraw_map = false;
 
-                if (redraw_scrollbars != 0) {
-                    redraw_scrollbars = 0;
+                if (redraw_scrollbars) {
+                    redraw_scrollbars = false;
                     /* Set up scrollbar mouse tracking */
                     mouse_track_op(0, 9, 192, 181, 5, map_scroll_x, TRACK_MAP_VISIBLE_COLS,
                                    TRACK_SIZE);
@@ -1312,8 +1312,8 @@ load_tracks_menu_shapes(void) {
             /*----------------------------------------
 			 * Render cursor
 			 /*--------------------------------------------------------------*/
-            if (redraw_cursor != 0) {
-                redraw_cursor = 0;
+            if (redraw_cursor) {
+                redraw_cursor = false;
 
                 /* Set cursor sprite */
                 sprite_set_1_from_argptr(crs_wnd[cursor_shape_index]);
@@ -1339,7 +1339,7 @@ load_tracks_menu_shapes(void) {
                 sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
             }
 
-            redraw_window_base = 1;
+            redraw_window_base = true;
         }
 
         /*----------------------------------------
@@ -1493,9 +1493,9 @@ load_tracks_menu_shapes(void) {
             mouse_draw_transparent_check();
         }
 
-        if (redraw_window_base != 0) {
+        if (redraw_window_base) {
             track_editor_copy_window_bitmap(wndsprite_base, (struct SPRITE *)wndsprite);
-            redraw_window_base = 0;
+            redraw_window_base = false;
         }
 
         if (prev_cursor_screen_x != cursor_screen_x || prev_cursor_screen_y != cursor_screen_y
@@ -1504,7 +1504,7 @@ load_tracks_menu_shapes(void) {
             || prev_cursor_shape_index != cursor_shape_index || prev_picker_mode != picker_mode
             || prev_selected_element != selected_element) {
             blink_timer = TRACK_CURSOR_BLINK_START;
-            cursor_blink_toggle = 0;
+            cursor_blink_toggle = false;
             prev_cursor_screen_x = cursor_screen_x;
             prev_cursor_screen_y = cursor_screen_y;
             prev_cursor_draw_height = cursor_draw_height;
@@ -1530,7 +1530,7 @@ load_tracks_menu_shapes(void) {
             track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
             sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
             if (picker_mode == 0) {
-                if (cursor_blink_toggle != 0) {
+                if (cursor_blink_toggle) {
                     sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index],
                                       cursor_screen_x, cursor_screen_y);
                 }
@@ -1539,7 +1539,7 @@ load_tracks_menu_shapes(void) {
                                       cursor_screen_x, cursor_screen_y);
                 }
             }
-            else if (cursor_blink_toggle == 0) {
+            else if (!cursor_blink_toggle) {
                 sprite_draw_rect_outline(cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
                                          (unsigned short)(cursor_screen_x + cursor_draw_width),
                                          (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
@@ -1547,7 +1547,7 @@ load_tracks_menu_shapes(void) {
             }
 
             mouse_draw_transparent_check();
-            cursor_blink_toggle ^= 1;
+            cursor_blink_toggle = !cursor_blink_toggle;
             blink_timer = 0;
         }
 
@@ -1706,9 +1706,9 @@ load_tracks_menu_shapes(void) {
 
         if (input_code == 1) {
             last_place_col = TRACK_U8_INVALID;
-            redraw_map = 1;
-            redraw_cursor = 1;
-            redraw_window_base = 1;
+            redraw_map = true;
+            redraw_cursor = true;
+            redraw_window_base = true;
         }
 
         /* If no input and animation active, continue animation */
@@ -1729,7 +1729,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Render cursor at current position
 		 /*--------------------------------------------------------------*/
-        if (cursor_blink_toggle != 0 || cursor_mode_for_blink == 0) {
+        if (cursor_blink_toggle || cursor_mode_for_blink == 0) {
             mouse_draw_opaque_check();
             track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
             sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
@@ -1742,7 +1742,7 @@ load_tracks_menu_shapes(void) {
             }
 
             if (cursor_mode_for_blink == 0) {
-                if (cursor_blink_toggle != 0) {
+                if (cursor_blink_toggle) {
                     sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index],
                                       cursor_screen_x, cursor_screen_y);
                 }
@@ -1751,7 +1751,7 @@ load_tracks_menu_shapes(void) {
                                       cursor_screen_x, cursor_screen_y);
                 }
             }
-            else if (cursor_blink_toggle == 0) {
+            else if (!cursor_blink_toggle) {
                 sprite_draw_rect_outline(cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
                                          (unsigned short)(cursor_screen_x + cursor_draw_width),
                                          (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
@@ -1780,8 +1780,8 @@ load_tracks_menu_shapes(void) {
             cursor_row = ((unsigned char *)path_row)[anim_index];
             elem_map = (unsigned char *)track_elem_map;
             selected_element = elem_map[trackrows[cursor_row] + cursor_col];
-            redraw_map = 1;
-            redraw_cursor = 1;
+            redraw_map = true;
+            redraw_cursor = true;
             anim_index++;
 
             if (anim_index >= track_pieces_counter) {
@@ -1873,7 +1873,7 @@ load_tracks_menu_shapes(void) {
         }
         if (input_code == 283) {
             /* ESC - Exit (with confirmation if modified) */
-            if (track_modified != 0) {
+            if (track_modified) {
                 /* Show exit confirmation dialog */
                 track_consume_dialog_click();
                 dialog_result = ui_dialog_show_restext(
@@ -1883,7 +1883,7 @@ load_tracks_menu_shapes(void) {
                     continue;
                 }
             }
-            keep_running = 0;
+            keep_running = false;
             continue;
         }
 
@@ -1913,7 +1913,7 @@ load_tracks_menu_shapes(void) {
                 elem_map = (unsigned char *)track_elem_map;
                 selected_element = elem_map[trackrows[cursor_row] + cursor_col];
                 anim_index = 1;
-                redraw_cursor = 1;
+                redraw_cursor = true;
             }
         }
         check_input();
@@ -1974,12 +1974,12 @@ load_tracks_menu_shapes(void) {
                         cursor_col--;
                     }
                 }
-                redraw_cursor++;
+                redraw_cursor = true;
                 picker_mode = 0;
             }
             else if (picker_row == TRACK_MENU_SPECIAL_ROW_CAT) {
                 /* Category row - cycle category */
-                needs_validation = 1;
+                needs_validation = true;
                 current_category++;
                 if (current_category > 10)
                     current_category = 1;
@@ -1993,8 +1993,8 @@ load_tracks_menu_shapes(void) {
                                                               elem_map[TRACK_TRACKDATA_ELEM_BYTES]);
                     if (dialog_result != TRACK_U8_INVALID && dialog_result != 5) {
                         elem_map[TRACK_TRACKDATA_ELEM_BYTES] = dialog_result;
-                        redraw_map++;
-                        track_modified = 1;
+                        redraw_map = true;
+                        track_modified = true;
                     }
                 }
                 else {
@@ -2015,8 +2015,8 @@ load_tracks_menu_shapes(void) {
                             terr_map[si] = ((unsigned char *)terrain_template_ptr)[si];
                         }
                         gameconfig.game_trackname[0] = 0;
-                        redraw_map++;
-                        track_modified = 1;
+                        redraw_map = true;
+                        track_modified = true;
                     }
                 }
             }
@@ -2025,7 +2025,7 @@ load_tracks_menu_shapes(void) {
                     /* picker_row==8, picker_col==0: LOAD track */
                     sprite_copy_2_to_1();
 
-                    if (track_modified != 0) {
+                    if (track_modified) {
                         /* Changes warning */
                         track_consume_dialog_click();
                         dialog_result = ui_dialog_show_restext(
@@ -2037,8 +2037,8 @@ load_tracks_menu_shapes(void) {
                     }
 
                     si = 1;
-                    g_is_busy = 1;
-                    redraw_map++;
+                    g_is_busy = true;
+                    redraw_map = true;
                     {
                         char track_dir_backup[82];
                         snprintf(track_dir_backup, sizeof(track_dir_backup), "%s",
@@ -2064,8 +2064,8 @@ load_tracks_menu_shapes(void) {
                         picker_mode = 0;
                         cursor_row = game_security_flag;
                         cursor_col = sprite_render_state;
-                        track_modified = 0;
-                        redraw_map++;
+                        track_modified = false;
+                        redraw_map = true;
                     }
                 }
                 else {
@@ -2086,8 +2086,8 @@ load_tracks_menu_shapes(void) {
                             terr_map[si] = ((unsigned char *)terrain_template_ptr)[si];
                         }
                         gameconfig.game_trackname[0] = 0;
-                        redraw_map++;
-                        track_modified = 1;
+                        redraw_map = true;
+                        track_modified = true;
                     }
                 }
             loc_done_load:;
@@ -2102,8 +2102,8 @@ load_tracks_menu_shapes(void) {
                     /* SAVE track */
                     char save_cancel = 0;
                     sprite_copy_2_to_1();
-                    g_is_busy = 1;
-                    redraw_map++;
+                    g_is_busy = true;
+                    redraw_map = true;
                     track_consume_dialog_click();
                     si = do_savefile_dialog(track_highscore_path_buffer, gameconfig.game_trackname,
                                             locate_text_res(mainresptr, "trk"));
@@ -2126,7 +2126,7 @@ load_tracks_menu_shapes(void) {
                                                   TRACK_FILE_SAVE_BYTES);
                             if (si != 0) {
                                 highscore_write_a_(0);
-                                track_modified = 0;
+                                track_modified = false;
                             }
                             else {
                                 track_consume_dialog_click();
@@ -2137,7 +2137,7 @@ load_tracks_menu_shapes(void) {
                             }
                         }
                     }
-                    g_is_busy = 0;
+                    g_is_busy = false;
                 }
                 else {
                     /** @brief Editor.
@@ -2145,7 +2145,7 @@ load_tracks_menu_shapes(void) {
  * @return Function result.
  */
                     /* EXIT editor (with confirmation if modified) */
-                    if (track_modified != 0) {
+                    if (track_modified) {
                         track_consume_dialog_click();
                         dialog_result = ui_dialog_show_restext(
                             UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "chx"),
@@ -2154,7 +2154,7 @@ load_tracks_menu_shapes(void) {
                             goto loc_done_exit;
                         }
                     }
-                    keep_running = 0;
+                    keep_running = false;
                 }
             loc_done_exit:;
             }
@@ -2173,7 +2173,7 @@ load_tracks_menu_shapes(void) {
                 swap_temp_element = selected_element;
                 selected_element = swap_element;
                 swap_element = swap_temp_element;
-                redraw_cursor++;
+                redraw_cursor = true;
             }
             else {
                 swap_element = terr_map[si];
@@ -2185,9 +2185,9 @@ load_tracks_menu_shapes(void) {
 
             /* Place terrain */
             terr_map[si] = selected_element;
-            track_modified = 1;
-            needs_validation = 1;
-            redraw_map++;
+            track_modified = true;
+            needs_validation = true;
+            redraw_map = true;
         }
         else {
             /* Element mode */
@@ -2207,7 +2207,7 @@ load_tracks_menu_shapes(void) {
                 swap_temp_element = selected_element;
                 selected_element = swap_element;
                 swap_element = swap_temp_element;
-                redraw_cursor++;
+                redraw_cursor = true;
             }
             else {
                 elem_map = (unsigned char *)track_elem_map;
@@ -2221,9 +2221,9 @@ load_tracks_menu_shapes(void) {
             /* Place element */
             elem_map = (unsigned char *)track_elem_map;
             elem_map[trackrows[last_place_row] + last_place_col] = selected_element;
-            track_modified = 1;
-            needs_validation = 1;
-            redraw_map++;
+            track_modified = true;
+            needs_validation = true;
+            redraw_map = true;
 
             /* Handle multi-tile elements */
             if (multiflag == 1) {

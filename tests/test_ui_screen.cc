@@ -16,7 +16,7 @@ extern "C" {
 #include "ui_keys.h"
 #include "data_game.h"
 
-extern char kbormouse;
+extern bool kbormouse;
 
 /* Stub control functions (defined in test_ui_screen_stubs.c) */
 void stub_reset_all(void);
@@ -73,7 +73,7 @@ TEST_F(UIScreenTest, AllocReturnsNonNull) {
     EXPECT_EQ(s->on_destroy, nullptr);
     EXPECT_EQ(s->userdata,   nullptr);
     EXPECT_EQ(s->_modal_result, 0);
-    EXPECT_EQ(s->_wants_pop,   0);
+    EXPECT_EQ(s->_wants_pop,   false);
     free(s);
 }
 
@@ -290,7 +290,7 @@ TEST_F(UIScreenTest, ModalReturnsEventResult) {
 static int wants_pop_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_KEY_DOWN) {
         self->_modal_result = 99;
-        self->_wants_pop = 1;
+        self->_wants_pop = true;
     }
     return 0;
 }
@@ -635,7 +635,7 @@ TEST_F(BtnMenuScreenTest, FrameCallbackCanExit) {
 TEST_F(BtnMenuScreenTest, MouseClickSelectsButton) {
     /* Set up: mouse is inside button 1, hittest returns 1 */
     stub_hittest_set(1);
-    kbormouse = 1;  /* Mouse mode active */
+    kbormouse = true;  /* Mouse mode active */
 
     /* Simulate a mouse-down event. We need a key to let the tick process,
      * but the hittest+mouse-down in the adapter picks it up. */

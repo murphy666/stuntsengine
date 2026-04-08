@@ -23,6 +23,7 @@
 #ifndef RESSOURCES_H
 #define RESSOURCES_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -57,14 +58,14 @@ void *file_read_nofatal(const char *filename, void *dst);
 #define _RT_ extern
 #endif
 
-_RT_ char joystick_assigned_flags;
+_RT_ bool joystick_assigned_flags;
 _RT_ unsigned resource_alloc_state_a;
 _RT_ unsigned resource_alloc_state_b;
 
 #undef _RT_
 
-extern short is_audioloaded;
-extern char g_is_busy;
+extern bool is_audioloaded;
+extern bool g_is_busy;
 
 /* Debug helpers */
 void debug_track_terrain_map(const char *tag);

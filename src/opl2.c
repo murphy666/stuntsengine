@@ -28,13 +28,14 @@
  */
 
 #include "opl2.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "nukedopl.h"
 
 static opl3_chip s_opl;
-static int s_ready = 0;
+static bool s_ready = false;
 static int s_sample_rate = 49716;
 
 /** @brief Initialize the OPL backend at the requested output sample rate.
@@ -43,7 +44,7 @@ static int s_sample_rate = 49716;
 void
 opl2_init(int sample_rate) {
     if (sample_rate <= 0) {
-        s_ready = 0;
+        s_ready = false;
         return;
     }
 
@@ -58,7 +59,7 @@ opl2_init(int sample_rate) {
      * Required for WS != 0 — ADENG1.VCE ENGI carrier uses WS=3. */
     OPL3_WriteReg(&s_opl, 1, 32);
 
-    s_ready = 1;
+    s_ready = true;
 }
 
 /** @brief Opl2 reset.
@@ -131,5 +132,5 @@ void
 opl2_destroy(void) {
 
     memset(&s_opl, 0, sizeof(s_opl));
-    s_ready = 0;
+    s_ready = false;
 }

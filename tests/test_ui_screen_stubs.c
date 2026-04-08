@@ -70,7 +70,7 @@ void stub_counters_reset(void) {
 }
 
 /* ---- data_game.h globals (stub definitions for test binary) ---- */
-char kbormouse = 0;
+bool kbormouse = false;
 char idle_expired = 0;
 unsigned int idle_counter = 0;
 unsigned short mousebutinputcode = 0;
@@ -87,7 +87,7 @@ void stub_reset_all(void) {
     stub_timer_set_delta(10);
     stub_hittest_set(-1);
     stub_counters_reset();
-    kbormouse = 0;
+    kbormouse = false;
     idle_expired = 0;
     idle_counter = 0;
     mousebutinputcode = 0;

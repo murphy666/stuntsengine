@@ -362,5 +362,5 @@ TEST(UIWidgetsPure, ScreenStructZeroInit) {
     EXPECT_EQ(scr.on_destroy, nullptr);
     EXPECT_EQ(scr.userdata, nullptr);
     EXPECT_EQ(scr._modal_result, 0);
-    EXPECT_EQ(scr._wants_pop, 0);
+    EXPECT_EQ(scr._wants_pop, false);
 }

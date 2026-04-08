@@ -111,14 +111,14 @@ font_op(char *text, unsigned short maxChars) {
     unsigned short default_width = *(unsigned short *)(fontdef + 18);
     unsigned short *char_table = (unsigned short *)(fontdef + 22);
     unsigned short fixed_width = default_width;
-    int has_width_byte = 0;
+    bool has_width_byte = false;
     unsigned short remaining = maxChars;
     if (default_width == 0) {
         default_width = 8;
     }
 
     if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
-        has_width_byte = 1;
+        has_width_byte = true;
     }
     else if (proportional == 1 && prop1_width != 0) {
         fixed_width = prop1_width;
@@ -183,7 +183,7 @@ font_draw_text(char *str, unsigned short x, unsigned short y) {
     unsigned short *char_table = (unsigned short *)(fontdef + 22);
     unsigned short font_x_position_base
         = *(unsigned short *)(fontdef + 8); // x position (from offset 8)
-    int has_width_byte = 0;
+    bool has_width_byte = false;
     if (font_height == 0) {
         font_height = fontdef_line_height;
         if (font_height == 0) {
@@ -195,7 +195,7 @@ font_draw_text(char *str, unsigned short x, unsigned short y) {
     }
 
     if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
-        has_width_byte = 1;
+        has_width_byte = true;
     }
 
     // Set initial position

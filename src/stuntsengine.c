@@ -46,7 +46,7 @@
 
 /* Variables moved from data_game.c */
 static void (*exitlistfuncs[11])(void) = { 0 };
-static char dashb_toggle_copy = 0;
+static bool dashb_toggle_copy = false;
 static void *eng1ptr = 0;
 static void *engptr = 0;
 static char game_replay_mode_copy = 0;
@@ -62,10 +62,10 @@ static int dashbmp_y_copy = 0;
 static char followOpponentFlag_copy = 0;
 static short fps_times_thirty = 0;
 static unsigned char g_kevinrandom_seed[] = { 0, 0, 0, 0, 0, 0 };
-static char game_input_keyboard_state = 0;
+static bool game_input_keyboard_state = false;
 static struct GAMEINFO gameconfigcopy = { 0 };
 static struct RECTANGLE rect_windshield = { 0, 0, 0, 0 };
-static char replaybar_toggle_copy = 0;
+static bool replaybar_toggle_copy = false;
 static unsigned short someZeroVideoConst = 0;
 static char sprite_buffer_x_coords[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 static char sprite_buffer_y_coords[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -632,7 +632,7 @@ reset_replay_runtime_state(void) {
     game_finish_state = 0;
     game_pause_counter = 0;
     current_rotation_angle_value = 0;
-    replay_autoplay_active = 0;
+    replay_autoplay_active = false;
 }
 
 /** @brief Initialize car physics state from SIMD data
@@ -663,8 +663,8 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_36MwhlAngle = 0;
     playerstate->car_pseudoGravity = 0;
     playerstate->car_steeringAngle = 0;
-    playerstate->car_is_braking = 0;
-    playerstate->car_is_accelerating = 0;
+    playerstate->car_is_braking = false;
+    playerstate->car_is_accelerating = false;
     playerstate->car_currpm = simd->idle_rpm;
     playerstate->car_lastrpm = playerstate->car_currpm;
     playerstate->car_idlerpm2 = playerstate->car_currpm;
@@ -707,10 +707,10 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     }
 
     playerstate->car_engineLimiterTimer = 0;
-    playerstate->car_slidingFlag = 0;
-    playerstate->car_crash_impact_flag = 0;
+    playerstate->car_slidingFlag = false;
+    playerstate->car_crash_impact_flag = false;
     playerstate->car_crashBmpFlag = 0;
-    playerstate->car_changing_gear = 0;
+    playerstate->car_changing_gear = false;
     playerstate->car_fpsmul2 = 0;
     playerstate->car_transmission = transmission;
     playerstate->car_impact_state_counter = 0;
@@ -733,7 +733,7 @@ init_game_state(short arg) {
         elapsed_time1 = 0;
 
         for (i = 0; i < RST_CVX_NUM; ++i) {
-            ((struct GAMESTATE *)cvxptr)[i].game_checkpoint_valid = 0;
+            ((struct GAMESTATE *)cvxptr)[i].game_checkpoint_valid = false;
         }
     }
 
@@ -753,7 +753,7 @@ init_game_state(short arg) {
     if (arg != -3) {
         reset_replay_runtime_state();
 
-        state.game_checkpoint_valid = 1;
+        state.game_checkpoint_valid = true;
         state.game_frames_per_sec = 1;
         state.game_inputmode = 0;
         state.game_3F6autoLoadEvalFlag = 0;
@@ -902,7 +902,7 @@ restore_gamestate(unsigned short frame) {
             if (curframe * fps_times_thirty <= state.game_frame) {
                 return;
             }
-            else if (((struct GAMESTATE *)cvxptr)[curframe].game_checkpoint_valid != 0) {
+            else if (((struct GAMESTATE *)cvxptr)[curframe].game_checkpoint_valid) {
                 break;
             }
 
@@ -1093,7 +1093,7 @@ show_waiting(void) {
  */
 void
 audio_unload(void) {
-    if (is_audioloaded == 0) {
+    if (!is_audioloaded) {
         return;
     }
     audio_driver_func3F(2);
@@ -1101,7 +1101,7 @@ audio_unload(void) {
     mmgr_free((char *)voicefileptr);
     songfileptr = 0;
     voicefileptr = 0;
-    is_audioloaded = 0;
+    is_audioloaded = false;
 }
 
 // Push current input status onto stack
@@ -1127,7 +1127,7 @@ input_pop_status(void) {
     idx = input_status_stack_index;
     mouse_motion_detected_flag = sprite_buffer_x_coords[idx];
     kbormouse = sprite_buffer_y_coords[idx];
-    if (kbormouse == 0) {
+    if (!kbormouse) {
         mouse_draw_opaque_check();
     }
 }
@@ -1218,7 +1218,7 @@ format_frame_as_string(char *dest, unsigned short frames, unsigned short showFra
  */
 void
 check_input(void) {
-    char done;
+    bool done;
     do {
         short flags;
         /* Pump SDL events so kbinput key-release events are processed.
@@ -1227,22 +1227,22 @@ check_input(void) {
         kb_poll_sdl_input();
         flags = get_kb_or_joy_flags();
         if ((flags & 48) != 0) {
-            done = 1;
+            done = true;
         }
         else {
             unsigned long delta = timer_get_delta_alt();
             unsigned short result = input_checking((unsigned short)delta);
-            if (result != 0) {
-                done = 1;
+            if (result) {
+                done = true;
             }
-            else if (kbormouse != 0 && (mouse_butstate & 3) != 0) {
-                done = 1;
+            else if (kbormouse && (mouse_butstate & 3) != 0) {
+                done = true;
             }
             else {
-                done = 0;
+                done = false;
             }
         }
-    } while (done != 0);
+    } while (done);
 }
 
 /** @brief Check input with processing - wrapper around input_checking
@@ -1283,7 +1283,7 @@ input_repeat_check(unsigned short timeout) {
 
         totalTime += delta;
         result = input_do_checking(delta);
-        if (result != 0) {
+        if (result) {
             return result;
         }
     }
@@ -1372,15 +1372,15 @@ do_key_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     textptr = locate_text_res(mainresptr, "key");
     ui_dialog_timed(textptr);
 
-    joystick_assigned_flags = 0;
-    mouse_motion_state_flag = 0;
-    game_startup_flag = 0;
+    joystick_assigned_flags = false;
+    mouse_motion_state_flag = false;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1393,14 +1393,14 @@ do_mou_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
-    mouse_motion_state_flag = 1;
+    mouse_motion_state_flag = true;
 
     textptr = locate_text_res(mainresptr, "mou");
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1413,13 +1413,13 @@ do_pau_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     textptr = locate_text_res(mainresptr, "pau");
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1432,7 +1432,7 @@ do_mof_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
 
     if (audio_toggle_flag2() != 0) {
         textptr = locate_text_res(mainresptr, "mon");
@@ -1443,7 +1443,7 @@ do_mof_restext(void) {
 
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     input_pop_status();
 }
 
@@ -1455,13 +1455,13 @@ do_sonsof_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     textptr = locate_text_res(mainresptr, "son");
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1474,13 +1474,13 @@ do_dos_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     textptr = locate_text_res(mainresptr, "dos");
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1492,13 +1492,13 @@ do_mer_restext(void) {
     void *textptr;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     textptr = locate_text_res(mainresptr, "mer");
     ui_dialog_timed(textptr);
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -1513,20 +1513,20 @@ do_dea_textres(void) {
 
     input_push_status();
 
-    if (g_is_busy != 0) {
+    if (g_is_busy) {
         // Show "disk error, abort/retry" dialog ("dea" resource)
         textptr = locate_text_res(mainresptr, "dea");
         result = ui_dialog_confirm_restext(textptr, 0);
-        if (result != 0) {
-            result = 0; // User hit retry - return 0
+        if (result) {
+            result = false; // User hit retry - return 0
         }
-        // result = 0 means abort (user chose cancel)
+        // result = false means abort (user chose cancel)
     }
     else {
         // Show "disk error" info dialog ("der" resource)
         textptr = locate_text_res(mainresptr, "der");
         ui_dialog_info_restext(textptr);
-        result = 1;
+        result = true;
     }
 
     input_pop_status();
@@ -1778,7 +1778,7 @@ setup_player_cars(void) {
     audio_add_driver_timer();
     crash_sound_handle = audio_init_engine(33, &audio_adlib_config, eng1ptr, engptr);
 
-    audio_replay_apply_state = 0;
+    audio_replay_apply_state = false;
     player_audio_state = 0;
     opponent_audio_state = 0;
     audio_opponent_engine_handle = 0;
@@ -1810,7 +1810,7 @@ setup_player_cars(void) {
         return 1;
     }
 
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
 
         var_8 = 64000 / (video_flag1_is1 * video_flag4_is1);
         if (mmgr_get_res_ofs_diff_scaled() <= var_8) {
@@ -1828,7 +1828,7 @@ setup_player_cars(void) {
  */
 void
 free_player_cars(void) {
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
         if (wndsprite != 0) {
             sprite_free_wnd(wndsprite);
         }
@@ -1867,13 +1867,13 @@ run_game(void) {
     timer_tick_counter = -1;
     var_E = -1;
     run_game_random = get_kevinrandom() << 3;
-    replaybar_toggle = 1;
-    is_in_replay = 0;
+    replaybar_toggle = true;
+    is_in_replay = false;
     if (idle_expired == 0) {
         if (gameconfig.game_recordedframes != 0) {
             cameramode = 0;
             game_replay_mode = 2;
-            is_in_replay = 1;
+            is_in_replay = true;
         }
         else {
             cameramode = 0;
@@ -1898,15 +1898,15 @@ run_game(void) {
         do_mer_restext();
     }
     else {
-        kbormouse = 0;
+        kbormouse = false;
         screen_shake_intensity = 0;
         game_finish_state = 1;
         set_frame_callback();
         game_replay_mode_copy = -1;
         current_screen_buffer_selector = 0;
         screen_display_toggle_flag = 0;
-        checkpoint_lap_trigger = 0;
-        dashb_toggle = 0;
+        checkpoint_lap_trigger = false;
+        dashb_toggle = false;
 
         if (idle_expired != 0) {
             framespersec = gameconfig.game_framespersec;
@@ -1914,19 +1914,19 @@ run_game(void) {
             init_game_state(-1);
         }
         else {
-            if (is_in_replay == 0) {
+            if (!is_in_replay) {
                 cameramode = 0;
-                dashb_toggle = 1;
+                dashb_toggle = true;
                 show_penalty_counter = 0;
                 framespersec = framespersec2;
                 gameconfig.game_framespersec = framespersec2;
                 init_game_state(-1);
                 sprite_animation_frame_counter = 0;
-                *(char *)&lap_completion_trigger_flag = 0; // byte ptr!
+                lap_completion_trigger_flag = false;
                 game_pause_counter = 1;
                 mouse_minmax_position(mouse_motion_state_flag);
                 check_input();
-                kbormouse = 0;
+                kbormouse = false;
                 game_replay_mode = 1;
 
                 state.playerstate.car_posWorld1.lx
@@ -1959,7 +1959,7 @@ run_game(void) {
             timer_get_counter(); /* drive timer ISR: frame_callback → replay_capture_frame_input → replay_frame_counter++ */
 
             if (state.game_frame != replay_frame_counter) {
-                if ((mouse_motion_state_flag != 0 || joystick_assigned_flags != 0)
+                if ((mouse_motion_state_flag || joystick_assigned_flags)
                     && game_replay_mode == 0) {
                     replay_apply_steering_correction();
                 }
@@ -1985,7 +1985,7 @@ run_game(void) {
                 init_rect_arrays();
             }
 
-            if (checkpoint_lap_trigger != 0) {
+            if (checkpoint_lap_trigger) {
                 input_push_status();
                 audio_disable_flag2();
                 regsi = ui_dialog_confirm_restext(locate_text_res(gameresptr, "rbf"), 0);
@@ -1993,17 +1993,17 @@ run_game(void) {
                     regsi = 0;
 
                 audio_enable_flag2();
-                game_startup_flag = 0;
+                game_startup_flag = false;
                 input_pop_status();
                 if (regsi != 0) {
                     update_crash_state(4, 0);
                     game_finish_state = 1;
                 }
 
-                checkpoint_lap_trigger = 0;
+                checkpoint_lap_trigger = false;
             }
 
-            if (video_flag5_is0 != 0) {
+            if (video_flag5_is0) {
                 setup_mcgawnd2();
                 screen_display_toggle_flag = current_screen_buffer_selector;
             }
@@ -2020,18 +2020,18 @@ run_game(void) {
                 is_in_replay_copy = is_in_replay;
                 followOpponentFlag_copy = followOpponentFlag;
                 roofbmpheight_copy = 0;
-                game_input_keyboard_state = 0;
+                game_input_keyboard_state = false;
 
                 if (game_replay_mode != 2 || idle_expired != 0
-                    || (replaybar_toggle == 0 && is_in_replay == 0)) {
-                    replaybar_enabled = 0;
+                    || (!replaybar_toggle && !is_in_replay)) {
+                    replaybar_enabled = false;
                 }
                 else {
-                    replaybar_enabled = 1;
+                    replaybar_enabled = true;
                 }
-                if (dashb_toggle == 0 || followOpponentFlag != 0) {
+                if (!dashb_toggle || followOpponentFlag != 0) {
                     if (game_replay_mode == 2) {
-                        if (replaybar_enabled != 0) {
+                        if (replaybar_enabled) {
                             dashbmp_y_copy = STN_DASH_REPLAYBAR_Y;
                         }
                         else {
@@ -2043,14 +2043,14 @@ run_game(void) {
                     }
                 }
                 else {
-                    if (game_replay_mode != 2 || replaybar_enabled == 0) {
+                    if (game_replay_mode != 2 || !replaybar_enabled) {
                         height_above_replaybar = 200;
                     }
                     else {
                         height_above_replaybar = 151;
                     }
 
-                    game_input_keyboard_state = 1;
+                    game_input_keyboard_state = true;
                     roofbmpheight_copy = roofbmpheight;
                     dashbmp_y_copy = dashbmp_y;
                 }
@@ -2069,26 +2069,26 @@ run_game(void) {
 
             if (race_condition_state_flag != 0) {
                 mouse_button_press_state[screen_display_toggle_flag] = 0;
-                if (game_input_keyboard_state != 0) {
+                if (game_input_keyboard_state) {
                     sprite_set_1_size(0, STN_SCREEN_WIDTH, dashbmp_y_copy, height_above_replaybar);
                     setup_car_shapes(1);
                 }
 
-                if (replaybar_enabled != 0) {
+                if (replaybar_enabled) {
                     sprite_set_1_size(0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT);
                     loop_game(1, state.game_frame, state.game_frame);
                 }
             }
             else {
-                if (replaybar_enabled == 0) {
+                if (!replaybar_enabled) {
                     mouse_button_press_state[screen_display_toggle_flag] = 0;
                 }
             }
 
             update_frame(current_screen_buffer_selector, &rect_windshield);
 
-            if (dastbmp_y != 0 && game_input_keyboard_state != 0) {
-                if (timertestflag_copy != 0) {
+            if (dastbmp_y != 0 && game_input_keyboard_state) {
+                if (timertestflag_copy) {
                     var_rect.left = 0;
                     var_rect.right = STN_SCREEN_WIDTH;
                     var_rect.top = dastbmp_y;
@@ -2103,7 +2103,7 @@ run_game(void) {
             }
 
             render_present_ingame_view(&rect_windshield);
-            if (game_input_keyboard_state != 0) {
+            if (game_input_keyboard_state) {
                 sprite_set_1_size(0, STN_SCREEN_WIDTH, dashbmp_y_copy, height_above_replaybar);
                 setup_car_shapes(2);
                 sprite_set_1_size(0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT);
@@ -2113,7 +2113,7 @@ run_game(void) {
                 race_condition_state_flag--;
             }
 
-            if (video_flag5_is0 != 0) {
+            if (video_flag5_is0) {
                 mouse_draw_opaque_check();
                 setup_mcgawnd1();
                 current_screen_buffer_selector ^= 1;
@@ -2137,7 +2137,7 @@ run_game(void) {
                         mouse_minmax_position(0);
                         loop_game(0, 0, 0);
                         loop_game(2, 4, 0);
-                        is_in_replay = 1;
+                        is_in_replay = true;
                         audio_sync_car_audio();
                     }
                     else {
@@ -2162,7 +2162,7 @@ run_game(void) {
                         mouse_minmax_position(0);
                         loop_game(0, 0, 0);
                         loop_game(2, 4, 0);
-                        is_in_replay = 1;
+                        is_in_replay = true;
                         audio_sync_car_audio();
                         /* Re-queue ESC so loop_game(3,...) sees it */
                         kb_sdl_requeue_key(UI_KEY_ESCAPE_EXT);
@@ -2190,7 +2190,7 @@ run_game(void) {
             }
         }
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             mouse_draw_opaque_check();
             setup_mcgawnd2();
             sprite_copy_rect_2_to_1(0, 0, 320, 200, 0);
@@ -2199,14 +2199,14 @@ run_game(void) {
         }
 
         sprite_copy_2_to_1();
-        is_in_replay = 1;
+        is_in_replay = true;
         audio_sync_car_audio();
         audio_remove_driver_timer();
         if (game_replay_mode == 0 && gameconfig.game_opponenttype != 0
             && state.opponentstate.car_crashBmpFlag == 0) {
             ui_dialog_show_restext(3, 0, locate_text_res(gameresptr, "cop"), UI_DIALOG_AUTO_POS, 80,
                                    performGraphColor, var_16, 0);
-            *(char *)&lap_completion_trigger_flag = 1;
+            lap_completion_trigger_flag = true;
             regsi = framespersec;
             regsi--;
 
@@ -2232,7 +2232,7 @@ run_game(void) {
             }
         }
 
-        *(char *)&lap_completion_trigger_flag = 0; // byte ptr
+        lap_completion_trigger_flag = false;
         mouse_minmax_position(0);
         remove_frame_callback();
         free_player_cars();
@@ -2344,7 +2344,7 @@ load_palandcursor(void) {
 void
 init_main(int argc, char *argv[]) {
     unsigned int i;
-    unsigned char argnosound;
+    bool argnosound;
     unsigned long timerdelta1, timerdelta2, timerdelta3;
 
     // Keyboard
@@ -2369,13 +2369,13 @@ init_main(int argc, char *argv[]) {
 
     mmgr_alloc_a000();
 
-    video_flag5_is0 = 0;
+    video_flag5_is0 = false;
     video_flag6_is1 = 1;
 
     textresprefix = 'e';
 
     // Parse arguments.
-    argnosound = 0;
+    argnosound = false;
 
     for (i = 1; i < (unsigned int)argc; ++i) {
         if (argv[i][0] == '/') {
@@ -2385,7 +2385,7 @@ init_main(int argc, char *argv[]) {
 
             case 'n':
                 if (argv[i][2] == 's') {
-                    argnosound = 1;
+                    argnosound = true;
                 }
                 break;
 
@@ -2419,7 +2419,7 @@ init_main(int argc, char *argv[]) {
     // Audio driver.
     if (audio_load_driver(audiodriverstring, 0, 0)) {
         timer_stop_dispatch();
-        argnosound = 1;
+        argnosound = true;
     }
 
     if (argnosound) {
@@ -2488,7 +2488,7 @@ main(int argc, char *argv[]) {
 
     int i, result;
     int regsi;
-    char var_A;
+    bool var_A;
 
     //return stuntsmain_(argc, argv);
     init_main(argc, argv);
@@ -2514,8 +2514,8 @@ main(int argc, char *argv[]) {
     input_do_checking(1);
     mouse_draw_opaque_check();
 
-    kbormouse = 0;
-    passed_security = 1; // set to 0 for the original copy protection
+    kbormouse = false;
+    passed_security = true; // set to 0 for the original copy protection
     set_default_car();
     if (!stn_persist_load()) {
         stn_persist_save();
@@ -2553,7 +2553,7 @@ main(int argc, char *argv[]) {
             newjoyflags = 0;
             mouse_oldbut = mouse_butstate;
             ensure_file_exists(2);
-            if (is_audioloaded == 0) {
+            if (!is_audioloaded) {
                 file_load_audiores("skidslct", "skidms", "SLCT");
             }
             result = run_menu_();
@@ -2562,8 +2562,8 @@ main(int argc, char *argv[]) {
                 regsi = 0;
                 break;
             }
-            else if (result == 0) {
-                var_A = 0;
+            else if (!result) {
+                var_A = false;
             }
             else if (result == 1) {
                 check_input();
@@ -2596,12 +2596,12 @@ main(int argc, char *argv[]) {
                 result = run_option_menu_();
                 stn_persist_save();
                 check_input();
-                if (result == 0) {
+                if (!result) {
                     continue;
                 }
                 else {
-                    // goto replay-mode if option-menu-result != 0
-                    var_A = 1;
+                    // goto replay-mode if option-menu-result
+                    var_A = true;
                 }
             }
             else {
@@ -2620,12 +2620,12 @@ main(int argc, char *argv[]) {
             if (idle_expired == 0) {
                 result = track_setup();
                 //result = setup_track();
-                if (result != 0) {
+                if (result) {
                     run_tracks_menu(1);
                     continue;
                 }
                 random_wait();
-                if (passed_security == 0) {
+                if (!passed_security) {
                     fatal_error("security check");
                     //get_super_random();
                     //security_check();
@@ -2642,7 +2642,7 @@ main(int argc, char *argv[]) {
             cvxptr = mmgr_alloc_resbytes("cvx", sizeof(struct GAMESTATE) * RST_CVX_NUM);
             init_game_state(-1);
 
-            if (var_A != 0) {
+            if (var_A) {
                 replay_mode_state_flag = 0;
             }
             else {
@@ -2657,12 +2657,12 @@ main(int argc, char *argv[]) {
                 stn_persist_save();
                 if (idle_expired == 0 && replay_mode_state_flag != 0) {
                     result = end_hiscore();
-                    if (result == 0) {
+                    if (!result) {
                         // view replay
                         replay_mode_state_flag = 4;
                         continue;
                     }
-                    else if (result == 1) {
+                    else if (result) {
                         // drive
                         gameconfig.game_recordedframes = 0;
                         continue;
@@ -2720,7 +2720,7 @@ char *
 stunts_itoa(int value, char *str, int radix) {
     unsigned int uvalue, digit;
     char tmp[34];
-    int pos = 0, out = 0, negative = 0;
+    int pos = 0, out = 0, negative = false;
 
     if (str == NULL)
         return NULL;
@@ -2729,7 +2729,7 @@ stunts_itoa(int value, char *str, int radix) {
         return str;
     }
     if (value < 0 && radix == 10) {
-        negative = 1;
+        negative = true;
         uvalue = (unsigned int)(-value);
     }
     else {

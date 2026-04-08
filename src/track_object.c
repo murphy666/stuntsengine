@@ -32,7 +32,7 @@
 #include "memmgr.h"
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static char corkFlag = 0;
+static bool corkFlag = false;
 
 
 /* file-local data (moved from data_global.c) */
@@ -537,9 +537,9 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     wallindex = BTO_WALL_NONE;
     wallHeight = BTO_WALL_HEIGHT_INIT;    /* 65524 */
     elRdWallRelated = BTO_ELRD_WALL_INIT; /* 64536 */
-    corkFlag = 0;
+    corkFlag = false;
     current_surf_type = SURF_GRASS;
-    track_object_render_enabled = 1;
+    track_object_render_enabled = true;
     si = 0;
     wallOrientationOffset = 0;
     elementOrientation = 0;
@@ -1023,7 +1023,7 @@ compute_elem_crds:
 
     case BTO_PHYSMODEL_RAMP: /* code_bto_ramp */
         if (elemPos.z > 0) {
-            track_object_render_enabled = 0;
+            track_object_render_enabled = false;
         }
         else {
             if (nextElemPos.z >= 0) {
@@ -1061,7 +1061,7 @@ compute_elem_crds:
         }
 
         /* absNextX >= road half-width */
-        if (track_object_render_enabled == 0)
+        if (!track_object_render_enabled)
             goto code_bto_blank;
         if (absElemX > BTO_ROAD_HALF_WIDTH)
             goto code_bto_blank;
@@ -1084,7 +1084,7 @@ compute_elem_crds:
         if (world_pos->y - terrainHeight <= BTO_ELEVATED_MIN_CLEARANCE) {
             goto code_bto_blank;
         }
-        track_object_render_enabled = 0;
+        track_object_render_enabled = false;
         goto solidRoad_entry;
 
     case BTO_PHYSMODEL_SOLID_ROAD: /* code_bto_solidRoad */
@@ -1094,7 +1094,7 @@ compute_elem_crds:
         if (absNextX <= BTO_ROAD_HALF_WIDTH) {
             planindex = BTO_PLAN_SOLID_ROAD;
             current_surf_type = surfaceType;
-            if (track_object_render_enabled != 0) {
+            if (track_object_render_enabled) {
                 if (nextElemPos.z >= BTO_RAMP_FRONT_WALL_Z) {
                     wallindex = BTO_WALLIDX_RAMP_FRONT;
                 }
@@ -1114,7 +1114,7 @@ compute_elem_crds:
         }
 
         /* absNextX > road half-width */
-        if (track_object_render_enabled == 0)
+        if (!track_object_render_enabled)
             goto code_bto_blank;
         if (absElemX > BTO_ROAD_HALF_WIDTH)
             goto code_bto_blank;
@@ -1146,7 +1146,7 @@ compute_elem_crds:
 
             current_surf_type = surfaceType;
             planindex = BTO_PLAN_SOLID_ROAD;
-            track_object_render_enabled = 0;
+            track_object_render_enabled = false;
 
             if (currentTurnRadius >= BTO_ELEVCORNER_WALL_FREE_MIN
                 && currentTurnRadius <= BTO_ELEVCORNER_WALL_FREE_MAX) {
@@ -1177,7 +1177,7 @@ compute_elem_crds:
 
     case BTO_PHYSMODEL_OVERPASS: /* code_bto_overpass */
         if (world_pos->y - terrainHeight > BTO_ELEVATED_MIN_CLEARANCE) {
-            track_object_render_enabled = 0;
+            track_object_render_enabled = false;
             goto solidRoad_entry;
         }
         if (absElemZ <= BTO_ROAD_HALF_WIDTH)
@@ -1309,7 +1309,7 @@ compute_elem_crds:
             wallindex = wallStep + BTO_WALLIDX_ELEVCORNER_OUTER;
         }
     }
-        track_object_render_enabled = 0;
+        track_object_render_enabled = false;
         goto code_bto_blank;
 
     case BTO_PHYSMODEL_LOOP: /* code_bto_loop */
@@ -1385,7 +1385,7 @@ compute_elem_crds:
         loopSurface_setplan:
             planindex = loopPlanBase + si;
             current_surf_type = surfaceType;
-            track_object_render_enabled = 0;
+            track_object_render_enabled = false;
             goto code_bto_blank;
         }
 
@@ -1721,7 +1721,7 @@ compute_elem_crds:
         corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_RH;
 
     corkUd_common:
-        corkFlag = 1;
+        corkFlag = true;
 
         /* Cork descending entry ramp check */
         if (elemPos.z < 0) {
@@ -1752,7 +1752,7 @@ compute_elem_crds:
                     wallindex = ax + BTO_CORK_EXIT_WALL_OFFSET;
                     current_surf_type = surfaceType;
                     planindex = tempValue22 + BTO_CORK_EXIT_PLAN_OFFSET;
-                    track_object_render_enabled = 0;
+                    track_object_render_enabled = false;
                     goto code_bto_blank;
                 }
             }
@@ -1773,7 +1773,7 @@ compute_elem_crds:
 
             planindex = tempValue22 + si + 1;
             current_surf_type = surfaceType;
-            track_object_render_enabled = 0;
+            track_object_render_enabled = false;
 
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             elRdWallRelated = BTO_ELRD_WALL_SHORT;
@@ -1941,7 +1941,7 @@ compute_elem_crds:
             goto code_bto_blank;
 
         wallindex = BTO_CORKLR_WALL_INDEX;
-        corkFlag = 1;
+        corkFlag = true;
         wallHeight = BTO_CORKLR_WALL_HEIGHT;
         goto code_bto_blank;
     }

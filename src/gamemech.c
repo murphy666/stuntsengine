@@ -182,7 +182,7 @@ handle_ingame_kb_shortcuts(int command) {
     }
 
     if (ax == 68 || ax == 100) { /* 'D' or 'd' */
-        dashb_toggle ^= 1;
+        dashb_toggle = !dashb_toggle;
         return 1;
     }
 
@@ -198,7 +198,7 @@ handle_ingame_kb_shortcuts(int command) {
     }
 
     if (ax == 82 || ax == 114) { /* 'R' or 'r' */
-        replaybar_toggle ^= 1;
+        replaybar_toggle = !replaybar_toggle;
         return 1;
     }
 
@@ -301,10 +301,10 @@ frame_callback(void) {
 
     if (game_finish_state != 0)
         goto done;
-    if (checkpoint_lap_trigger != 0)
+    if (checkpoint_lap_trigger)
         goto done;
 
-    if (is_in_replay != 0 && game_replay_mode == 2) {
+    if (is_in_replay && game_replay_mode == 2) {
         /* ASM: unconditional skip when viewing replay.
 		 * Frame advancement during replay is driven by
 		 * loop_game(3) user interaction, not the timer. */
@@ -313,7 +313,7 @@ frame_callback(void) {
 
     if (game_replay_mode == 0) {
         if (state.game_frame_in_sec >= state.game_frames_per_sec) {
-            is_in_replay = 1;
+            is_in_replay = true;
             audio_sync_car_audio();
             goto done;
         }
@@ -374,10 +374,10 @@ replay_capture_frame_input(int command) {
             replay_frame_counter++;
             return;
         }
-        replay_autoplay_active = 0;
+        replay_autoplay_active = false;
         if (game_finish_state != 0)
             goto set_end;
-        is_in_replay = 1;
+        is_in_replay = true;
         audio_sync_car_audio();
         game_finish_state = 1;
         return;
@@ -397,15 +397,15 @@ replay_capture_frame_input(int command) {
     }
 
     /* anti-piracy check */
-    if (passed_security == 0 && game_pause_counter == 0) {
+    if (!passed_security && game_pause_counter == 0) {
         if ((unsigned short)(framespersec << 2) < (unsigned short)state.game_frame) {
             update_crash_state(0, 1);
         }
     }
 
     /* read mouse or joystick input */
-    if (mouse_motion_state_flag != 0 || joystick_assigned_flags != 0) {
-        if (mouse_motion_state_flag != 0) {
+    if (mouse_motion_state_flag || joystick_assigned_flags) {
+        if (mouse_motion_state_flag) {
             mouse_get_state((unsigned short *)&mouse_butstate, (unsigned short *)&mouse_xpos,
                             (unsigned short *)&mouse_ypos);
 
@@ -476,9 +476,9 @@ store_input:
 
     /* at the 12000-tick mark, check for half-lap */
     if (replay_frame_counter == 12000) {
-        if (elapsed_time1 == 0 && *(unsigned char *)&lap_completion_trigger_flag == 0) {
-            *(unsigned char *)&lap_completion_trigger_flag = 1;
-            checkpoint_lap_trigger = 1;
+        if (elapsed_time1 == 0 && !lap_completion_trigger_flag) {
+            lap_completion_trigger_flag = true;
+            checkpoint_lap_trigger = true;
             return;
         }
 
@@ -538,7 +538,7 @@ store_input:
     return;
 
 set_end:
-    is_in_replay = 1;
+    is_in_replay = true;
     audio_sync_car_audio();
     game_finish_state = 1;
 }
@@ -740,9 +740,9 @@ setup_car_shapes(int command) {
     char gaugeMode;
     int hundredsDigit;
     char steeringDotX, steeringDotY;
-    char steeringWheelChanged;
-    char restoredDotThisFrame;
-    char speedHasLeadingDigit;
+    bool steeringWheelChanged;
+    bool restoredDotThisFrame;
+    bool speedHasLeadingDigit;
 
     if (command == 0) {
         /* --- case 0: load car shapes --- */
@@ -850,7 +850,7 @@ setup_car_shapes(int command) {
 
     if (command == 2) {
         /* --- case 2: update steering wheel and gauges --- */
-        restoredDotThisFrame = 0;
+        restoredDotThisFrame = false;
 
         /* Steering wheel position: angle / 8 */
         {
@@ -871,10 +871,10 @@ setup_car_shapes(int command) {
         }
 
         /* Gear shift knob */
-        if (state.playerstate.car_fpsmul2 == 0 && state.playerstate.car_changing_gear == 0) {
+        if (state.playerstate.car_fpsmul2 == 0 && !state.playerstate.car_changing_gear) {
             arrayIndex = (int)(char)screen_display_toggle_flag;
             if (wheel_slip_direction[arrayIndex] != 0) {
-                if (video_flag5_is0 == 0)
+                if (!video_flag5_is0)
                     mouse_draw_opaque_check();
 
                 sprite_set_1_size(0, 320, 0, height_above_replaybar);
@@ -917,7 +917,7 @@ setup_car_shapes(int command) {
             sprite_putimage_or_at_shape_origin(gnobshapes[0], kx, ky);  /* gnob */
         }
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             setup_mcgawnd2();
         }
         else {
@@ -937,7 +937,7 @@ setup_car_shapes(int command) {
         if (race_driver_status_array[arrayIndex] == steeringState && race_condition_state_flag == 0)
             goto do_gauges;
 
-        if (video_flag5_is0 == 0)
+        if (!video_flag5_is0)
             mouse_draw_opaque_check();
 
         /* restore previous dot position if needed */
@@ -947,7 +947,7 @@ setup_car_shapes(int command) {
                                     car_velocity_vector_x[arrayIndex / 2],
                                     car_damage_data_table[arrayIndex / 2]);
             car_damage_data_table[(int)(char)screen_display_toggle_flag] = 0;
-            restoredDotThisFrame = 1;
+            restoredDotThisFrame = true;
         }
 
         /* draw new whl bitmap */
@@ -961,11 +961,11 @@ setup_car_shapes(int command) {
             shape2d_draw_rle_copy_clipped(whlshapes[2]); /* whl3 - right */
         }
         race_driver_status_array[(int)(char)screen_display_toggle_flag] = steeringState;
-        steeringWheelChanged = 1;
+        steeringWheelChanged = true;
         goto do_gauges_entry;
 
     do_gauges:
-        steeringWheelChanged = 0;
+        steeringWheelChanged = false;
 
     do_gauges_entry:
         /* Speedometer / rev-counter */
@@ -993,14 +993,14 @@ setup_car_shapes(int command) {
             di = simd_player.revnumpoints - 1;
 
         /* check if gauges need redraw */
-        if (steeringWheelChanged == 0 && race_condition_state_flag == 0) {
+        if (!steeringWheelChanged && race_condition_state_flag == 0) {
             arrayIndex = (int)(char)screen_display_toggle_flag * 2;
             if (car_orientation_data[arrayIndex / 2] == si
                 && car_position_xyz_array[arrayIndex / 2] == di)
                 goto do_steeringdot;
         }
 
-        if (video_flag5_is0 == 0)
+        if (!video_flag5_is0)
             mouse_draw_opaque_check();
 
         /* restore previous dot */
@@ -1010,7 +1010,7 @@ setup_car_shapes(int command) {
                                     car_velocity_vector_x[arrayIndex / 2],
                                     car_damage_data_table[arrayIndex / 2]);
             car_damage_data_table[(int)(char)screen_display_toggle_flag] = 0;
-            restoredDotThisFrame = 1;
+            restoredDotThisFrame = true;
         }
 
         /* draw instrument sprite */
@@ -1025,7 +1025,7 @@ setup_car_shapes(int command) {
             /* digital speed display */
             int speed_val = si;
             hundredsDigit = 0;
-            speedHasLeadingDigit = 0;
+            speedHasLeadingDigit = false;
 
             if (speed_val >= 200) {
                 hundredsDigit = 2;
@@ -1040,7 +1040,7 @@ setup_car_shapes(int command) {
                 sprite_putimage_or(digshapes[hundredsDigit],
                                    (unsigned char)simd_player.spdpoints[0],
                                    (unsigned char)simd_player.spdpoints[1]);
-                speedHasLeadingDigit = 1;
+                speedHasLeadingDigit = true;
             }
 
             {
@@ -1049,7 +1049,7 @@ setup_car_shapes(int command) {
                     sprite_putimage_or(digshapes[tens], (unsigned char)simd_player.spdpoints[2],
                                        (unsigned char)simd_player.spdpoints[3]);
                     speed_val -= tens * 10;
-                    speedHasLeadingDigit = 1;
+                    speedHasLeadingDigit = true;
                 }
             }
 
@@ -1081,7 +1081,7 @@ setup_car_shapes(int command) {
             shape2d_draw_rle_or(whlshapes[6]);        /* ins3 */
         }
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             setup_mcgawnd2();
         }
         else {
@@ -1098,10 +1098,10 @@ setup_car_shapes(int command) {
         /* Steering dot overlay */
         arrayIndex = (int)(char)screen_display_toggle_flag;
         if (car_damage_state_array[arrayIndex] == steeringBucket && race_condition_state_flag == 0
-            && restoredDotThisFrame == 0)
+            && !restoredDotThisFrame)
             goto steer_done;
 
-        if (video_flag5_is0 == 0)
+        if (!video_flag5_is0)
             mouse_draw_opaque_check();
 
         sprite_set_1_size(0, 320, 0, height_above_replaybar);
@@ -1294,7 +1294,7 @@ void
 loop_game(int command, int context_value, int frame_value) {
     int si, di;
     int screenIndex, screenValue;
-    unsigned char ctrlModifierActive;
+    bool ctrlModifierActive;
     char savedGameconfigSnapshot[26]; /* saved gameconfig for replay load compare */
     unsigned char buttonIndex;
     char saveDialogState;
@@ -1479,7 +1479,7 @@ loop_game(int command, int context_value, int frame_value) {
 
         sprite_copy_2_to_1();
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             screen_display_toggle_flag = current_screen_buffer_selector ^ 1;
         }
 
@@ -1550,8 +1550,8 @@ loop_game(int command, int context_value, int frame_value) {
         /* Check for ESC key before early returns */
         if (inputCode == 283 || inputCode == 27) {
             /* ESC pressed - always enter replay/pause mode and init UI */
-            replay_autoplay_active = 0;
-            is_in_replay = 1;
+            replay_autoplay_active = false;
+            is_in_replay = true;
             audio_sync_car_audio();
             loop_game(2, 4, 0);
             loop_game(1, state.game_frame, state.game_frame);
@@ -1565,31 +1565,31 @@ loop_game(int command, int context_value, int frame_value) {
         }
 
         /* if not in replay and no input, update frame time display */
-        if (is_in_replay == 0) {
+        if (!is_in_replay) {
             if (inputCode == 0) {
-                if (replaybar_enabled != 0)
+                if (replaybar_enabled)
                     loop_game(1, state.game_frame, state.game_frame);
                 return;
             }
             /* non-zero input while playing — fall through to action handler */
         }
 
-        if (replaybar_enabled == 0) {
+        if (!replaybar_enabled) {
             is_in_replay_copy = 255;
             timer_tick_counter = 65535;
         }
 
         /* check for fast-forward/rewind buttons */
-        if (is_in_replay != 0 && (wheel_rotation_speed != 0 || tire_grip_state != 0)) {
+        if (is_in_replay && (wheel_rotation_speed != 0 || tire_grip_state != 0)) {
             loop_game(2, 4, 0);
         }
 
         loop_game(1, state.game_frame, state.game_frame);
 
         /* Ctrl key check */
-        ctrlModifierActive = 0;
+        ctrlModifierActive = false;
         if (kb_get_key_state(29) || (minimum_bump_counter == 8 && (kbjoyflags & 48)))
-            ctrlModifierActive = 1;
+            ctrlModifierActive = true;
 
         if (ctrlModifierActive) {
             /* Ctrl-modified keys */
@@ -1685,7 +1685,7 @@ loop_game(int command, int context_value, int frame_value) {
                     unsigned short tgt = cur + step;
                     if (tgt > (unsigned short)gameconfig.game_recordedframes)
                         tgt = (unsigned short)gameconfig.game_recordedframes;
-                    is_in_replay = 1;
+                    is_in_replay = true;
                     audio_sync_car_audio();
                     loop_game(2, 0, 0);
                     restore_gamestate(tgt);
@@ -1699,7 +1699,7 @@ loop_game(int command, int context_value, int frame_value) {
                     unsigned short step = (unsigned short)(framespersec * 5);
                     unsigned short cur = (unsigned short)state.game_frame;
                     unsigned short tgt = (cur > step) ? (unsigned short)(cur - step) : 0;
-                    is_in_replay = 1;
+                    is_in_replay = true;
                     audio_sync_car_audio();
                     loop_game(2, 1, 0);
                     restore_gamestate(tgt);
@@ -1710,22 +1710,22 @@ loop_game(int command, int context_value, int frame_value) {
                     return;
                 case 2: /* Play at 2x speed (ASM: loc_24D04 — screen_shake_intensity=3) */
                     screen_shake_intensity = 3;
-                    is_in_replay = 0;
+                    is_in_replay = false;
                     loop_game(2, 2, 0);
                     return;
                 case 3: /* Play at normal speed (ASM: loc_24C5A — screen_shake_intensity=0) */
                     screen_shake_intensity = 0;
-                    is_in_replay = 0;
+                    is_in_replay = false;
                     loop_game(2, 3, 0);
                     return;
                 case 4: /* Pause at current frame (ASM: loc_24C74) */
-                    is_in_replay = 1;
+                    is_in_replay = true;
                     audio_sync_car_audio();
                     loop_game(2, 4, 0);
                     loop_game(1, state.game_frame, state.game_frame);
                     return;
                 case 5: /* Go to beginning (ASM: loc_24CA6) */
-                    is_in_replay = 1;
+                    is_in_replay = true;
                     audio_sync_car_audio();
                     loop_game(2, 5, 0);
                     loop_game(1, state.game_frame, state.game_frame);
@@ -1765,10 +1765,10 @@ loop_game(int command, int context_value, int frame_value) {
             if (!(replay_mode_state_flag & 4))
                 dialogFlags[1 * 2] = 0;
             /* button 2 — retire: disabled if copy-protection not passed */
-            if (passed_security == 0)
+            if (!passed_security)
                 dialogFlags[2 * 2] = 0;
             /* button 3 — continue driving: disabled if crashed or security not passed */
-            if (state.playerstate.car_crashBmpFlag != 0 || passed_security == 0)
+            if (state.playerstate.car_crashBmpFlag != 0 || !passed_security)
                 dialogFlags[3 * 2] = 0;
             /* button 5 — save replay: disabled if nothing recorded or time-shifted */
             if (gameconfig.game_recordedframes == 0 || elapsed_time1 != 0)
@@ -1813,7 +1813,7 @@ loop_game(int command, int context_value, int frame_value) {
             init_game_state(-1);
             replay_frame_counter = 0;
             gameconfig.game_recordedframes = 0;
-            *(unsigned char *)&lap_completion_trigger_flag = 0;
+            lap_completion_trigger_flag = false;
             replay_mode_state_flag = 1;
             goto setup_drive;
         case_continue:
@@ -1835,7 +1835,7 @@ loop_game(int command, int context_value, int frame_value) {
             gameconfig.game_recordedframes = state.game_frame;
             goto setup_drive;
         setup_drive:
-            dashb_toggle = 1;
+            dashb_toggle = true;
             show_penalty_counter = 0;
             followOpponentFlag = 0;
             game_replay_mode = 0;
@@ -1844,10 +1844,10 @@ loop_game(int command, int context_value, int frame_value) {
             state.game_frame_in_sec = 0;
             screen_shake_intensity = 0;
             loop_game(2, 3, 0);
-            is_in_replay = 0;
+            is_in_replay = false;
             mouse_minmax_position((int)(char)mouse_motion_state_flag);
             check_input();
-            kbormouse = 0;
+            kbormouse = false;
             goto after_dialog;
         case_loadreplay:
             replay_mode_state_flag = 0;
@@ -1872,7 +1872,7 @@ loop_game(int command, int context_value, int frame_value) {
             file_load_replay(replay_file_path_buffer, aDefault_1);
             if (gameconfig.game_recordedframes == 0) { /* nothing */
             }
-            dashb_toggle = 0;
+            dashb_toggle = false;
             track_setup();
             {
                 unsigned char *elemMap = (unsigned char *)track_elem_map;
@@ -1927,7 +1927,7 @@ loop_game(int command, int context_value, int frame_value) {
             file_build_path(replay_file_path_buffer, aDefault_1, ".rpl", g_path_buf,
                             sizeof(g_path_buf));
             saveDialogState = 1;
-            g_is_busy = 1;
+            g_is_busy = true;
             if (file_find(g_path_buf)) {
                 si = ui_dialog_show_restext(UI_DIALOG_CONFIRM, 0,
                                             locate_text_res(mainresptr, "fex"), UI_DIALOG_AUTO_POS,
@@ -1937,7 +1937,7 @@ loop_game(int command, int context_value, int frame_value) {
                 else if (si == 0)
                     saveDialogState = 0;
             }
-            g_is_busy = 0;
+            g_is_busy = false;
         save_check2:
             if (saveDialogState != 1)
                 goto save_retry2;
@@ -1962,10 +1962,10 @@ loop_game(int command, int context_value, int frame_value) {
             }
             switch (dialogChoice) {
             case 0:
-                dashb_toggle ^= 1;
+                dashb_toggle = !dashb_toggle;
                 break;
             case 1:
-                replaybar_toggle ^= 1;
+                replaybar_toggle = !replaybar_toggle;
                 break;
             case 2:
                 cameramode++;

@@ -105,7 +105,7 @@ window_stack_get_save_ptr(unsigned short idx) {
 static unsigned short rl_cursor_height;  /* game_mode_tracker - cursor height (1 or 8) */
 static unsigned short rl_x_pos;          /* read_line_x_pos - x position */
 static unsigned short rl_y_pos;          /* read_line_y_pos - y position */
-static unsigned short rl_cursor_visible; /* read_line_cursor_visible - cursor visible flag */
+static bool rl_cursor_visible; /* read_line_cursor_visible - cursor visible flag */
 static char *rl_buffer_ptr;              /* off_42A1E - buffer pointer */
 static unsigned short rl_max_width;      /* read_line_max_width_px - max width in pixels */
 static unsigned short rl_cursor_pos;     /* menu_state_data - cursor position in buffer */
@@ -186,7 +186,7 @@ read_line_helper(void) {
     unsigned short y_offset;
     unsigned char *fontdata;
 
-    if (rl_cursor_visible == 0) {
+    if (!rl_cursor_visible) {
         return;
     }
 
@@ -278,7 +278,7 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
 
     /* Initialize cursor */
     rl_cursor_height = 1;
-    rl_cursor_visible = 1;
+    rl_cursor_visible = true;
     insert_mode = 0;
     read_line_helper();
 
@@ -308,13 +308,13 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
             /* Deadline reached: blink cursor and refresh screen */
             set_add_value(4, 0);
             prev_cursor_visible = rl_cursor_visible;
-            rl_cursor_visible = 1;
+            rl_cursor_visible = true;
             read_line_helper();
             if (prev_cursor_visible == 0) {
-                rl_cursor_visible = 1;
+                rl_cursor_visible = true;
             }
             else {
-                rl_cursor_visible = 0;
+                rl_cursor_visible = false;
             }
             video_refresh();
             /* Check overall timeout */
@@ -781,7 +781,7 @@ unsigned short
 mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsigned short y1,
                unsigned short y2, unsigned short value, unsigned short range_offset,
                unsigned short max_value) {
-    unsigned short is_vertical;
+    bool is_vertical;
     unsigned short slider_size;
     unsigned short scaled_divisor;
     unsigned short slider_pos_start, slider_pos_end, slider_handle_size;
@@ -794,11 +794,11 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
  */
     /* Determine orientation: horizontal (x2>y2) or vertical (y2>=x2) */
     if (x2 > y2) {
-        is_vertical = 0;
+        is_vertical = false;
         slider_size = x2;
     }
     else {
-        is_vertical = 1;
+        is_vertical = true;
         slider_size = y2;
     }
 
@@ -819,7 +819,7 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
         sprite_fill_rect(x1, y1, x2, y2, 0);
 
         /* Draw the handle */
-        if (is_vertical == 0) {
+        if (!is_vertical) {
             sprite_fill_rect(x1 + slider_pos_start, y1, slider_handle_size, y2,
                              (unsigned char)dialog_fnt_colour);
         }
@@ -883,7 +883,7 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
                 sprite_fill_rect(x1, y1, x2, y2, 0);
 
                 /* Draw handle at new position */
-                if (is_vertical == 0) {
+                if (!is_vertical) {
                     sprite_fill_rect(x1 + new_pos, y1, slider_handle_size, y2,
                                      (unsigned char)dialog_fnt_colour);
                 }
@@ -915,7 +915,7 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
     mouse_draw_opaque_check();
     sprite_fill_rect(x1, y1, x2, y2, 0);
 
-    if (is_vertical == 0) {
+    if (!is_vertical) {
         sprite_fill_rect(x1 + slider_pos_start, y1, slider_handle_size, y2,
                          (unsigned char)dialog_fnt_colour);
     }
@@ -947,7 +947,7 @@ input_checking(unsigned short delta) {
 
     /* Menu pacing is now handled by video_refresh() calls in each menu
 	 * loop iteration.  The old ui_wait_menu_vsync() gate here caused a
-	 * double-wait (separate counter from video_present_frame) when g_is_busy=1,
+	 * double-wait (separate counter from video_present_frame) when g_is_busy = true,
 	 * halving the effective frame rate in dialogs.  Removed. */
 
     /* Some call sites pass delta=1 from tight loops; normalize these calls to
@@ -983,7 +983,7 @@ input_checking(unsigned short delta) {
     /* Check keyboard input */
     key_code = kb_get_char();
     if (key_code != 0) {
-        kbormouse = 0;
+        kbormouse = false;
     }
 
     /* Check joystick */
@@ -1019,7 +1019,7 @@ input_checking(unsigned short delta) {
 
         if (joyinputcode != 0) {
             input_framecount3 = input_framecount;
-            kbormouse = 0;
+            kbormouse = false;
         }
     }
     else if (joy_flags_new != 0) {
@@ -1047,7 +1047,7 @@ input_checking(unsigned short delta) {
 
             if (joyinputcode != 0) {
                 input_framecount3 = input_framecount;
-                kbormouse = 0;
+                kbormouse = false;
             }
         }
     }
@@ -1059,12 +1059,12 @@ input_checking(unsigned short delta) {
     if (mouse_xpos != mouse_oldx || mouse_ypos != mouse_oldy || mouse_butstate != mouse_oldbut) {
         mouse_oldx = mouse_xpos;
         mouse_oldy = mouse_ypos;
-        kbormouse = 1;
+        kbormouse = true;
         input_framecounter = 0;
 
         /* Redraw mouse if needed */
-        if (mouse_motion_detected_flag != 0) {
-            if (mouse_isdirty != 0) {
+        if (mouse_motion_detected_flag) {
+            if (mouse_isdirty) {
                 mouse_draw_opaque();
             }
             mouse_draw_transparent();
@@ -1079,12 +1079,12 @@ input_checking(unsigned short delta) {
  * @param kbormouse Parameter `kbormouse`.
  * @return Function result.
  */
-        if (kbormouse != 0) {
+        if (kbormouse) {
             input_framecounter += delta;
             if (input_framecounter > UI_MOUSE_AUTOHIDE_MS) {
                 input_framecounter = 0;
-                kbormouse = 0;
-                if (mouse_isdirty != 0) {
+                kbormouse = false;
+                if (mouse_isdirty) {
                     mouse_draw_opaque();
                     video_refresh();
                 }
@@ -1093,7 +1093,7 @@ input_checking(unsigned short delta) {
     }
 
     /* Handle mouse button changes */
-    if (kbormouse != 0) {
+    if (kbormouse) {
         if (mouse_butstate != mouse_oldbut) {
             mouse_oldbut = mouse_butstate;
 
@@ -1156,12 +1156,12 @@ input_checking(unsigned short delta) {
         return key_code;
     }
 
-    if (mousebutinputcode != 0 && kbormouse != 0) {
+    if (mousebutinputcode != 0 && kbormouse) {
         key_code = mousebutinputcode;
         mousebutinputcode = 0;
         return key_code;
     }
-    if (kbormouse == 0) {
+    if (!kbormouse) {
         mousebutinputcode = 0;
     }
 
@@ -1199,7 +1199,7 @@ do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
         return 0;
     }
 
-    result = 0;
+    result = false;
 
     /* Setup font and draw the extension template label (e.g. ".TRK") */
     font_set_colors(dialog_fnt_colour, dialog_text_color);
@@ -1237,7 +1237,7 @@ do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
             break;
         }
         if (key_code == 13) {
-            result = 1;
+            result = true;
             break;
         }
 
@@ -1276,7 +1276,7 @@ do_joy_restext(void) {
     unsigned short dialog_result;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     /* Show "joy" dialog */
@@ -1284,7 +1284,7 @@ do_joy_restext(void) {
     dialog_result = ui_dialog_layout(textres_ptr, 0, &coords[0]);
 
     if ((short)dialog_result <= 0) {
-        joystick_assigned_flags = 0;
+        joystick_assigned_flags = false;
         goto cleanup;
     }
 
@@ -1293,7 +1293,7 @@ do_joy_restext(void) {
         joy_assigned[i] = 0;
     }
 
-    joystick_assigned_flags = 1;
+    joystick_assigned_flags = true;
     mouse_draw_opaque_check();
 
     /* coords mapping from asm (index-based):
@@ -1378,7 +1378,7 @@ do_joy_restext(void) {
     /* Close dialog */
     ui_window_pop_modal();
 
-    if (joystick_assigned_flags == 0) {
+    if (!joystick_assigned_flags) {
         /* Show "jox" error dialog - joystick not fully configured */
         textres_ptr = locate_text_res(mainresptr, "jox");
         ui_dialog_info_restext(textres_ptr);
@@ -1386,9 +1386,9 @@ do_joy_restext(void) {
 
 cleanup:
     kb_check();
-    mouse_motion_state_flag = 0;
+    mouse_motion_state_flag = false;
     audio_enable_flag2();
-    game_startup_flag = 0;
+    game_startup_flag = false;
     input_pop_status();
 }
 
@@ -1441,7 +1441,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
     unsigned short saved_text_ofs_unused;    /* Saved text pointer offset */
     unsigned short saved_text_seg_unused;    /* Saved text pointer segment */
     unsigned char button_text_lengths[20];   /* Button text lengths */
-    char dialog_loop_active;                 /* Loop control flag */
+    bool dialog_loop_active;                 /* Loop control flag */
     unsigned short line_char_index;          /* Character index in line buffer */
     char line_buf[128];                      /* Line buffer */
     unsigned short dialog_x1;                /* Dialog x1 */
@@ -1769,7 +1769,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             }
         }
 
-        dialog_loop_active = 1;
+        dialog_loop_active = true;
         while (dialog_loop_active) {
             if (prev_selected_button != selected_button) {
                 mouse_draw_opaque_check();
@@ -1809,11 +1809,11 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                 button_count, button_x_start, button_x_end, button_y_start, button_y_end);
             if (hit_button_index != 255) {
                 if (coords_array == 0 || coords_array[hit_button_index * 2] != 0) {
-                    if (kbormouse != 0 && selected_button != hit_button_index) {
+                    if (kbormouse && selected_button != hit_button_index) {
                         selected_button = hit_button_index;
                     }
-                    if (kbormouse != 0 && UI_IS_CONFIRM(input_code)) {
-                        dialog_loop_active = 0;
+                    if (kbormouse && UI_IS_CONFIRM(input_code)) {
+                        dialog_loop_active = false;
                         continue;
                     }
                 }
@@ -1821,12 +1821,12 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
 
             if (UI_IS_CANCEL(input_code)) {
                 selected_button = 255;
-                dialog_loop_active = 0;
+                dialog_loop_active = false;
                 continue;
             }
 
             if (UI_IS_CONFIRM(input_code)) {
-                dialog_loop_active = 0;
+                dialog_loop_active = false;
                 continue;
             }
 
@@ -1869,11 +1869,11 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                 }
                 if (lowered_input_key == first_button_hotkey) {
                     selected_button = 0;
-                    dialog_loop_active = 0;
+                    dialog_loop_active = false;
                 }
                 else if (lowered_input_key == second_button_hotkey) {
                     selected_button = 1;
-                    dialog_loop_active = 0;
+                    dialog_loop_active = false;
                 }
             }
         }
@@ -1955,7 +1955,7 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
 
     /* Save and set busy flag */
     saved_busy_flag = g_is_busy;
-    g_is_busy = 1;
+    g_is_busy = true;
 
     /* Get button layout from dialog_coords array (coords stored as X,Y pairs by show_dialog type=3):
 	   dialog_coords[0] = X of '@'#0  (extension label X)
@@ -2172,7 +2172,7 @@ file_search_loop:
                                                               row_y_start, row_y_end);
         {
             unsigned short mouse_release_click = 0;
-            if (kbormouse != 0 && UI_IS_CONFIRM(nav_input_code)) {
+            if (kbormouse && UI_IS_CONFIRM(nav_input_code)) {
                 mouse_release_click = 1;
             }
 
@@ -2316,7 +2316,7 @@ do_mrl_textres(void) {
     int i, j;
 
     input_push_status();
-    game_startup_flag = 1;
+    game_startup_flag = true;
     audio_disable_flag2();
 
     saved_framespersec2 = framespersec2;
@@ -2392,7 +2392,7 @@ do_mrl_textres(void) {
         ui_dialog_info_restext(textres);
     }
 
-    game_startup_flag = 0;
+    game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
 }
@@ -2455,6 +2455,6 @@ ensure_file_exists(int file_idx) {
         }
 
         mouse_draw_opaque_check();
-        kbormouse = 0;
+        kbormouse = false;
     }
 }

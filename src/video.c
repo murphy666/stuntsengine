@@ -47,8 +47,8 @@ static Framebuffer sdl_fb;
 static void *sdl_ctx_saved_window = NULL;
 static void *sdl_ctx_saved_renderer = NULL;
 static void *sdl_ctx_saved_texture = NULL;
-static unsigned char sdl_active = 0;
-static unsigned char sdl_init_attempted = 0;
+static bool sdl_active = false;
+static bool sdl_init_attempted = false;
 /* Framebuffer LAST - overflows will go past end of .bss, causing immediate crash instead of silent corruption */
 static unsigned char sdl_framebuffer[FB_PIXELS];
 
@@ -73,8 +73,8 @@ video_wait_refresh_slot(unsigned long *next_counter, unsigned long *accum) {
 }
 
 static int sdl_scale = 3;
-static int sdl_fullscreen = 0;
-static unsigned char video_exit_handler_registered = 0;
+static bool sdl_fullscreen = false;
+static bool video_exit_handler_registered = false;
 static void (*video_scale_changed_cb)(void) = NULL;
 
 /** @brief Register a callback invoked whenever the scale changes.
@@ -148,11 +148,11 @@ video_toggle_fullscreen(void) {
 static void
 video_try_init_sdl(void) {
 
-    if (sdl_init_attempted != 0) {
+    if (sdl_init_attempted) {
         return;
     }
 
-    sdl_init_attempted = 1;
+    sdl_init_attempted = true;
     fb_init(&sdl_fb);
     memset(sdl_framebuffer, 0, sizeof(sdl_framebuffer));
 
@@ -173,7 +173,7 @@ video_try_init_sdl(void) {
         sdl_ctx_saved_window = sdl_ctx.window;
         sdl_ctx_saved_renderer = sdl_ctx.renderer;
         sdl_ctx_saved_texture = sdl_ctx.texture;
-        sdl_active = 1;
+        sdl_active = true;
     }
 }
 
@@ -183,7 +183,7 @@ video_try_init_sdl(void) {
 unsigned char *
 video_get_framebuffer(void) {
 
-    if (sdl_active != 0) {
+    if (sdl_active) {
         return sdl_framebuffer;
     }
     return NULL;
@@ -195,7 +195,7 @@ video_get_framebuffer(void) {
 int
 video_is_sdl_active(void) {
 
-    return sdl_active != 0;
+    return sdl_active;
 }
 
 /** @brief Present the current framebuffer, applying timing and palette updates.
@@ -206,7 +206,7 @@ video_present_frame(void) {
     static unsigned long next_present_counter = 0;
     static unsigned long present_accum = 0;
 
-    if (sdl_active == 0) {
+    if (!sdl_active) {
         return;
     }
 
@@ -246,7 +246,7 @@ video_clear_color(unsigned short color) {
     unsigned int i;
     unsigned char *framebuffer;
 
-    if (sdl_active == 0) {
+    if (!sdl_active) {
         return;
     }
 
@@ -270,7 +270,7 @@ void
 video_set_palette(unsigned short start, unsigned short count, unsigned char *colors) {
     unsigned int i;
 
-    if (sdl_active == 0) {
+    if (!sdl_active) {
         return;
     }
 
@@ -293,7 +293,7 @@ video_sdl_init(void) {
     video_try_init_sdl();
     video_add_exithandler();
 
-    if (sdl_active == 0) {
+    if (!sdl_active) {
         return;
     }
 
@@ -308,15 +308,15 @@ video_sdl_init(void) {
  */
 void
 video_add_exithandler(void) {
-    if (video_exit_handler_registered != 0) {
+    if (video_exit_handler_registered) {
         return;
     }
 
-    if (sdl_active == 0) {
+    if (!sdl_active) {
         return;
     }
 
-    video_exit_handler_registered = 1;
+    video_exit_handler_registered = true;
     input_queue_buffer = 0;
     add_exit_handler((voidfunctype)video_on_exit);
 }
@@ -328,11 +328,11 @@ video_add_exithandler(void) {
  */
 void
 video_on_exit(void) {
-    if (sdl_init_attempted == 0) {
+    if (!sdl_init_attempted) {
         return;
     }
 
     fb_sdl2_shutdown(&sdl_ctx);
-    sdl_active = 0;
-    video_exit_handler_registered = 0;
+    sdl_active = false;
+    video_exit_handler_registered = false;
 }

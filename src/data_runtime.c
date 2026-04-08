@@ -78,7 +78,7 @@ unsigned char resources[900] = {
 };
 
 /* Joystick detection flags (set during input initialisation) */
-char joystick_assigned_flags = 0;
+bool joystick_assigned_flags = false;
 
 /* Resource allocator state words (initialised to 0 before first alloc) */
 unsigned resource_alloc_state_a = 0;

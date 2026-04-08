@@ -227,39 +227,39 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 	 * Determine whether to shift up, shift down, or keep the current gear.
 	 * ================================================================ */
     {
-        int want_upshift = 0;
-        int want_downshift = 0;
+        bool want_upshift = false;
+        bool want_downshift = false;
 
-        if (carState->car_transmission == 0 && carState->car_changing_gear == 0) {
+        if (carState->car_transmission == 0 && !carState->car_changing_gear) {
             /* Manual / no-shift-in-progress: check driver input buttons. */
             if (carInputFlags & STATECAR_INPUT_SHIFT_UP_MASK)
-                want_upshift = 1;
+                want_upshift = true;
             else if (carInputFlags & STATECAR_INPUT_SHIFT_DOWN_MASK)
-                want_downshift = 1;
+                want_downshift = true;
         }
         else {
             /* Auto-transmission or a shift animation already playing:
 			 * only auto-shift once the animation is idle, we are in gear,
 			 * and the rear wheels are on the ground. */
-            if (carState->car_current_gear != 0 && carState->car_changing_gear == 0
+            if (carState->car_current_gear != 0 && !carState->car_changing_gear
                 && carState->car_sumSurfRearWheels != 0) {
                 if (carState->car_currpm > simdData->upshift_rpm)
-                    want_upshift = 1;
+                    want_upshift = true;
                 else if (carState->car_currpm < simdData->downshift_rpm)
-                    want_downshift = 1;
+                    want_downshift = true;
             }
         }
 
         if (want_upshift && carState->car_current_gear < simdData->num_gears) {
             carState->car_current_gear++;
-            carState->car_changing_gear = 1;
+            carState->car_changing_gear = true;
             carState->car_fpsmul2 = (framespersec >> 1) + framespersec;
             carState->car_knob_x2 = simdData->knob_points[(int)carState->car_current_gear].px;
             carState->car_knob_y2 = simdData->knob_points[(int)carState->car_current_gear].py;
         }
         else if (want_downshift && carState->car_current_gear > 1) {
             carState->car_current_gear--;
-            carState->car_changing_gear = 1;
+            carState->car_changing_gear = true;
             carState->car_fpsmul2 = (framespersec >> 1) + framespersec;
             carState->car_knob_x2 = simdData->knob_points[(int)carState->car_current_gear].px;
             carState->car_knob_y2 = simdData->knob_points[(int)carState->car_current_gear].py;
@@ -270,7 +270,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 	 * GEAR KNOB ANIMATION
 	 * Animate the gear-stick knob one step toward its target position.
 	 * ================================================================ */
-    if (carState->car_changing_gear != 0) {
+    if (carState->car_changing_gear) {
         if (carState->car_knob_x != carState->car_knob_x2) {
             /* x not yet at target – first bring y to neutral, then slide x. */
             if (carState->car_knob_y != simdData->knob_points[0].py) {
@@ -305,7 +305,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
             deltaValue = carState->car_knob_y2 - carState->car_knob_y;
             if (deltaValue == 0) {
                 /* Arrived: commit gear ratio. */
-                carState->car_changing_gear = 0;
+                carState->car_changing_gear = false;
                 carState->car_gearratio = simdData->gear_ratios[(int)carState->car_current_gear];
                 carState->car_gearratioshr8 = carState->car_gearratio >> 8;
             }
@@ -354,10 +354,10 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 
         if (inputCmd == 1) {
             /* ---- Accelerating ---- */
-            carState->car_is_braking = 0;
-            carState->car_is_accelerating = 1;
+            carState->car_is_braking = false;
+            carState->car_is_accelerating = true;
 
-            if (carState->car_changing_gear != 0) {
+            if (carState->car_changing_gear) {
                 /* Rev-matching during shift: drop rpm, no torque contribution. */
                 carState->car_engineLimiterTimer = 0;
                 if (framespersec == STATECAR_FPS_10)
@@ -410,9 +410,9 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
         }
         else if (inputCmd == 2) {
             /* ---- Braking ---- */
-            carState->car_is_accelerating = 0;
+            carState->car_is_accelerating = false;
             carState->car_engineLimiterTimer = 0;
-            carState->car_is_braking = 1;
+            carState->car_is_braking = true;
             if (isOpponentCar == 0)
                 speedDelta -= simdData->braking_eff;
             else
@@ -420,8 +420,8 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
         }
         else {
             /* ---- Coasting ---- */
-            carState->car_is_accelerating = 0;
-            carState->car_is_braking = 0;
+            carState->car_is_accelerating = false;
+            carState->car_is_braking = false;
         }
     }
 
@@ -763,16 +763,16 @@ update_player_car_state(char carInputFlags) {
 		 * do_advance skips the junction scan and goes straight to advancing the
 		 * track index.  skip_heading means the waypoint is far enough ahead
 		 * that we can skip both and jump to the impact check. */
-        int do_junction = 0;
-        int do_advance = 0;
-        int skip_heading = 0;
+        bool do_junction = false;
+        bool do_advance = false;
+        bool skip_heading = false;
 
         if (state.game_flyover_state == 2) {
             /* crossing a flyover: tag collision type and scan the segment */
             if (state.playerstate.car_crashBmpFlag == 0)
                 state.game_collision_type = 3;
             waypointIndex = state.game_track_segment_working_index;
-            do_junction = 1;
+            do_junction = true;
         }
         else {
             /* flyover_state == 0: check saved track look-ahead index */
@@ -784,7 +784,7 @@ update_player_car_state(char carInputFlags) {
 				 * it no longer neighbours the current waypoint. */
                 int valid;
                 if (previousFlyoverState != 0 && state.game_flyover_state == 0) {
-                    valid = 0;
+                    valid = false;
                 }
                 else {
                     valid = (state.playerstate.car_waypoint_seq_index
@@ -816,16 +816,16 @@ update_player_car_state(char carInputFlags) {
 
             if (si >= 275) {
                 /* waypoint far enough ahead: skip straight to heading computation */
-                skip_heading = 1;
+                skip_heading = true;
             }
             else if (state.playerstate.car_waypoint_seq_index != -1) {
                 /* close enough and valid: advance to next waypoint directly */
-                do_advance = 1;
+                do_advance = true;
             }
             else {
                 /* no valid track index: scan junction paths at current waypoint */
                 waypointIndex = state.game_current_waypoint_index;
-                do_junction = 1;
+                do_junction = true;
             }
         }
 
@@ -837,8 +837,8 @@ update_player_car_state(char carInputFlags) {
         if (do_junction) {
             if (track_waypoint_alt[waypointIndex] != -1) {
                 /* not a multi-path junction: skip to impact check */
-                skip_heading = 1;
-                do_advance = 0;
+                skip_heading = true;
+                do_advance = false;
             }
             else {
                 /* scan all sub-paths; pick the one whose transformed z is
@@ -893,13 +893,13 @@ update_player_car_state(char carInputFlags) {
                         state.playerstate.car_track_waypoint_index = bestWaypointSubIndex;
                     }
                     /* si in [SNAP_MARGIN, EXIT_MAX]: heading OK — use bestWaypointSubIndex */
-                    do_advance = 1;
+                    do_advance = true;
                 }
                 else {
                     /* flyover_state == 0 after junction lookup: commit chosen sub-path */
                     state.playerstate.car_waypoint_seq_index = state.game_current_waypoint_index;
                     state.playerstate.car_track_waypoint_index = bestWaypointSubIndex;
-                    do_advance = 1;
+                    do_advance = true;
                 }
             }
         }
@@ -911,7 +911,7 @@ update_player_car_state(char carInputFlags) {
                                       state.playerstate.car_track_waypoint_index++, 0)
                 == 0) {
                 /* reached end of this sub-path: skip heading computation */
-                skip_heading = 1;
+                skip_heading = true;
             }
             else {
                 /* advance to next segment or reset index */
@@ -1004,7 +1004,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
 
     if (carstate->car_sumSurfAllWheels == 0) {
         carstate->car_40MfrontWhlAngle = 0;
-        carstate->car_slidingFlag = 0;
+        carstate->car_slidingFlag = false;
         return;
     }
 
@@ -1077,7 +1077,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
             long numerator;
             long denom;
 
-            carstate->car_slidingFlag = 1;
+            carstate->car_slidingFlag = true;
 
             numerator = (long)speedshr8 * (long)speedshr8;
             denom = (long)combinedGrip << 8;
@@ -1089,7 +1089,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
             carstate->car_steering_residual = (short)(steeringSum - steeringAdjusted);
         }
         else {
-            carstate->car_slidingFlag = 0;
+            carstate->car_slidingFlag = false;
             if (carstate->car_steering_residual != 0) {
                 decay = carstate->car_steering_residual >> 4;
                 carstate->car_steering_residual = (short)(carstate->car_steering_residual - decay);
@@ -1174,7 +1174,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
         carstate->car_36MwhlAngle = (short)(carstate->car_36MwhlAngle - carstate->car_angle_z);
     }
 
-    if (carstate->car_slidingFlag != 0) {
+    if (carstate->car_slidingFlag) {
         delta = carstate->car_steering_residual;
         delta = delta < 0 ? -delta : delta;
         delta <<= 1;
@@ -1286,7 +1286,7 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
  */
 void
 update_world_debris_particles(void) {
-    int has_active_particles = 0;
+    bool has_active_particles = false;
     short *obstacle_vertical_velocity = (short *)state.game_obstacle_metadata;
     int si;
     struct MATRIX *rot;
@@ -1322,7 +1322,7 @@ update_world_debris_particles(void) {
 
         worldY = state.game_longs2[si] + state.playerstate.car_posWorld1.ly;
         if (worldY >= 0) {
-            has_active_particles = 1;
+            has_active_particles = true;
             state.game_obstacle_rotx[si] = (short)(state.game_obstacle_rotx[si] + 16);
             state.game_obstacle_roty[si] = (short)(state.game_obstacle_roty[si] + 16);
         }
@@ -1350,7 +1350,7 @@ update_opponent_car_state(void) {
 
     short steerMax;
     short steerStep;
-    char chaseFlag;
+    bool chaseFlag;
     short oppPosX, oppPosY, oppPosZ;
     short plrPosX, plrPosY, plrPosZ;
     struct VECTOR vec_3C;     /* copy of car_waypoint_target / temp */
@@ -1379,10 +1379,10 @@ update_opponent_car_state(void) {
 
     /* Determine if opponent is in steering-limited mode */
     if (state.opponentstate.car_36MwhlAngle != 0 || state.game_inputmode == 2) {
-        chaseFlag = 1;
+        chaseFlag = true;
     }
     else {
-        chaseFlag = 0;
+        chaseFlag = false;
     }
 
     /* Get scaled world positions (long >> 6) */
@@ -1557,7 +1557,7 @@ compute_angle:
     targetAngle = polarAngle(vec_3C.x, vec_3C.z);
 
     /* If not sliding and angle too large, advance waypoint */
-    if (state.opponentstate.car_slidingFlag == 0) {
+    if (!state.opponentstate.car_slidingFlag) {
         short absAngle = targetAngle < 0 ? -targetAngle : targetAngle;
         if (absAngle > STATECAR_AI_WAYPOINT_ANGLE_MAX) {
             short trackval;
@@ -1581,15 +1581,15 @@ compute_angle:
 
     /* Clamp target angle and handle chaseFlag */
     if (targetAngle > STATECAR_AI_STEER_TARGET_MAX) {
-        if (chaseFlag == 0) {
-            chaseFlag = 1;
+        if (!chaseFlag) {
+            chaseFlag = true;
             goto advance_waypoint;
         }
         targetAngle = STATECAR_AI_STEER_TARGET_MAX;
     }
     else if (targetAngle < STATECAR_AI_STEER_TARGET_MIN) {
-        if (chaseFlag == 0) {
-            chaseFlag = 1;
+        if (!chaseFlag) {
+            chaseFlag = true;
             goto advance_waypoint;
         }
         targetAngle = STATECAR_AI_STEER_TARGET_MIN;
@@ -1721,8 +1721,8 @@ car_car_speed_adjust_collision(struct CARSTATE *oState, struct CARSTATE *pState)
     int16_t relSpeed;
     int16_t speedReduce;
 
-    oState->car_crash_impact_flag = 1;
-    pState->car_crash_impact_flag = 1;
+    oState->car_crash_impact_flag = true;
+    pState->car_crash_impact_flag = true;
 
     oSpeed = (uint16_t)oState->car_speed2;
     pSpeed = (uint16_t)pState->car_speed2;
@@ -1881,7 +1881,7 @@ track_waypoint_lookup(short path_index, struct VECTOR *waypoint_out, short lane_
     const unsigned char *trkObjBytes;
     state_trackobject_raw trkObj;
     state_trkobjinfo_raw toInfo;
-    short opponentFlag; /* opp flag */
+    bool opponentFlag; /* opp flag */
     unsigned char arrowType;
     unsigned char cameraDataIndex; /* index into camera data */
     short *dataBase;
@@ -1933,7 +1933,7 @@ track_waypoint_lookup(short path_index, struct VECTOR *waypoint_out, short lane_
         return 1;
     }
 
-    opponentFlag = 0;
+    opponentFlag = false;
     arrowType = toInfo.arrow_type;
     if (arrowType == 0) {
         return 0;
@@ -1965,12 +1965,12 @@ track_waypoint_lookup(short path_index, struct VECTOR *waypoint_out, short lane_
  */
     /* Check if si_opp1 is nonzero (read as word: si_opp1 + si_opp2) */
     if (((unsigned short)toInfo.opp1 | ((unsigned short)toInfo.opp2 << 8)) != 0) {
-        opponentFlag = 1;
+        opponentFlag = true;
     }
 
     /* Read waypoint data based on connStatus */
     if (td18connStatus != 0) {
-        if (opponentFlag != 0) {
+        if (opponentFlag) {
             /* Use si_opp1 as data base pointer */
             dataBase = (short *)state_seg_ptr16(0, (unsigned short)toInfo.opp1
                                                        | ((unsigned short)toInfo.opp2 << 8));
@@ -2133,7 +2133,7 @@ audio_sync_car_audio(void) {
                     audio_stop_engine_note(audio_opponent_engine_handle);
                 }
             }
-            audio_replay_apply_state = 0;
+            audio_replay_apply_state = false;
             player_audio_state = 0;
             opponent_audio_state = 0;
         }
@@ -2284,7 +2284,7 @@ audio_sync_car_audio(void) {
         {
             char old_bits = soundFlags & 6;
             char new_bits = 0;
-            if (cs->car_crashBmpFlag == 0 && cs->car_slidingFlag != 0
+            if (cs->car_crashBmpFlag == 0 && cs->car_slidingFlag
                 && cs->car_sumSurfAllWheels != 0) {
                 if (cs->car_surfaceWhl[0] == 1 || cs->car_surfaceWhl[1] == 1
                     || cs->car_surfaceWhl[2] == 1 || cs->car_surfaceWhl[3] == 1) {
@@ -2335,7 +2335,7 @@ audio_sync_car_audio(void) {
     }
 
     /* Mark audio state as valid, advance frame counter */
-    audio_replay_apply_state = 1;
+    audio_replay_apply_state = true;
     menu_selection_buffer++;
     if (menu_selection_buffer == 40)
         menu_selection_buffer = 0;
@@ -2690,7 +2690,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
     struct VECTOR vec_182, vec_1E4, prevPosLocal, vec_1C, vec_17C, planeOriginWorld;
     struct VECTOR playerWorldPoints[2], vec_18EoStateWorldCrds[2];
     struct MATRIX mat_134;
-    char wallVectorSwapped;
+    bool wallVectorSwapped;
     int remainingSpeed, consumedSpeed, wallRelativeAngle, steerKickAngle;
     unsigned int impactSpeedThreshold;
     struct MATRIX *wallAlignMatrix;
@@ -2824,7 +2824,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
     /* ====== Section 7: Integration passes (max 5, wall collision restarts) ====== */
     for (integrationPass = 1;; integrationPass++) {
-        int wallHit;
+        bool wallHit;
 
         if (integrationPass == STATECAR_MAX_INTEGRATION_PASSES) {
             playerState->car_36MwhlAngle = STATECAR_ANGLE_HALF;
@@ -2832,12 +2832,12 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
             break;
         }
 
-        wallHit = 0;
+        wallHit = false;
         wheelPos2Ptr = vecl_1C0;
         wheelPos1Ptr = vecl_176;
 
         for (wheelIndex = 0; wheelIndex < 4; wheelIndex++, wheelPos2Ptr++, wheelPos1Ptr++) {
-            int doRc1Check;
+            bool doRc1Check;
             int depthPass;
 
             /* -- Compute world position for this wheel -- */
@@ -2887,13 +2887,13 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     && !(vec_1C.z < 0 && prevPosLocal.z < 0)) {
                     /* Sort so vec_1C.z <= prevPosLocal.z */
                     if (vec_1C.z > prevPosLocal.z) {
-                        wallVectorSwapped = 1;
+                        wallVectorSwapped = true;
                         vec_FC = vec_1C;
                         vec_1C = prevPosLocal;
                         prevPosLocal = vec_FC;
                     }
                     else {
-                        wallVectorSwapped = 0;
+                        wallVectorSwapped = false;
                     }
 
                     /* Compute consumed/remaining speed at crossing point */
@@ -2929,7 +2929,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                                             & STATECAR_ANGLE_MASK;
                         vec_FC.x = -STATECAR_WALL_DEFLECT_X;
                     }
-                    if (wallVectorSwapped != 0)
+                    if (wallVectorSwapped)
                         vec_FC.x = -vec_FC.x;
 
                     /* Impact check and crash */
@@ -2979,14 +2979,14 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                             wp2->lz = prevPosLocal.z + vec_1C.z + wp1->lz;
                         }
                     }
-                    wallHit = 1;
+                    wallHit = true;
                     break; /* restart integration pass */
                 }
                 /* No crossing: fall through to terrain handling */
             }
 
             /* -- Terrain following + plane collision (max 2 depth passes) -- */
-            doRc1Check = 1;
+            doRc1Check = true;
             for (depthPass = 0; depthPass < 2; depthPass++) {
                 /* Terrain following */
                 if (nextPosAndNormalIP > 0) {
@@ -3026,7 +3026,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     break; /* on surface → rc1 checks */
                 }
                 if (nextPosAndNormalIP > 0) {
-                    doRc1Check = 0; /* above surface → skip rc1 */
+                    doRc1Check = false; /* above surface → skip rc1 */
                     break;
                 }
 
@@ -3049,16 +3049,16 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                 mat_mul_vector(&vec_182, &angleZRotationMatrix, &prevPosLocal);
                 mat_mul_vector(&vec_1E4, &angleZRotationMatrix, &vec_1C);
 
-                wallVectorSwapped = 0;
+                wallVectorSwapped = false;
 
                 /* Check for deep penetration (falling through floor) */
-                if (track_object_render_enabled == 0 && prevPosLocal.y < STATECAR_PLANE_WARN_DEPTH
+                if (!track_object_render_enabled && prevPosLocal.y < STATECAR_PLANE_WARN_DEPTH
                     && vec_1C.y < STATECAR_PLANE_WARN_DEPTH) {
                     if (vec_1C.y <= STATECAR_PLANE_DEEP_DEPTH) {
                         /* Reset to ground plane and re-enter terrain following */
                         planindex = 0;
                         current_planptr = planptr;
-                        track_object_render_enabled = 1;
+                        track_object_render_enabled = true;
                         vec_1C6.x = wheelPos2Ptr->lx >> 6;
                         vec_1C6.y = wheelPos2Ptr->ly >> 6;
                         vec_1C6.z = wheelPos2Ptr->lz >> 6;
@@ -3067,7 +3067,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         continue; /* second depth pass */
                     }
                     update_crash_state(5, isOpponentCar);
-                    wallVectorSwapped = 1;
+                    wallVectorSwapped = true;
                 }
 
                 /* Normal plane collision handling */
@@ -3143,7 +3143,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                                                                    vec_1C6.z);
 
                     if (nextPosAndNormalIP < 0) {
-                        if (wallVectorSwapped != 0)
+                        if (wallVectorSwapped)
                             nextPosAndNormalIP = (-nextPosAndNormalIP) + STATECAR_PLANE_PUSH_OFFSET;
                         /* Push wheel away from plane surface */
                         vec_1C6.z = 0;
@@ -3300,7 +3300,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
     if (state.game_inputmode != 2) {
         /* ====== Section 16: Audio crash flags ====== */
-        if (is_in_replay == 0) {
+        if (!is_in_replay) {
             if (isOpponentCar == 0)
                 audio_apply_crash_flags(playerState->car_position_initialized, crash_sound_handle);
             else
@@ -3378,7 +3378,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     (short *)playerSimd->collide_points, (short *)playerWorldPoints,
                     (short *)opponentSimd->collide_points, (short *)vec_18EoStateWorldCrds)
                 != 0) {
-                if (playerState->car_crash_impact_flag != 0)
+                if (playerState->car_crash_impact_flag)
                     return; /* already in crash, skip state writeback */
 
                 if (car_car_speed_adjust_collision(playerState, opponentState) == 0)
@@ -3473,7 +3473,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
     playerState->car_rotate.z = pState_minusRotate_z_1;
     playerState->car_rotate.y = pState_minusRotate_x_1;
     playerState->car_rotate.x = pState_minusRotate_y_1;
-    playerState->car_crash_impact_flag = 0;
+    playerState->car_crash_impact_flag = false;
 }
 
 /** @brief Apply crash-effect flags to the selected car audio channel.
@@ -3519,7 +3519,7 @@ audio_replay_update_engine_sounds(unsigned short *info, unsigned short sound_id)
 void
 update_crash_state(int crash_type, int isOpponentCar) {
 
-    char stopVehicleOnCrash;
+    bool stopVehicleOnCrash;
     struct CARSTATE *crashCarState;
 
     /* Select target car: opponent for isOpponentCar==1, player for all other values. */
@@ -3532,13 +3532,13 @@ update_crash_state(int crash_type, int isOpponentCar) {
     if (crashCarState->car_crashBmpFlag != 0)
         return;
 
-    stopVehicleOnCrash = 0;
+    stopVehicleOnCrash = false;
 
     /* crash_type==5 is an alias for a stopping hard-crash (same as 1 but also
 	 * zeroes speed). Normalise it here so the branches below only need to handle 1. */
     if (crash_type == 5) {
         crash_type = 1;
-        stopVehicleOnCrash = 1;
+        stopVehicleOnCrash = true;
     }
 
     if (crash_type == 1) {
@@ -3549,7 +3549,7 @@ update_crash_state(int crash_type, int isOpponentCar) {
             state.game_impactSpeed = crashCarState->car_speed2;
             state.game_frames_per_sec = framespersec << 2;
         }
-        if (is_in_replay == 0 && audio_replay_apply_state != 0) {
+        if (!is_in_replay && audio_replay_apply_state) {
             if (isOpponentCar == 0)
                 audio_select_crash2_fx_and_restart(crash_sound_handle);
             else
@@ -3558,14 +3558,14 @@ update_crash_state(int crash_type, int isOpponentCar) {
     }
     else if (crash_type == 2) {
         /* Suspension / scrape crash: play sound first, then set flag and stop car. */
-        if (is_in_replay == 0 && audio_replay_apply_state != 0) {
+        if (!is_in_replay && audio_replay_apply_state) {
             if (isOpponentCar == 0)
                 audio_select_crash2_fx_and_restart(crash_sound_handle);
             else
                 audio_select_crash2_fx_and_restart(audio_opponent_engine_handle);
         }
         crashCarState->car_crashBmpFlag = 2;
-        stopVehicleOnCrash = 1;
+        stopVehicleOnCrash = true;
         if (isOpponentCar == 0) {
             state.game_impactSpeed = crashCarState->car_speed2;
             state.game_frames_per_sec = framespersec << 2;
@@ -3590,7 +3590,7 @@ update_crash_state(int crash_type, int isOpponentCar) {
     /* crash_type not in {1,2,3,4,5}: no crash-type action; continue to cleanup. */
 
     /* Halt car if this crash type requires it. */
-    if (stopVehicleOnCrash != 0) {
+    if (stopVehicleOnCrash) {
         crashCarState->car_speed2 = 0;
         crashCarState->car_speed = 0;
     }

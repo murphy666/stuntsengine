@@ -122,13 +122,13 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
     /* --- keyboard events --- */
     key = kb_get_char();
     if (key != 0) {
-        kbormouse = 0;
+        kbormouse = false;
         memset(&ev, 0, sizeof(ev));
         ev.type = UI_EVENT_KEY_DOWN;
         ev.key = key;
         ev.delta = delta;
         result = scr->on_event(scr, &ev);
-        if (result != 0)
+        if (result)
             return result;
     }
 
@@ -136,7 +136,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
     mouse_get_state(&mbut, &mx, &my);
 
     if (mx != prev_mx || my != prev_my) {
-        kbormouse = 1;
+        kbormouse = true;
         prev_mx = mx;
         prev_my = my;
         memset(&ev, 0, sizeof(ev));
@@ -146,7 +146,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
         ev.mouse_buttons = mbut;
         ev.delta = delta;
         result = scr->on_event(scr, &ev);
-        if (result != 0)
+        if (result)
             return result;
     }
 
@@ -156,7 +156,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
         prev_mbut = mbut;
 
         if (pressed) {
-            kbormouse = 1;
+            kbormouse = true;
             memset(&ev, 0, sizeof(ev));
             ev.type = UI_EVENT_MOUSE_DOWN;
             ev.mouse_x = mx;
@@ -164,7 +164,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
             ev.mouse_buttons = pressed;
             ev.delta = delta;
             result = scr->on_event(scr, &ev);
-            if (result != 0)
+            if (result)
                 return result;
         }
         if (released) {
@@ -175,7 +175,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
             ev.mouse_buttons = released;
             ev.delta = delta;
             result = scr->on_event(scr, &ev);
-            if (result != 0)
+            if (result)
                 return result;
         }
     }
@@ -213,7 +213,7 @@ ui_screen_run(void) {
         /* 3. Dispatch events to the top screen */
         result = dispatch_events(top, delta);
 
-        if (result != 0 || top->_wants_pop) {
+        if (result || top->_wants_pop) {
             top->_modal_result = result;
             ui_screen_pop();
             continue;
@@ -247,7 +247,7 @@ ui_screen_run_modal(UIScreen *scr) {
 
         result = dispatch_events(top, delta);
 
-        if (result != 0 || top->_wants_pop) {
+        if (result || top->_wants_pop) {
             int modal = result ? result : top->_modal_result;
             ui_screen_pop();
             if (s_depth <= saved_depth) {
@@ -372,10 +372,10 @@ btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_DOWN || ev->type == UI_EVENT_MOUSE_MOVE) {
         short hit = mouse_multi_hittest((short)m->count, m->x1, m->x2, m->y1, m->y2);
         if (hit >= 0 && hit < (short)m->count) {
-            if (kbormouse != 0) {
+            if (kbormouse) {
                 st->selected = (unsigned char)hit;
             }
-            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse != 0) {
+            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse) {
                 return (int)st->selected + 1;
             }
         }

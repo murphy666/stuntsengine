@@ -143,9 +143,9 @@ highscore_write_a_(unsigned short write_defaults) {
 
     if (write_defaults == 0) {
         void *status;
-        g_is_busy = 1;
+        g_is_busy = true;
         status = file_read_with_mode(10, g_path_buf, highscore_data);
-        g_is_busy = 0;
+        g_is_busy = false;
         return (status == 0) ? 1 : 0;
     }
 
@@ -191,10 +191,10 @@ highscore_write_b(void) {
 
     file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".hig", g_path_buf,
                     sizeof(g_path_buf));
-    g_is_busy = 1;
+    g_is_busy = true;
     {
         short ok = file_write_fatal(g_path_buf, buffer, 364);
-        g_is_busy = 0;
+        g_is_busy = false;
         return ok ? 1 : 0;
     }
 }
@@ -470,7 +470,7 @@ hiscore_on_event(UIScreen *self, const UIEvent *ev) {
                                                 st->button_y2);
         if (hit != 255) {
             st->sel_button = hit;
-            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse != 0) {
+            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse) {
                 return (int)st->sel_button + 1;
             }
         }
@@ -571,8 +571,8 @@ end_hiscore(void) {
     unsigned char anim_frame = 0;
     unsigned char anim_letter = 'd';
     unsigned char need_highscore_entry = 0;
-    unsigned char show_eval_only = 1; // Matches var_14 in the original code
-    unsigned char has_track_match = 1;
+    bool show_eval_only = true; // Matches var_14 in the original code
+    bool has_track_match = true;
 
     ensure_file_exists(4);
     misc_res = file_load_resfile("misc");
@@ -584,7 +584,7 @@ end_hiscore(void) {
 
     // Build primary window(s).
     wndsprite = sprite_make_wnd(320, 200, 15);
-    if (video_flag5_is0 != 0) {
+    if (video_flag5_is0) {
         small_wnd = sprite_make_wnd(200, 100, 15);
     }
 
@@ -695,7 +695,7 @@ end_hiscore(void) {
     }
 
     // Verify current track matches loaded data; determine if we can update highscores.
-    has_track_match = 1;
+    has_track_match = true;
     {
         file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf,
                         sizeof(g_path_buf));
@@ -706,14 +706,14 @@ end_hiscore(void) {
                 for (i = 0; i < 901; ++i) {
                     if (*((unsigned char *)track_res + i)
                         != *((unsigned char *)track_elem_map + i)) {
-                        has_track_match = 0;
+                        has_track_match = false;
                         break;
                     }
                 }
                 mmgr_release(track_res);
             }
             else {
-                has_track_match = 0;
+                has_track_match = false;
             }
         }
     }
@@ -754,7 +754,7 @@ end_hiscore(void) {
     if (need_highscore_entry == 1) {
         check_input();
         mouse_draw_opaque_check();
-        show_eval_only = 1;
+        show_eval_only = true;
         {
             char *inh_txt = locate_text_res(misc_res, "inh");
             enter_hiscore(gState_total_finish_time, inh_txt, race_result);

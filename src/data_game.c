@@ -522,7 +522,7 @@ unsigned const char g_ascii_props[]
 
 
 /* off_3F3C8 moved to static in shape3d.c */
-int game_startup_flag = 0;
+bool game_startup_flag = false;
 unsigned char kbinput[90] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -666,10 +666,10 @@ int wallStartZ = 0;
 struct SHAPE3D game3dshapes[] = { [129] = { 0 } };
 short *track_waypoint_alt = 0;
 int trackpos[] = { [30] = 0 };
-char track_object_render_enabled = 0;
+bool track_object_render_enabled = false;
 unsigned char game_pause_counter = 0;
 char *track_waypoint_order = 0;
-char dashb_toggle = 0;
+bool dashb_toggle = false;
 int crash_sound_handle = 0;
 int audio_opponent_engine_handle = 0;
 char replay_mode_state_flag = 0;
@@ -759,7 +759,7 @@ unsigned char state[1120] = {
 };
 /* oppcarshapevecs: same layout as carshapevecs — 24 contiguous VECTORs. */
 unsigned char oppcarshapevecs[144] = { 0 };
-unsigned short timertestflag_copy = 0;
+bool timertestflag_copy = false;
 int elRdWallRelated = 0;
 int startcol2 = 0;
 int hillFlag = 0;
@@ -773,7 +773,7 @@ unsigned short framespersec = 0;
 char *track_elem_ordered = 0;
 char mouse_button_press_state[2] = { 0, 0 };
 unsigned char game_finish_state = 0;
-unsigned char replay_autoplay_active = 0;
+bool replay_autoplay_active = false;
 short *waypoint_world_pos = 0;
 int elem_xCenter = 0;
 int menu_selection_buffer = 0;
@@ -870,7 +870,7 @@ void *dasmshapeptr = 0;
 char race_condition_state_flag = 0;
 unsigned char *carresptr = 0;
 char *track_element_height_ofs = 0;
-char is_in_replay = 0;
+bool is_in_replay = false;
 unsigned char *track_terrain_map = 0;
 unsigned short kbjoyflags = 0;
 struct PLANE *planptr = 0;
@@ -900,7 +900,7 @@ unsigned char rect_buffer_back[120]
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 int height_above_replaybar = 0;
 unsigned char *material_clrlist2_ptr_cpy = 0;
-char audio_replay_apply_state = 0;
+bool audio_replay_apply_state = false;
 char *path_row = 0;
 #pragma pack(push, 1)
 char video_flag6_is1 = 0;
@@ -913,7 +913,7 @@ unsigned short game_timer_milliseconds = 0;
 void *sdgameresptr = 0;
 unsigned short distance_accumulator_counter = 0;
 unsigned char *material_patlist_ptr_cpy = 0;
-short lap_completion_trigger_flag = 0;
+bool lap_completion_trigger_flag = false;
 int trackrows[31] = { 0,   30,  60,  90,  120, 150, 180, 210, 240, 270, 300,
                       330, 360, 390, 420, 450, 480, 510, 540, 570, 600, 630,
                       660, 690, 720, 750, 780, 810, 840, 870, 900 };
@@ -926,13 +926,13 @@ int dashbmp_y = 0;
 void *sdgame2shapes[] = { 0, 0, 0, 0, 0 };
 short track_pieces_counter = 0;
 int trackcenterpos2[] = { [29] = 0 };
-char passed_security = 0;
+bool passed_security = false;
 short transformedshape_indices[29] = { 0 };
 unsigned char *tile_obstacle_map = 0;
 struct SIMD simd_player = { 0 };
 char *replay_header = 0;
 unsigned char game_exit_request_flag[1] = { 0 };
-char replaybar_toggle = 0;
+bool replaybar_toggle = false;
 unsigned short highscore_primary_index[7] = { 0, 1, 2, 3, 4, 5, 6 };
 
 int trackcenterpos[] = { [29] = 0 };
@@ -945,14 +945,14 @@ unsigned char *obstacle_scene_index = 0;
 char followOpponentFlag = 0;
 char resID_byte1[2048] = { 0 };
 struct TRANSFORMEDSHAPE3D *curtransshape_ptr = 0;
-short video_flag5_is0 = 0;
+bool video_flag5_is0 = false;
 unsigned char mat_temp[18] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 char textresprefix = 0;
 short *wallptr = 0;
 char player_name_buffer[3] = { 0, 0, 0 };
-char checkpoint_lap_trigger = 0;
+bool checkpoint_lap_trigger = false;
 unsigned char game_mode_state_register[2] = { 0, 0 };
-char replaybar_enabled = 0;
+bool replaybar_enabled = false;
 
 /* Game physics / terrain constants (moved from data_core.c) */
 short hillHeightConsts[] = { 0, 450 };

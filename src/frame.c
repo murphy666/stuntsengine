@@ -462,7 +462,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     int si;
     char base_ts_flags;
     char default_material;
-    char crash_overlay_drawn[2];
+    bool crash_overlay_drawn[2];
     struct RECTANGLE *active_rect_ptr;
     struct MATRIX view_rot_mat, y_rot_mat;
     struct MATRIX *rot_mat_ptr;
@@ -491,7 +491,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     char player_contact_row = 0;
     char opponent_contact_row = 0;
     char opponent_contact_col;
-    char pending_overlay_shape;
+    bool pending_overlay_shape;
     int player_sort_bias;
     int opponent_sort_bias;
     int tile_hill_height;
@@ -513,9 +513,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     unsigned char elem_map_value;
     unsigned char terr_map_value;
 
-    crash_overlay_drawn[0] = 0;
-    crash_overlay_drawn[1] = 0;
-    if (video_flag5_is0 == 0 || view_index == 0) {
+    crash_overlay_drawn[0] = false;
+    crash_overlay_drawn[1] = false;
+    if (!video_flag5_is0 || view_index == 0) {
         rect_buffer_primary = rect_buffer_front;
         rect_buffer_secondary = rect_buffer_back;
     }
@@ -524,7 +524,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         rect_buffer_primary = rect_buffer_back;
     }
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         base_ts_flags = 8;
         active_rect_ptr = frame_dirty_rects;
         for (si = 0; si < FRAME_RECT_ARRAY_COUNT; si++) {
@@ -612,7 +612,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             camera_pos.y = terrainHeight;
         }
 
-        if (track_object_render_enabled != 0) {
+        if (track_object_render_enabled) {
             si = plane_get_collision_point(planindex, camera_pos.x, camera_pos.y, camera_pos.z);
             if (si < FRAME_TRACK_BORDER_LEVEL) {
                 vec_movement_local.x = 0;
@@ -952,7 +952,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     //; -----------------------------------------------------------------------------
 
 
-    pending_overlay_shape = 0;
+    pending_overlay_shape = false;
     si = 0;
 
     for (si = 0; si < FRAME_TILE_SCAN_COUNT; si++) {
@@ -1262,7 +1262,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         }
                         else {
                             currenttransshape[1].rectptr = &world_object_rect;
-                            pending_overlay_shape = 1;
+                            pending_overlay_shape = true;
                         }
                     }
                 }
@@ -1306,8 +1306,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 /* If overlay was queued as pending, flush it here too.
 				   Otherwise this tile loses its markings when main shape
 				   uses the immediate terrain-render path. */
-                if (pending_overlay_shape != 0) {
-                    pending_overlay_shape = 0;
+                if (pending_overlay_shape) {
+                    pending_overlay_shape = false;
                     render_result = shape3d_render_transformed(&currenttransshape[1]);
                     if (render_result > 0)
                         break;
@@ -1316,8 +1316,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             else {
                 currenttransshape[0].rectptr = &world_object_rect;
                 transformed_shape_add_for_sort(0, 0);
-                if (pending_overlay_shape != 0) {
-                    pending_overlay_shape = 0;
+                if (pending_overlay_shape) {
+                    pending_overlay_shape = false;
                     transformed_shape_add_for_sort(-FRAME_SORT_BIAS /*63488*/, 0);
                     if (player_sort_bias != 0) {
                         player_sort_bias = -FRAME_SORT_BIAS_OVERLAY; //64512;
@@ -1439,7 +1439,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     viewport_clipping_bounds, carshapevecs, &carshapevec);
             }
 
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 curtransshape_ptr->rectptr = &player_car_rect;
                 curtransshape_ptr->ts_flags = FRAME_FLAG_TRACKED_SHAPE;
             }
@@ -1515,7 +1515,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         game_frame_pointer, oppcarshapevecs, &oppcarshapevec);
                 }
 
-                if (timertestflag_copy != 0) {
+                if (timertestflag_copy) {
                     curtransshape_ptr->rectptr = &opponent_car_rect;
                     curtransshape_ptr->ts_flags = FRAME_FLAG_TRACKED_SHAPE;
                 }
@@ -1600,7 +1600,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 // di is used for index into currenttransshape elsewhere
                 di = transformedshape_indices[multi_tile_value];
                 if (transformedshape_arg2array[di] == 2) {
-                    if (state.playerstate.car_is_braking != 0) {
+                    if (state.playerstate.car_is_braking) {
                         backlights_paint_override = 47;
                     }
                     else {
@@ -1608,7 +1608,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     }
                 }
                 else if (transformedshape_arg2array[di] == 3) {
-                    if (state.opponentstate.car_is_braking == 0) {
+                    if (!state.opponentstate.car_is_braking) {
                         backlights_paint_override = 46;
                     }
                     else {
@@ -1625,12 +1625,12 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 if (render_result == 0) {
                     if (transformedshape_arg2array[di] == 2) {
                         if (state.playerstate.car_crashBmpFlag == 1) {
-                            crash_overlay_drawn[0] = 1;
+                            crash_overlay_drawn[0] = true;
                         }
                     }
                     else if (transformedshape_arg2array[di] == 3) {
                         if (state.opponentstate.car_crashBmpFlag == 1) {
-                            crash_overlay_drawn[1] = 1;
+                            crash_overlay_drawn[1] = true;
                         }
                     }
                 }
@@ -1646,10 +1646,10 @@ exit_tile_loop:
 
     get_a_poly_info();
     for (si = 0; si < 2; si++) {
-        if (crash_overlay_drawn[si] == 0) {
+        if (!crash_overlay_drawn[si]) {
             continue;
         }
-        if (timertestflag_copy == 0) {
+        if (!timertestflag_copy) {
             if (si == 0) {
                 active_rect_ptr = &player_crash_rect;
             }
@@ -1700,7 +1700,7 @@ exit_tile_loop:
         }
 
         if (follow_state_ptr->car_crashBmpFlag == 1) {
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 rect_union(init_crak(state.game_frame - si, clip_rect->top,
                                      clip_rect->bottom - clip_rect->top),
                            frame_dirty_rects, frame_dirty_rects);
@@ -1711,7 +1711,7 @@ exit_tile_loop:
             }
         }
         else if (follow_state_ptr->car_crashBmpFlag == 2) {
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 rect_union(do_sinking(state.game_frame - si, clip_rect->top,
                                       clip_rect->bottom - clip_rect->top),
                            frame_dirty_rects, frame_dirty_rects);
@@ -1727,7 +1727,7 @@ exit_tile_loop:
         if (state.game_inputmode != 0) {
             format_frame_as_string(resID_byte1, elapsed_time1 + replay_frame_counter, 0);
             font_set_fontdef2(fontledresptr);
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 rect_union(intro_draw_text(resID_byte1, 140, roofbmpheight + 2, 15, 0),
                            &hud_timer_rect, &hud_timer_rect);
             }
@@ -1739,7 +1739,7 @@ exit_tile_loop:
         }
     }
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         rect_union(draw_ingame_text(), frame_dirty_rects, frame_dirty_rects);
         if (skybox_result != 0) {
             frame_dirty_rects[0] = *clip_rect;

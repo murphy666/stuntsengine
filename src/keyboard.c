@@ -34,7 +34,7 @@ static unsigned char callbackflags[128] = { 0 };
 static unsigned char callbackflags2[134] = { 0 };
 static unsigned short camera_rotation_state = 0;
 static unsigned char collision_debug_state[16] = { 0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0 };
-static unsigned char in_kb_parse_key = 0;
+static bool in_kb_parse_key = false;
 static unsigned short joyflag1 = 0;
 static unsigned char joyinput = 0;
 static unsigned short kblastinput = 0;
@@ -104,8 +104,8 @@ enum {
     KB_CALLBACK_EXT_SCANCODE_MAX = 132
 };
 
-static unsigned char kb_sdl_inited = 0;
-static unsigned char kb_sdl_quit = 0;
+static bool kb_sdl_inited = false;
+static bool kb_sdl_quit = false;
 static unsigned short kb_sdl_mouse_x = 0;
 static unsigned short kb_sdl_mouse_y = 0;
 static unsigned short kb_sdl_mouse_buttons = 0;
@@ -423,19 +423,19 @@ kb_sdl_update_mouse_from_system(void) {
 void
 kb_poll_sdl_input(void) {
     SDL_Event ev;
-    if (kb_sdl_inited == 0) {
+    if (!kb_sdl_inited) {
         return;
     }
 
     while (SDL_PollEvent(&ev)) {
         if (ev.type == SDL_QUIT) {
-            kb_sdl_quit = 1;
+            kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
 
         if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_CLOSE) {
-            kb_sdl_quit = 1;
+            kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
@@ -555,8 +555,8 @@ kb_init_interrupt(void) {
     memset(kbinput, 0, KBINPUT_SIZE);
     kb_sdl_queue_head = 0;
     kb_sdl_queue_tail = 0;
-    kb_sdl_quit = 0;
-    kb_sdl_inited = 1;
+    kb_sdl_quit = false;
+    kb_sdl_inited = true;
     if (SDL_WasInit(SDL_INIT_GAMECONTROLLER) == 0) {
         SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
     }
@@ -575,7 +575,7 @@ kb_exit_handler(void) {
         SDL_GameControllerClose(kb_sdl_controller);
         kb_sdl_controller = 0;
     }
-    kb_sdl_inited = 0;
+    kb_sdl_inited = false;
 }
 
 /** @brief Return pressed-state information for a DOS scancode.
@@ -682,7 +682,7 @@ kb_read_key_or_joy(void) {
  */
 void
 joystick_init_calibration(void) {
-    joystick_assigned_flags = 1;
+    joystick_assigned_flags = true;
     screen_scroll_values = 80;
     camera_rotation_state = 0;
     rendering_viewport_offset = 80;
@@ -881,11 +881,11 @@ kb_parse_key(unsigned short key) {
 
     /* Reentrancy guard */
     disable();
-    if (in_kb_parse_key != 0) {
+    if (in_kb_parse_key) {
         enable();
         return key;
     }
-    in_kb_parse_key = 1;
+    in_kb_parse_key = true;
     enable();
 
     /* Get callback slot index from the appropriate flags array */
@@ -909,12 +909,12 @@ kb_parse_key(unsigned short key) {
     if (callback_idx >= 0) {
         /* Call the callback */
         callbacks[callback_idx]();
-        in_kb_parse_key = 0;
+        in_kb_parse_key = false;
         return 0;
     }
 
     /* No callback - return key code */
-    in_kb_parse_key = 0;
+    in_kb_parse_key = false;
     return key;
 }
 

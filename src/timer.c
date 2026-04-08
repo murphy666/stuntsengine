@@ -43,8 +43,8 @@ static unsigned long last_timer_callback_counter = 0;
 static unsigned long timer_copy_unk = 0;
 static unsigned short frame_timer_state = 0;
 static unsigned short frame_counter_state = 0;
-static unsigned char audio_sfx_enabled_flag = 0;
-static unsigned char audio_music_state = 0;
+static bool audio_sfx_enabled_flag = false;
+static bool audio_music_state = false;
 static unsigned sound_effects_queue = 0;
 static unsigned music_tempo_state = 0;
 static unsigned sound_volume_control = 0;
@@ -53,7 +53,7 @@ static unsigned int animation_sequence_state = 0;
 static unsigned int animation_sequence_data = 0;
 static timer_callback_func_local g_timer_callbacks[5] = { 0, 0, 0, 0, 0 };
 static unsigned long g_timer_last_ms = 0;
-static unsigned char g_timer_dispatching = 0;
+static bool g_timer_dispatching = false;
 static const unsigned long g_timer_counter_units_per_tick = 5UL;
 static unsigned long timer_now_ms(void);
 static void timer_dispatch_elapsed(void);
@@ -245,7 +245,7 @@ timer_get_delta(void) {
  * @param result Parameter `result`.
  * @return Function result.
  */
-    if (result == 0) {
+    if (!result) {
         struct timespec ts;
         ts.tv_sec = 0;
         ts.tv_nsec = GAME_YIELD_NS;
@@ -372,7 +372,7 @@ timer_dispatch_elapsed(void) {
     unsigned long tick_index;
     int callback_index;
 
-    if (g_timer_dispatching != 0) {
+    if (g_timer_dispatching) {
         return;
     }
 
@@ -401,7 +401,7 @@ timer_dispatch_elapsed(void) {
 
     g_timer_last_ms += ticks_to_dispatch * GAME_TIMER_MS_EFF;
 
-    g_timer_dispatching = 1;
+    g_timer_dispatching = true;
     for (tick_index = 0; tick_index < ticks_to_dispatch; tick_index++) {
         timer_callback_counter += g_timer_counter_units_per_tick;
         for (callback_index = 0; callback_index < 5; callback_index++) {
@@ -410,7 +410,7 @@ timer_dispatch_elapsed(void) {
             }
         }
     }
-    g_timer_dispatching = 0;
+    g_timer_dispatching = false;
 }
 
 /* --- timer_setup_interrupt --- */
@@ -423,8 +423,8 @@ timer_setup_interrupt(void) {
 
     music_tempo_state = 5;
     sound_volume_control = 5;
-    audio_sfx_enabled_flag = 0;
-    audio_music_state = 1;
+    audio_sfx_enabled_flag = false;
+    audio_music_state = true;
 
     vibration_feedback_state = 0;
     for (i = 0; i < 5; i++) {
@@ -444,7 +444,7 @@ timer_setup_interrupt(void) {
  */
 void
 timer_stop_dispatch(void) {
-    g_timer_dispatching = 0;
+    g_timer_dispatching = false;
 }
 
 /* --- timer_setup_interrupt_countdown --- */
@@ -456,8 +456,8 @@ void
 timer_setup_interrupt_countdown(void) {
     timer_setup_interrupt();
     sound_effects_queue = 100;
-    audio_sfx_enabled_flag = 1;
-    audio_music_state = 1;
+    audio_sfx_enabled_flag = true;
+    audio_music_state = true;
 }
 
 /* --- timer_enable_countdown --- */

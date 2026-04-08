@@ -110,7 +110,7 @@ static struct RECTANGLE rect_ingame_text4 = { 228, 252, 113, 128 };
 
 /* skybox_res pointer - replaces seg/ofs pair */
 static char *g_skybox_res_ptr = NULL;
-static char mouse_button_state_vector = 0;
+static bool mouse_button_state_vector = false;
 
 
 static struct SHAPE3D intro_logoshape;
@@ -380,10 +380,10 @@ free_sdgame2(void) {
  /*--------------------------------------------------------------*/
 void
 unload_skybox(void) {
-    if (mouse_button_state_vector != 0) {
+    if (mouse_button_state_vector) {
         mmgr_free(g_skybox_res_ptr);
     }
-    mouse_button_state_vector = 0;
+    mouse_button_state_vector = false;
     g_skybox_res_ptr = NULL;
 }
 
@@ -435,7 +435,7 @@ transformed_shape_add_for_sort(int z_adjust, int sort_key) {
 void
 init_rect_arrays(void) {
     int i;
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         /* Copy fullscreen_rect to first entry of both arrays */
         rect_buffer_front[0] = fullscreen_rect;
         rect_buffer_back[0] = fullscreen_rect;
@@ -492,7 +492,7 @@ load_skybox(unsigned char skybox_index) {
         skybox_index &= RENDER_SKYBOX_INDEX_MASK;
     }
     else {
-        if (mouse_button_state_vector != 0 && texture_page_index == skybox_index) {
+        if (mouse_button_state_vector && texture_page_index == skybox_index) {
             goto set_colors_only;
         }
         unload_skybox();
@@ -502,7 +502,7 @@ load_skybox(unsigned char skybox_index) {
         }
 
         texture_page_index = skybox_idx;
-        mouse_button_state_vector = 1;
+        mouse_button_state_vector = true;
 
         {
             g_skybox_res_ptr
@@ -648,8 +648,8 @@ int
 render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sign,
                     struct MATRIX *camera_matrix, int view_roll, int view_yaw, int camera_y) {
     int line_intersections[60]; /* buffer for draw_line_related */
-    int skybox_drawn;
-    int has_wraparound;
+    bool skybox_drawn;
+    bool has_wraparound;
     struct VECTOR horizon_vec;
     struct VECTOR horizon_vec2;
     int sky_height;
@@ -664,7 +664,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
 
 
     dirty_rect_count = 0;
-    skybox_drawn = 0;
+    skybox_drawn = false;
 
     sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
 
@@ -729,7 +729,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
         goto fill_sky;
     }
 
-    has_wraparound = 0;
+    has_wraparound = false;
 
     /* Wrap-around case detection */
     if (timertestflag2 != 4
@@ -762,23 +762,23 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
                 if (line_intersections[1] == 0) {
                     horizon_y_left = line_intersections[3];
                     horizon_y_delta = line_intersections[5] - horizon_y_left;
-                    has_wraparound = 1;
+                    has_wraparound = true;
                 }
                 else if (line_intersections[1] == RENDER_SCREEN_RIGHT_EDGE) {
                     horizon_y_left = line_intersections[5];
                     horizon_y_delta = line_intersections[3] - horizon_y_left;
-                    has_wraparound = 1;
+                    has_wraparound = true;
                 }
             }
         }
     }
 
-    if (has_wraparound == 0)
+    if (!has_wraparound)
         goto no_wraparound;
 
 
     /* Has wrap-around */
-    if (timertestflag_copy == 0)
+    if (!timertestflag_copy)
         goto simple_skybox;
 
     /* Full rect tracking path */
@@ -957,9 +957,9 @@ no_horizon:
     if (horizon_vec_a_cam.z < 0) {
         /* Looking down = all sky */
         sprite_clear_sprite1_color(skybox_sky_color);
-        if (timertestflag_copy == 0)
+        if (!timertestflag_copy)
             goto done;
-        skybox_drawn = 1;
+        skybox_drawn = true;
         rect_skybox.left = RENDER_SCREEN_LEFT;
         rect_skybox.right = RENDER_SCREEN_WIDTH;
         rect_skybox.top = clip_rect->top;
@@ -977,7 +977,7 @@ no_horizon:
     if (sky_dir_sign == 1) {
 
         /* Full skybox rendering */
-        if (timertestflag_copy == 0) {
+        if (!timertestflag_copy) {
             /* Simple mode */
             slice_rect.left = RENDER_SCREEN_LEFT;
             slice_rect.right = RENDER_SCREEN_WIDTH;
@@ -1059,7 +1059,7 @@ no_horizon:
     }
 
 done2:
-    skybox_drawn = 1;
+    skybox_drawn = true;
 done:
     return skybox_drawn;
 }
@@ -1440,7 +1440,7 @@ draw_ingame_text(void) {
         goto done_text;
     }
 
-    if (passed_security == 0) {
+    if (!passed_security) {
         /* Security system warning */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe1));
         rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 93,
@@ -1585,7 +1585,7 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
         preRender_line(x1, y1 + crack_y_offset + 1, x2, y2 + crack_y_offset + 1, 0);
         preRender_line(x1, y1 + crack_y_offset, x2, y2 + crack_y_offset, dialog_fnt_colour);
 
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             /* Update bounding rect */
             point.px = x1;
             point.py = y1 + crack_y_offset - 1;
@@ -1620,7 +1620,7 @@ setup_intro(void) {
     struct RECTANGLE star_points_buffer_b[50];
     short star_point_count_b;
     struct POINT2D *star_points_ptr = 0;
-    short draw_car_flag;
+    bool draw_car_flag;
     short camera_pitch;
     short opponent_x, opponent_y, opponent_z;
     struct {
@@ -1629,20 +1629,20 @@ setup_intro(void) {
     short camera_delta;
     short frame_delta;
     short camera_x, camera_y, camera_z;
-    char intro_interrupted;
+    bool intro_interrupted;
     short rect_buffer_index;
     struct RECTANGLE dirty_rect;
     short camera_yaw;
     struct RECTANGLE combined_dirty_rect;
     char *logo_shapes[3];
     struct RECTANGLE rendered_rect;
-    short end_phase;
+    bool end_phase;
     short camera_distance;
     short target_x = RENDER_INTRO_CAMERA_CENTER, target_y = RENDER_INTRO_CAMERA_Y_CRUISE,
           target_z = RENDER_INTRO_CAMERA_CENTER;
     char *titleres;
 
-    intro_interrupted = 0;
+    intro_interrupted = false;
 
     /* Load title 3D resource */
     titleres = (char *)file_load_3dres((char *)aTitle);
@@ -1654,7 +1654,7 @@ setup_intro(void) {
     shape3d_init_shape(logo_shapes[2], &intro_bravshape);
 
     /* Create sprite window if needed */
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
         wndsprite = sprite_make_wnd(RENDER_SCREEN_WIDTH, RENDER_SCREEN_HEIGHT,
                                     RENDER_INTRO_WND_DEPTH);
     }
@@ -1671,7 +1671,7 @@ setup_intro(void) {
     camera_x = RENDER_INTRO_CAMERA_CENTER;
     camera_z = RENDER_INTRO_CAMERA_CENTER;
     camera_y = RENDER_INTRO_CAMERA_Y_START;
-    end_phase = 0;
+    end_phase = false;
     intro_frame_counter = 0;
 
     /* Load car model for intro */
@@ -1735,7 +1735,7 @@ setup_intro(void) {
                 limit += framespersec; /* limit = framespersec * 11 */
                 intro_frame_counter++;
                 if (intro_frame_counter > limit) {
-                    end_phase = 1;
+                    end_phase = true;
                     camera_y += RENDER_INTRO_CAMERA_Y_STEP;
                     camera_z -= 5;
 
@@ -1768,7 +1768,7 @@ setup_intro(void) {
         /* Always render, even if physics didn't tick (fixes intro refresh bug) */
         /* if (no_tick_flag == 0) goto check_input; */
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             setup_mcgawnd2();
         }
         else {
@@ -1777,7 +1777,7 @@ setup_intro(void) {
 
         /* Set camera position from opponent car */
         camera_yaw = -1;
-        draw_car_flag = 1;
+        draw_car_flag = true;
         opponent_x = (short)((long)state.opponentstate.car_posWorld1.lx >> 6);
         opponent_y = (short)((long)state.opponentstate.car_posWorld1.ly >> 6);
         opponent_z = (short)((long)state.opponentstate.car_posWorld1.lz >> 6);
@@ -1788,7 +1788,7 @@ setup_intro(void) {
             early_limit = (early_limit << 1) + early_limit;
             early_limit <<= 1; /* framespersec * 6 */
             if (intro_frame_counter < early_limit) {
-                draw_car_flag = 0;
+                draw_car_flag = false;
                 camera_yaw = state.opponentstate.car_rotate.x & 1023;
                 camera_pitch = 0;
                 camera_x = opponent_x;
@@ -1819,7 +1819,7 @@ setup_intro(void) {
         }
 
         /* Set up rect tracking buffers */
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             if (rect_buffer_index == 0) {
                 star_points_ptr = (struct POINT2D *)star_points_buffer_b;
                 star_point_count_ptr = (short *)&star_point_count_b;
@@ -1841,18 +1841,18 @@ setup_intro(void) {
                      &rendered_rect, &dirty_rect);
         }
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             mouse_draw_opaque_check();
             setup_mcgawnd1();
             mouse_draw_transparent_check();
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 frame_dirty_rects[rect_buffer_index] = rendered_rect;
             }
             rect_buffer_index ^= 1;
         }
         else {
             sprite_copy_2_to_1();
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 rect_union(&dirty_rect, &world_object_rect, &combined_dirty_rect);
                 if (rect_intersect(&combined_dirty_rect, &intro_dirty_clip_rect) == 0) {
                     sprite_set_1_size(combined_dirty_rect.left, combined_dirty_rect.right,
@@ -1874,7 +1874,7 @@ setup_intro(void) {
         video_refresh();
 
         if (input_do_checking(frame_delta) != 0) {
-            intro_interrupted = 1;
+            intro_interrupted = true;
             break;
         }
         if (23 * framespersec <= intro_frame_counter) {
@@ -1883,7 +1883,7 @@ setup_intro(void) {
     }
 
     /* Cleanup */
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
         sprite_free_wnd(wndsprite);
     }
 
@@ -1940,7 +1940,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
     intro_shape.pos.y = -camera_y;
     intro_shape.pos.z = RENDER_INTRO_CAMERA_CENTER - camera_z;
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         intro_shape.rectptr = &rendered_rect;
         intro_shape.ts_flags = RENDER_INTRO_LOGO_FLAGS_TRACKED;
     }
@@ -1962,7 +1962,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
         intro_shape.pos.z = (short)((long)state.opponentstate.car_posWorld1.lz >> 6) - camera_z;
 
         intro_shape.shapeptr = &intro_bravshape;
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             intro_shape.rectptr = &rendered_rect;
             intro_shape.ts_flags = RENDER_INTRO_LOGO_FLAGS_TRACKED;
         }
@@ -1979,7 +1979,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
     }
 
     /* Rect tracking: clear old points */
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         if (*star_count != 0) {
             for (si = 0; si < *star_count; si++) {
                 screen_point = star_screen_points[si];
@@ -2020,7 +2020,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
             vector_to_point(&star_camera_vec, &screen_point);
             putpixel_single_clipped(intro_colorvalue, screen_point.py, screen_point.px);
 
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 star_screen_points[di] = screen_point;
                 di++;
                 rect_adjust_from_point(&screen_point, &dirty_rect);
@@ -2033,13 +2033,13 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
         }
     }
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         *star_count = di;
     }
 
     get_a_poly_info();
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         *clip_rect = rendered_rect;
         *previous_rect_ptr = dirty_rect;
     }
@@ -2055,7 +2055,7 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
     int si;
     struct RECTANGLE *rp;
 
-    if (video_flag5_is0 != 0)
+    if (video_flag5_is0)
         return;
 
     sprite_copy_2_to_1();
@@ -2067,7 +2067,7 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
         goto finish;
     }
 
-    if (timertestflag_copy == 0) {
+    if (!timertestflag_copy) {
         /* No rect tracking: blit full provided rect */
         sprite_set_1_size(frame_rect->left, frame_rect->right, frame_rect->top, frame_rect->bottom);
         goto blit_full;
@@ -2125,7 +2125,7 @@ finish:
     mouse_draw_transparent_check();
     video_refresh();
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         collision_detection_state = sprite_transformation_angle;
 
         /* Copy rect_buffer_front to rect_buffer_back */

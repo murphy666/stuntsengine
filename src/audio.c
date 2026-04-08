@@ -64,8 +64,8 @@ typedef struct AUDIO_SB_COMMAND {
 } AUDIO_SB_COMMAND;
 
 typedef struct AUDIO_SB_DSP_STATE {
-    unsigned char speaker_on;
-    unsigned char dma_running;
+    bool speaker_on;
+    bool dma_running;
     unsigned char pending_cmd;
     unsigned char pending_bytes_expected;
     unsigned char pending_bytes_count;
@@ -73,14 +73,14 @@ typedef struct AUDIO_SB_DSP_STATE {
     unsigned short dma_block_len;
     unsigned short sample_rate_hz;
     unsigned short time_constant;
-    unsigned char dma_auto_init;
+    bool dma_auto_init;
     unsigned int dma_bytes_remaining;
     unsigned int sample_gen_accum;
 } AUDIO_SB_DSP_STATE;
 
 typedef struct AUDIO_VCE_INSTRUMENT {
-    unsigned char valid;
-    unsigned char has_fm; /* 1 = full OPL2 FM params valid (ADENG1.VCE) */
+    bool valid;
+    bool has_fm; /* 1 = full OPL2 FM params valid (ADENG1.VCE) */
     char name[5];
     unsigned short record_size;
     /* Frequency mapping (rec[14/15]): Fnum = RPM / freq_div + freq_base * 16 */
@@ -104,10 +104,10 @@ typedef struct AUDIO_VCE_INSTRUMENT {
 } AUDIO_VCE_INSTRUMENT;
 
 typedef struct AUDIO_HANDLE_STUB {
-    unsigned char allocated;
-    unsigned char playing;
-    unsigned char dirty;
-    unsigned char pending_restart;
+    bool allocated;
+    bool playing;
+    bool dirty;
+    bool pending_restart;
     short init_mode;
     short volume;
     short last_volume;
@@ -132,20 +132,20 @@ typedef struct AUDIO_HANDLE_STUB {
     unsigned char freq_base;
     /* OPL2 FM synthesis state */
     int opl2_channel;               /* -1 = not assigned, 0-8 = OPL2 channel */
-    unsigned char opl2_keyon;       /* current key-on state on this OPL2 channel */
-    unsigned char opl2_programmed;  /* 1 = FM registers written at least once */
-    unsigned char has_engi_inst;    /* 1 = engi_inst below is valid */
+    bool opl2_keyon;       /* current key-on state on this OPL2 channel */
+    bool opl2_programmed;  /* 1 = FM registers written at least once */
+    bool has_engi_inst;    /* 1 = engi_inst below is valid */
     AUDIO_VCE_INSTRUMENT engi_inst; /* cached ENGI instrument from this handle's VCE */
     /* OPL2 SFX channels for tire squeal and crash (driven by VCE instruments, not noise) */
     int opl2_skid_channel;  /* OPL2 channel for tire squeal, -1 = none */
     int opl2_crash_channel; /* OPL2 channel for crash SFX, -1 = none */
-    unsigned char opl2_skid_keyon;
-    unsigned char opl2_crash_keyon;
-    unsigned char has_skid_inst;    /* 1 = skid_inst valid (VCE "SKID") */
-    unsigned char has_scra_inst;    /* 1 = scra_inst valid (VCE "SCRA") */
-    unsigned char has_cras_inst;    /* 1 = cras_inst valid (VCE "CRAS") */
-    unsigned char has_blow_inst;    /* 1 = blow_inst valid (VCE "BLOW") */
-    unsigned char has_bump_inst;    /* 1 = bump_inst valid (VCE "BUMP") */
+    bool opl2_skid_keyon;
+    bool opl2_crash_keyon;
+    bool has_skid_inst;    /* 1 = skid_inst valid (VCE "SKID") */
+    bool has_scra_inst;    /* 1 = scra_inst valid (VCE "SCRA") */
+    bool has_cras_inst;    /* 1 = cras_inst valid (VCE "CRAS") */
+    bool has_blow_inst;    /* 1 = blow_inst valid (VCE "BLOW") */
+    bool has_bump_inst;    /* 1 = bump_inst valid (VCE "BUMP") */
     AUDIO_VCE_INSTRUMENT skid_inst; /* tire squeal */
     AUDIO_VCE_INSTRUMENT scra_inst; /* tire scrape */
     AUDIO_VCE_INSTRUMENT cras_inst; /* crash boom */
@@ -154,10 +154,10 @@ typedef struct AUDIO_HANDLE_STUB {
 } AUDIO_HANDLE_STUB;
 
 static AUDIO_HANDLE_STUB g_audio_handles[AUDIO_MAX_HANDLES];
-static unsigned char g_audio_driver_loaded = 0;
-static unsigned char g_audio_driver_timer_registered = 0;
-static unsigned char g_audio_flag2_enabled = 1;
-static unsigned char g_audio_flag6_enabled = 1;
+static bool g_audio_driver_loaded = false;
+static bool g_audio_driver_timer_registered = false;
+static bool g_audio_flag2_enabled = true;
+static bool g_audio_flag6_enabled = true;
 static AUDIO_SB_DSP_STATE g_audio_dsp;
 static AUDIO_SB_COMMAND g_audio_cmd_queue[AUDIO_CMD_QUEUE_SIZE];
 static unsigned short g_audio_cmd_write_idx = 0;
@@ -191,16 +191,16 @@ static unsigned long g_audio_refresh_accum = 0u;
 static uint32_t g_audio_music_phase = 0;
 static unsigned int g_audio_music_tick_counter = 0;
 static unsigned int g_audio_music_note_index = 0;
-static unsigned char g_audio_menu_music_enabled = 0;
-static unsigned char g_audio_menu_music_paused = 0;
+static bool g_audio_menu_music_enabled = false;
+static bool g_audio_menu_music_paused = false;
 static char g_audio_menu_music_name[5] = { 0, 0, 0, 0, 0 };
 static int g_audio_engine_gain = 160;
 static int g_audio_menu_note_transpose = -12;
 static unsigned int g_audio_menu_duration_scale = 1u;
 static int g_audio_menu_gain = 9000;
 static unsigned int g_audio_menu_note_ticks = 24u;
-static unsigned char g_audio_debug_music = 0;
-static unsigned char g_audio_debug_music_inst_only = 0;
+static bool g_audio_debug_music = false;
+static bool g_audio_debug_music_inst_only = false;
 static unsigned int g_audio_debug_music_lines = 0u;
 static unsigned int g_audio_debug_music_max_lines = 400u;
 static unsigned char g_audio_debug_inst_seen[AUDIO_VCE_MAX_INSTRUMENTS];
@@ -214,7 +214,7 @@ static unsigned short g_audio_menu_resource_ticks_left = 0;
 static unsigned char g_audio_menu_resource_current_note = 60;
 static unsigned char g_audio_menu_resource_current_instrument = 0;
 static unsigned char g_audio_menu_resource_current_velocity = 96;
-static unsigned char g_audio_menu_use_resource = 0;
+static bool g_audio_menu_use_resource = false;
 static uint32_t g_audio_menu_phase2 = 0;
 static int g_audio_menu_lp_state = 0;
 static uint32_t g_audio_menu_mod_phase = 0;
@@ -222,7 +222,7 @@ static unsigned short g_audio_menu_resource_ticks_total = 0;
 static unsigned short g_audio_menu_resource_tick_pos = 0;
 static AUDIO_VCE_INSTRUMENT g_audio_vce_instruments[AUDIO_VCE_MAX_INSTRUMENTS];
 static unsigned short g_audio_vce_instrument_count = 0;
-static unsigned char g_audio_last_init_is_menu = 0;
+static bool g_audio_last_init_is_menu = false;
 
 #define AUDIO_SFX_MAX_CHUNKS 32
 static unsigned short g_audio_sfx_chunk_count = 0;
@@ -846,7 +846,7 @@ audio_parse_vce_instruments(void *voiceptr) {
         }
 
         rec = vce + record_off;
-        inst->valid = 1;
+        inst->valid = true;
         inst->name[0] = (char)vce[names_base + (unsigned int)i * 4u + 0u];
         inst->name[1] = (char)vce[names_base + (unsigned int)i * 4u + 1u];
         inst->name[2] = (char)vce[names_base + (unsigned int)i * 4u + 2u];
@@ -874,7 +874,7 @@ audio_parse_vce_instruments(void *voiceptr) {
             memcpy(inst->op0, rec + 70u, 12u);
             /* Op1 (carrier)   12 bytes at rec+82: same layout */
             memcpy(inst->op1, rec + 82u, 12u);
-            inst->has_fm = 1;
+            inst->has_fm = true;
         }
     }
 
@@ -965,7 +965,7 @@ typedef struct {
     uint32_t tick_pos;
     uint32_t note_end_tick;
     unsigned int prev_ei;      /* previous event index for transition detect */
-    unsigned char note_active; /* 1 if OPL2 note currently keyed on */
+    bool note_active; /* 1 if OPL2 note currently keyed on */
     unsigned char active_pitch;
     unsigned char active_velocity;
     unsigned char active_channel_volume;
@@ -1469,7 +1469,7 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
         g_audio_kms_voices[t].tick_pos = 0u;
         g_audio_kms_voices[t].note_end_tick = 0u;
         g_audio_kms_voices[t].prev_ei = (unsigned int)-1; /* force first note-on */
-        g_audio_kms_voices[t].note_active = 0u;
+        g_audio_kms_voices[t].note_active = false;
         audio_kms_gap_for_event(&g_audio_kms_tracks[t], 0u, rate, &g_audio_kms_voices[t].gap_frames,
                                 &g_audio_kms_voices[t].snd_frames);
         /* Assign one OPL2 channel per track (max 9 channels) */
@@ -1814,30 +1814,30 @@ audio_sb_process_commands(void) {
 
         switch (cmd.cmd) {
         case AUDIO_SB_CMD_SPEAKER_ON:
-            g_audio_dsp.speaker_on = 1;
+            g_audio_dsp.speaker_on = true;
             break;
         case AUDIO_SB_CMD_SPEAKER_OFF:
-            g_audio_dsp.speaker_on = 0;
+            g_audio_dsp.speaker_on = false;
             break;
         case AUDIO_SB_CMD_START_DMA:
-            g_audio_dsp.dma_running = 1;
+            g_audio_dsp.dma_running = true;
             g_audio_dsp.dma_auto_init = (cmd.value1 != 0) ? 1u : 0u;
             g_audio_dsp.dma_bytes_remaining = (unsigned int)((unsigned short)cmd.value0 + 1u);
             break;
         case AUDIO_SB_CMD_STOP_DMA:
-            g_audio_dsp.dma_running = 0;
-            g_audio_dsp.dma_auto_init = 0;
+            g_audio_dsp.dma_running = false;
+            g_audio_dsp.dma_auto_init = false;
             g_audio_dsp.dma_bytes_remaining = 0;
             break;
         case AUDIO_SB_CMD_NOTE_ON:
             if (audio_is_valid_handle(cmd.handle_id)) {
                 AUDIO_HANDLE_STUB *h = &g_audio_handles[cmd.handle_id];
-                h->playing = 1;
-                h->dirty = 1;
-                h->pending_restart = 0;
+                h->playing = true;
+                h->dirty = true;
+                h->pending_restart = false;
                 if (h->opl2_channel >= 0 && h->has_engi_inst && opl2_is_ready()) {
                     unsigned int rpmv = (unsigned int)(h->current_pitch > 0 ? h->current_pitch : 0);
-                    h->opl2_keyon = 1;
+                    h->opl2_keyon = true;
                     audio_opl2_set_freq(h->opl2_channel, rpmv, &h->engi_inst, 1);
                 }
             }
@@ -1845,11 +1845,11 @@ audio_sb_process_commands(void) {
         case AUDIO_SB_CMD_NOTE_OFF:
             if (audio_is_valid_handle(cmd.handle_id)) {
                 AUDIO_HANDLE_STUB *h = &g_audio_handles[cmd.handle_id];
-                h->playing = 0;
-                h->dirty = 1;
+                h->playing = false;
+                h->dirty = true;
                 if (h->opl2_channel >= 0 && h->has_engi_inst && opl2_is_ready()) {
                     unsigned int rpmv = (unsigned int)(h->current_pitch > 0 ? h->current_pitch : 0);
-                    h->opl2_keyon = 0;
+                    h->opl2_keyon = false;
                     audio_opl2_set_freq(h->opl2_channel, rpmv, &h->engi_inst, 0);
                 }
             }
@@ -1858,7 +1858,7 @@ audio_sb_process_commands(void) {
             if (audio_is_valid_handle(cmd.handle_id)) {
                 AUDIO_HANDLE_STUB *h = &g_audio_handles[cmd.handle_id];
                 h->volume = (short)audio_clamp_u7(cmd.value0);
-                h->dirty = 1;
+                h->dirty = true;
                 if (h->opl2_channel >= 0 && h->has_engi_inst && opl2_is_ready()) {
                     audio_opl2_set_volume_ch(
                         h->opl2_channel, audio_apply_gain_u7((int)h->volume, g_audio_engine_gain),
@@ -1879,20 +1879,20 @@ audio_sb_process_commands(void) {
         case AUDIO_SB_CMD_SET_PITCH:
             if (audio_is_valid_handle(cmd.handle_id)) {
                 g_audio_handles[cmd.handle_id].target_pitch = cmd.value0;
-                g_audio_handles[cmd.handle_id].dirty = 1;
+                g_audio_handles[cmd.handle_id].dirty = true;
             }
             break;
         case AUDIO_SB_CMD_SELECT_CHUNK:
             if (audio_is_valid_handle(cmd.handle_id)) {
                 AUDIO_HANDLE_STUB *h = &g_audio_handles[cmd.handle_id];
                 h->active_chunk = cmd.value0;
-                h->dirty = 1;
+                h->dirty = true;
                 if (cmd.value0 == AUDIO_INVALID_CHUNK) {
                     g_audio_chunk_fx_ticks[cmd.handle_id] = 0;
                     g_audio_chunk_noise_hold[cmd.handle_id] = 0;
                     /* Key-off the OPL2 crash channel */
                     audio_opl2_silence_channel(h->opl2_crash_channel);
-                    h->opl2_crash_keyon = 0;
+                    h->opl2_crash_keyon = false;
                 }
                 else {
                     /* Key-on: select the matching OPL2 instrument (validated
@@ -1902,7 +1902,7 @@ audio_sb_process_commands(void) {
                                                                                        cmd.value0);
                     if (sfx_ins && h->opl2_crash_channel >= 0) {
                         audio_opl2_sfx_keyon(h->opl2_crash_channel, sfx_ins, (int)h->volume);
-                        h->opl2_crash_keyon = 1;
+                        h->opl2_crash_keyon = true;
                     }
                 }
             }
@@ -1912,14 +1912,14 @@ audio_sb_process_commands(void) {
                 AUDIO_HANDLE_STUB *h = &g_audio_handles[cmd.handle_id];
                 int prev_skid = (int)h->active_skid_chunk;
                 h->active_skid_chunk = cmd.value0;
-                h->dirty = 1;
+                h->dirty = true;
                 if (cmd.value0 == AUDIO_INVALID_CHUNK) {
                     g_audio_skid_fx_ticks[cmd.handle_id] = 0;
                     g_audio_skid_noise_hold[cmd.handle_id] = 0;
                     /* Key-off skid OPL2 channel — restunts SKID T0S0 sustain
                          * loop runs until audio_init_chunk2 resets the handle. */
                     audio_opl2_silence_channel(h->opl2_skid_channel);
-                    h->opl2_skid_keyon = 0;
+                    h->opl2_skid_keyon = false;
                 }
                 else if (!h->opl2_skid_keyon || prev_skid != cmd.value0) {
                     /* Key-on: SKID T0S0 track plays a single sustained note
@@ -1932,7 +1932,7 @@ audio_sb_process_commands(void) {
                         sfx_ins = &h->skid_inst; /* direct fallback */
                     if (sfx_ins && h->opl2_skid_channel >= 0) {
                         audio_opl2_sfx_keyon(h->opl2_skid_channel, sfx_ins, (int)h->volume);
-                        h->opl2_skid_keyon = 1;
+                        h->opl2_skid_keyon = true;
                     }
                 }
             }
@@ -2107,7 +2107,7 @@ audio_sb_generate_dma_samples(unsigned int sample_count) {
                     g_audio_dsp.dma_bytes_remaining = (unsigned int)g_audio_dsp.dma_block_len + 1u;
                 }
                 else {
-                    g_audio_dsp.dma_running = 0;
+                    g_audio_dsp.dma_running = false;
                     break;
                 }
             }
@@ -2127,7 +2127,7 @@ audio_is_valid_handle(short handle_id) {
     if (handle_id < 0 || handle_id >= AUDIO_MAX_HANDLES) {
         return 0;
     }
-    return g_audio_handles[handle_id].allocated != 0;
+    return g_audio_handles[handle_id].allocated;
 }
 
 static int
@@ -2423,7 +2423,7 @@ audio_kms_note_off(unsigned int track_index) {
         }
         audio_opl2_silence_channel(ch);
     }
-    voice->note_active = 0u;
+    voice->note_active = false;
 }
 
 static void
@@ -2542,7 +2542,7 @@ audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
         (unsigned int)effective_channel_volume, voice->tick_pos);
     audio_debug_music_dump_opl_registers(tr, ch, ins, resolved_index, ev, velocity,
                                          effective_channel_volume);
-    voice->note_active = 1u;
+    voice->note_active = true;
     voice->active_pitch = ev->pitch;
     voice->active_velocity = (unsigned char)velocity;
     voice->active_channel_volume = (unsigned char)effective_channel_volume;
@@ -2719,10 +2719,10 @@ audio_reset_handle(short handle_id) {
     expected_owner_engine = (int)handle_id;
     expected_owner_skid = ((int)handle_id) | 256;
     expected_owner_crash = ((int)handle_id) | 512;
-    handle->allocated = 0;
-    handle->playing = 0;
-    handle->dirty = 0;
-    handle->pending_restart = 0;
+    handle->allocated = false;
+    handle->playing = false;
+    handle->dirty = false;
+    handle->pending_restart = false;
     handle->init_mode = 0;
     handle->volume = 127;
     handle->last_volume = 127;
@@ -2751,9 +2751,9 @@ audio_reset_handle(short handle_id) {
         }
     }
     handle->opl2_channel = -1;
-    handle->opl2_keyon = 0;
-    handle->opl2_programmed = 0;
-    handle->has_engi_inst = 0;
+    handle->opl2_keyon = false;
+    handle->opl2_programmed = false;
+    handle->has_engi_inst = false;
     memset(&handle->engi_inst, 0, sizeof(handle->engi_inst));
     /* Release OPL2 SFX channels */
     if (handle->allocated && handle->opl2_skid_channel >= 0 && handle->opl2_skid_channel < 9) {
@@ -2770,13 +2770,13 @@ audio_reset_handle(short handle_id) {
     }
     handle->opl2_skid_channel = -1;
     handle->opl2_crash_channel = -1;
-    handle->opl2_skid_keyon = 0;
-    handle->opl2_crash_keyon = 0;
-    handle->has_skid_inst = 0;
-    handle->has_scra_inst = 0;
-    handle->has_cras_inst = 0;
-    handle->has_blow_inst = 0;
-    handle->has_bump_inst = 0;
+    handle->opl2_skid_keyon = false;
+    handle->opl2_crash_keyon = false;
+    handle->has_skid_inst = false;
+    handle->has_scra_inst = false;
+    handle->has_cras_inst = false;
+    handle->has_blow_inst = false;
+    handle->has_bump_inst = false;
     memset(&handle->skid_inst, 0, sizeof(handle->skid_inst));
     memset(&handle->scra_inst, 0, sizeof(handle->scra_inst));
     memset(&handle->cras_inst, 0, sizeof(handle->cras_inst));
@@ -2816,8 +2816,8 @@ audio_reset_all_handles(void) {
 
 static void
 audio_reset_runtime_state(void) {
-    g_audio_dsp.speaker_on = 0;
-    g_audio_dsp.dma_running = 0;
+    g_audio_dsp.speaker_on = false;
+    g_audio_dsp.dma_running = false;
     g_audio_dsp.pending_cmd = 0;
     g_audio_dsp.pending_bytes_expected = 0;
     g_audio_dsp.pending_bytes_count = 0;
@@ -2826,7 +2826,7 @@ audio_reset_runtime_state(void) {
     g_audio_dsp.dma_block_len = 0;
     g_audio_dsp.sample_rate_hz = 22050;
     g_audio_dsp.time_constant = audio_sb_time_constant_for_rate(22050u);
-    g_audio_dsp.dma_auto_init = 0;
+    g_audio_dsp.dma_auto_init = false;
     g_audio_dsp.dma_bytes_remaining = 0;
     g_audio_dsp.sample_gen_accum = 0;
 
@@ -2845,8 +2845,8 @@ audio_reset_runtime_state(void) {
     g_audio_music_tick_counter = 0;
     g_audio_music_tick_accum = 0u;
     g_audio_music_note_index = 0;
-    g_audio_menu_music_enabled = 0;
-    g_audio_menu_music_paused = 0;
+    g_audio_menu_music_enabled = false;
+    g_audio_menu_music_paused = false;
     g_audio_menu_music_name[0] = '\0';
     g_audio_menu_note_transpose = -12;
     g_audio_menu_duration_scale = 1u;
@@ -2879,7 +2879,7 @@ audio_add_driver_timer(void) {
     }
     audio_reset_all_handles();
     timer_reg_callback(audio_driver_timer);
-    g_audio_driver_timer_registered = 1;
+    g_audio_driver_timer_registered = true;
 }
 
 /**
@@ -2894,7 +2894,7 @@ audio_remove_driver_timer(void) {
         return;
     }
     timer_remove_callback(audio_driver_timer);
-    g_audio_driver_timer_registered = 0;
+    g_audio_driver_timer_registered = false;
     audio_reset_all_handles();
     audio_reset_runtime_state();
 }
@@ -2921,15 +2921,15 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
     (void)unused;
 
     for (i = 0; i < AUDIO_MAX_HANDLES; i++) {
-        if (g_audio_handles[i].allocated == 0) {
+        if (!g_audio_handles[i].allocated) {
             handle = &g_audio_handles[i];
             audio_reset_handle(i);
-            handle->allocated = 1;
+            handle->allocated = true;
             handle->init_mode = unused;
             handle->data_ptr = data_ptr;
             handle->song_res = song_res;
             handle->voice_res = voice_res;
-            handle->playing = 1;
+            handle->playing = true;
             handle->engine_active_ticks = 30;
 
             audio_sfx_parse_directory(voice_res);
@@ -2960,7 +2960,7 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
                 if (ins->name[0] == 'E' && ins->name[1] == 'N' && ins->name[2] == 'G'
                     && ins->name[3] == 'I') {
                     handle->engi_inst = *ins; /* deep copy */
-                    handle->has_engi_inst = 1;
+                    handle->has_engi_inst = true;
                     if (ins->freq_div > 0u) {
                         handle->freq_div = ins->freq_div;
                         handle->freq_base = ins->freq_base;
@@ -2985,10 +2985,10 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
             if (handle->opl2_channel >= 0 && handle->has_engi_inst && handle->engi_inst.has_fm
                 && opl2_is_ready()) {
                 audio_opl2_program_channel(handle->opl2_channel, &handle->engi_inst);
-                handle->opl2_programmed = 1;
+                handle->opl2_programmed = true;
                 audio_opl2_set_volume_ch(handle->opl2_channel, (int)handle->volume,
                                          &handle->engi_inst);
-                handle->opl2_keyon = 1;
+                handle->opl2_keyon = true;
                 /* Use idle RPM until the first audio_update_engine_sound call sets a real value */
                 audio_opl2_set_freq(handle->opl2_channel, 1800u, &handle->engi_inst, 1);
             }
@@ -3003,27 +3003,27 @@ audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res)
                 if (ins->name[0] == 'S' && ins->name[1] == 'K' && ins->name[2] == 'I'
                     && ins->name[3] == 'D') {
                     handle->skid_inst = *ins;
-                    handle->has_skid_inst = 1;
+                    handle->has_skid_inst = true;
                 }
                 else if (ins->name[0] == 'S' && ins->name[1] == 'C' && ins->name[2] == 'R'
                          && ins->name[3] == 'A') {
                     handle->scra_inst = *ins;
-                    handle->has_scra_inst = 1;
+                    handle->has_scra_inst = true;
                 }
                 else if (ins->name[0] == 'C' && ins->name[1] == 'R' && ins->name[2] == 'A'
                          && ins->name[3] == 'S') {
                     handle->cras_inst = *ins;
-                    handle->has_cras_inst = 1;
+                    handle->has_cras_inst = true;
                 }
                 else if (ins->name[0] == 'B' && ins->name[1] == 'L' && ins->name[2] == 'O'
                          && ins->name[3] == 'W') {
                     handle->blow_inst = *ins;
-                    handle->has_blow_inst = 1;
+                    handle->has_blow_inst = true;
                 }
                 else if (ins->name[0] == 'B' && ins->name[1] == 'U' && ins->name[2] == 'M'
                          && ins->name[3] == 'P') {
                     handle->bump_inst = *ins;
-                    handle->has_bump_inst = 1;
+                    handle->has_bump_inst = true;
                 }
             }
             /* Assign OPL2 skid channel */
@@ -3197,7 +3197,7 @@ audio_select_crash2_fx_and_restart(short handle_id) {
     handle->active_chunk = handle->chunk_crash2;
     g_audio_chunk_fx_ticks[handle_id] = audio_sfx_duration_ticks(handle->chunk_crash2);
     g_audio_crash_fx_ticks[handle_id] = g_audio_chunk_fx_ticks[handle_id];
-    handle->pending_restart = 1;
+    handle->pending_restart = true;
     audio_sb_queue_command(AUDIO_SB_CMD_SELECT_CHUNK, handle_id, handle->active_chunk, 0);
     audio_stop_engine_note(handle_id);
 }
@@ -3410,7 +3410,7 @@ audio_driver_timer(void) {
             if (handle->current_pitch != handle->target_pitch) {
                 int delta = (int)handle->target_pitch - (int)handle->current_pitch;
                 handle->current_pitch = (short)(handle->current_pitch + (short)(delta / 4));
-                handle->dirty = 1;
+                handle->dirty = true;
                 /* Immediately reflect slewed pitch in OPL2 frequency registers */
                 if (handle->opl2_channel >= 0 && handle->has_engi_inst && opl2_is_ready()) {
                     unsigned int rpmv
@@ -3422,13 +3422,13 @@ audio_driver_timer(void) {
 
             if (handle->last_volume != handle->volume) {
                 handle->last_volume = handle->volume;
-                handle->dirty = 1;
+                handle->dirty = true;
             }
 
             if (handle->pending_restart && !handle->playing) {
-                handle->playing = 1;
-                handle->pending_restart = 0;
-                handle->dirty = 1;
+                handle->playing = true;
+                handle->pending_restart = false;
+                handle->dirty = true;
             }
 
             if (handle->engine_active_ticks > 0u) {
@@ -3443,7 +3443,7 @@ audio_driver_timer(void) {
                         if (handle->opl2_crash_channel >= 0 && handle->opl2_crash_keyon) {
                             audio_opl2_silence_channel(handle->opl2_crash_channel);
                         }
-                        handle->opl2_crash_keyon = 0;
+                        handle->opl2_crash_keyon = false;
                     }
                 }
             }
@@ -3457,7 +3457,7 @@ audio_driver_timer(void) {
                         if (handle->opl2_skid_channel >= 0 && handle->opl2_skid_keyon) {
                             audio_opl2_silence_channel(handle->opl2_skid_channel);
                         }
-                        handle->opl2_skid_keyon = 0;
+                        handle->opl2_skid_keyon = false;
                     }
                 }
             }
@@ -3476,13 +3476,13 @@ audio_driver_timer(void) {
             }
 
             if (handle->dirty) {
-                handle->dirty = 0;
+                handle->dirty = false;
             }
         }
 
         if ((active_handles > 0u || (g_audio_menu_music_enabled && !g_audio_menu_music_paused))
             && !g_audio_dsp.dma_running) {
-            g_audio_dsp.dma_running = 1;
+            g_audio_dsp.dma_running = true;
             if (g_audio_dsp.dma_block_len == 0u) {
                 g_audio_dsp.dma_block_len = 4095u;
             }
@@ -3645,19 +3645,19 @@ audio_load_driver(const char *driver, short a2, short a3) {
     if (backend != 0) {
         if (audio_str_ieq(backend, "off") || audio_str_ieq(backend, "none")
             || audio_str_ieq(backend, "null")) {
-            g_audio_driver_loaded = 0;
-            g_audio_flag2_enabled = 0;
-            g_audio_flag6_enabled = 0;
+            g_audio_driver_loaded = false;
+            g_audio_flag2_enabled = false;
+            g_audio_flag6_enabled = false;
             return 1;
         }
     }
 
     (void)driver;
-    g_audio_driver_loaded = 1;
-    g_audio_flag2_enabled = 1;
-    g_audio_flag6_enabled = 1;
+    g_audio_driver_loaded = true;
+    g_audio_flag2_enabled = true;
+    g_audio_flag6_enabled = true;
     if (!audio_sdl_open_device()) {
-        g_audio_driver_loaded = 0;
+        g_audio_driver_loaded = false;
         return 1;
     }
     g_audio_dsp.sample_rate_hz = (unsigned short)g_audio_output_rate_hz;
@@ -3669,13 +3669,13 @@ audio_load_driver(const char *driver, short a2, short a3) {
         backend != 0 ? backend : "default", g_audio_output_rate_hz,
         (unsigned int)g_audio_dsp.sample_rate_hz, (unsigned int)g_audio_dsp.time_constant,
         timer_get_dispatch_hz(), g_audio_refresh_hz);
-    g_audio_menu_music_enabled = 0;
-    g_audio_menu_music_paused = 0;
+    g_audio_menu_music_enabled = false;
+    g_audio_menu_music_paused = false;
     g_audio_menu_resource_count = 0;
     g_audio_menu_resource_index = 0;
     g_audio_menu_resource_ticks_left = 0;
     g_audio_menu_resource_current_note = 60;
-    g_audio_menu_use_resource = 0;
+    g_audio_menu_use_resource = false;
     g_audio_music_tick_accum = 0u;
     audio_sb_write_port(556u, 209u);
     audio_sb_write_port(556u, 64u);
@@ -3686,11 +3686,9 @@ audio_load_driver(const char *driver, short a2, short a3) {
     audio_sb_write_port(556u, 28u);
     if (!g_audio_driver_timer_registered) {
         timer_reg_callback(audio_driver_timer);
-        g_audio_driver_timer_registered = 1;
+        g_audio_driver_timer_registered = true;
     }
     return 0;
-    g_audio_menu_phase2 = 0;
-    g_audio_menu_lp_state = 0;
 }
 
 /**
@@ -3701,7 +3699,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
 
 short
 audio_toggle_flag2(void) {
-    g_audio_flag2_enabled = (unsigned char)!g_audio_flag2_enabled;
+    g_audio_flag2_enabled = !g_audio_flag2_enabled;
     return g_audio_flag2_enabled ? 1 : 0;
 }
 
@@ -3714,9 +3712,9 @@ audio_toggle_flag2(void) {
 
 void
 audiodrv_atexit(void) {
-    g_audio_driver_loaded = 0;
-    g_audio_flag2_enabled = 0;
-    g_audio_flag6_enabled = 0;
+    g_audio_driver_loaded = false;
+    g_audio_flag2_enabled = false;
+    g_audio_flag6_enabled = false;
     audio_sb_queue_command(AUDIO_SB_CMD_STOP_DMA, -1, 0, 0);
     audio_sb_queue_command(AUDIO_SB_CMD_SPEAKER_OFF, -1, 0, 0);
     audio_sb_process_commands();
@@ -3742,12 +3740,12 @@ audio_driver_func3F(int mode) {
         }
     }
     /* Stop menu music and reset KMS playback */
-    g_audio_menu_music_enabled = 0;
-    g_audio_menu_music_paused = 0;
+    g_audio_menu_music_enabled = false;
+    g_audio_menu_music_paused = false;
     g_audio_kms_n_tracks = 0u;
     memset(g_audio_kms_voices, 0, sizeof(g_audio_kms_voices));
     memset(g_audio_kms_tracks, 0, sizeof(g_audio_kms_tracks));
-    g_audio_menu_use_resource = 0;
+    g_audio_menu_use_resource = false;
     g_audio_music_tick_accum = 0u;
 }
 
@@ -3757,7 +3755,7 @@ audio_driver_func3F(int mode) {
 
 void
 audio_disable_flag2(void) {
-    g_audio_flag2_enabled = 0;
+    g_audio_flag2_enabled = false;
 }
 
 /**
@@ -3766,7 +3764,7 @@ audio_disable_flag2(void) {
 
 void
 audio_enable_flag2(void) {
-    g_audio_flag2_enabled = 1;
+    g_audio_flag2_enabled = true;
 }
 
 /**
@@ -3839,7 +3837,7 @@ load_audio_finalize(void *audiores) {
     }
     audio_kms_reset_playback();
     g_audio_menu_music_enabled = g_audio_menu_use_resource;
-    g_audio_menu_music_paused = 0;
+    g_audio_menu_music_paused = false;
     if (g_audio_menu_music_enabled) {
         audio_sb_queue_command(AUDIO_SB_CMD_SPEAKER_ON, -1, 0, 0);
         audio_sb_queue_command(AUDIO_SB_CMD_START_DMA, -1, (short)g_audio_dsp.dma_block_len, 1);
@@ -3848,7 +3846,7 @@ load_audio_finalize(void *audiores) {
          * and the menu music is silent after returning from gameplay. */
         if (!g_audio_driver_timer_registered) {
             timer_reg_callback(audio_driver_timer);
-            g_audio_driver_timer_registered = 1;
+            g_audio_driver_timer_registered = true;
         }
     }
 }

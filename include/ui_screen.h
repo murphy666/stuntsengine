@@ -43,6 +43,8 @@
 #define UI_EVENT_ENTER      7 /* screen became topmost               */
 #define UI_EVENT_LEAVE      8 /* screen is no longer topmost         */
 
+#include <stdbool.h>
+
 /*
  * UIEvent — unified input event, replacing the scattered polling of
  * kb_get_char / mouse_get_state / get_joy_flags.
@@ -80,7 +82,7 @@ struct UIScreen {
 
     /* private — managed by the screen stack */
     int _modal_result;
-    unsigned char _wants_pop;
+    bool _wants_pop;
 };
 
 /* -------- Screen lifecycle ------------------------------------------ */

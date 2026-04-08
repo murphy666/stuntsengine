@@ -36,7 +36,7 @@ extern unsigned short pspofs;
 extern unsigned short pspseg;
 extern unsigned       resource_alloc_state_a;
 extern unsigned       resource_alloc_state_b;
-extern char           joystick_assigned_flags;
+extern bool           joystick_assigned_flags;
 
 /* data_menu_track.c button coordinate tables */
 extern unsigned short trackmenu_buttons_x1[];

@@ -31,8 +31,8 @@
 #include "compat_fs.h"
 #include "ressources.h"
 
-short is_audioloaded = 0;
-char g_is_busy = 0;
+bool is_audioloaded = false;
+bool g_is_busy = false;
 #include "memmgr.h"
 #include "shape2d.h"
 #include "stunts.h"
@@ -430,7 +430,7 @@ file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
         size_t seg_len, rlen;
         DIR *dir;
         struct dirent *ent;
-        int found = 0;
+        bool found = false;
 
         while (FS_IS_SEP(*p))
             p++;
@@ -456,7 +456,7 @@ file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
                     snprintf(resolved + rlen, sizeof(resolved) - rlen, "/%s", ent->d_name);
                 else
                     snprintf(resolved, sizeof(resolved), "%s", ent->d_name);
-                found = 1;
+                found = true;
                 break;
             }
         }
@@ -1088,24 +1088,24 @@ file_load_audiores(const char *songfile, const char *voicefile, const char *name
     void *audiores;
     voicefileptr = file_load_resource(5, voicefile);
     if (!voicefileptr) {
-        is_audioloaded = 0;
+        is_audioloaded = false;
         return;
     }
 
     songfileptr = file_load_resource(4, songfile);
     if (!songfileptr) {
-        is_audioloaded = 0;
+        is_audioloaded = false;
         return;
     }
 
     audiores = init_audio_resources(songfileptr, voicefileptr, name);
     if (!audiores) {
-        is_audioloaded = 0;
+        is_audioloaded = false;
         return;
     }
 
     load_audio_finalize(audiores);
-    is_audioloaded = 1;
+    is_audioloaded = true;
 }
 
 void *
@@ -1129,10 +1129,10 @@ file_load_3dres(const char *filename) {
 short
 file_load_replay(const char *dir, const char *name) {
     file_build_path(dir, name, ".rpl", g_path_buf, sizeof(g_path_buf));
-    g_is_busy = 1;
+    g_is_busy = true;
     file_read_fatal(g_path_buf, replay_header);
     gameconfig = *(struct GAMEINFO *)replay_header;
-    g_is_busy = 0;
+    g_is_busy = false;
     return 0;
 }
 
@@ -1142,10 +1142,10 @@ file_write_replay(const char *filename) {
     if (!filename)
         return -1;
     *(struct GAMEINFO *)replay_header = gameconfig;
-    g_is_busy = 1;
+    g_is_busy = true;
     ret = file_write_fatal(filename, replay_header,
                            (unsigned long)(26 + 901 + 901) + gameconfig.game_recordedframes);
-    g_is_busy = 0;
+    g_is_busy = false;
     return ret;
 }
 

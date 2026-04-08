@@ -114,10 +114,10 @@ ui_button_menu_run(UIButtonMenu *menu) {
         /* ----- mouse hit test ----- */
         hit = mouse_multi_hittest((short)menu->count, menu->x1, menu->x2, menu->y1, menu->y2);
         if (hit >= 0 && hit < (short)menu->count) {
-            if (kbormouse != 0) {
+            if (kbormouse) {
                 selected = (unsigned char)hit;
             }
-            if (kbormouse != 0 && UI_IS_CONFIRM(key_code)) {
+            if (kbormouse && UI_IS_CONFIRM(key_code)) {
                 return selected;
             }
         }

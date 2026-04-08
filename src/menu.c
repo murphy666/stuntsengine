@@ -253,7 +253,7 @@ input_repeat_check_intro_stable(unsigned short timeout) {
             unsigned short d = (unsigned short)((delta > MENU_SENTINEL_U16) ? MENU_SENTINEL_U16
                                                                             : delta);
             unsigned short result = input_do_checking(d);
-            if (result != 0) {
+            if (result) {
                 return result;
             }
             elapsed += d;
@@ -282,7 +282,7 @@ load_intro_resources(void) {
         unsigned short y;
         unsigned short color;
         unsigned short align;
-        unsigned char is_text;
+        bool is_text;
     } credits[] = {
         { "cre", 120, 0, 11, 3, 1 },    { "gds0", 60, 12, 15, 8, 0 },
         { "gds1", 104, 20, 15, 8, 0 },  { "des", 32, 20, 12, 4, 1 },
@@ -328,19 +328,10 @@ load_intro_resources(void) {
         fatal_error("load_intro_resources: missing all intro arrows");
     }
 
-    if (arrows[0] == 0) {
-        arrows[0] = arrows[first_arrow_idx];
-    }
-    if (arrows[1] == 0) {
-        arrows[1] = arrows[first_arrow_idx];
-    }
-    for (i = 2; i < 10; ++i) {
+    for (i = 0; i <= 10; ++i) {
         if (arrows[i] == 0) {
             arrows[i] = arrows[first_arrow_idx];
         }
-    }
-    if (arrows[10] == 0) {
-        arrows[10] = arrows[first_arrow_idx];
     }
 
     waitflag = MENU_WAITFLAG_CREDITS;
@@ -348,7 +339,7 @@ load_intro_resources(void) {
 
     for (i = 0; i < (sizeof(credits) / sizeof(credits[0])); ++i) {
         char *resptr;
-        if (credits[i].is_text != 0) {
+        if (credits[i].is_text) {
             resptr = locate_text_res(cred_res, (char *)credits[i].name);
         }
         else {
@@ -441,7 +432,7 @@ intro_draw_text(char *str, int x, int y, int colour, int shadowColour) {
 void
 security_check(unsigned short idx) {
     (void)idx;
-    passed_security = 1;
+    passed_security = true;
 }
 
 /* --- run_option_menu_ --- */
@@ -466,9 +457,9 @@ run_option_menu_(void) {
 
     copy_string(resID_byte1, locate_shape_alt(miscptr, "gstu"));
     intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 6, dialog_fnt_colour, 0);
-    should_repeat = 1;
+    should_repeat = true;
 
-    while (should_repeat != 0) {
+    while (should_repeat) {
         copy_string(resID_byte1, locate_shape_alt(miscptr, "gver"));
         intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_GVER_Y,
                         dialog_fnt_colour, 0);
@@ -487,13 +478,13 @@ run_option_menu_(void) {
         switch (dialog_case) {
         case MENU_OPTION_CASE_CANCEL:
         case MENU_OPTION_CASE_EXIT:
-            should_repeat = 0;
+            should_repeat = false;
             break;
         case 1:
-            if (mouse_motion_state_flag != 0) {
+            if (mouse_motion_state_flag) {
                 input_default = 2;
             }
-            else if (joystick_assigned_flags != 0) {
+            else if (joystick_assigned_flags) {
                 input_default = 1;
             }
             else {
@@ -533,7 +524,7 @@ run_option_menu_(void) {
                 waitflag = MENU_WAITFLAG_CREDITS;
                 show_waiting();
                 file_load_replay(replay_file_path_buffer, (const char *)aDefault_1);
-                should_repeat = 1;
+                should_repeat = true;
                 goto exit_loop;
             }
             break;
@@ -799,7 +790,7 @@ typedef struct {
     unsigned char selected;
     unsigned char prev_selected;
     unsigned char prev_opponent;
-    unsigned char has_opponent_res;
+    bool has_opponent_res;
     void *opponent_resptr;
 } OppMenuState;
 
@@ -810,7 +801,7 @@ opp_update_hittest(OppMenuState *st) {
                                     opponentmenu_buttons_x2, opponentmenu_buttons_y1,
                                     opponentmenu_buttons_y2);
     if (hit >= 0 && hit < MENU_OPP_BUTTON_COUNT) {
-        if (kbormouse != 0 && !(gameconfig.game_opponenttype == 0 && hit == MENU_OPP_BTN_CAR)) {
+        if (kbormouse && !(gameconfig.game_opponenttype == 0 && hit == MENU_OPP_BTN_CAR)) {
             st->selected = (unsigned char)hit;
         }
     }
@@ -841,9 +832,9 @@ opp_activate(OppMenuState *st) {
         check_input();
         mouse_draw_opaque_check();
         sprite_free_wnd(wndsprite);
-        if (st->has_opponent_res != 0 && st->opponent_resptr != 0) {
+        if (st->has_opponent_res && st->opponent_resptr != 0) {
             unload_resource(st->opponent_resptr);
-            st->has_opponent_res = 0;
+            st->has_opponent_res = false;
             st->opponent_resptr = 0;
         }
         show_waiting();
@@ -916,7 +907,7 @@ opp_on_event(UIScreen *self, const UIEvent *ev) {
 
     if (ev->type == UI_EVENT_MOUSE_DOWN) {
         opp_update_hittest(st);
-        if (kbormouse != 0) {
+        if (kbormouse) {
             return opp_activate(st);
         }
         return 0;
@@ -936,7 +927,7 @@ opp_on_render(UIScreen *self) {
     if (st->prev_opponent != (unsigned char)gameconfig.game_opponenttype) {
         if (st->prev_opponent != MENU_SENTINEL_U8) {
             sprite_free_wnd(wndsprite);
-            if (st->has_opponent_res != 0 && st->opponent_resptr != 0) {
+            if (st->has_opponent_res && st->opponent_resptr != 0) {
                 unload_resource(st->opponent_resptr);
             }
         }
@@ -946,18 +937,18 @@ opp_on_render(UIScreen *self) {
             char oppname[5] = "opp1";
             oppname[3] = (char)('0' + gameconfig.game_opponenttype);
             st->opponent_resptr = file_load_resfile(oppname);
-            st->has_opponent_res = 1;
+            st->has_opponent_res = true;
         }
         else {
             st->opponent_resptr = 0;
-            st->has_opponent_res = 0;
+            st->has_opponent_res = false;
         }
 
         wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);
         st->prev_opponent = (unsigned char)gameconfig.game_opponenttype;
         st->prev_selected = MENU_SENTINEL_U8;
 
-        if (video_flag5_is0 == 0) {
+        if (!video_flag5_is0) {
             sprite_select_wnd_as_sprite1();
         }
         else {
@@ -997,7 +988,7 @@ opp_on_render(UIScreen *self) {
 
         sprite_clear_shape_alt(wndsprite->sprite_bitmapptr, 0, 0);
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             sprite_select_wnd_as_sprite1();
         }
 
@@ -1036,7 +1027,7 @@ opp_on_destroy(UIScreen *self) {
         return;
 
     sprite_free_wnd(wndsprite);
-    if (st->has_opponent_res != 0 && st->opponent_resptr != 0) {
+    if (st->has_opponent_res && st->opponent_resptr != 0) {
         unload_resource(st->opponent_resptr);
     }
     mmgr_free(opp_res);
@@ -1161,7 +1152,7 @@ typedef struct {
     unsigned char hover_index;
     unsigned char prev_hover;
     unsigned char redraw_state;
-    unsigned char rendered_flag;
+    bool rendered_flag;
     unsigned short rotation;
     unsigned short rotation_delta;
     unsigned short button_x1[MENU_CAR_BUTTON_COUNT];
@@ -1259,7 +1250,7 @@ car_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_MOVE) {
         unsigned char hit = mouse_multi_hittest(MENU_CAR_BUTTON_COUNT, st->button_x1, st->button_x2,
                                                 st->button_y1, st->button_y2);
-        if (hit != MENU_SENTINEL_U8 && kbormouse != 0) {
+        if (hit != MENU_SENTINEL_U8 && kbormouse) {
             st->hover_index = hit;
         }
         return 0;
@@ -1268,7 +1259,7 @@ car_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_DOWN) {
         unsigned char hit = mouse_multi_hittest(MENU_CAR_BUTTON_COUNT, st->button_x1, st->button_x2,
                                                 st->button_y1, st->button_y2);
-        if (hit != MENU_SENTINEL_U8 && kbormouse != 0) {
+        if (hit != MENU_SENTINEL_U8 && kbormouse) {
             st->hover_index = hit;
             return car_activate(st);
         }
@@ -1284,7 +1275,7 @@ car_draw_opponent_portrait(CarMenuState *st) {
         return;
     }
 
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
         sprite_putimage_transparent(oppresources[st->opponenttype], MENU_OPP_CAR_PANEL_X, 0);
     }
     else if (st->opp_wnd != 0) {
@@ -1295,7 +1286,7 @@ car_draw_opponent_portrait(CarMenuState *st) {
 static void
 car_on_render(UIScreen *self) {
     CarMenuState *st = (CarMenuState *)self->userdata;
-    unsigned short need_blit;
+    bool need_blit;
     unsigned short carpos_polar;
     unsigned short old_frames;
     unsigned short graph_x, graph_y;
@@ -1400,18 +1391,18 @@ car_on_render(UIScreen *self) {
         st->update_rc.bottom = MENU_SCREEN_HEIGHT;
         st->prev_hover = MENU_SENTINEL_U8;
         st->redraw_state = 3;
-        st->rendered_flag = 0;
+        st->rendered_flag = false;
     }
 
     /* ---- rotation animation ---- */
     st->rotation = (unsigned short)(st->rotation + st->rotation_delta);
 
-    need_blit = (st->redraw_state == 1) ? 1 : 0;
+    need_blit = (st->redraw_state == 1);
 
     /* ---- 3D render ---- */
     if (st->redraw_state == 0 || st->redraw_state == 3) {
         carpos_polar = (unsigned short)polarAngle(carmenu_carpos.y, carmenu_carpos.z);
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             st->rect_clip = rect_invalid;
         }
         else {
@@ -1433,7 +1424,7 @@ car_on_render(UIScreen *self) {
         rect_union(&st->update_rc, &st->rect_clip, &st->rect_union_rc);
 
         if (st->redraw_state == 3) {
-            need_blit = 1;
+            need_blit = true;
         }
         else {
             st->redraw_state = 1;
@@ -1443,7 +1434,7 @@ car_on_render(UIScreen *self) {
     /* ---- blit to screen ---- */
     if (need_blit) {
         st->redraw_state = 0;
-        st->rendered_flag = 1;
+        st->rendered_flag = true;
         sprite_select_wnd_as_sprite1();
         sprite_set_1_size(st->update_rc.left, st->update_rc.right, st->update_rc.top,
                           st->update_rc.bottom);
@@ -1508,8 +1499,8 @@ car_on_render(UIScreen *self) {
         st->hover_index = MENU_CAR_BTN_DONE;
         if (st->rendered_flag) {
             car_do_done(st);
-            self->_wants_pop = 1;
-            self->_modal_result = 1;
+            self->_wants_pop = true;
+            self->_modal_result = true;
         }
     }
 }
@@ -1523,7 +1514,7 @@ car_on_destroy(UIScreen *self) {
     sprite_free_wnd(wndsprite);
     unload_resource(st->carres);
     shape3d_free_car_shapes();
-    if (st->opponenttype != 0 && video_flag5_is0 != 0 && st->opp_wnd != 0) {
+    if (st->opponenttype != 0 && video_flag5_is0 && st->opp_wnd != 0) {
         sprite_free_wnd(st->opp_wnd);
     }
     if (st->opponenttype == 0) {
@@ -1558,7 +1549,7 @@ make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *trans
     st->local_transshape.shape_visibility_threshold = MENU_CAR_VISIBILITY_DEFAULT;
 
     timertestflag_copy = timertestflag;
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         st->local_transshape.rectptr = &st->rect_clip;
         st->local_transshape.ts_flags = MENU_CAR_TSFLAG_CLIPPED;
     }
@@ -1631,7 +1622,7 @@ make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *trans
         unsigned short opp_w = 0;
         unsigned short opp_h = 0;
         menu_clip_rect.right = MENU_OPP_CAR_PANEL_X;
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             unsigned short *dims = (unsigned short *)oppresources[opponenttype];
             opp_w = dims[0];
             opp_h = dims[1];
@@ -1715,12 +1706,12 @@ run_intro_(void) {
 
     sprite_blit_shape_to_sprite1(shape);
     result = sprite_blit_to_video(wndsprite, MENU_BLIT_MODE_FULL);
-    if (result != 0) {
+    if (result) {
         return result;
     }
 
     result = input_repeat_check_intro_stable(MENU_TIMEOUT_INTRO_WAIT);
-    if (result != 0) {
+    if (result) {
         return result;
     }
 
@@ -1730,7 +1721,7 @@ run_intro_(void) {
     shape = (struct SHAPE2D *)locate_shape_fatal(tempdataptr, "titl");
     sprite_blit_shape_to_sprite1(shape);
     result = sprite_blit_to_video(wndsprite, MENU_BLIT_MODE_FULL);
-    if (result != 0) {
+    if (result) {
         return result;
     }
 
@@ -1752,7 +1743,7 @@ run_intro_(void) {
 unsigned short
 run_intro_looped_(void) {
 
-    unsigned short result = 0;
+    unsigned short result = false;
 
     file_load_audiores("skidtitl", "skidms", "TITL");
 
@@ -1764,9 +1755,9 @@ run_intro_looped_(void) {
     sprite_free_wnd(wndsprite);
     mmgr_free(tempdataptr);
 
-    if (result == 0) {
+    if (!result) {
         result = setup_intro();
-        if (result == 0) {
+        if (!result) {
             tempdataptr = file_load_resource(2, "sdcred");
             wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);
             sprite_select_wnd_as_sprite1_and_clear();
@@ -1786,67 +1777,6 @@ run_intro_looped_(void) {
 /** @brief Choose the nearest menu button in the requested direction.
  *
  * @param current  Index of the currently selected button.
-/** @brief Direction.
- * @param count Parameter `count`.
- * @return Function result.
- */
-
-// Choose the nearest button in the requested direction using button geometry.
-static unsigned char __attribute__((unused))
-menu_navigate(unsigned char current, int dir_x, int dir_y, const unsigned short *x1,
-              const unsigned short *x2, const unsigned short *y1, const unsigned short *y2,
-              unsigned short count) {
-    unsigned short best = current;
-    unsigned short best_primary = 65535;
-    unsigned short best_secondary = 65535;
-    int cur_x;
-    int cur_y;
-    unsigned short i;
-
-    cur_x = (int)(x1[current] + x2[current]) / 2;
-    cur_y = (int)(y1[current] + y2[current]) / 2;
-
-    for (i = 0; i < count; ++i) {
-        int dx;
-        int dy;
-        unsigned short primary;
-        unsigned short secondary;
-
-        if (i == current) {
-            continue;
-        }
-
-        dx = ((int)(x1[i] + x2[i]) / 2) - cur_x;
-        dy = ((int)(y1[i] + y2[i]) / 2) - cur_y;
-
-        if (dir_x != 0) {
-            if (dx * dir_x <= 0) {
-                continue;
-            }
-            primary = (unsigned short)((dx < 0) ? -dx : dx);
-            secondary = (unsigned short)((dy < 0) ? -dy : dy);
-        }
-        else if (dir_y != 0) {
-            if (dy * dir_y <= 0) {
-                continue;
-            }
-            primary = (unsigned short)((dy < 0) ? -dy : dy);
-            secondary = (unsigned short)((dx < 0) ? -dx : dx);
-        }
-        else {
-            continue;
-        }
-
-        if (primary < best_primary || (primary == best_primary && secondary < best_secondary)) {
-            best = (unsigned char)i;
-            best_primary = primary;
-            best_secondary = secondary;
-        }
-    }
-
-    return best;
-}
-
 /* --- run_menu_ --- */
 
 /* Context for main menu selection-change callback */

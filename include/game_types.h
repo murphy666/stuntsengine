@@ -2,6 +2,7 @@
 #define GAME_TYPES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "math.h"
 #include "shape3d.h"
 
@@ -61,18 +62,18 @@ struct CARSTATE {
     struct VECTOR car_waypoint_left;
     struct VECTOR car_waypoint_right;
     short car_collision_contact_flag;
-    char car_is_braking;
-    char car_is_accelerating;
+    bool car_is_braking;
+    bool car_is_accelerating;
     char car_current_gear;
     char car_sumSurfFrontWheels;
     char car_sumSurfRearWheels;
     char car_sumSurfAllWheels;
     char car_surfaceWhl[4];
     char car_engineLimiterTimer;
-    char car_slidingFlag;
-    char car_crash_impact_flag;
+    bool car_slidingFlag;
+    bool car_crash_impact_flag;
     char car_crashBmpFlag;
-    char car_changing_gear;
+    bool car_changing_gear;
     char car_fpsmul2;
     char car_transmission;
     char car_impact_state_counter;
@@ -113,7 +114,7 @@ struct GAMESTATE {
     short game_obstacle_active[24];
     char game_obstacle_metadata[48];
     char kevinseed[6];
-    char game_checkpoint_valid;
+    bool game_checkpoint_valid;
     char game_inputmode;
     char game_3F6autoLoadEvalFlag;
     char game_track_indices[2];

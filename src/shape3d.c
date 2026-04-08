@@ -566,39 +566,6 @@ shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape) {
 }
 
 /**
- * @brief Append a polygon to the z-order list without sorting.
- *
- * @param index  Polygon index.
- */
-static void __attribute__((unused))
-polyinfo_append_unsorted(unsigned index) {
-    unsigned cursor;
-
-    if (index >= POLYINFO_MAX_POLYS) {
-        return;
-    }
-
-    if (polyinfonumpolys == 0) {
-        zorder_shape_list[POLYINFO_HEAD_INDEX] = index;
-        zorder_shape_list[index] = ZORDER_LINK_END;
-        return;
-    }
-
-    cursor = POLYINFO_HEAD_INDEX;
-    while (zorder_shape_list[cursor] >= 0) {
-        cursor = zorder_shape_list[cursor];
-        if (cursor >= POLYINFO_MAX_POLYS) {
-            break;
-        }
-    }
-
-    if (cursor < POLYINFO_MAX_POLYS) {
-        zorder_shape_list[cursor] = index;
-        zorder_shape_list[index] = ZORDER_LINK_END;
-    }
-}
-
-/**
  * @brief Render a pre-transformed 3-D shape into the polygon info buffer.
  *
  * Performs back-face culling, near-plane clipping, projection, and
@@ -743,8 +710,8 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
 
 label_init_vertex_visibility_scan:
     rect_clip_mask = RECT_CLIP_FULL_MASK;
-    all_vertices_behind_near_plane = 1;
-    has_near_plane_vertex = 0;
+    all_vertices_behind_near_plane = true;
+    has_near_plane_vertex = false;
     i = 0;
     goto label_vertex_scan_loop;
 
@@ -753,7 +720,7 @@ label_vertex_scan_increment:
 label_vertex_scan_loop:
     if (transshapenumvertscopy > i)
         goto label_transform_and_project_vertex;
-    if ((all_vertices_behind_near_plane != 0
+    if ((all_vertices_behind_near_plane
          || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
         && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
         return -1;
@@ -775,10 +742,10 @@ label_transform_and_project_vertex:
     cached_view_vertices[i] = scratch_vector_b;
     if (scratch_vector_b.z < NEAR_PLANE_Z) {
         vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-        has_near_plane_vertex = 1;
+        has_near_plane_vertex = true;
         goto label_vertex_scan_increment;
     }
-    all_vertices_behind_near_plane = 0;
+    all_vertices_behind_near_plane = false;
     vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_VISIBLE;
     vector_to_point(&scratch_vector_b, polyvertpointptrtab[i]);
     if (rect_clip_mask != 0) {
@@ -816,14 +783,14 @@ label_decode_primitive_header:
     transshapeprimitives += 2 + transshapenumpaints;
 
     rect_clip_mask = RECT_CLIP_FULL_MASK;
-    all_vertices_behind_near_plane = 1;
-    has_near_plane_vertex = 0;
+    all_vertices_behind_near_plane = true;
+    has_near_plane_vertex = false;
     transshapeprimindexptr = transshapeprimitives;
     polygon_vertex_counter = 0;
     goto label_polygon_vertex_loop;
 
 label_polygon_vertex_visible:
-    all_vertices_behind_near_plane = 0;
+    all_vertices_behind_near_plane = false;
 label_polygon_vertex_rect_clip_test:
     if (rect_clip_mask != 0) {
         rect_clip_mask &= rect_compare_point(polyvertpointptrtab[polygon_vertex_counter]);
@@ -844,7 +811,7 @@ label_polygon_vertex_loop:
         goto label_polygon_vertex_visible;
     }
     if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_BEHIND_NEAR) {
-        has_near_plane_vertex = 1;
+        has_near_plane_vertex = true;
         goto label_polygon_vertex_advance;
     }
     goto label_polygon_vertex_advance;
@@ -863,21 +830,21 @@ label_project_uncached_vertex:
     cached_view_vertices[temp] = scratch_vector_b;
 
     if (scratch_vector_b.z >= NEAR_PLANE_Z) {
-        all_vertices_behind_near_plane = 0;
+        all_vertices_behind_near_plane = false;
         vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_VISIBLE;
         vector_to_point(&scratch_vector_b, polyvertpointptrtab[polygon_vertex_counter]);
         goto label_polygon_vertex_rect_clip_test;
     }
     vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-    has_near_plane_vertex = 1;
+    has_near_plane_vertex = true;
     goto label_polygon_vertex_advance;
 
 label_dispatch_primitive_render_path:
-    if (all_vertices_behind_near_plane != 0) {
+    if (all_vertices_behind_near_plane) {
         reject_prim_all_behind++;
         goto label_finish_current_primitive;
     }
-    if (rect_clip_mask != 0 && has_near_plane_vertex == 0) {
+    if (rect_clip_mask != 0 && !has_near_plane_vertex) {
         reject_prim_rect_stage1++;
         goto label_finish_current_primitive;
     }
@@ -900,7 +867,7 @@ _primtype_poly:
     depth_sum = 0;
     rect_clip_mask = RECT_CLIP_FULL_MASK;
 
-    if (has_near_plane_vertex != 0)
+    if (has_near_plane_vertex)
         goto label_clip_polygon_against_near_plane;
     i = 0;
     goto label_copy_polygon_vertex_loop;
@@ -1102,7 +1069,7 @@ label_emit_line_done:
     goto label_finish_current_primitive;
 
 _primtype_wheel:
-    if (has_near_plane_vertex != 0)
+    if (has_near_plane_vertex)
         goto label_finish_current_primitive;
 
     transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
@@ -1242,7 +1209,7 @@ label_store_polyinfo_entry:
         temp0 = POLY_DEPTH_MAX_SIGNED;
     }
 
-    if (has_near_plane_vertex != 0) {
+    if (has_near_plane_vertex) {
         if ((short)temp0 < NEAR_PLANE_Z) {
             temp0 = NEAR_PLANE_Z;
         }
@@ -1539,7 +1506,7 @@ free_polyinfo_atexit(void) {
  */
 void
 init_polyinfo(void) {
-    static int atexit_registered = 0;
+    static bool atexit_registered = false;
     if (s_polyinfo_base != NULL) {
         mmgr_free((char *)s_polyinfo_base);
         s_polyinfo_base = NULL;
@@ -1549,7 +1516,7 @@ init_polyinfo(void) {
     s_polyinfo_base = polyinfoptr;
     if (!atexit_registered) {
         atexit(free_polyinfo_atexit);
-        atexit_registered = 1;
+        atexit_registered = true;
     }
 
     mat_rot_y(&mat_y0, 0);
@@ -2132,7 +2099,7 @@ get_a_poly_info(void) {
         switch ((signed char)polyinfoptr[4]) {
         case 0: /* polygon */
         {
-            int drop_poly = 0;
+            bool drop_poly = false;
             maxcount = (signed char)polyinfoptr[3];
             if (maxcount <= 1
                 || maxcount
@@ -2149,7 +2116,7 @@ get_a_poly_info(void) {
                     int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1]
                                                               : polygon_points_xy[j * 2 + 1];
                     if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT) {
-                        drop_poly = 1;
+                        drop_poly = true;
                     }
                 }
             }
@@ -2253,7 +2220,7 @@ get_a_poly_info(void) {
         case 3: { /* wheel */
             const struct POINT2D *wheel_pts;
             int wheel_interp;
-            int drop_wheel = 0;
+            bool drop_wheel = false;
             clrlist = material_color_list;
             if (material_clrlist_ptr_cpy != 0
                 && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
@@ -2269,7 +2236,7 @@ get_a_poly_info(void) {
                     int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1]
                                                               : polygon_points_xy[j * 2 + 1];
                     if (ax > WHEEL_VERTEX_CONTROL_ABS_MAX || ay > WHEEL_VERTEX_CONTROL_ABS_MAX) {
-                        drop_wheel = 1;
+                        drop_wheel = true;
                     }
                 }
             }
@@ -3232,27 +3199,6 @@ static unsigned g_interp_offsets_rel[50] = {
 };
 
 unsigned off_2F44A[50] = { 0 };
-static unsigned char g_interp_tables_ready = 0;
-
-/**
- * @brief Initialise interpolation lookup tables for edge rendering.
- */
-static void __attribute__((unused))
-shape3d_init_interp_tables(void) {
-    unsigned i;
-    uintptr_t base_off;
-
-    if (g_interp_tables_ready != 0) {
-        return;
-    }
-
-    base_off = (uintptr_t)g_interp_blob;
-    for (i = 0; i < INTERP_TABLE_COUNT; i++) {
-        off_2F44A[i] = (unsigned)(base_off + (uintptr_t)g_interp_offsets_rel[i]);
-    }
-
-    g_interp_tables_ready = 1;
-}
 
 unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
                                 int *edge_state, unsigned allow_steep_modes);

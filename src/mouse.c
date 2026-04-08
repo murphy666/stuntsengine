@@ -33,7 +33,7 @@
 /* Variables moved from data_game.c (private to this translation unit) */
 static unsigned short game_paused_timer_counter = 0;
 static unsigned short mouse_button_state_register = 0;
-static unsigned short mouse_driver_enabled = 0;
+static bool mouse_driver_enabled = false;
 static unsigned char mousehorscale = 0;
 static short physics_update_accumulator = 0;
 
@@ -41,10 +41,10 @@ static short physics_update_accumulator = 0;
 unsigned short mouse_butstate = 0;
 unsigned short mouse_xpos = 0;
 unsigned short mouse_ypos = 0;
-char mouse_isdirty = 0;
-char mouse_motion_state_flag = 0;
-char mouse_motion_detected_flag = 0;
-char kbormouse = 0;
+bool mouse_isdirty = false;
+bool mouse_motion_state_flag = false;
+bool mouse_motion_detected_flag = false;
+bool kbormouse = false;
 
 static void
 mouse_write_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
@@ -70,7 +70,7 @@ mouse_write_state(unsigned short *buttons, unsigned short *x, unsigned short *y)
  */
 void
 mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
-    if (mouse_driver_enabled == 0) {
+    if (!mouse_driver_enabled) {
         mouse_butstate = 0;
         mouse_write_state(buttons, x, y);
         return;
@@ -109,15 +109,15 @@ mouse_set_pixratio(unsigned short hpix, unsigned short vpix) {
  */
 unsigned short
 mouse_init(unsigned short width, unsigned short height) {
-    unsigned short result;
+    bool result;
     unsigned short buttons;
 
     /* Host build: simulate successful mouse init. */
-    result = 1;
+    result = true;
     buttons = 2;
     mouse_button_state_register = buttons;
 
-    if (result != 0) {
+    if (result) {
         /* Set mousehorscale based on width */
         if (width == 320) {
             mousehorscale = 1;
@@ -133,7 +133,7 @@ mouse_init(unsigned short width, unsigned short height) {
         /* Set pixel ratio to 16:16 */
         mouse_set_pixratio(16, 16);
 
-        mouse_driver_enabled = 65535;
+        mouse_driver_enabled = true;
     }
 
     return result;
@@ -182,10 +182,10 @@ mouse_set_position(int x, int y) {
 /** @brief Draw the mouse cursor transparently when redraw conditions are met. */
 void
 mouse_draw_transparent_check(void) {
-    mouse_motion_detected_flag = 1;
-    if (kbormouse == 0)
+    mouse_motion_detected_flag = true;
+    if (!kbormouse)
         return;
-    if (mouse_isdirty != 0)
+    if (mouse_isdirty)
         return;
     mouse_draw_transparent();
 }
@@ -196,8 +196,8 @@ mouse_draw_transparent_check(void) {
 /** @brief Restore the background under the mouse cursor when needed. */
 void
 mouse_draw_opaque_check(void) {
-    mouse_motion_detected_flag = 0;
-    if (mouse_isdirty == 0)
+    mouse_motion_detected_flag = false;
+    if (!mouse_isdirty)
         return;
     mouse_draw_opaque();
 }
@@ -210,7 +210,7 @@ mouse_draw_opaque_check(void) {
 short
 mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short *x2_array,
                     unsigned short *y1_array, unsigned short *y2_array) {
-    if (kbormouse == 0) {
+    if (!kbormouse) {
         return -1;
     }
 
@@ -228,14 +228,14 @@ mouse_draw_opaque(void) {
     // Save both sprite buffers (sprite_copy_both_to_arg copies sprite1 and sprite2)
     static struct SPRITE local_sprites[2];
     if (mouseunkspriteptr == 0) {
-        mouse_isdirty = 0;
+        mouse_isdirty = false;
         return;
     }
     sprite_copy_both_to_arg(local_sprites);
     sprite_copy_2_to_1();
     sprite_putimage(mouseunkspriteptr->sprite_bitmapptr);
     sprite_copy_arg_to_both(local_sprites);
-    mouse_isdirty = 0;
+    mouse_isdirty = false;
 }
 
 /* --- mouse_draw_transparent --- */
@@ -257,7 +257,7 @@ mouse_draw_transparent(void) {
     sprite_putimage_and(mmouspriteptr->sprite_bitmapptr, mouse_xpos, mouse_ypos);
     sprite_putimage_or(smouspriteptr->sprite_bitmapptr, mouse_xpos, mouse_ypos);
     sprite_copy_arg_to_both(local_sprites);
-    mouse_isdirty = 1;
+    mouse_isdirty = true;
 }
 
 /* --- mouse_update_menu_blink --- */

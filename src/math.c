@@ -240,7 +240,7 @@ int
 polarAngle(int z, int y) {
 
     unsigned flag;
-    int temp, result = 0;
+    int temp, result = false;
     unsigned long index;
 
     flag = 0;
@@ -837,7 +837,8 @@ rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr, struct
     struct RECTANGLE top_rect;
     struct RECTANGLE bottom_rect;
     struct RECTANGLE *existing;
-    int has_bottom_extra, has_top_extra, shift_idx;
+    bool has_bottom_extra, has_top_extra;
+    int shift_idx;
 
     if (video_flag2_is1 != 1) {
         fatal_error("rectlist_add_rect: unexpected code path");
@@ -866,34 +867,34 @@ rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr, struct
             if (rect->top < existing->top) {
                 top_rect = *rect;
                 top_rect.bottom = existing->top;
-                has_top_extra = 1;
+                has_top_extra = true;
             }
             else {
-                has_top_extra = 0;
+                has_top_extra = false;
             }
         }
         else {
             top_rect = *existing;
             top_rect.bottom = rect->top;
             merged_rect.top = rect->top;
-            has_top_extra = 1;
+            has_top_extra = true;
         }
 
         if (existing->bottom <= rect->bottom) {
             if (rect->bottom > existing->bottom) {
                 bottom_rect = *rect;
                 bottom_rect.top = existing->bottom;
-                has_bottom_extra = 1;
+                has_bottom_extra = true;
             }
             else {
-                has_bottom_extra = 0;
+                has_bottom_extra = false;
             }
         }
         else {
             bottom_rect = *existing;
             bottom_rect.top = rect->bottom;
             merged_rect.bottom = rect->bottom;
-            has_bottom_extra = 1;
+            has_bottom_extra = true;
         }
 
         if (rect->left <= existing->left)
@@ -913,12 +914,12 @@ rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr, struct
             shift_idx++;
         }
         (*rect_count_ptr)--;
-        if (has_top_extra != 0) {
+        if (has_top_extra) {
             rectlist_add_rect(rect_count_ptr, rect_array_ptr, &top_rect);
         }
 
         rectlist_add_rect(rect_count_ptr, rect_array_ptr, &merged_rect);
-        if (has_bottom_extra != 0) {
+        if (has_bottom_extra) {
             rectlist_add_rect(rect_count_ptr, rect_array_ptr, &bottom_rect);
             return;
         }
@@ -986,7 +987,8 @@ rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *r
     struct RECTANGLE *best_rectptr;
     struct RECTANGLE clipped_rect;
     struct RECTANGLE union_rect;
-    int has_valid_rect, i;
+    bool has_valid_rect;
+    int i;
     int entry_flags;
     /*
 	return rect_clip_combined_(
@@ -1006,28 +1008,28 @@ rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *r
 
         if (((entry_flags & 1) == 0) || rectptr_a->right <= rectptr_a->left) {
             if (((entry_flags & 2) == 0) || rectptr_b->right <= rectptr_b->left) {
-                has_valid_rect = 0;
+                has_valid_rect = false;
             }
             else {
                 best_rectptr = rectptr_b;
-                has_valid_rect = 1;
+                has_valid_rect = true;
             }
         }
         else if ((entry_flags & 2) == 0) {
             best_rectptr = rectptr_a;
-            has_valid_rect = 1;
+            has_valid_rect = true;
         }
         else if (rectptr_b->right <= rectptr_b->left) {
             best_rectptr = rectptr_a;
-            has_valid_rect = 1;
+            has_valid_rect = true;
         }
         else {
             rect_union(rectptr_a, rectptr_b, &union_rect);
             best_rectptr = &union_rect;
-            has_valid_rect = 1;
+            has_valid_rect = true;
         }
 
-        if (has_valid_rect != 0) {
+        if (has_valid_rect) {
             clipped_rect = *best_rectptr;
             if (rect_intersect(&clipped_rect, clip_rect) == 0) {
                 rectlist_add_rect(rect_count_ptr, rect_array_ptr, &clipped_rect);
@@ -1113,7 +1115,7 @@ vector_direction_bucket32(struct VECTOR *vec) {
         result = DIRECTION_BUCKET_Y_OFFSET;
     }
     else {
-        result = 0;
+        result = false;
     }
 
     angle = -polarAngle(vec->z, -vec->x);
