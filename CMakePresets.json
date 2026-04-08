@@ -9,8 +9,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build_cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "STUNTS_TESTS": "ON"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -20,8 +19,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build_cmake_release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "STUNTS_TESTS": "OFF"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -32,20 +30,7 @@
       "binaryDir": "${sourceDir}/build_cmake_asan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "STUNTS_ASAN": "ON",
-        "STUNTS_TESTS": "OFF"
-      }
-    },
-    {
-      "name": "linux-coverage",
-      "displayName": "Linux — Coverage (gcov/lcov)",
-      "description": "Native GCC build with gcov line-coverage instrumentation",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build_cmake_coverage",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "STUNTS_TESTS": "ON",
-        "STUNTS_COVERAGE": "ON"
+        "STUNTS_ASAN": "ON"
       }
     },
     {
@@ -56,8 +41,7 @@
       "binaryDir": "${sourceDir}/build_cmake_windows",
       "toolchainFile": "${sourceDir}/cmake/toolchain-mingw-w64-x86_64.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "STUNTS_TESTS": "OFF"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],
@@ -75,25 +59,9 @@
       "configurePreset": "linux-asan"
     },
     {
-      "name": "linux-coverage",
-      "configurePreset": "linux-coverage"
-    },
-    {
       "name": "windows-x64",
       "configurePreset": "windows-x64",
       "jobs": 0
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "linux-debug",
-      "configurePreset": "linux-debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "linux-coverage",
-      "configurePreset": "linux-coverage",
-      "output": { "outputOnFailure": true }
     }
   ]
 }

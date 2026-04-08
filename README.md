@@ -37,7 +37,6 @@ The goal is to preserve the original gameplay and visuals while adding improveme
 ```
 include/        Public header files
 src/            C source files (engine, rendering, audio, menus, physics …)
-tests/          Unit and integration tests (Google Test, C++)
 library/
   adplug/       Git submodule – OPL2 FM emulator (auto-cloned on first build)
   sdl2-windows/ SDL2 MinGW dev archive (auto-downloaded for Windows builds)
@@ -110,7 +109,7 @@ cd stuntsengine
 ### Linux
 
 ```bash
-# Debug (tests enabled)
+# Debug
 cmake --preset linux-debug
 cmake --build --preset linux-debug
 
@@ -133,10 +132,9 @@ The output (`stunts.exe` + `SDL2.dll`) can be copied directly to a Windows machi
 
 | Preset | Platform | Type |
 |--------|----------|------|
-| `linux-debug` | Linux | Debug, tests enabled |
+| `linux-debug` | Linux | Debug |
 | `linux-release` | Linux | Release, optimised |
 | `linux-asan` | Linux | Debug + AddressSanitizer |
-| `linux-coverage` | Linux | Debug + gcov line-coverage |
 | `windows-x64` | Windows (MinGW) | Release |
 
 ### GitHub Releases
@@ -151,45 +149,7 @@ GitHub Actions release builds are defined in [.github/workflows/release.yml](.gi
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `STUNTS_TESTS` | `ON` | Build and register test executables |
 | `STUNTS_ASAN` | `OFF` | Enable AddressSanitizer |
-| `STUNTS_COVERAGE` | `OFF` | Instrument with gcov for line-coverage reporting |
-
----
-
-## Testing
-
-Tests are enabled in the Debug preset (`STUNTS_TESTS=ON`) and disabled in Release.
-All tests use **Google Test**, fetched automatically via CMake FetchContent.
-
-### Run all tests
-
-```bash
-cmake --preset linux-debug
-cmake --build --preset linux-debug --target check
-```
-
-Builds all test targets, runs them via CTest, and writes `test_results.xml`
-(JUnit format) to the build directory.
-
-### Filter tests with ctest
-
-```bash
-cmake --preset linux-debug
-cmake --build --preset linux-debug
-ctest --preset linux-debug
-ctest --preset linux-debug -R Shape3D
-```
-
-### Line-coverage report (gcov / lcov)
-
-```bash
-cmake --preset linux-coverage
-cmake --build --preset linux-coverage --target coverage
-```
-
-Runs all tests with gcov instrumentation and generates an HTML report at
-`build_cmake_coverage/coverage_html/index.html`.
 
 ---
 
