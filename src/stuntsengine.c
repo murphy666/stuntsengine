@@ -1275,7 +1275,7 @@ unsigned short sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) 
     short i;
     unsigned short delta;
     unsigned short input;
-    const unsigned short transition_present_repeats = 4;
+    const unsigned short transition_present_repeats = 8;
     if (sprite == 0 || sprite->sprite_bitmapptr == 0) {
         return 0;
     }
