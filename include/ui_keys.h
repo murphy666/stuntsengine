@@ -66,9 +66,9 @@
 #define UI_SEL_TIMEOUT 254 /* Idle timeout from button menu      */
 
 /* ---- Convenience predicates ---------------------------------------- */
-#define UI_IS_CONFIRM(k)                                                      \
-    ((k) == UI_KEY_ENTER || (k) == UI_KEY_SPACE || (k) == UI_KEY_ENTER_EXT || \
-     (k) == UI_KEY_SPACE_EXT)
+#define UI_IS_CONFIRM(k)                                                   \
+    ((k) == UI_KEY_ENTER || (k) == UI_KEY_SPACE || (k) == UI_KEY_ENTER_EXT \
+     || (k) == UI_KEY_SPACE_EXT)
 
 #define UI_IS_CANCEL(k) ((k) == UI_KEY_ESCAPE || (k) == UI_KEY_ESCAPE_EXT)
 

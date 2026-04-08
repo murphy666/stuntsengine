@@ -37,7 +37,8 @@ unsigned char *g_fontdef_ptr = 0;
  * @param data Parameter `data`.
  */
 
-void font_set_fontdef2(void *data) {
+void
+font_set_fontdef2(void *data) {
     set_fontdefseg(data);
     fontdef_line_height = *((unsigned short *)((char *)data + 14));
 }
@@ -48,7 +49,8 @@ void font_set_fontdef2(void *data) {
 /** @brief Select the default font definition buffer and refresh cached metrics.
  */
 
-void font_set_fontdef(void) {
+void
+font_set_fontdef(void) {
     font_set_fontdef2(fontdefptr);
 }
 
@@ -64,7 +66,8 @@ void font_set_fontdef(void) {
  * @param data Pointer to the loaded font definition structure.
  */
 
-void set_fontdefseg(void *data) {
+void
+set_fontdefseg(void *data) {
     g_fontdef_ptr = (unsigned char *)data;
 }
 
@@ -77,7 +80,8 @@ void set_fontdefseg(void *data) {
  * @param bg_color Parameter `bg_color`.
  */
 
-void font_set_colors(int fg_color, unsigned short bg_color) {
+void
+font_set_colors(int fg_color, unsigned short bg_color) {
     unsigned short *fontdef = (unsigned short *)g_fontdef_ptr;
     if (fontdef == 0) {
         return;
@@ -95,7 +99,8 @@ void font_set_colors(int fg_color, unsigned short bg_color) {
  * @param maxChars Maximum number of characters to include in the measurement.
  * @return Total pixel width for the measured substring.
  */
-unsigned short font_op(char *text, unsigned short maxChars) {
+unsigned short
+font_op(char *text, unsigned short maxChars) {
     unsigned char *fontdef = g_fontdef_ptr;
     unsigned short width = 0;
     if (fontdef == 0) {
@@ -149,7 +154,8 @@ unsigned short font_op(char *text, unsigned short maxChars) {
  * @param text Input string to measure.
  * @return Total pixel width for the full string.
  */
-unsigned short font_get_text_width(char *text) {
+unsigned short
+font_get_text_width(char *text) {
     return font_op(text, (unsigned short)~0u);
 }
 
@@ -161,7 +167,8 @@ unsigned short font_get_text_width(char *text) {
  * @param x Left pixel position where rendering starts.
  * @param y Top pixel position where rendering starts.
  */
-void font_draw_text(char *str, unsigned short x, unsigned short y) {
+void
+font_draw_text(char *str, unsigned short x, unsigned short y) {
     unsigned char *fontdef = g_fontdef_ptr;
     unsigned char *vram = (unsigned char *)sprite1.sprite_bitmapptr;
     unsigned int *lineofs = sprite1.sprite_lineofs;
@@ -174,8 +181,8 @@ void font_draw_text(char *str, unsigned short x, unsigned short y) {
     unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
     unsigned short default_charwidth = *(unsigned short *)(fontdef + 18);
     unsigned short *char_table = (unsigned short *)(fontdef + 22);
-    unsigned short font_x_position_base =
-        *(unsigned short *)(fontdef + 8); // x position (from offset 8)
+    unsigned short font_x_position_base
+        = *(unsigned short *)(fontdef + 8); // x position (from offset 8)
     int has_width_byte = 0;
     if (font_height == 0) {
         font_height = fontdef_line_height;
@@ -273,7 +280,8 @@ void font_draw_text(char *str, unsigned short x, unsigned short y) {
  * @return Function result.
  */
 
-int font_get_centered_x(char *text) {
+int
+font_get_centered_x(char *text) {
     int width = font_get_text_width(text);
     int result = 320 - width; // 320 - width
     // Arithmetic right shift to divide by 2 (handling negative properly)
@@ -287,7 +295,7 @@ int font_get_centered_x(char *text) {
 }
 
 /* Font globals */
-unsigned char font_x_position_base[2] = {0, 0};
+unsigned char font_x_position_base[2] = { 0, 0 };
 unsigned short fontdefseg = 0;
 void *fontnptr = 0;
 void *fontdefptr = 0;

@@ -50,19 +50,19 @@
 static char dirty_rect_count = 0;
 static void *sdgame2ptr = 0;
 static short skybox_wat_color = 0;
-static void *skyboxes[] = {0, 0, 0, 0};
+static void *skyboxes[] = { 0, 0, 0, 0 };
 static char texture_page_index = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static short angular_velocity_state = 0;
 static short collision_detection_state = 0;
-static struct RECTANGLE dirty_rect_array[45] = {{0}};
-static short dirty_rect_indices[45] = {0};
-static struct RECTANGLE intro_dirty_clip_rect = {0, 0, 0, 0};
+static struct RECTANGLE dirty_rect_array[45] = { { 0 } };
+static short dirty_rect_indices[45] = { 0 };
+static struct RECTANGLE intro_dirty_clip_rect = { 0, 0, 0, 0 };
 static short memory_pointer_boundary_max = 0;
 static short physics_constants_table = 16;
-static struct RECTANGLE rect_skybox = {0, 0, 0, 0};
-static char rect_sort_indices[15] = {0};
+static struct RECTANGLE rect_skybox = { 0, 0, 0, 0 };
+static char rect_sort_indices[15] = { 0 };
 static short skybox_current = 0;
 static short skybox_ptr1 = 0;
 static short skybox_ptr2 = 0;
@@ -96,17 +96,17 @@ static unsigned char aEx01ex02ex03leftrigh[] = "ex01ex02ex03leftrigh";
 static unsigned char aTitle[] = "title";
 static unsigned char aLogolog2brav[] = "logolog2brav";
 static char aCarcoun_0[] = "carcoun";
-static unsigned char preview_camera_forward_vector[6] = {0, 0, 140, 216, 120, 65};
+static unsigned char preview_camera_forward_vector[6] = { 0, 0, 140, 216, 120, 65 };
 static short intro_colorvalue = 1;
 
 /* External variables from dseg */
-static struct RECTANGLE fullscreen_rect = {0, 320, 0, 200};
+static struct RECTANGLE fullscreen_rect = { 0, 320, 0, 200 };
 
 
-static struct RECTANGLE rect_ingame_text = {0, 0, 0, 0};
-static struct RECTANGLE rect_ingame_text2 = {148, 172, 93, 108};
-static struct RECTANGLE rect_ingame_text3 = {68, 92, 113, 128};
-static struct RECTANGLE rect_ingame_text4 = {228, 252, 113, 128};
+static struct RECTANGLE rect_ingame_text = { 0, 0, 0, 0 };
+static struct RECTANGLE rect_ingame_text2 = { 148, 172, 93, 108 };
+static struct RECTANGLE rect_ingame_text3 = { 68, 92, 113, 128 };
+static struct RECTANGLE rect_ingame_text4 = { 228, 252, 113, 128 };
 
 /* skybox_res pointer - replaces seg/ofs pair */
 static char *g_skybox_res_ptr = NULL;
@@ -118,7 +118,7 @@ static struct SHAPE3D intro_logo2shape;
 static struct SHAPE3D intro_bravshape;
 
 
-static struct RECTANGLE trackpreview_cliprect = {0, 320, 0, 200};
+static struct RECTANGLE trackpreview_cliprect = { 0, 320, 0, 200 };
 
 enum { TRACKOBJECT_RAW_SIZE = 14 };
 
@@ -129,7 +129,8 @@ enum { TRACKOBJECT_RAW_SIZE = 14 };
  * @param index  Entry index.
  * @return Pointer to the 14-byte raw entry.
  */
-static inline const unsigned char *trkobj_entry(const unsigned char *table, unsigned index) {
+static inline const unsigned char *
+trkobj_entry(const unsigned char *table, unsigned index) {
     return table + index * TRACKOBJECT_RAW_SIZE;
 }
 
@@ -139,7 +140,8 @@ static inline const unsigned char *trkobj_entry(const unsigned char *table, unsi
  * @param obj  Track-object entry pointer.
  * @return Same pointer cast to unsigned char.
  */
-static inline const unsigned char *trkobj_raw(const unsigned char *obj) {
+static inline const unsigned char *
+trkobj_raw(const unsigned char *obj) {
     return (const unsigned char *)obj;
 }
 
@@ -149,7 +151,8 @@ static inline const unsigned char *trkobj_raw(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return 16-bit DOS dseg offset of the shape.
  */
-static inline unsigned short trkobj_ofs_shape(const unsigned char *obj) {
+static inline unsigned short
+trkobj_ofs_shape(const unsigned char *obj) {
     const unsigned char *raw = trkobj_raw(obj);
     return (unsigned short)raw[4] | ((unsigned short)raw[5] << 8);
 }
@@ -160,7 +163,8 @@ static inline unsigned short trkobj_ofs_shape(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return 16-bit DOS dseg offset of the low-detail shape.
  */
-static inline unsigned short trkobj_ofs_loshape(const unsigned char *obj) {
+static inline unsigned short
+trkobj_ofs_loshape(const unsigned char *obj) {
     const unsigned char *raw = trkobj_raw(obj);
     return (unsigned short)raw[6] | ((unsigned short)raw[7] << 8);
 }
@@ -227,7 +231,8 @@ enum {
  * @param ofs  16-bit DOS segment offset.
  * @return Pointer to the SHAPE3D, or NULL if invalid.
  */
-static inline struct SHAPE3D *shape3d_from_dos_dseg_offset(unsigned short ofs) {
+static inline struct SHAPE3D *
+shape3d_from_dos_dseg_offset(unsigned short ofs) {
     int idx;
     if (ofs == 0)
         return (struct SHAPE3D *)0;
@@ -247,7 +252,8 @@ static inline struct SHAPE3D *shape3d_from_dos_dseg_offset(unsigned short ofs) {
  * @param obj  Track-object entry pointer.
  * @return Pointer to the SHAPE3D, or NULL.
  */
-static inline struct SHAPE3D *trkobj_shape(const unsigned char *obj) {
+static inline struct SHAPE3D *
+trkobj_shape(const unsigned char *obj) {
     return shape3d_from_dos_dseg_offset(trkobj_ofs_shape(obj));
 }
 
@@ -257,7 +263,8 @@ static inline struct SHAPE3D *trkobj_shape(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Pointer to the SHAPE3D, or NULL.
  */
-static inline struct SHAPE3D *trkobj_loshape(const unsigned char *obj) {
+static inline struct SHAPE3D *
+trkobj_loshape(const unsigned char *obj) {
     return shape3d_from_dos_dseg_offset(trkobj_ofs_loshape(obj));
 }
 
@@ -267,7 +274,8 @@ static inline struct SHAPE3D *trkobj_loshape(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Rotation angle as a signed short.
  */
-static inline short trkobj_roty(const unsigned char *obj) {
+static inline short
+trkobj_roty(const unsigned char *obj) {
     const unsigned char *raw = trkobj_raw(obj);
     return (short)((unsigned short)raw[2] | ((unsigned short)raw[3] << 8));
 }
@@ -278,7 +286,8 @@ static inline short trkobj_roty(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Overlay byte value.
  */
-static inline unsigned char trkobj_overlay(const unsigned char *obj) {
+static inline unsigned char
+trkobj_overlay(const unsigned char *obj) {
     return trkobj_raw(obj)[8];
 }
 
@@ -288,7 +297,8 @@ static inline unsigned char trkobj_overlay(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Surface type as a signed char.
  */
-static inline signed char trkobj_surface(const unsigned char *obj) {
+static inline signed char
+trkobj_surface(const unsigned char *obj) {
     return (signed char)trkobj_raw(obj)[9];
 }
 
@@ -298,7 +308,8 @@ static inline signed char trkobj_surface(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Non-zero if z-bias should be ignored.
  */
-static inline unsigned char trkobj_ignore_zbias(const unsigned char *obj) {
+static inline unsigned char
+trkobj_ignore_zbias(const unsigned char *obj) {
     return trkobj_raw(obj)[10];
 }
 
@@ -308,12 +319,13 @@ static inline unsigned char trkobj_ignore_zbias(const unsigned char *obj) {
  * @param obj  Track-object entry pointer.
  * @return Multi-tile flag byte.
  */
-static inline unsigned char trkobj_multi(const unsigned char *obj) {
+static inline unsigned char
+trkobj_multi(const unsigned char *obj) {
     return trkobj_raw(obj)[11];
 }
 
 
-static struct RECTANGLE intro_cliprect = {0, 320, 0, 200};
+static struct RECTANGLE intro_cliprect = { 0, 320, 0, 200 };
 
 
 /**
@@ -323,7 +335,8 @@ static struct RECTANGLE intro_cliprect = {0, 320, 0, 200};
  * @param index Parameter `index`.
  * @return Function result.
  */
-static unsigned short render_get_material_color(unsigned short index) {
+static unsigned short
+render_get_material_color(unsigned short index) {
     const unsigned char *color_bytes;
     uintptr_t src_addr;
     const unsigned int material_entries = (unsigned int)RENDER_MATERIAL_ENTRY_COUNT;
@@ -334,12 +347,12 @@ static unsigned short render_get_material_color(unsigned short index) {
 
     src_addr = (uintptr_t)material_clrlist_ptr_cpy;
     if (material_clrlist_ptr_cpy != 0 && src_addr >= (uintptr_t)RENDER_MATERIAL_PTR_VALID_BASE) {
-        color_bytes = ((const unsigned char *)material_clrlist_ptr_cpy) +
-                      ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
+        color_bytes = ((const unsigned char *)material_clrlist_ptr_cpy)
+                      + ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
     }
     else {
-        color_bytes = ((const unsigned char *)material_color_list) +
-                      ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
+        color_bytes = ((const unsigned char *)material_color_list)
+                      + ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
     }
 
     return (unsigned short)((unsigned short)color_bytes[0] | ((unsigned short)color_bytes[1] << 8));
@@ -357,14 +370,16 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
 /**--------------------------------------------------------------
  * @brief Free the SDGAME2 resource block.
  /*--------------------------------------------------------------*/
-void free_sdgame2(void) {
+void
+free_sdgame2(void) {
     mmgr_free(sdgame2ptr);
 }
 
 /**--------------------------------------------------------------
  * @brief Unload the skybox resource and reset its state.
  /*--------------------------------------------------------------*/
-void unload_skybox(void) {
+void
+unload_skybox(void) {
     if (mouse_button_state_vector != 0) {
         mmgr_free(g_skybox_res_ptr);
     }
@@ -375,7 +390,8 @@ void unload_skybox(void) {
 /**--------------------------------------------------------------
  * @brief Load the SDGAME2 shape resources and cache their widths.
  /*--------------------------------------------------------------*/
-void load_sdgame2_shapes(void) {
+void
+load_sdgame2_shapes(void) {
     int i;
     sdgame2ptr = (char *)file_load_resource(8, (char *)aSdgame2);
     locate_many_resources(sdgame2ptr, (char *)aEx01ex02ex03leftrigh, (char **)sdgame2shapes);
@@ -390,7 +406,8 @@ void load_sdgame2_shapes(void) {
  * @param z_adjust  Z-depth adjustment for sorting.
  * @param sort_key        Secondary sort parameter stored per shape.
  /*--------------------------------------------------------------*/
-void transformed_shape_add_for_sort(int z_adjust, int sort_key) {
+void
+transformed_shape_add_for_sort(int z_adjust, int sort_key) {
     struct VECTOR shapepos;
     struct VECTOR transformedpos;
     int si, di;
@@ -415,7 +432,8 @@ void transformed_shape_add_for_sort(int z_adjust, int sort_key) {
 /**--------------------------------------------------------------
  * @brief Initialise the rectangle dirty-tracking arrays.
  /*--------------------------------------------------------------*/
-void init_rect_arrays(void) {
+void
+init_rect_arrays(void) {
     int i;
     if (timertestflag_copy != 0) {
         /* Copy fullscreen_rect to first entry of both arrays */
@@ -439,7 +457,8 @@ void init_rect_arrays(void) {
  * @param sink_height  Total height of the sinking region.
  * @return Pointer to the computed bounding rectangle.
  /*--------------------------------------------------------------*/
-struct RECTANGLE *do_sinking(int frame_count, int base_y, int sink_height) {
+struct RECTANGLE *
+do_sinking(int frame_count, int base_y, int sink_height) {
     int di, si;
 
     di = framespersec << 2;
@@ -463,9 +482,10 @@ struct RECTANGLE *do_sinking(int frame_count, int base_y, int sink_height) {
  * @brief Load a skybox scenery set and set sky, ground and water colours.
  * @param skybox_index Skybox selector value from track metadata.
  /*--------------------------------------------------------------*/
-void load_skybox(unsigned char skybox_index) {
+void
+load_skybox(unsigned char skybox_index) {
     short si;
-    static const char *const skybox_names[] = {"desert", "tropical", "alpine", "city", "country"};
+    static const char *const skybox_names[] = { "desert", "tropical", "alpine", "city", "country" };
     unsigned char skybox_idx;
 
     if (skybox_index & RENDER_SKYBOX_ALT_FLAG) {
@@ -485,8 +505,8 @@ void load_skybox(unsigned char skybox_index) {
         mouse_button_state_vector = 1;
 
         {
-            g_skybox_res_ptr =
-                (char *)file_load_shape2d_fatal_thunk((char *)skybox_names[skybox_idx]);
+            g_skybox_res_ptr
+                = (char *)file_load_shape2d_fatal_thunk((char *)skybox_names[skybox_idx]);
         }
 
         locate_many_resources(g_skybox_res_ptr, (char *)aScensce2sce3sce4, (char **)skyboxes);
@@ -534,7 +554,8 @@ set_colors_only:
  * @param angY       Current camera yaw angle.
  * @param skyheight  Pixel row of the horizon.
  /*--------------------------------------------------------------*/
-void draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
+void
+draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
     int si, di;
     int blit_top, blit_bottom;
 
@@ -623,8 +644,9 @@ draw_ground:
  * @param camera_y Parameter `camera_y`.
  * @return Function result.
  */
-int render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sign,
-                        struct MATRIX *camera_matrix, int view_roll, int view_yaw, int camera_y) {
+int
+render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sign,
+                    struct MATRIX *camera_matrix, int view_roll, int view_yaw, int camera_y) {
     int line_intersections[60]; /* buffer for draw_line_related */
     int skybox_drawn;
     int has_wraparound;
@@ -673,10 +695,10 @@ int render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir
     vector_to_point(&horizon_vec_a_cam, &horizon_point_a);
     vector_to_point(&horizon_vec_b_cam, &horizon_point_b);
 
-    if (horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD &&
-        horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD &&
-        horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD &&
-        horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD) {
+    if (horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD
+        && horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD
+        && horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD
+        && horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD) {
         goto no_horizon;
     }
 
@@ -710,9 +732,9 @@ int render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir
     has_wraparound = 0;
 
     /* Wrap-around case detection */
-    if (timertestflag2 != 4 &&
-        ((horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH) ||
-         (horizon_point_a.px < 0 && horizon_point_b.px > RENDER_SCREEN_WIDTH))) {
+    if (timertestflag2 != 4
+        && ((horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH)
+            || (horizon_point_a.px < 0 && horizon_point_b.px > RENDER_SCREEN_WIDTH))) {
         int wrap_x0;
         int wrap_y0;
         int wrap_x1;
@@ -850,8 +872,8 @@ setup_skybox_strip:
 
     for (si = 0; si < di; si++) {
         slice_rect.left = strip_left;
-        slice_rect.right = ((RENDER_SCREEN_WIDTH * si + RENDER_SCREEN_WIDTH) / di) &
-                           video_flag3_isFFFF;
+        slice_rect.right = ((RENDER_SCREEN_WIDTH * si + RENDER_SCREEN_WIDTH) / di)
+                           & video_flag3_isFFFF;
         if (slice_rect.left != slice_rect.right) {
             sky_height = horizon_y_delta * si / di + horizon_y_left;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
@@ -877,12 +899,14 @@ no_wraparound:
  * @return Function result.
  */
         if (horizon_point_a.px != horizon_point_b.px) {
-            left_y = horizon_point_a.py + (int)(((long)(horizon_point_b.py - horizon_point_a.py)) *
-                                                (0 - horizon_point_a.px)) /
-                                              (horizon_point_b.px - horizon_point_a.px);
-            right_y = horizon_point_a.py + (int)(((long)(horizon_point_b.py - horizon_point_a.py)) *
-                                                 (RENDER_SCREEN_WIDTH - horizon_point_a.px)) /
-                                               (horizon_point_b.px - horizon_point_a.px);
+            left_y = horizon_point_a.py
+                     + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                             * (0 - horizon_point_a.px))
+                           / (horizon_point_b.px - horizon_point_a.px);
+            right_y = horizon_point_a.py
+                      + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                              * (RENDER_SCREEN_WIDTH - horizon_point_a.px))
+                            / (horizon_point_b.px - horizon_point_a.px);
         }
         else {
             left_y = (horizon_point_a.py + horizon_point_b.py) / 2;
@@ -901,8 +925,8 @@ no_wraparound:
         slice_rect.top = clip_rect->top;
         slice_rect.bottom = clip_rect->bottom;
         for (strip_idx = 0; strip_idx < strip_count; strip_idx++) {
-            strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH) / strip_count) &
-                          video_flag3_isFFFF;
+            strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH) / strip_count)
+                          & video_flag3_isFFFF;
             if (strip_left != strip_right) {
                 slice_rect.left = strip_left;
                 slice_rect.right = strip_right;
@@ -993,10 +1017,10 @@ no_horizon:
         }
 
         if (angle_rotation_state[view_index] == view_yaw) {
-            if (((struct RECTANGLE *)rect_buffer_primary)[5].left == rect_skybox.left &&
-                ((struct RECTANGLE *)rect_buffer_primary)[5].right == rect_skybox.right &&
-                ((struct RECTANGLE *)rect_buffer_primary)[5].top == rect_skybox.top &&
-                ((struct RECTANGLE *)rect_buffer_primary)[5].bottom == rect_skybox.bottom) {
+            if (((struct RECTANGLE *)rect_buffer_primary)[5].left == rect_skybox.left
+                && ((struct RECTANGLE *)rect_buffer_primary)[5].right == rect_skybox.right
+                && ((struct RECTANGLE *)rect_buffer_primary)[5].top == rect_skybox.top
+                && ((struct RECTANGLE *)rect_buffer_primary)[5].bottom == rect_skybox.bottom) {
                 rect_sort_indices[5] = 0;
             }
             else {
@@ -1043,7 +1067,8 @@ done:
 /**--------------------------------------------------------------
  * @brief Render the 3D track preview shown before a race.
  /*--------------------------------------------------------------*/
-void draw_track_preview(void) {
+void
+draw_track_preview(void) {
     int cell_index, unused_row_temp;
     int object_index;
     unsigned char unused_marker, terrain_id;
@@ -1073,8 +1098,8 @@ void draw_track_preview(void) {
     {
         const uintptr_t terr_ptr = (uintptr_t)track_terrain_map;
         const uintptr_t expected_elem_ptr = terr_ptr - RENDER_TRACK_MAP_DELTA;
-        if (track_elem_map == 0 || (uintptr_t)track_elem_map >= terr_ptr ||
-            (terr_ptr - (uintptr_t)track_elem_map) != RENDER_TRACK_MAP_DELTA) {
+        if (track_elem_map == 0 || (uintptr_t)track_elem_map >= terr_ptr
+            || (terr_ptr - (uintptr_t)track_elem_map) != RENDER_TRACK_MAP_DELTA) {
             track_elem_map = (unsigned char *)expected_elem_ptr;
         }
     }
@@ -1137,8 +1162,8 @@ void draw_track_preview(void) {
     if (terr_map_ptr == 0) {
         return;
     }
-    if (elem_map_ptr == 0 || (uintptr_t)elem_map_ptr >= (uintptr_t)terr_map_ptr ||
-        ((uintptr_t)terr_map_ptr - (uintptr_t)elem_map_ptr) != RENDER_TRACK_MAP_DELTA) {
+    if (elem_map_ptr == 0 || (uintptr_t)elem_map_ptr >= (uintptr_t)terr_map_ptr
+        || ((uintptr_t)terr_map_ptr - (uintptr_t)elem_map_ptr) != RENDER_TRACK_MAP_DELTA) {
         elem_map_ptr = terr_map_ptr - RENDER_TRACK_MAP_DELTA;
     }
 
@@ -1173,8 +1198,8 @@ void draw_track_preview(void) {
                 /* Hill-road substitution: replace element id when on hill-type terrain */
             }
             else if (track_elem != 0) {
-                if (terrain_id >= RENDER_TERRAIN_HILLROAD_MIN &&
-                    terrain_id < RENDER_TERRAIN_HILLROAD_MAX_EXCL) {
+                if (terrain_id >= RENDER_TERRAIN_HILLROAD_MIN
+                    && terrain_id < RENDER_TERRAIN_HILLROAD_MAX_EXCL) {
                     track_elem = subst_hillroad_track(terrain_id, track_elem);
                     terrain_id = 0;
                 }
@@ -1193,23 +1218,23 @@ void draw_track_preview(void) {
                 if (terrain_id != 0) {
                     /* Render hill terrain (loshape) at elevated Y */
                     object_index = (int)terrain_id;
-                    transformed_shape.shapeptr =
-                        trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                    transformed_shape.pos.x =
-                        (trackcenterpos2[(int)col] - angle_sine_table_start) >> 1;
+                    transformed_shape.shapeptr
+                        = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.pos.x = (trackcenterpos2[(int)col] - angle_sine_table_start)
+                                              >> 1;
                     transformed_shape.pos.y = (di - angle_sine_table_offset) >> 1;
                     /* DOS: sub ax, word_3C10C (62736) / sar ax,1 — must wrap at 16 bits */
-                    transformed_shape.pos.z =
-                        (short)((uint16_t)trackcenterpos[row] -
-                                (uint16_t)(unsigned short)angle_sine_table_stride) >>
-                        1;
+                    transformed_shape.pos.z
+                        = (short)((uint16_t)trackcenterpos[row]
+                                  - (uint16_t)(unsigned short)angle_sine_table_stride)
+                          >> 1;
                     transformed_shape.rotvec.x = 0;
                     transformed_shape.rotvec.y = 0;
-                    transformed_shape.rotvec.z =
-                        trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.rotvec.z
+                        = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
                     transformed_shape.ts_flags = 5 | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE *
-                                                                   REND_DIST_MULT;
+                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE
+                                                                   * REND_DIST_MULT;
                     transformed_shape.material = 0;
                     shape3d_render_transformed(&transformed_shape);
                 }
@@ -1220,8 +1245,8 @@ void draw_track_preview(void) {
  * @return Function result.
  */
                 /* Non-hill terrain path (loc_1CE04 in original ASM) */
-                if (track_elem >= RENDER_TRACK_BRIDGE_MIN &&
-                    track_elem <= RENDER_TRACK_BRIDGE_MAX) {
+                if (track_elem >= RENDER_TRACK_BRIDGE_MIN
+                    && track_elem <= RENDER_TRACK_BRIDGE_MAX) {
                     /* Bridge/overpass element: render terrain at all 4 surrounding corners.
                      * Uses hishape per original ASM [bx+4]. */
                     for (corner_idx = 0; corner_idx < 4; corner_idx++) {
@@ -1250,21 +1275,21 @@ void draw_track_preview(void) {
                                 object_index = (int)tv;
                                 transformed_shape.shapeptr = trkobj_shape(
                                     trkobj_entry(sceneshapes2, (unsigned)object_index));
-                                transformed_shape.pos.x =
-                                    (trackcenterpos2[(int)r] - angle_sine_table_start) >> 1;
+                                transformed_shape.pos.x
+                                    = (trackcenterpos2[(int)r] - angle_sine_table_start) >> 1;
                                 transformed_shape.pos.y = (-angle_sine_table_offset) >> 1;
-                                transformed_shape.pos.z =
-                                    (short)((uint16_t)trackcenterpos[(int)c] -
-                                            (uint16_t)(unsigned short)angle_sine_table_stride) >>
-                                    1;
+                                transformed_shape.pos.z
+                                    = (short)((uint16_t)trackcenterpos[(int)c]
+                                              - (uint16_t)(unsigned short)angle_sine_table_stride)
+                                      >> 1;
                                 transformed_shape.rotvec.x = 0;
                                 transformed_shape.rotvec.y = 0;
-                                transformed_shape.rotvec.z =
-                                    trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                                transformed_shape.ts_flags = 5 |
-                                                             TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                                transformed_shape.shape_visibility_threshold =
-                                    RENDER_VISIBILITY_BASE * REND_DIST_MULT;
+                                transformed_shape.rotvec.z = trkobj_roty(
+                                    trkobj_entry(sceneshapes2, (unsigned)object_index));
+                                transformed_shape.ts_flags = 5
+                                                             | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                                transformed_shape.shape_visibility_threshold
+                                    = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
                                 transformed_shape.material = 0;
                                 shape3d_render_transformed(&transformed_shape);
                             }
@@ -1275,22 +1300,22 @@ void draw_track_preview(void) {
                 else if (terrain_id != 0) {
                     /* Regular flat terrain (loshape) */
                     object_index = (int)terrain_id;
-                    transformed_shape.shapeptr =
-                        trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                    transformed_shape.pos.x =
-                        (trackcenterpos2[(int)col] - angle_sine_table_start) >> 1;
+                    transformed_shape.shapeptr
+                        = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.pos.x = (trackcenterpos2[(int)col] - angle_sine_table_start)
+                                              >> 1;
                     transformed_shape.pos.y = (-angle_sine_table_offset) >> 1;
-                    transformed_shape.pos.z =
-                        (short)((uint16_t)trackcenterpos[row] -
-                                (uint16_t)(unsigned short)angle_sine_table_stride) >>
-                        1;
+                    transformed_shape.pos.z
+                        = (short)((uint16_t)trackcenterpos[row]
+                                  - (uint16_t)(unsigned short)angle_sine_table_stride)
+                          >> 1;
                     transformed_shape.rotvec.x = 0;
                     transformed_shape.rotvec.y = 0;
-                    transformed_shape.rotvec.z =
-                        trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.rotvec.z
+                        = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
                     transformed_shape.ts_flags = 5 | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE *
-                                                                   REND_DIST_MULT;
+                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE
+                                                                   * REND_DIST_MULT;
                     transformed_shape.material = 0;
                     shape3d_render_transformed(&transformed_shape);
                 }
@@ -1338,9 +1363,9 @@ void draw_track_preview(void) {
 
                     object_pos.x = (si - angle_sine_table_start) >> 1;
                     object_pos.y = (di - angle_sine_table_offset) >> 1; /* elevated on hills */
-                    object_pos.z = (short)((uint16_t)element_world_z -
-                                           (uint16_t)(unsigned short)angle_sine_table_stride) >>
-                                   1;
+                    object_pos.z = (short)((uint16_t)element_world_z
+                                           - (uint16_t)(unsigned short)angle_sine_table_stride)
+                                   >> 1;
 
                     /* Overlay: loshape of overlay entry, roty from main trkobj */
                     if (trkobj_overlay(tobj) != 0) {
@@ -1388,7 +1413,8 @@ void draw_track_preview(void) {
 /**--------------------------------------------------------------
  * @brief Draw race HUD overlays (messages, arrows and status text).
  /*--------------------------------------------------------------*/
-struct RECTANGLE *draw_ingame_text(void) {
+struct RECTANGLE *
+draw_ingame_text(void) {
     int si;
 
     rect_ingame_text = rect_invalid;
@@ -1524,7 +1550,8 @@ done_text:
  * @param crack_y_scale   Vertical scale for the crack.
  * @return Pointer to the bounding rectangle of the crack overlay.
  /*--------------------------------------------------------------*/
-struct RECTANGLE *init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
+struct RECTANGLE *
+init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
     int frame_index, segment_count;
     int x2, y2, x1, y1;
     struct POINT2D point;
@@ -1590,7 +1617,8 @@ struct RECTANGLE *init_crak(int frame_count, int crack_y_offset, int crack_y_sca
 /**--------------------------------------------------------------
  * @brief Run the title intro animation sequence setup and frame loop.
  /*--------------------------------------------------------------*/
-unsigned short setup_intro(void) {
+unsigned short
+setup_intro(void) {
     short intro_frame_counter;
     short *star_point_count_ptr = 0;
     struct RECTANGLE star_points_buffer_a[50];
@@ -1891,10 +1919,11 @@ unsigned short setup_intro(void) {
  * @param clip_rect Parameter `clip_rect`.
  * @param previous_rect_ptr Parameter `previous_rect_ptr`.
  */
-void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
-              int draw_opponent, int use_primary_logo, short *star_positions,
-              struct POINT2D *star_screen_points, short *star_count, struct RECTANGLE *current_rect,
-              struct RECTANGLE *clip_rect, struct RECTANGLE *previous_rect_ptr) {
+void
+intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
+         int draw_opponent, int use_primary_logo, short *star_positions,
+         struct POINT2D *star_screen_points, short *star_count, struct RECTANGLE *current_rect,
+         struct RECTANGLE *clip_rect, struct RECTANGLE *previous_rect_ptr) {
     struct VECTOR star_camera_vec;
     struct POINT2D screen_point;
     struct VECTOR star_offset_vec;
@@ -2030,7 +2059,8 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
  *
  * @param frame_rect  Bounding rectangle of the current frame.
  /*--------------------------------------------------------------*/
-void render_present_ingame_view(struct RECTANGLE *frame_rect) {
+void
+render_present_ingame_view(struct RECTANGLE *frame_rect) {
     int si, di;
     struct RECTANGLE *rp;
 
@@ -2064,11 +2094,11 @@ void render_present_ingame_view(struct RECTANGLE *frame_rect) {
     }
 
     /* Check if rect at index 5 changed */
-    if (collision_detection_state == sprite_transformation_angle &&
-        rect_buffer_front[5].left == rect_buffer_back[5].left &&
-        rect_buffer_front[5].right == rect_buffer_back[5].right &&
-        rect_buffer_front[5].top == rect_buffer_back[5].top &&
-        rect_buffer_front[5].bottom == rect_buffer_back[5].bottom) {
+    if (collision_detection_state == sprite_transformation_angle
+        && rect_buffer_front[5].left == rect_buffer_back[5].left
+        && rect_buffer_front[5].right == rect_buffer_back[5].right
+        && rect_buffer_front[5].top == rect_buffer_back[5].top
+        && rect_buffer_front[5].bottom == rect_buffer_back[5].bottom) {
         rect_sort_indices[5] = 0;
     }
 
@@ -2124,7 +2154,8 @@ finish:
  * @param src_ptr  Pointer to 6 control-point coordinates (x1,y1,x2,y2,x3,y3).
  * @param dst_ptr  Output vertex buffer written as 16-bit coordinate pairs.
  */
-void build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
+void
+build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
     const short *src = (const short *)src_ptr;
     short *d = (short *)dst_ptr;
     short half_width, half_height, width_three_quarters, height_three_quarters;

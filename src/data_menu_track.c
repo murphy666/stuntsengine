@@ -39,30 +39,30 @@
 
 
 /* ── Track-selection menu button bounding boxes (3 slots) ────────────── */
-unsigned short trackmenu_buttons_x1[] = {16, 112, 208};
-unsigned short trackmenu_buttons_x2[] = {112, 208, 304};
-unsigned short trackmenu_buttons_y1[] = {171, 171, 171};
-unsigned short trackmenu_buttons_y2[] = {197, 197, 197};
+unsigned short trackmenu_buttons_x1[] = { 16, 112, 208 };
+unsigned short trackmenu_buttons_x2[] = { 112, 208, 304 };
+unsigned short trackmenu_buttons_y1[] = { 171, 171, 171 };
+unsigned short trackmenu_buttons_y2[] = { 197, 197, 197 };
 
 /* ── Opponent-selection menu button bounding boxes (5 slots) ─────────── */
-unsigned short opponentmenu_buttons_x1[] = {20, 76, 132, 188, 244};
-unsigned short opponentmenu_buttons_x2[] = {76, 132, 188, 244, 300};
-unsigned short opponentmenu_buttons_y1[] = {177, 177, 177, 177, 177};
-unsigned short opponentmenu_buttons_y2[] = {197, 197, 197, 197, 197};
+unsigned short opponentmenu_buttons_x1[] = { 20, 76, 132, 188, 244 };
+unsigned short opponentmenu_buttons_x2[] = { 76, 132, 188, 244, 300 };
+unsigned short opponentmenu_buttons_y1[] = { 177, 177, 177, 177, 177 };
+unsigned short opponentmenu_buttons_y2[] = { 197, 197, 197, 197, 197 };
 
 /* ── Frame-animation phase thresholds (8 increasing frame counts) ────── */
-unsigned short animation_duration_table[8] = {30, 200, 320, 400, 530, 700, 880, 960};
+unsigned short animation_duration_table[8] = { 30, 200, 320, 400, 530, 700, 880, 960 };
 
 /* ── Car-physics lookup tables (previously in src/carstate_data.c) ───── */
 
 /* Per-wheel grip coefficients (4 wheels × 2 bytes each, little-endian pairs) */
-unsigned char wheel_rating_coefficients[8] = {21, 0, 21, 0, 15, 0, 15, 0};
+unsigned char wheel_rating_coefficients[8] = { 21, 0, 21, 0, 15, 0, 15, 0 };
 
 /* Grass-surface deceleration divisors indexed by wheel count on grass (0-4) */
-unsigned short grassDecelDivTab[] = {255, 256, 192, 128, 64};
+unsigned short grassDecelDivTab[] = { 255, 256, 192, 128, 64 };
 
 /* Corner X-flip flags for collision position rotation (4 corners) */
-short position_rotation_matrix[] = {1, 0, 0, 1};
+short position_rotation_matrix[] = { 1, 0, 0, 1 };
 
 /* Camera reference position/direction vector (4 elements) */
-short camera_position_vector[] = {0, 0, 1, 1};
+short camera_position_vector[] = { 0, 0, 1, 1 };

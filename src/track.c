@@ -48,16 +48,16 @@ static unsigned short track_curve_data = 11;
 
 
 /* file-local data (moved from data_global.c) */
-static unsigned char animation_state_advance_table[6] = {0, 0, 1, 0, 1, 0};
-static unsigned char animation_frame_transition_table[6] = {0, 1, 0, 0, 1, 0};
-static unsigned char terrConnDataEtoW[20] = {0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
-                                             0, 2, 3, 0, 0, 1, 1, 3, 2, 0};
-static unsigned char terrConnDataWtoE[20] = {0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
-                                             1, 0, 0, 3, 2, 2, 3, 1, 1, 0};
-static unsigned char terrConnDataNtoS[20] = {0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
-                                             4, 5, 0, 0, 4, 1, 5, 4, 1, 0};
-static unsigned char terrConnDataStoN[19] = {0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
-                                             4, 0, 5, 4, 0, 5, 1, 1, 4};
+static unsigned char animation_state_advance_table[6] = { 0, 0, 1, 0, 1, 0 };
+static unsigned char animation_frame_transition_table[6] = { 0, 1, 0, 0, 1, 0 };
+static unsigned char terrConnDataEtoW[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
+                                              0, 2, 3, 0, 0, 1, 1, 3, 2, 0 };
+static unsigned char terrConnDataWtoE[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
+                                              1, 0, 0, 3, 2, 2, 3, 1, 1, 0 };
+static unsigned char terrConnDataNtoS[20] = { 0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
+                                              4, 5, 0, 0, 4, 1, 5, 4, 1, 0 };
+static unsigned char terrConnDataStoN[19] = { 0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
+                                              4, 0, 5, 4, 0, 5, 1, 1, 4 };
 
 /*
  * trkmenu.c - Track Menu Functions
@@ -156,7 +156,8 @@ enum {
 /** @brief Track consume dialog click.
  * @return Function result.
  */
-static void track_consume_dialog_click(void) {
+static void
+track_consume_dialog_click(void) {
     unsigned short buttons;
     unsigned short mouse_x;
     unsigned short mouse_y;
@@ -189,7 +190,8 @@ enum {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static unsigned char trkobj_multi_flag_legacy(unsigned elem) {
+static unsigned char
+trkobj_multi_flag_legacy(unsigned elem) {
     if (elem < TRACKOBJECT_LIST_COUNT) {
         return trkObjectList[elem * TRACKOBJECT_RAW_SIZE + 11u];
     }
@@ -210,7 +212,8 @@ static unsigned char trkobj_multi_flag_legacy(unsigned elem) {
  * @param row Parameter `row`.
  * @return Function result.
  */
-static int track_row_ofs_safe(int row) {
+static int
+track_row_ofs_safe(int row) {
     if (row < 0) {
         row = 0;
     }
@@ -225,7 +228,8 @@ static int track_row_ofs_safe(int row) {
  * @param row Parameter `row`.
  * @return Function result.
  */
-static int terrain_row_ofs_safe(int row) {
+static int
+terrain_row_ofs_safe(int row) {
     if (row < 0) {
         row = 0;
     }
@@ -241,7 +245,8 @@ static int terrain_row_ofs_safe(int row) {
  * @param col Parameter `col`.
  * @return Function result.
  */
-static unsigned char terrain_at_safe(int row, int col) {
+static unsigned char
+terrain_at_safe(int row, int col) {
     if (row < 0) {
         row = 0;
     }
@@ -269,7 +274,8 @@ static unsigned char terrain_at_safe(int row, int col) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-void track_cleanup_multitile_markers(void) {
+void
+track_cleanup_multitile_markers(void) {
     unsigned char flags_384[TRACK_TILE_COUNT]; /* 30x30 flag buffer - var_384/var_383 */
     unsigned char row, col;                    /* Loop indices - var_38C, var_388 */
     unsigned char elem_id;                     /* Track element ID - var_38A */
@@ -353,8 +359,8 @@ void track_cleanup_multitile_markers(void) {
             }
             else if (multiflag == 3) {
                 /* Type 3: Corner piece - check multiple conditions */
-                int sum = (int)flags_384[row_ofs_next + col + 1] +
-                          (int)flags_384[row_ofs + col + 1] + (int)flags_384[row_ofs_next + col];
+                int sum = (int)flags_384[row_ofs_next + col + 1] + (int)flags_384[row_ofs + col + 1]
+                          + (int)flags_384[row_ofs_next + col];
 
                 if (sum != 0) {
                     /* Already processed - clear */
@@ -367,9 +373,9 @@ void track_cleanup_multitile_markers(void) {
 				 * - Next row has 254 marker
 				 * - Next row + next col has 253 marker
 				 */
-                if (track_elem_map[row_ofs + col + 1] == TRACK_MARKER_HORIZONTAL &&
-                    track_elem_map[row_ofs_next + col] == TRACK_MARKER_VERTICAL &&
-                    track_elem_map[row_ofs_next + col + 1] == TRACK_MARKER_CORNER) {
+                if (track_elem_map[row_ofs + col + 1] == TRACK_MARKER_HORIZONTAL
+                    && track_elem_map[row_ofs_next + col] == TRACK_MARKER_VERTICAL
+                    && track_elem_map[row_ofs_next + col + 1] == TRACK_MARKER_CORNER) {
                     /* Valid corner - mark all three secondary positions */
                     flags_384[row_ofs + col + 1] = 1;
                     flags_384[row_ofs_next + col] = 1;
@@ -401,7 +407,8 @@ void track_cleanup_multitile_markers(void) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-int track_validate_elements_for_terrain(void) {
+int
+track_validate_elements_for_terrain(void) {
     unsigned char validation_result; /* result/error code */
     unsigned char terrain_type;      /* terrain type */
     unsigned char row;               /* row counter */
@@ -475,9 +482,9 @@ int track_validate_elements_for_terrain(void) {
                 /* Check if element is in valid ranges */
                 elem_tmp = (unsigned int)element_type;
 
-                if ((elem_tmp >= TRACK_ELEM_ROAD_A_MIN && elem_tmp <= TRACK_ELEM_ROAD_A_MAX) ||
-                    (elem_tmp >= TRACK_ELEM_ROAD_B_MIN && elem_tmp <= TRACK_ELEM_ROAD_B_MAX) ||
-                    (elem_tmp >= TRACK_ELEM_ROAD_C_MIN && elem_tmp <= TRACK_ELEM_ROAD_C_MAX)) {
+                if ((elem_tmp >= TRACK_ELEM_ROAD_A_MIN && elem_tmp <= TRACK_ELEM_ROAD_A_MAX)
+                    || (elem_tmp >= TRACK_ELEM_ROAD_B_MIN && elem_tmp <= TRACK_ELEM_ROAD_B_MAX)
+                    || (elem_tmp >= TRACK_ELEM_ROAD_C_MIN && elem_tmp <= TRACK_ELEM_ROAD_C_MAX)) {
                     /* Valid element - do nothing */
                 }
                 else {
@@ -486,8 +493,8 @@ int track_validate_elements_for_terrain(void) {
                     validation_result = TRACK_VALIDATE_ERR_FLAT;
                 }
             }
-            else if (terrain_type >= TRACK_TERRAIN_HILL_MIN &&
-                     terrain_type <= TRACK_TERRAIN_HILL_MAX) {
+            else if (terrain_type >= TRACK_TERRAIN_HILL_MIN
+                     && terrain_type <= TRACK_TERRAIN_HILL_MAX) {
                 /* Terrain types 7-10: hills */
 
                 /* Call subst_hillroad_track to check validity */
@@ -523,7 +530,8 @@ int track_validate_elements_for_terrain(void) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-void preRender_icons(unsigned char icon_page) {
+void
+preRender_icons(unsigned char icon_page) {
     unsigned char element_id; /* element ID */
     unsigned char col;        /* column counter */
     unsigned char row;        /* row counter */
@@ -546,8 +554,8 @@ void preRender_icons(unsigned char icon_page) {
         for (col = 0; col < TRACK_PICKER_COLS; col++) {
             /* Look up element from pboxshape */
             /* pboxshape[icon_page * 36 + row * 6 + col] */
-            element_id = pboxshape[(unsigned int)icon_page * TRACK_PAGE_STRIDE +
-                                   (unsigned int)row * TRACK_PICKER_COLS + col];
+            element_id = pboxshape[(unsigned int)icon_page * TRACK_PAGE_STRIDE
+                                   + (unsigned int)row * TRACK_PICKER_COLS + col];
 
             /* Calculate screen position */
             /* x = col * 16 + 220 */
@@ -597,8 +605,9 @@ void preRender_icons(unsigned char icon_page) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
-                     unsigned char *render_flags_1, unsigned char *render_flags_2) {
+void
+draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned char *render_flags_1,
+                unsigned char *render_flags_2) {
     signed char row;            /* row counter (0-10) */
     signed char col;            /* column counter (0-11) */
     unsigned char terrain_type; /* terrain type */
@@ -685,16 +694,16 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
                     terrVal = terrain_at_safe((int)row + (int)row_offset, si + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_row + 1 < TRACK_SIZE) {
-                        screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y +
-                                  TRACK_TILE_PIXELS;
+                        screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
+                                  + TRACK_TILE_PIXELS;
                         terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                                   si + (int)col_offset);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     }
 
                     /* Source element is current row, previous column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + si +
-                              (int)col_offset - 1;
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + si + (int)col_offset
+                              - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
                         screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
@@ -726,20 +735,20 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
                     terrVal = terrain_at_safe((int)row + (int)row_offset, si + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_col + 1 < TRACK_SIZE) {
-                        screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X +
-                                  TRACK_TILE_PIXELS;
+                        screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
+                                  + TRACK_TILE_PIXELS;
                         terrVal = terrain_at_safe((int)row + (int)row_offset,
                                                   si + (int)col_offset + 1);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     }
 
                     /* Source element is previous row, same column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si +
-                              (int)col_offset;
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si
+                              + (int)col_offset;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
-                        screenY = (int)row * TRACK_TILE_PIXELS -
-                                  (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
+                        screenY = (int)row * TRACK_TILE_PIXELS
+                                  - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
                         screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
@@ -769,12 +778,12 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
 
                     /* Source element is previous row, previous column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si +
-                              (int)col_offset - 1;
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si
+                              + (int)col_offset - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
-                        screenY = (int)row * TRACK_TILE_PIXELS -
-                                  (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
+                        screenY = (int)row * TRACK_TILE_PIXELS
+                                  - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
                         screenX = si * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
@@ -821,8 +830,8 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
             else if (multiflag == 1) {
                 /* Vertical 2-tile element */
                 /* Render terrain for next row */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y +
-                          TRACK_TILE_PIXELS;
+                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
+                          + TRACK_TILE_PIXELS;
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
@@ -836,8 +845,8 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
                 /* Horizontal 2-tile element */
                 /* Render terrain for next column */
                 screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X +
-                          TRACK_TILE_PIXELS;
+                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
+                          + TRACK_TILE_PIXELS;
                 terrVal = terrain_at_safe((int)row + (int)row_offset,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
@@ -851,23 +860,23 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
                 /* Corner 4-tile element */
                 /* Render terrain for additional tiles */
                 screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X +
-                          TRACK_TILE_PIXELS;
+                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
+                          + TRACK_TILE_PIXELS;
                 terrVal = terrain_at_safe((int)row + (int)row_offset,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y +
-                          TRACK_TILE_PIXELS;
+                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
+                          + TRACK_TILE_PIXELS;
                 screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y +
-                          TRACK_TILE_PIXELS;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X +
-                          TRACK_TILE_PIXELS;
+                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
+                          + TRACK_TILE_PIXELS;
+                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
+                          + TRACK_TILE_PIXELS;
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
@@ -887,21 +896,22 @@ void draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset,
  /*--------------------------------------------------------------*/
 
 /* Track menu button arrays (moved from data_global.c) */
-static unsigned short trackmenu2_buttons_x1[] = {9, 202, 220, 8, 220};
-static unsigned short trackmenu2_buttons_x2[] = {199, 206, 315, 199, 315};
-static unsigned short trackmenu2_buttons_y1[] = {181, 4, 132, 4, 36};
-static unsigned short trackmenu2_buttons_y2[] = {187, 179, 139, 179, 187};
+static unsigned short trackmenu2_buttons_x1[] = { 9, 202, 220, 8, 220 };
+static unsigned short trackmenu2_buttons_x2[] = { 199, 206, 315, 199, 315 };
+static unsigned short trackmenu2_buttons_y1[] = { 181, 4, 132, 4, 36 };
+static unsigned short trackmenu2_buttons_y2[] = { 187, 179, 139, 179, 187 };
 
 /* Track data tables (moved from data_global.c) */
-static unsigned short track_segment_offset_table[] = {15104, 15360, 15616, 15872, 16128, 16384,
-                                                      16640, 16896, 17152, 17408, 0,     0};
-static unsigned char track_wall_flags[2] = {30, 6};
-static unsigned char collision_response_code[2] = {29, 9};
+static unsigned short track_segment_offset_table[] = { 15104, 15360, 15616, 15872, 16128, 16384,
+                                                       16640, 16896, 17152, 17408, 0,     0 };
+static unsigned char track_wall_flags[2] = { 30, 6 };
+static unsigned char collision_response_code[2] = { 29, 9 };
 
 /* String constant for terrain templates */
 static char aTer0[] = "ter0";
 
-static void track_editor_copy_window_bitmap(struct SPRITE *dst, const struct SPRITE *src) {
+static void
+track_editor_copy_window_bitmap(struct SPRITE *dst, const struct SPRITE *src) {
     size_t bitmap_bytes;
 
     if (dst == 0 || src == 0 || dst->sprite_bitmapptr == 0 || src->sprite_bitmapptr == 0) {
@@ -918,7 +928,8 @@ static void track_editor_copy_window_bitmap(struct SPRITE *dst, const struct SPR
  /*--------------------------------------------------------------*/
 /** @brief Load tracks menu shapes.
  */
-void load_tracks_menu_shapes(void) {
+void
+load_tracks_menu_shapes(void) {
     /* Far pointers */
     void *sdtedit_shapes;
     void *tedit_res;
@@ -1212,15 +1223,15 @@ void load_tracks_menu_shapes(void) {
             }
 
             /* Adjust viewport to keep cursor visible */
-            while ((int)cursor_col - (int)map_scroll_x + (int)cursor_height_tiles >
-                   TRACK_MAP_VISIBLE_COLS) {
+            while ((int)cursor_col - (int)map_scroll_x + (int)cursor_height_tiles
+                   > TRACK_MAP_VISIBLE_COLS) {
                 map_scroll_x++;
             }
             while ((int)cursor_col < (int)map_scroll_x) {
                 map_scroll_x--;
             }
-            while ((int)cursor_row - (int)map_scroll_y + (int)cursor_width_tiles >
-                   TRACK_MAP_VISIBLE_ROWS) {
+            while ((int)cursor_row - (int)map_scroll_y + (int)cursor_width_tiles
+                   > TRACK_MAP_VISIBLE_ROWS) {
                 map_scroll_y++;
             }
             while ((int)cursor_row < (int)map_scroll_y) {
@@ -1254,8 +1265,8 @@ void load_tracks_menu_shapes(void) {
             /* Adjust picker position to valid element */
             do {
                 unsigned char pbox_val;
-                pbox_val = pboxshape[picker_row * TRACK_PICKER_COLS +
-                                     current_category * TRACK_PAGE_STRIDE + picker_col];
+                pbox_val = pboxshape[picker_row * TRACK_PICKER_COLS
+                                     + current_category * TRACK_PAGE_STRIDE + picker_col];
                 if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                     picker_col--;
                 }
@@ -1369,10 +1380,10 @@ void load_tracks_menu_shapes(void) {
                     map_scroll_y = TRACK_SIZE - 1;
                 }
 
-                cursor_x = ((int)cursor_col - (int)map_scroll_x) * TRACK_TILE_PIXELS +
-                           TRACK_MAP_TILE_OFFSET_X;
-                cursor_y = ((int)cursor_row - (int)map_scroll_y) * TRACK_TILE_PIXELS +
-                           TRACK_MAP_TILE_OFFSET_Y;
+                cursor_x = ((int)cursor_col - (int)map_scroll_x) * TRACK_TILE_PIXELS
+                           + TRACK_MAP_TILE_OFFSET_X;
+                cursor_y = ((int)cursor_row - (int)map_scroll_y) * TRACK_TILE_PIXELS
+                           + TRACK_MAP_TILE_OFFSET_Y;
                 if (cursor_x < 0) {
                     cursor_x = 0;
                 }
@@ -1450,25 +1461,25 @@ void load_tracks_menu_shapes(void) {
 
                 /* Check for wide elements */
                 if (picker_row < 5) {
-                    unsigned char pbox_val = pboxshape[picker_row * TRACK_PICKER_COLS +
-                                                       current_category * TRACK_PAGE_STRIDE +
-                                                       picker_col + TRACK_PICKER_COLS];
+                    unsigned char pbox_val = pboxshape[picker_row * TRACK_PICKER_COLS
+                                                       + current_category * TRACK_PAGE_STRIDE
+                                                       + picker_col + TRACK_PICKER_COLS];
                     if (pbox_val == TRACK_MARKER_VERTICAL) {
                         cursor_draw_height = 32;
                     }
                 }
                 if (picker_col < 5) {
-                    unsigned char pbox_val =
-                        pboxshape[picker_row * TRACK_PICKER_COLS +
-                                  current_category * TRACK_PAGE_STRIDE + picker_col + 1];
+                    unsigned char pbox_val
+                        = pboxshape[picker_row * TRACK_PICKER_COLS
+                                    + current_category * TRACK_PAGE_STRIDE + picker_col + 1];
                     if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                         cursor_draw_width = 32;
                     }
                 }
 
                 /* Get selected element from picker */
-                cursor_element = pboxshape[picker_row * TRACK_PICKER_COLS +
-                                           current_category * TRACK_PAGE_STRIDE + picker_col];
+                cursor_element = pboxshape[picker_row * TRACK_PICKER_COLS
+                                           + current_category * TRACK_PAGE_STRIDE + picker_col];
                 if (cursor_element >= TRACK_MARKER_CORNER) {
                     cursor_element = 0;
                 }
@@ -1501,11 +1512,11 @@ void load_tracks_menu_shapes(void) {
             redraw_window_base = 0;
         }
 
-        if (prev_cursor_screen_x != cursor_screen_x || prev_cursor_screen_y != cursor_screen_y ||
-            prev_cursor_draw_height != cursor_draw_height ||
-            prev_cursor_draw_width != cursor_draw_width ||
-            prev_cursor_shape_index != cursor_shape_index || prev_picker_mode != picker_mode ||
-            prev_selected_element != selected_element) {
+        if (prev_cursor_screen_x != cursor_screen_x || prev_cursor_screen_y != cursor_screen_y
+            || prev_cursor_draw_height != cursor_draw_height
+            || prev_cursor_draw_width != cursor_draw_width
+            || prev_cursor_shape_index != cursor_shape_index || prev_picker_mode != picker_mode
+            || prev_selected_element != selected_element) {
             blink_timer = TRACK_CURSOR_BLINK_START;
             cursor_blink_toggle = 0;
             prev_cursor_screen_x = cursor_screen_x;
@@ -1568,8 +1579,9 @@ void load_tracks_menu_shapes(void) {
             unsigned long delta = timer_get_delta_alt();
             blink_timer += (unsigned short)delta;
             input_code = input_checking((unsigned short)delta);
-            if (input_code == 0 && (((unsigned short)mouse_xpos != last_mouse_x) ||
-                                    ((unsigned short)mouse_ypos != last_mouse_y))) {
+            if (input_code == 0
+                && (((unsigned short)mouse_xpos != last_mouse_x)
+                    || ((unsigned short)mouse_ypos != last_mouse_y))) {
                 input_code = 1;
             }
             last_mouse_x = (unsigned short)mouse_xpos;
@@ -1612,8 +1624,8 @@ void load_tracks_menu_shapes(void) {
                     input_code = 1;
                 }
                 if ((mouse_butstate & 3) != 0) {
-                    unsigned short cat_track_value =
-                        (current_category == 0) ? 0 : (unsigned short)(current_category - 1);
+                    unsigned short cat_track_value
+                        = (current_category == 0) ? 0 : (unsigned short)(current_category - 1);
                     mouse_track_value = mouse_track_op(1, 221, 95, 133, 5, cat_track_value, 1,
                                                        TRACK_MENU_PBOX_ROWS);
                     current_category = (unsigned char)(mouse_track_value + 1);
@@ -1648,9 +1660,9 @@ void load_tracks_menu_shapes(void) {
                     unsigned int pbox_idx;
                     unsigned char pbox_val;
 
-                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS +
-                               (unsigned int)current_category * TRACK_PAGE_STRIDE +
-                               (unsigned int)temp_col;
+                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
+                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                               + (unsigned int)temp_col;
                     pbox_val = pboxshape[pbox_idx];
                     if (pbox_val == TRACK_MARKER_CORNER) {
                         if (temp_row > 0)
@@ -1668,9 +1680,9 @@ void load_tracks_menu_shapes(void) {
                     }
 
                     /* Re-check once after adjustment for mixed markers. */
-                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS +
-                               (unsigned int)current_category * TRACK_PAGE_STRIDE +
-                               (unsigned int)temp_col;
+                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
+                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                               + (unsigned int)temp_col;
                     pbox_val = pboxshape[pbox_idx];
                     if (pbox_val == TRACK_MARKER_VERTICAL && temp_row > 0)
                         temp_row--;
@@ -1933,9 +1945,9 @@ void load_tracks_menu_shapes(void) {
                     unsigned int pbox_idx;
                     unsigned char pbox_val;
 
-                    pbox_idx = (unsigned int)picker_row * TRACK_PICKER_COLS +
-                               (unsigned int)current_category * TRACK_PAGE_STRIDE +
-                               (unsigned int)picker_col;
+                    pbox_idx = (unsigned int)picker_row * TRACK_PICKER_COLS
+                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                               + (unsigned int)picker_col;
                     pbox_val = pboxshape[pbox_idx];
                     if (pbox_val == TRACK_MARKER_CORNER) {
                         if (picker_row > 0)
@@ -1952,9 +1964,9 @@ void load_tracks_menu_shapes(void) {
                             picker_col--;
                     }
 
-                    pbox_idx = (unsigned int)picker_row * TRACK_PICKER_COLS +
-                               (unsigned int)current_category * TRACK_PAGE_STRIDE +
-                               (unsigned int)picker_col;
+                    pbox_idx = (unsigned int)picker_row * TRACK_PICKER_COLS
+                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                               + (unsigned int)picker_col;
                     pbox_val = pboxshape[pbox_idx];
                     if (pbox_val == TRACK_MARKER_VERTICAL && picker_row > 0)
                         picker_row--;
@@ -1963,8 +1975,8 @@ void load_tracks_menu_shapes(void) {
                 }
 
                 /* Get element from picker */
-                selected_element = pboxshape[picker_row * TRACK_PICKER_COLS +
-                                             current_category * TRACK_PAGE_STRIDE + picker_col];
+                selected_element = pboxshape[picker_row * TRACK_PICKER_COLS
+                                             + current_category * TRACK_PAGE_STRIDE + picker_col];
 
                 /* Adjust cursor for multi-tile elements */
                 if (current_category != 0) {
@@ -2275,9 +2287,9 @@ void load_tracks_menu_shapes(void) {
             if (picker_mode && picker_row < 6) {
                 /* Adjust picker position */
                 do {
-                    unsigned char pbox_val =
-                        pboxshape[picker_row * TRACK_PICKER_COLS +
-                                  current_category * TRACK_PAGE_STRIDE + picker_col];
+                    unsigned char pbox_val
+                        = pboxshape[picker_row * TRACK_PICKER_COLS
+                                    + current_category * TRACK_PAGE_STRIDE + picker_col];
                     if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                         picker_col--;
                     }
@@ -2310,9 +2322,9 @@ void load_tracks_menu_shapes(void) {
                 cursor_row++;
             }
             if (picker_mode && picker_row < 6) {
-                unsigned char pbox_val =
-                    pboxshape[picker_row * TRACK_PICKER_COLS +
-                              current_category * TRACK_PAGE_STRIDE + picker_col];
+                unsigned char pbox_val
+                    = pboxshape[picker_row * TRACK_PICKER_COLS
+                                + current_category * TRACK_PAGE_STRIDE + picker_col];
                 if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                     picker_col--;
                 }
@@ -2350,9 +2362,9 @@ void load_tracks_menu_shapes(void) {
             else {
                 /* Adjust picker position */
                 do {
-                    unsigned char pbox_val =
-                        pboxshape[picker_row * TRACK_PICKER_COLS +
-                                  current_category * TRACK_PAGE_STRIDE + picker_col];
+                    unsigned char pbox_val
+                        = pboxshape[picker_row * TRACK_PICKER_COLS
+                                    + current_category * TRACK_PAGE_STRIDE + picker_col];
                     if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                         picker_col--;
                     }
@@ -2391,9 +2403,9 @@ void load_tracks_menu_shapes(void) {
             else if (picker_mode && picker_row <= 5) {
                 /* Check for wide elements in picker */
                 do {
-                    unsigned char pbox_val =
-                        pboxshape[picker_row * TRACK_PICKER_COLS +
-                                  current_category * TRACK_PAGE_STRIDE + picker_col + step];
+                    unsigned char pbox_val
+                        = pboxshape[picker_row * TRACK_PICKER_COLS
+                                    + current_category * TRACK_PAGE_STRIDE + picker_col + step];
                     if (pbox_val >= TRACK_MARKER_VERTICAL) {
                         if (pbox_val == TRACK_MARKER_HORIZONTAL) {
                             step++;
@@ -2461,7 +2473,8 @@ struct TRKOBJINFO_RAW {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static unsigned char *trkobject_raw_entry(unsigned char elem) {
+static unsigned char *
+trkobject_raw_entry(unsigned char elem) {
     return ((unsigned char *)trkObjectList) + ((unsigned int)elem * 14U);
 }
 
@@ -2469,18 +2482,19 @@ static unsigned char *trkobject_raw_entry(unsigned char elem) {
  * @param ofs Parameter `ofs`.
  * @return Function result.
  */
-static unsigned char *trk_resolve_ofs(unsigned short ofs) {
+static unsigned char *
+trk_resolve_ofs(unsigned short ofs) {
     enum { TRKINFO_OFS_BASE = 6664, CAMERA_DATA_OFS_BASE = 3220 };
     unsigned int trkinfo_len = (unsigned int)1680u;
     unsigned int camera_data_len = (unsigned int)3444u;
 
-    if ((unsigned int)ofs >= (unsigned int)TRKINFO_OFS_BASE &&
-        (unsigned int)ofs < (unsigned int)(TRKINFO_OFS_BASE + trkinfo_len)) {
+    if ((unsigned int)ofs >= (unsigned int)TRKINFO_OFS_BASE
+        && (unsigned int)ofs < (unsigned int)(TRKINFO_OFS_BASE + trkinfo_len)) {
         return shapeinfos + ((unsigned int)ofs - (unsigned int)TRKINFO_OFS_BASE);
     }
 
-    if ((unsigned int)ofs >= (unsigned int)CAMERA_DATA_OFS_BASE &&
-        (unsigned int)ofs < (unsigned int)(CAMERA_DATA_OFS_BASE + camera_data_len)) {
+    if ((unsigned int)ofs >= (unsigned int)CAMERA_DATA_OFS_BASE
+        && (unsigned int)ofs < (unsigned int)(CAMERA_DATA_OFS_BASE + camera_data_len)) {
         return track_camera_coords + ((unsigned int)ofs - (unsigned int)CAMERA_DATA_OFS_BASE);
     }
 
@@ -2491,7 +2505,8 @@ static unsigned char *trk_resolve_ofs(unsigned short ofs) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static unsigned char *trkobject_info_ptr(unsigned char elem) {
+static unsigned char *
+trkobject_info_ptr(unsigned char elem) {
     unsigned char *raw = trkobject_raw_entry(elem);
     unsigned short off = (unsigned short)raw[0] | ((unsigned short)raw[1] << 8);
     if (off == 0) {
@@ -2505,7 +2520,8 @@ static unsigned char *trkobject_info_ptr(unsigned char elem) {
  * @param block Parameter `block`.
  * @return Function result.
  */
-static struct TRKOBJINFO_RAW *trkobjinfo_block(unsigned char *base, unsigned char block) {
+static struct TRKOBJINFO_RAW *
+trkobjinfo_block(unsigned char *base, unsigned char block) {
     return (struct TRKOBJINFO_RAW *)(base + ((unsigned int)block * 14u));
 }
 
@@ -2513,7 +2529,8 @@ static struct TRKOBJINFO_RAW *trkobjinfo_block(unsigned char *base, unsigned cha
  * @param info Parameter `info`.
  * @return Function result.
  */
-static short *trkobjinfo_camera_ptr(const struct TRKOBJINFO_RAW *info) {
+static short *
+trkobjinfo_camera_ptr(const struct TRKOBJINFO_RAW *info) {
     return (short *)trk_resolve_ofs((unsigned short)info->si_cameraDataOffset);
 }
 
@@ -2521,7 +2538,8 @@ static short *trkobjinfo_camera_ptr(const struct TRKOBJINFO_RAW *info) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static unsigned char trkobject_multitile_flag(unsigned char elem) {
+static unsigned char
+trkobject_multitile_flag(unsigned char elem) {
     return trkobject_raw_entry(elem)[11];
 }
 
@@ -2546,7 +2564,8 @@ struct TCOMP_ENTRY {
 /** @brief Track setup.
  * @return Function result.
  */
-int track_setup(void) {
+int
+track_setup(void) {
     /* Snapshot td15 at entry to detect runtime overwrites */
 
 
@@ -2624,10 +2643,10 @@ int track_setup(void) {
         prevConnCode = TRACK_CONN_CODE_SENTINEL;
         trkColIndex = 0;
         while ((signed char)trkColIndex < TRACK_SIZE) {
-            tileTerr =
-                track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
-            if (terrConnDataEtoW[(unsigned char)tileTerr] != prevConnCode &&
-                prevConnCode != TRACK_CONN_CODE_SENTINEL) {
+            tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
+                                         + (signed char)trkColIndex];
+            if (terrConnDataEtoW[(unsigned char)tileTerr] != prevConnCode
+                && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
                 goto error_dispatch;
             }
@@ -2643,10 +2662,10 @@ int track_setup(void) {
         prevConnCode = TRACK_CONN_CODE_SENTINEL;
         trkRowIndex = 0;
         while ((signed char)trkRowIndex < TRACK_SIZE) {
-            tileTerr =
-                track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
-            if (terrConnDataNtoS[(unsigned char)tileTerr] != prevConnCode &&
-                prevConnCode != TRACK_CONN_CODE_SENTINEL) {
+            tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
+                                         + (signed char)trkColIndex];
+            if (terrConnDataNtoS[(unsigned char)tileTerr] != prevConnCode
+                && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
                 goto error_dispatch;
             }
@@ -2661,8 +2680,8 @@ int track_setup(void) {
     while ((signed char)trkRowIndex < TRACK_SIZE) {
         trkColIndex = 0;
         while ((signed char)trkColIndex < TRACK_SIZE) {
-            tileElem =
-                track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
+            tileElem
+                = track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
 
             /* Clamp invalid elements */
             if (tileElem >= TRACK_MARKER_CORNER) {
@@ -2712,8 +2731,8 @@ int track_setup(void) {
                 startcol2 = trkColIndex;
                 startrow2 = trkRowIndex;
 
-                tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex] +
-                                             (signed char)trkColIndex];
+                tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
+                                             + (signed char)trkColIndex];
                 if (tileTerr == 6) {
                     hillFlag = 1;
                 }
@@ -2761,9 +2780,9 @@ main_loop:
     matchCount = 0;
 
     /* Bounds check */
-    if ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0 ||
-        (signed char)trkColIndex > TRACK_LAST_INDEX ||
-        (signed char)trkRowIndex > TRACK_LAST_INDEX) {
+    if ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0
+        || (signed char)trkColIndex > TRACK_LAST_INDEX
+        || (signed char)trkRowIndex > TRACK_LAST_INDEX) {
         goto out_of_bounds;
     }
     goto process_tile;
@@ -3273,8 +3292,8 @@ process_piece:
         obstacle_scene_index[(signed char)lap_checkpoint_counter] = opp3Val;
 
         /* Get terrain for prev tile, add hill height if terrain==6 */
-        if (track_terrain_map[terrainrows[(signed char)MprevRowIndex] +
-                              (signed char)MprevColIndex] == 6) {
+        if (track_terrain_map[terrainrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
+            == 6) {
             checkY += TRACK_HILL_HEIGHT_OFFSET; /* hill height = 450 */
         }
 
@@ -3308,8 +3327,8 @@ process_piece:
         }
 
         /* Mark tile in tile_obstacle_map */
-        tile_obstacle_map[trackrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex] =
-            lap_checkpoint_counter;
+        tile_obstacle_map[trackrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
+            = lap_checkpoint_counter;
 
         lap_checkpoint_counter++; /* checkpoint counter++ */
     }
@@ -3502,8 +3521,8 @@ checkpoint_loop_entry:
         }
 
         /* Check terrain for hill height */
-        if (track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex] ==
-            6) {
+        if (track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
+            == 6) {
             /* Hill: set track_element_height_ofs to 450 */
             ((short *)track_element_height_ofs)[di] = TRACK_HILL_HEIGHT_OFFSET;
         }
@@ -3588,7 +3607,8 @@ cleanup:
  * @param p Parameter `p`.
  * @return Function result.
  */
-static uint16_t read_u16(const unsigned char *p) {
+static uint16_t
+read_u16(const unsigned char *p) {
     return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
 }
 
@@ -3600,8 +3620,9 @@ enum { STATE_TRACKOBJECT_RAW_COUNT = 215u };
  * @param out Parameter `out`.
  * @return Function result.
  */
-int state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
-                                 state_trackobject_raw *out) {
+int
+state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
+                             state_trackobject_raw *out) {
     const unsigned char *p;
 
     if (table == 0 || out == 0 || index >= STATE_TRACKOBJECT_RAW_COUNT) {
@@ -3628,8 +3649,9 @@ int state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
  * @param out Parameter `out`.
  * @return Function result.
  */
-int state_trkobjinfo_raw_decode(const unsigned char *table, unsigned int index,
-                                state_trkobjinfo_raw *out) {
+int
+state_trkobjinfo_raw_decode(const unsigned char *table, unsigned int index,
+                            state_trkobjinfo_raw *out) {
     const unsigned char *p;
 
     if (table == 0 || out == 0) {

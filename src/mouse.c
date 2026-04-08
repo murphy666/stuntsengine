@@ -46,7 +46,8 @@ char mouse_motion_state_flag = 0;
 char mouse_motion_detected_flag = 0;
 char kbormouse = 0;
 
-static void mouse_write_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
+static void
+mouse_write_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
     if (buttons) {
         *buttons = mouse_butstate;
     }
@@ -67,7 +68,8 @@ static void mouse_write_state(unsigned short *buttons, unsigned short *x, unsign
  * using mousehorscale (shift right by mousehorscale bits) to match
  * the ASM behaviour.
  */
-void mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
+void
+mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
     if (mouse_driver_enabled == 0) {
         mouse_butstate = 0;
         mouse_write_state(buttons, x, y);
@@ -87,7 +89,8 @@ void mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short 
  * @hpix: Horizontal mickeys per 8 pixels
  * @vpix: Vertical mickeys per 8 pixels
  */
-void mouse_set_pixratio(unsigned short hpix, unsigned short vpix) {
+void
+mouse_set_pixratio(unsigned short hpix, unsigned short vpix) {
     (void)hpix;
     (void)vpix;
 }
@@ -104,7 +107,8 @@ void mouse_set_pixratio(unsigned short hpix, unsigned short vpix) {
  * @height: Screen height for mouse limits (e.g. 200)
  * Returns: Non-zero if mouse driver present, 0 otherwise
  */
-unsigned short mouse_init(unsigned short width, unsigned short height) {
+unsigned short
+mouse_init(unsigned short width, unsigned short height) {
     unsigned short result;
     unsigned short buttons;
 
@@ -147,7 +151,8 @@ unsigned short mouse_init(unsigned short width, unsigned short height) {
  * @hmax: Maximum horizontal position
  * @vmax: Maximum vertical position
  */
-void mouse_set_minmax(int hmin, int vmin, int hmax, int vmax) {
+void
+mouse_set_minmax(int hmin, int vmin, int hmax, int vmax) {
     (void)mousehorscale;
     kb_sdl_set_mouse_limits((unsigned short)hmin, (unsigned short)vmin, (unsigned short)hmax,
                             (unsigned short)vmax);
@@ -163,7 +168,8 @@ void mouse_set_minmax(int hmin, int vmin, int hmax, int vmax) {
  * @x: Horizontal position
  * @y: Vertical position
  */
-void mouse_set_position(int x, int y) {
+void
+mouse_set_position(int x, int y) {
     physics_update_accumulator = x;
     game_paused_timer_counter = y;
     kb_sdl_set_mouse_position((unsigned short)x, (unsigned short)y);
@@ -174,7 +180,8 @@ void mouse_set_position(int x, int y) {
 
 // Draw mouse cursor transparent (show cursor)
 /** @brief Draw the mouse cursor transparently when redraw conditions are met. */
-void mouse_draw_transparent_check(void) {
+void
+mouse_draw_transparent_check(void) {
     mouse_motion_detected_flag = 1;
     if (kbormouse == 0)
         return;
@@ -187,7 +194,8 @@ void mouse_draw_transparent_check(void) {
 
 // Draw mouse cursor opaque (hide/restore background)
 /** @brief Restore the background under the mouse cursor when needed. */
-void mouse_draw_opaque_check(void) {
+void
+mouse_draw_opaque_check(void) {
     mouse_motion_detected_flag = 0;
     if (mouse_isdirty == 0)
         return;
@@ -199,8 +207,9 @@ void mouse_draw_opaque_check(void) {
 // Check if mouse is inside any of an array of rectangles
 // Returns index of hit rectangle, or -1 if none
 /** @brief Return the first rectangle hit by the current mouse cursor position. */
-short mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short *x2_array,
-                          unsigned short *y1_array, unsigned short *y2_array) {
+short
+mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short *x2_array,
+                    unsigned short *y1_array, unsigned short *y2_array) {
     if (kbormouse == 0) {
         return -1;
     }
@@ -214,7 +223,8 @@ short mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short 
 
 // Draw mouse cursor opaque (solid)
 /** @brief Draw the mouse sprite opaquely at the current cursor coordinates. */
-void mouse_draw_opaque(void) {
+void
+mouse_draw_opaque(void) {
     // Save both sprite buffers (sprite_copy_both_to_arg copies sprite1 and sprite2)
     static struct SPRITE local_sprites[2];
     if (mouseunkspriteptr == 0) {
@@ -232,7 +242,8 @@ void mouse_draw_opaque(void) {
 
 // Draw mouse cursor with transparency
 /** @brief Draw the mouse sprite using mask/overlay transparency. */
-void mouse_draw_transparent(void) {
+void
+mouse_draw_transparent(void) {
     // Save both sprite buffers (sprite_copy_both_to_arg copies sprite1 and sprite2)
     static struct SPRITE local_sprites[2];
 
@@ -253,10 +264,10 @@ void mouse_draw_transparent(void) {
 
 // Timer-based sprite update for menu highlighting
 // Returns delta time since last call
-unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short *x1_arr,
-                                     unsigned short *x2_arr, unsigned short *y1_arr,
-                                     unsigned short *y2_arr, unsigned short sprite_hi,
-                                     unsigned short sprite_lo) {
+unsigned int
+mouse_update_menu_blink(unsigned char selected, unsigned short *x1_arr, unsigned short *x2_arr,
+                        unsigned short *y1_arr, unsigned short *y2_arr, unsigned short sprite_hi,
+                        unsigned short sprite_lo) {
 
     unsigned short delta;
     unsigned short sprite_idx;

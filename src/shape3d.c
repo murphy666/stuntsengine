@@ -34,67 +34,69 @@
 #include "shape2d.h"
 /* Variables moved from data_game.c */
 static void (*spritefunc)(unsigned short, unsigned short, unsigned short, unsigned short *,
-                          unsigned short *) = 0;
+                          unsigned short *)
+    = 0;
 static void (*imagefunc)(unsigned short, unsigned short, unsigned short, unsigned short,
-                         unsigned short) = 0;
+                         unsigned short)
+    = 0;
 static void *game1ptr = 0;
 static void *game2ptr = 0;
 static unsigned short polygon_info_head = 0;
 static unsigned polygon_op_error_code = 0;
 static unsigned char *polyinfoptr = 0;
-static int *polyinfoptrs[4097] = {0};
+static int *polyinfoptrs[4097] = { 0 };
 static unsigned select_rect_scale_preview = 0;
 static unsigned char shape3d_vector_direction_bucket = 0;
 static unsigned short zorder_current_index = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static short *car2resptr = 0;
-static struct VECTOR carshapevec2 = {0};
-static unsigned char cos80_2[4] = {0, 0, 0, 0};
+static struct VECTOR carshapevec2 = { 0 };
+static unsigned char cos80_2[4] = { 0, 0, 0, 0 };
 static char *curshapeptr = 0;
-static struct MATRIX mat_y0 = {0};
-static struct MATRIX mat_y100 = {0};
-static struct MATRIX mat_y200 = {0};
-static struct MATRIX mat_y300 = {0};
-static struct VECTOR oppcarshapevec2 = {0};
+static struct MATRIX mat_y0 = { 0 };
+static struct MATRIX mat_y100 = { 0 };
+static struct MATRIX mat_y200 = { 0 };
+static struct MATRIX mat_y300 = { 0 };
+static struct VECTOR oppcarshapevec2 = { 0 };
 static unsigned char palette_brightness_level = 7;
 static unsigned short polyinfonumpolys = 0;
 static unsigned int polyinfoptrnext = 0;
-static unsigned char projectiondata1[2] = {0, 0};
-static unsigned char projectiondata2[2] = {0, 0};
-static unsigned char projectiondata3[2] = {160, 0};
-static unsigned char projectiondata4[2] = {0, 0};
-static unsigned char projectiondata6[2] = {100, 0};
-static unsigned char projectiondata7[2] = {0, 0};
-static unsigned char sin80_2[580] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned char projectiondata1[2] = { 0, 0 };
+static unsigned char projectiondata2[2] = { 0, 0 };
+static unsigned char projectiondata3[2] = { 160, 0 };
+static unsigned char projectiondata4[2] = { 0, 0 };
+static unsigned char projectiondata6[2] = { 100, 0 };
+static unsigned char projectiondata7[2] = { 0, 0 };
+static unsigned char sin80_2[580]
+    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static unsigned char transshapenumvertscopy = 0;
 static unsigned short zorder_next_link = 0;
-static int zorder_shape_list[4097] = {0};
+static int zorder_shape_list[4097] = { 0 };
 static unsigned short zorder_tail_counter = 0;
 
 
 /* file-local data (moved from data_global.c) */
 static char aStxxx[7] = "stxxx"; /* "st" + 4-char car ID + NUL */
-static unsigned char car_wheel_vertex_data[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned char car_wheel_vertex_data[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 static char track_object_shape_names[116 * 5] = {
     /* 00 barn */ 'b', 'a', 'r', 'n', 0,
     /* 01 zbrn */ 'z', 'b', 'r', 'n', 0,
@@ -214,13 +216,14 @@ static char track_object_shape_names[116 * 5] = {
     /*115 exp3 */ 'e', 'x', 'p', '3', 0,
 };
 
-static uint32_t invpow2tbl[32] = {
-    2147483648u, 1073741824u, 536870912u, 268435456u, 134217728u, 67108864u, 33554432u, 16777216u,
-    8388608u,    4194304u,    2097152u,   1048576u,   524288u,    262144u,   131072u,   65536u,
-    32768u,      16384u,      8192u,      4096u,      2048u,      1024u,     512u,      256u,
-    128u,        64u,         32u,        16u,        8u,         4u,        2u,        1u};
-static unsigned char primidxcounttab[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 6, 3, 0, 0};
-static unsigned char primtypetab[16] = {0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 4, 0, 0};
+static uint32_t invpow2tbl[32]
+    = { 2147483648u, 1073741824u, 536870912u, 268435456u, 134217728u, 67108864u, 33554432u,
+        16777216u,   8388608u,    4194304u,   2097152u,   1048576u,   524288u,   262144u,
+        131072u,     65536u,      32768u,     16384u,     8192u,      4096u,     2048u,
+        1024u,       512u,        256u,       128u,       64u,        32u,       16u,
+        8u,          4u,          2u,         1u };
+static unsigned char primidxcounttab[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 6, 3, 0, 0 };
+static unsigned char primtypetab[16] = { 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 4, 0, 0 };
 
 static unsigned char *s_polyinfo_base = 0;
 
@@ -281,11 +284,11 @@ struct LINEINFO {
 
 /* --- sphere / track objects --- */
 /* off_3F3C8: sphere LUT offset table (40 little-endian shorts from data_global.c) — private to shape3d */
-static unsigned short off_3F3C8[40] = {15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
-                                       15556, 15564, 15573, 15583, 15594, 15606, 15619, 15633,
-                                       15648, 15664, 15681, 15699, 15718, 15738, 15759, 15781,
-                                       15804, 15828, 15853, 15879, 15906, 15934, 15963, 15993,
-                                       16024, 16056, 16089, 16123, 16158, 16194, 16231, 16269};
+static unsigned short off_3F3C8[40] = { 15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
+                                        15556, 15564, 15573, 15583, 15594, 15606, 15619, 15633,
+                                        15648, 15664, 15681, 15699, 15718, 15738, 15759, 15781,
+                                        15804, 15828, 15853, 15879, 15906, 15934, 15963, 15993,
+                                        16024, 16056, 16089, 16123, 16158, 16194, 16231, 16269 };
 
 /* --- car shape data --- */
 /* carshapevecs2/3/4 are contiguous within carshapevecs at offsets +6/+12/+18 */
@@ -453,7 +456,8 @@ void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices,
  * Edge-state rows originate from 16-bit DOS intermediates. Keep the row-start
  * calculation in signed-16-bit domain before widening to host int.
  */
-static inline int edge_state_start_row_from_count(const int *edge_state, int count) {
+static inline int
+edge_state_start_row_from_count(const int *edge_state, int count) {
     int start_row = (int)(int16_t)edge_state[3] - count;
     if ((int16_t)edge_state[2] < 0) {
         start_row++;
@@ -461,10 +465,11 @@ static inline int edge_state_start_row_from_count(const int *edge_state, int cou
     return start_row;
 }
 
-static inline unsigned short material_table_word_at(const unsigned char *table, unsigned index) {
+static inline unsigned short
+material_table_word_at(const unsigned char *table, unsigned index) {
     unsigned offset = index * 2u;
-    return (unsigned short)((unsigned short)table[offset] |
-                            (unsigned short)((unsigned short)table[offset + 1u] << 8));
+    return (unsigned short)((unsigned short)table[offset]
+                            | (unsigned short)((unsigned short)table[offset + 1u] << 8));
 }
 
 /**
@@ -473,7 +478,8 @@ static inline unsigned short material_table_word_at(const unsigned char *table, 
  * @param poly_index Index into the polyinfo pointer array.
  * @return 16-bit depth key used by z-order insertion.
  */
-static unsigned short polyinfo_depth_at(int poly_index) {
+static unsigned short
+polyinfo_depth_at(int poly_index) {
     return ((unsigned short *)(void *)polyinfoptrs[poly_index])[0];
 }
 
@@ -491,7 +497,8 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key, unsigned search_mod
 /** @brief Load base 3-D shape resources and initialize track-object shapes.
  * @return 0 on success, 1 on memory/resource failure.
  */
-int shape3d_load_all(void) {
+int
+shape3d_load_all(void) {
     int i;
     unsigned long mmgrofsdiff;
     char *shapename;
@@ -522,7 +529,8 @@ int shape3d_load_all(void) {
 /**
  * @brief Free all loaded 3-D shape resources.
  */
-void shape3d_free_all(void) {
+void
+shape3d_free_all(void) {
     if (game1ptr != 0) {
         mmgr_free(game1ptr);
     }
@@ -539,21 +547,22 @@ void shape3d_free_all(void) {
  * @param shapeptr   Pointer to the raw shape data.
  * @param gameshape  Output SHAPE3D structure.
  */
-void shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape) {
+void
+shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape) {
     struct SHAPE3DHEADER *hdr = (struct SHAPE3DHEADER *)shapeptr;
 
     gameshape->shape3d_numverts = hdr->header_numverts;
     gameshape->shape3d_numprimitives = hdr->header_numprimitives;
     gameshape->shape3d_numpaints = hdr->header_numpaints;
     gameshape->shape3d_verts = (struct VECTOR *)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
-    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES +
-                               SHAPE3D_HEADER_SIZE_BYTES;
-    gameshape->shape3d_cull2 =
-        shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES +
-        hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
-    gameshape->shape3d_primitives =
-        shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES +
-        hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull2 = shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
+                               + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_primitives
+        = shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
+          + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
 }
 
 /**
@@ -561,7 +570,8 @@ void shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape) {
  *
  * @param index  Polygon index.
  */
-static void __attribute__((unused)) polyinfo_append_unsorted(unsigned index) {
+static void __attribute__((unused))
+polyinfo_append_unsorted(unsigned index) {
     unsigned cursor;
 
     if (index >= POLYINFO_MAX_POLYS) {
@@ -597,7 +607,8 @@ static void __attribute__((unused)) polyinfo_append_unsorted(unsigned index) {
  * @param transformed_shape  Transformed shape with position, rotation, and clip data.
  * @return Number of accepted primitives, or 0 if shape is fully culled.
  */
-unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
+unsigned
+shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
     uint32_t *primitive_cull_table;
     uint32_t *paint_cull_table;
     unsigned char vertex_depth_flags[VERTEX_FLAG_COUNT];
@@ -691,9 +702,10 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape
         scratch_vector_a.y = 0;
         scratch_vector_a.z = VIEW_FORWARD_VECTOR_Z;
         mat_mul_vector(&scratch_vector_a, &inverse_model_view_matrix, &scratch_vector_b);
-        if ((scratch_vector_b.y <= 0 || transformed_shape->pos.y >= 0) &&
-            ((transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.x) ||
-             (transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.z))) {
+        if ((scratch_vector_b.y <= 0 || transformed_shape->pos.y >= 0)
+            && ((transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.x)
+                || (transformed_shape->shape_visibility_threshold * 2)
+                       <= abs(shape_position_view.z))) {
             shape3d_vector_direction_bucket = vector_direction_bucket32(&scratch_vector_b);
             direction_cull_mask_primary = invpow2tbl[shape3d_vector_direction_bucket];
             paint_cull_mask = invpow2tbl[shape3d_vector_direction_bucket];
@@ -742,9 +754,9 @@ label_vertex_scan_increment:
 label_vertex_scan_loop:
     if (transshapenumvertscopy > i)
         goto label_transform_and_project_vertex;
-    if ((all_vertices_behind_near_plane != 0 ||
-         transformed_shape->shape_visibility_threshold < abs(shape_position_view.x)) &&
-        (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
+    if ((all_vertices_behind_near_plane != 0
+         || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
+        && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
         return -1;
     }
     goto label_begin_primitive_processing;
@@ -783,8 +795,8 @@ label_begin_primitive_processing:
     transshapeprimitives = (unsigned char *)transformed_shape->shapeptr->shape3d_primitives;
 
 label_primitive_loop_next:
-    transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]] +
-                        transshapenumpaints + 2;
+    transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]]
+                        + transshapenumpaints + 2;
     primitive_flags = transshapeprimitives[1];
     primitive_accept_count = 0;
     if ((primitive_cull_table[0] & direction_cull_mask_primary) != 0) {
@@ -988,7 +1000,8 @@ label_prepare_primitive_submission:
 
     if ((transshapeflags & TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED) == 0) {
         if (is_positive_winding_2d(
-                (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE)) == 0) {
+                (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE))
+            == 0) {
             reject_prim_winding++;
             goto label_optional_rect_update_begin;
         }
@@ -1265,7 +1278,8 @@ label_primitive_loop_exit_or_continue:
  * @param pts Pointer to at least three 2-D points.
  * @return 1 for positive winding, 0 otherwise.
  */
-char is_positive_winding_2d(struct POINT2D *pts) {
+char
+is_positive_winding_2d(struct POINT2D *pts) {
     long dx0, dy0, dx1, dy1;
     long temp;
 
@@ -1290,7 +1304,8 @@ char is_positive_winding_2d(struct POINT2D *pts) {
  * @param i3  Horizontal viewport half-size.
  * @param i4  Vertical viewport half-size.
  */
-static void projection_apply(unsigned short i3, unsigned short i4) {
+static void
+projection_apply(unsigned short i3, unsigned short i4) {
     projectiondata3 = i3 >> 1;
     projectiondata5 = projectiondata3 + projectiondata4;
     projectiondata6 = i4 >> 1;
@@ -1298,8 +1313,8 @@ static void projection_apply(unsigned short i3, unsigned short i4) {
     projectiondata9 = (long)cos_fast(projectiondata1) * projectiondata3 / sin_fast(projectiondata1);
 
     if (projectiondata2 != 0) {
-        projectiondata10 = (long)cos_fast(projectiondata2) * projectiondata6 /
-                           sin_fast(projectiondata2);
+        projectiondata10 = (long)cos_fast(projectiondata2) * projectiondata6
+                           / sin_fast(projectiondata2);
     }
     else {
         projectiondata10 = projectiondata9 - (projectiondata9 >> 3) - (projectiondata9 >> 4);
@@ -1312,7 +1327,8 @@ static void projection_apply(unsigned short i3, unsigned short i4) {
  * @param depth_z Positive depth value.
  * @return Projected radius in pixels, or 0 when depth is non-positive.
  */
-unsigned project_radius_by_depth(unsigned radius_3d, int depth_z) {
+unsigned
+project_radius_by_depth(unsigned radius_3d, int depth_z) {
     unsigned long numer;
 
     if (depth_z <= 0) {
@@ -1330,7 +1346,8 @@ unsigned project_radius_by_depth(unsigned radius_3d, int depth_z) {
  * @param search_mode      0 = restart from current index, 1 = continue from last position.
  * @return 0 on success, 1 if the polygon buffer is full.
  */
-unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) {
+unsigned
+polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) {
     int regdi, regsi, regax;
     unsigned short depth_key;
     unsigned short depth_cur;
@@ -1388,8 +1405,8 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned sear
     }
     zorder_current_index = zorder_shape_list[zorder_current_index];
     polyinfonumpolys++;
-    polyinfoptrnext += (unsigned)(transshapenumvertscopy * (unsigned)sizeof(struct POINT2D)) +
-                       POLYINFO_ENTRY_HEADER_SIZE;
+    polyinfoptrnext += (unsigned)(transshapenumvertscopy * (unsigned)sizeof(struct POINT2D))
+                       + POLYINFO_ENTRY_HEADER_SIZE;
     if (polyinfonumpolys == POLYINFO_MAX_POLYS)
         return 1;
     if (polyinfoptrnext <= POLYINFO_TRANSFORM_LIMIT)
@@ -1405,35 +1422,39 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned sear
  * @param i3 Viewport width parameter.
  * @param i4 Viewport height parameter.
  */
-void set_projection(int i1, int i2, int i3, int i4) {
+void
+set_projection(int i1, int i2, int i3, int i4) {
 
-    projectiondata1 = (((long)i1 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV) >>
-                      PROJECTION_ANGLE_HALF_SHIFT;
-    projectiondata2 = (((long)i2 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV) >>
-                      PROJECTION_ANGLE_HALF_SHIFT;
+    projectiondata1 = (((long)i1 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV)
+                      >> PROJECTION_ANGLE_HALF_SHIFT;
+    projectiondata2 = (((long)i2 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV)
+                      >> PROJECTION_ANGLE_HALF_SHIFT;
     projection_apply((unsigned short)i3, (unsigned short)i4);
 }
 
 /** Set projection from raw angles (nopsub_322DF). */
-void set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3,
-                        unsigned short i4) {
+void
+set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
     projectiondata1 = ang1;
     projectiondata2 = ang2;
     projection_apply(i3, i4);
 }
 
 /** @brief Legacy compatibility wrapper for set_projection_raw(). */
-void nopsub_322DF(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
+void
+nopsub_322DF(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
     set_projection_raw(ang1, ang2, i3, i4);
 }
 
 /** @brief Set global palette brightness level used by 3-D renderer. */
-void set_byte_4032C(unsigned short val) {
+void
+set_byte_4032C(unsigned short val) {
     palette_brightness_level = (unsigned char)val;
 }
 
 /** @brief Update projection center offsets on X/Y axes. */
-void set_projection_offsets(unsigned short arg0, unsigned short arg2) {
+void
+set_projection_offsets(unsigned short arg0, unsigned short arg2) {
     projectiondata4 = arg0;
     projectiondata5 = projectiondata3 + arg0;
     projectiondata7 = arg2;
@@ -1441,7 +1462,8 @@ void set_projection_offsets(unsigned short arg0, unsigned short arg2) {
 }
 
 /** @brief Store a 32-bit signed value into a raw byte buffer. */
-static void write_i32_to_buffer(unsigned char *dst, int32_t value) {
+static void
+write_i32_to_buffer(unsigned char *dst, int32_t value) {
     memcpy(dst, &value, sizeof(value));
 }
 
@@ -1458,8 +1480,9 @@ static void write_i32_to_buffer(unsigned char *dst, int32_t value) {
  * @param use_scaled_preview Non-zero to use scaled preview mode.
  * @return View direction angle in engine angle units.
  */
-unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *cliprect,
-                                int use_scaled_preview) {
+unsigned
+select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *cliprect,
+                       int use_scaled_preview) {
     struct MATRIX *matptr;
     struct VECTOR vec, vec2;
 
@@ -1480,7 +1503,8 @@ unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *
 /**
  * @brief Reset the polygon info buffer for a new frame.
  */
-void polyinfo_reset(void) {
+void
+polyinfo_reset(void) {
     polyinfonumpolys = 0;
     polyinfoptrnext = 0;
     polygon_op_error_code = 0;
@@ -1491,7 +1515,8 @@ void polyinfo_reset(void) {
 /**
  * @brief Precompute sin/cos values at the fixed 80-degree angle.
  */
-void calc_sincos80(void) {
+void
+calc_sincos80(void) {
     write_i32_to_buffer(sin80, (int32_t)sin_fast(SINCOS80_ANGLE));
     write_i32_to_buffer(cos80, (int32_t)cos_fast(SINCOS80_ANGLE));
     write_i32_to_buffer(sin80_2, (int32_t)sin_fast(SINCOS80_ANGLE));
@@ -1501,7 +1526,8 @@ void calc_sincos80(void) {
 /**
  * @brief Atexit handler: free the polygon info buffer.
  */
-static void free_polyinfo_atexit(void) {
+static void
+free_polyinfo_atexit(void) {
     if (s_polyinfo_base != NULL) {
         mmgr_free((char *)s_polyinfo_base);
         s_polyinfo_base = NULL;
@@ -1512,7 +1538,8 @@ static void free_polyinfo_atexit(void) {
 /**
  * @brief Allocate and initialise the polygon info buffer and z-order tables.
  */
-void init_polyinfo(void) {
+void
+init_polyinfo(void) {
     static int atexit_registered = 0;
     if (s_polyinfo_base != NULL) {
         mmgr_free((char *)s_polyinfo_base);
@@ -1542,7 +1569,8 @@ enum { TRACKOBJECT_RAW_SIZE = 14 };
  * @param index  Entry index.
  * @return Pointer to the entry.
  */
-static inline const unsigned char *trkobj_entry(const unsigned char *table, unsigned index) {
+static inline const unsigned char *
+trkobj_entry(const unsigned char *table, unsigned index) {
     return table + index * TRACKOBJECT_RAW_SIZE;
 }
 
@@ -1552,12 +1580,14 @@ static inline const unsigned char *trkobj_entry(const unsigned char *table, unsi
  * @param obj  Pointer to the track-object entry.
  * @return Overlay value.
  */
-static inline unsigned char trkobj_overlay(const unsigned char *obj) {
+static inline unsigned char
+trkobj_overlay(const unsigned char *obj) {
     return obj[8];
 }
 
 /** Ported from seg020.asm */
-void draw_sphere_from_vertex_buffer(const unsigned short *control_points_ptr, unsigned fill_color) {
+void
+draw_sphere_from_vertex_buffer(const unsigned short *control_points_ptr, unsigned fill_color) {
     unsigned vertbuf[64]; /* 128 bytes = 64 words */
     build_sphere_vertex_buffer(control_points_ptr, vertbuf);
     preRender_default_alt(fill_color, SPHERE_VERTEX_BUFFER_LINES, vertbuf);
@@ -1570,7 +1600,8 @@ void draw_sphere_from_vertex_buffer(const unsigned short *control_points_ptr, un
  * @param radius Sphere radius.
  * @param color Fill color index.
  */
-void preRender_sphere(int center_x, int center_y, int radius, int color) {
+void
+preRender_sphere(int center_x, int center_y, int radius, int color) {
     /* Large arrays for left/right edge coordinates (stack: ~2KB) */
     unsigned short left_edge_x[493];  /* x1 array (left edges) */
     unsigned short right_edge_x[493]; /* x2 array (right edges) */
@@ -1730,7 +1761,8 @@ void preRender_sphere(int center_x, int center_y, int radius, int color) {
  * @param input_data Packed input control point coordinates.
  * @param output_data Output ring vertex/interpolation data.
  */
-void build_wheel_ring_vertices(int *input_data, int *output_data) {
+void
+build_wheel_ring_vertices(int *input_data, int *output_data) {
     int si, di;
     int half_delta_x1, half_delta_y1, neg_delta_x1, neg_delta_y1;
     int i;
@@ -1787,23 +1819,24 @@ void build_wheel_ring_vertices(int *input_data, int *output_data) {
 }
 
 /** Ported from seg019.asm */
-void build_interpolated_wheel_rings(int *input_data, int *output_data, int interpolation_factor) {
+void
+build_interpolated_wheel_rings(int *input_data, int *output_data, int interpolation_factor) {
     int start_x, start_y, interp_x12, interp_y12, interp_x13, interp_y13;
     int interp[6];
 
     start_x = input_data[0];
     start_y = input_data[1];
 
-    interp_x12 = multiply_and_scale((short)interpolation_factor, (short)(input_data[2] - start_x)) +
-                 start_x;
+    interp_x12 = multiply_and_scale((short)interpolation_factor, (short)(input_data[2] - start_x))
+                 + start_x;
     interp_y12 = multiply_and_scale((short)interpolation_factor,
-                                    (short)(input_data[3] - input_data[1])) +
-                 input_data[1];
-    interp_x13 = multiply_and_scale((short)interpolation_factor, (short)(input_data[4] - start_x)) +
-                 start_x;
+                                    (short)(input_data[3] - input_data[1]))
+                 + input_data[1];
+    interp_x13 = multiply_and_scale((short)interpolation_factor, (short)(input_data[4] - start_x))
+                 + start_x;
     interp_y13 = multiply_and_scale((short)interpolation_factor,
-                                    (short)(input_data[5] - input_data[1])) +
-                 input_data[1];
+                                    (short)(input_data[5] - input_data[1]))
+                 + input_data[1];
 
     build_wheel_ring_vertices(input_data, output_data);
     interp[0] = start_x;
@@ -1816,7 +1849,8 @@ void build_interpolated_wheel_rings(int *input_data, int *output_data, int inter
 }
 
 /** Ported from seg023.asm */
-void build_wheel_shell_vertices(int *input_data, int *output_data, int interpolation_factor) {
+void
+build_wheel_shell_vertices(int *input_data, int *output_data, int interpolation_factor) {
     int shell_offset_x, shell_offset_y;
     int *src;
     int *dest;
@@ -1845,8 +1879,9 @@ void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count,
                      struct POINT2D vertex_lines[]);
 
 /** Ported from seg022.asm */
-void preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsigned rim_color,
-                     unsigned tread_color) {
+void
+preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsigned rim_color,
+                unsigned tread_color) {
     /* Three regions: outer ring (outer_ring_points), inner ring (inner_ring_points), back-face copy (back_face_points) */
     /* Each region: 16 POINT2D = 32 ints. Original ASM: 64 bytes each, C port: 128 bytes each */
     unsigned wheelBuf[96];     /* 384 bytes = 3 x 32 ints */
@@ -1945,8 +1980,9 @@ struct DRAW_HEALTH_STATS {
  * @param count   Number of points.
  * @param depth   Polygon depth key.
  */
-static void draw_health_note_poly(struct DRAW_HEALTH_STATS *stats, const int *points, int count,
-                                  unsigned short depth) {
+static void
+draw_health_note_poly(struct DRAW_HEALTH_STATS *stats, const int *points, int count,
+                      unsigned short depth) {
     int i;
     int minx, maxx, miny, maxy;
 
@@ -1970,13 +2006,13 @@ static void draw_health_note_poly(struct DRAW_HEALTH_STATS *stats, const int *po
             maxy = y;
     }
 
-    if (maxx < sprite1.sprite_left2 || minx >= sprite1.sprite_widthsum ||
-        maxy < sprite1.sprite_top || miny >= sprite1.sprite_height) {
+    if (maxx < sprite1.sprite_left2 || minx >= sprite1.sprite_widthsum || maxy < sprite1.sprite_top
+        || miny >= sprite1.sprite_height) {
         stats->fully_clipped++;
     }
 
-    if (minx < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxx > DRAW_HEALTH_EXTREME_COORD_LIMIT ||
-        miny < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxy > DRAW_HEALTH_EXTREME_COORD_LIMIT) {
+    if (minx < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxx > DRAW_HEALTH_EXTREME_COORD_LIMIT
+        || miny < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxy > DRAW_HEALTH_EXTREME_COORD_LIMIT) {
         stats->extreme_coords++;
     }
 
@@ -1990,7 +2026,8 @@ static void draw_health_note_poly(struct DRAW_HEALTH_STATS *stats, const int *po
  *
  * @param stats  Accumulator for draw-health counters.
  */
-static void draw_health_validate_links(struct DRAW_HEALTH_STATS *stats) {
+static void
+draw_health_validate_links(struct DRAW_HEALTH_STATS *stats) {
     int node = zorder_shape_list[POLYINFO_HEAD_INDEX];
     unsigned walked = 0;
     unsigned short prev_depth = USHRT_MAX;
@@ -2023,7 +2060,8 @@ static void draw_health_validate_links(struct DRAW_HEALTH_STATS *stats) {
  * Iterates over all accepted polygons, reads material/pattern info,
  * and calls the appropriate preRender function.
  */
-void get_a_poly_info(void) {
+void
+get_a_poly_info(void) {
     unsigned mattype;
     int matcolor;
     int maxcount;
@@ -2086,8 +2124,8 @@ void get_a_poly_info(void) {
             mattype = 0;
         }
         clrlist = material_color_list;
-        if (material_clrlist_ptr_cpy != 0 &&
-            (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+        if (material_clrlist_ptr_cpy != 0
+            && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
             clrlist = material_clrlist_ptr_cpy;
         }
         matcolor = (int)clrlist[(unsigned)mattype * 2u];
@@ -2097,8 +2135,9 @@ void get_a_poly_info(void) {
         {
             int drop_poly = 0;
             maxcount = (signed char)polyinfoptr[3];
-            if (maxcount <= 1 ||
-                maxcount > (int)(sizeof(polygon_points_xy) / (sizeof(polygon_points_xy[0]) * 2))) {
+            if (maxcount <= 1
+                || maxcount
+                       > (int)(sizeof(polygon_points_xy) / (sizeof(polygon_points_xy[0]) * 2))) {
                 break;
             }
             pdata = (int *)(polyinfoptr + POLYINFO_ENTRY_HEADER_SIZE);
@@ -2120,16 +2159,16 @@ void get_a_poly_info(void) {
             }
 
             patlist = material_pattern_list;
-            if (material_patlist_ptr_cpy != 0 &&
-                (uintptr_t)material_patlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+            if (material_patlist_ptr_cpy != 0
+                && (uintptr_t)material_patlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                 patlist = material_patlist_ptr_cpy;
             }
             matpattern = (int)patlist[(unsigned)mattype * 2u];
             pattype2 = 0;
             if (matpattern == 1 || matpattern == 2) {
                 patlist2 = material_pattern2_list;
-                if (material_patlist2_ptr_cpy != 0 &&
-                    (uintptr_t)material_patlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+                if (material_patlist2_ptr_cpy != 0
+                    && (uintptr_t)material_patlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                     patlist2 = material_patlist2_ptr_cpy;
                 }
                 pattype2 = (int)material_table_word_at(patlist2, (unsigned)mattype);
@@ -2146,8 +2185,8 @@ void get_a_poly_info(void) {
             }
             else if (matpattern == 2) {
                 clrlist2 = material_color_list;
-                if (material_clrlist2_ptr_cpy != 0 &&
-                    (uintptr_t)material_clrlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+                if (material_clrlist2_ptr_cpy != 0
+                    && (uintptr_t)material_clrlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                     clrlist2 = material_clrlist2_ptr_cpy;
                 }
                 preRender_two_color_pattern_flag1(pattype2, clrlist2[(unsigned)mattype * 2u],
@@ -2171,8 +2210,8 @@ void get_a_poly_info(void) {
             int b0 = y0 < 0 ? -y0 : y0;
             int a1 = x1 < 0 ? -x1 : x1;
             int b1 = y1 < 0 ? -y1 : y1;
-            if (a0 > RENDER_COORD_ABS_LIMIT || b0 > RENDER_COORD_ABS_LIMIT ||
-                a1 > RENDER_COORD_ABS_LIMIT || b1 > RENDER_COORD_ABS_LIMIT) {
+            if (a0 > RENDER_COORD_ABS_LIMIT || b0 > RENDER_COORD_ABS_LIMIT
+                || a1 > RENDER_COORD_ABS_LIMIT || b1 > RENDER_COORD_ABS_LIMIT) {
                 continue;
             }
         }
@@ -2197,8 +2236,8 @@ void get_a_poly_info(void) {
             int sr = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
             int ax = sx < 0 ? -sx : sx;
             int ay = sy < 0 ? -sy : sy;
-            if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT ||
-                sr > RENDER_COORD_ABS_LIMIT) {
+            if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT
+                || sr > RENDER_COORD_ABS_LIMIT) {
                 continue;
             }
         }
@@ -2217,8 +2256,8 @@ void get_a_poly_info(void) {
             int wheel_interp;
             int drop_wheel = 0;
             clrlist = material_color_list;
-            if (material_clrlist_ptr_cpy != 0 &&
-                (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+            if (material_clrlist_ptr_cpy != 0
+                && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                 clrlist = material_clrlist_ptr_cpy;
             }
             wheel_pts = (const struct POINT2D *)(polyinfoptr + POLYINFO_ENTRY_HEADER_SIZE);
@@ -2273,8 +2312,8 @@ void get_a_poly_info(void) {
  * @param vertex_line_count Number of vertices.
  * @param vertex_lines Interleaved x/y coordinates.
  */
-void preRender_default_alt(unsigned fill_color, unsigned vertex_line_count,
-                           unsigned *vertex_lines) {
+void
+preRender_default_alt(unsigned fill_color, unsigned vertex_line_count, unsigned *vertex_lines) {
     //return preRender_default_alt_(fill_color, vertex_line_count, vertex_lines);
 
     spritefunc = &draw_filled_lines;
@@ -2289,7 +2328,8 @@ void preRender_default_alt(unsigned fill_color, unsigned vertex_line_count,
  * @param vertex_line_count  Number of vertex pairs.
  * @param vertex_lines       Array of vertex coordinate pairs.
  */
-void preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned *vertex_lines) {
+void
+preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned *vertex_lines) {
     //return preRender_default_(fill_color, vertex_line_count, vertex_lines);
 
     spritefunc = &draw_filled_lines;
@@ -2302,8 +2342,8 @@ void preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned
  * @param vertex_line_count Parameter value.
  * @param vertex_lines Parameter value.
  */
-void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count,
-                     struct POINT2D vertex_lines[]) {
+void
+draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D vertex_lines[]) {
 
     //return draw_wheel_quad_(fill_color, vertex_line_count, &vertex_lines);
 
@@ -2321,9 +2361,10 @@ void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count,
  * @param x1arr Parameter value.
  * @return Function return value.
  */
-static void draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numlines,
-                                                  unsigned short y, unsigned short *x2arr,
-                                                  unsigned short *x1arr) {
+static void
+draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numlines,
+                                      unsigned short y, unsigned short *x2arr,
+                                      unsigned short *x1arr) {
     draw_two_color_patterned_lines((unsigned char)color, numlines, y, x2arr, x1arr);
 }
 
@@ -2335,9 +2376,9 @@ static void draw_two_color_patterned_lines_sprite(unsigned short color, unsigned
  * @param x1arr Parameter value.
  * @return Function return value.
  */
-static void draw_patterned_lines_sprite(unsigned short color, unsigned short numlines,
-                                        unsigned short y, unsigned short *x2arr,
-                                        unsigned short *x1arr) {
+static void
+draw_patterned_lines_sprite(unsigned short color, unsigned short numlines, unsigned short y,
+                            unsigned short *x2arr, unsigned short *x1arr) {
     draw_patterned_lines((unsigned char)color, numlines, y, x2arr, x1arr);
 }
 
@@ -2351,9 +2392,10 @@ static void draw_patterned_lines_sprite(unsigned short color, unsigned short num
  * @param vertex_lines       Vertex coordinate array.
  * @param variant_flag       Variant rendering flag.
  */
-static void preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_color,
-                                             unsigned fill_color, unsigned vertex_line_count,
-                                             struct POINT2D *vertex_lines, unsigned variant_flag) {
+static void
+preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_color, unsigned fill_color,
+                                 unsigned vertex_line_count, struct POINT2D *vertex_lines,
+                                 unsigned variant_flag) {
     spritefunc = draw_two_color_patterned_lines_sprite;
     imagefunc = &preRender_line;
 
@@ -2369,8 +2411,9 @@ static void preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_colo
  * @param vertex_line_count Parameter value.
  * @param vertex_lines Parameter value.
  */
-void preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color,
-                                       unsigned vertex_line_count, struct POINT2D *vertex_lines) {
+void
+preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color,
+                                  unsigned vertex_line_count, struct POINT2D *vertex_lines) {
 
     preRender_two_color_pattern_impl(pattern, alt_color, fill_color, vertex_line_count,
                                      vertex_lines, 1);
@@ -2382,8 +2425,9 @@ void preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, uns
  * @param vertex_line_count Parameter value.
  * @param vertex_lines Parameter value.
  */
-void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count,
-                         struct POINT2D *vertex_lines) {
+void
+preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count,
+                    struct POINT2D *vertex_lines) {
 
     //return preRender_patterned_(pattern_type, fill_color, vertex_line_count, vertex_lines);
 
@@ -2403,8 +2447,9 @@ void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned ve
  * @param variant_flag Parameter value.
  * @return Function return value.
  */
-void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
-                            unsigned variant_flag) {
+void
+preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
+                       unsigned variant_flag) {
     int16_t scanline_x_bounds[SCANLINE_HEIGHT + SCANLINE_HEIGHT];
     int16_t *scanline_bounds;
     int min_y, max_y;
@@ -2426,10 +2471,10 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
     {
         int si;
         for (si = 0; si < SCANLINE_HEIGHT; si++) {
-            scanline_x_bounds[si] =
-                (int16_t)sprite1_sprite_widthsum; /* x1 (left) = far right -> empty */
-            scanline_x_bounds[SCANLINE_HEIGHT + si] =
-                (int16_t)(sprite1_sprite_left2 - 1); /* x2 (right) = far left -> empty */
+            scanline_x_bounds[si]
+                = (int16_t)sprite1_sprite_widthsum; /* x1 (left) = far right -> empty */
+            scanline_x_bounds[SCANLINE_HEIGHT + si]
+                = (int16_t)(sprite1_sprite_left2 - 1); /* x2 (right) = far left -> empty */
         }
     }
 
@@ -2609,7 +2654,8 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
  * @param regsi            Pointer to polygon edge data.
  * @param mode             0 = primary path, 1 = secondary path.
  */
-void generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
+void
+generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
 
     int sprite1_sprite_left2 = sprite1.sprite_left2;
     int sprite1_sprite_widthsum = sprite1.sprite_widthsum;
@@ -2708,8 +2754,8 @@ preRender_helper2:
         }
         return;
     case 5:
-        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) |
-                (unsigned int)regsi[2];
+        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
+                | (unsigned int)regsi[2];
         value += FIXED_HALF_16;
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
@@ -2721,8 +2767,8 @@ preRender_helper2:
         }
         return;
     case 6:
-        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) |
-                (unsigned int)regsi[2];
+        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
+                | (unsigned int)regsi[2];
         value += FIXED_HALF_16;
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
@@ -2840,8 +2886,9 @@ preRender_helper2:
  * @param scanline_bounds Parameter value.
  * @return Function return value.
  */
-void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_border_clip,
-                                int16_t *scanline_bounds) {
+void
+accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_border_clip,
+                           int16_t *scanline_bounds) {
     int count;
     int ofs;
     int i;
@@ -2948,8 +2995,8 @@ void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply
             sum = temp + step;
             temp = sum & FIXED_FRAC_MASK_16;
             if (sum > FIXED_FRAC_MASK_16) {
-                if (row >= 0 && row < SCANLINE_HEIGHT &&
-                    scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                if (row >= 0 && row < SCANLINE_HEIGHT
+                    && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
                     scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
                 }
                 row++;
@@ -2964,8 +3011,8 @@ void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply
                 sum = temp + step;
                 temp = sum & FIXED_FRAC_MASK_16;
                 if (sum > FIXED_FRAC_MASK_16) {
-                    if (row >= 0 && row < SCANLINE_HEIGHT &&
-                        scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                    if (row >= 0 && row < SCANLINE_HEIGHT
+                        && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
                         scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
                     }
                     row++;
@@ -2979,8 +3026,8 @@ void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply
 
             if (rem == 0) {
                 ax--;
-                if (row >= 0 && row < SCANLINE_HEIGHT &&
-                    scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                if (row >= 0 && row < SCANLINE_HEIGHT
+                    && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
                     scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
                 }
             }
@@ -3185,13 +3232,14 @@ static unsigned g_interp_offsets_rel[50] = {
     1406u, 1482u, 1560u, 1640u, 1722u, 1806u, 1892u, 1980u, 2070u, 2162u, 2256u,
 };
 
-unsigned off_2F44A[50] = {0};
+unsigned off_2F44A[50] = { 0 };
 static unsigned char g_interp_tables_ready = 0;
 
 /**
  * @brief Initialise interpolation lookup tables for edge rendering.
  */
-static void __attribute__((unused)) shape3d_init_interp_tables(void) {
+static void __attribute__((unused))
+shape3d_init_interp_tables(void) {
     unsigned i;
     uintptr_t base_off;
 
@@ -3215,8 +3263,9 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
  * @param edge_state Parameter value.
  * @return Function return value.
  */
-unsigned draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
-                           int *edge_state) {
+unsigned
+draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                  int *edge_state) {
     //return draw_line_related_(start_x, start_y, end_x, end_y, edge_state);
     return draw_line_related_impl(start_x, start_y, end_x, end_y, edge_state, 0);
 }
@@ -3226,8 +3275,9 @@ unsigned draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, u
  * @param edge_state Parameter value.
  * @return Function return value.
  */
-unsigned draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
-                               int *edge_state) {
+unsigned
+draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                      int *edge_state) {
     //return draw_line_related_alt_(start_x, start_y, end_x, end_y, edge_state);
     return draw_line_related_impl(start_x, start_y, end_x, end_y, edge_state, 1);
 }
@@ -3244,8 +3294,9 @@ unsigned draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_
  * @param allow_steep_modes  Non-zero to enable steep-line processing modes.
  * @return Edge processing result code.
  */
-unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
-                                int *edge_state, unsigned allow_steep_modes) {
+unsigned
+draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                       int *edge_state, unsigned allow_steep_modes) {
     int x0;
     int y0;
     int x1;
@@ -3497,7 +3548,8 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
  * @param shape_index  Index into game3dshapes[].
  * @return 1 on success, 0 if shape not found.
  */
-static int shape3d_try_init_shape(char *resptr, const char *name, int shape_index) {
+static int
+shape3d_try_init_shape(char *resptr, const char *name, int shape_index) {
     char *shape_ptr;
 
     if (resptr == 0 || shape_index < 0 || shape_index >= SHAPE3D_TOTAL_SHAPES) {
@@ -3520,7 +3572,8 @@ static int shape3d_try_init_shape(char *resptr, const char *name, int shape_inde
  * @param player_car_id    4-character player car identifier.
  * @param opponent_car_id  4-character opponent car identifier.
  */
-void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
+void
+shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
     int i;
     struct VECTOR *wheel_vertices_base_ptr;
     unsigned long car_resource_size_bytes;
@@ -3541,8 +3594,8 @@ void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
     shape3d_try_init_shape((char *)carresptr, "car0", 124);
     shape3d_try_init_shape((char *)carresptr, "car1", 126);
 
-    if (game3dshapes[126].shape3d_verts != 0 &&
-        game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+    if (game3dshapes[126].shape3d_verts != 0
+        && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
         wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
         carshapevec.z = wheel_vertices_base_ptr[0].z;
         carshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x) / 2;
@@ -3572,8 +3625,8 @@ void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
     shape3d_try_init_shape((char *)carresptr, "exp3", 119);
 
     if (opponent_car_id[0] != -1) {
-        if (player_car_id[0] == opponent_car_id[0] && player_car_id[1] == opponent_car_id[1] &&
-            player_car_id[2] == opponent_car_id[2] && player_car_id[3] == opponent_car_id[3]) {
+        if (player_car_id[0] == opponent_car_id[0] && player_car_id[1] == opponent_car_id[1]
+            && player_car_id[2] == opponent_car_id[2] && player_car_id[3] == opponent_car_id[3]) {
             car_resource_size_bytes = mmgr_get_chunk_size_bytes((char *)carresptr);
             car2resptr = mmgr_alloc_resbytes("car2", car_resource_size_bytes);
             memcpy((char *)car2resptr, (const char *)carresptr, (size_t)car_resource_size_bytes);
@@ -3591,8 +3644,8 @@ void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
         shape3d_try_init_shape((char *)car2resptr, "car1", 127);
 
         /* Reference uses game3dshapes[126] (player's car1) for opponent wheel setup */
-        if (game3dshapes[126].shape3d_verts != 0 &&
-            game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+        if (game3dshapes[126].shape3d_verts != 0
+            && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
             wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
             oppcarshapevec.z = wheel_vertices_base_ptr[0].z;
             oppcarshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x) / 2;
@@ -3634,10 +3687,11 @@ void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
  * @param wheel_vertex_offsets   Base vertex offsets for wheel rings.
  * @param wheel_center_points    Centre points for inner/outer wheel rings.
  */
-void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle,
-                                       short *wheel_compression_src, short *wheel_state_cache,
-                                       struct VECTOR *wheel_vertex_offsets,
-                                       struct VECTOR *wheel_center_points) {
+void
+shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle,
+                                  short *wheel_compression_src, short *wheel_state_cache,
+                                  struct VECTOR *wheel_vertex_offsets,
+                                  struct VECTOR *wheel_center_points) {
     int i, j;
     int sin_half_angle;
     int cos_half_angle;
@@ -3651,19 +3705,19 @@ void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_
 
         for (i = 0; i < WHEEL_POINTS_PER_RING; i++) {
             rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, cos_half_angle);
-            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle) +
-                                  wheel_center_points[0].x + rotated_component;
+            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle)
+                                  + wheel_center_points[0].x + rotated_component;
             rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, cos_half_angle);
-            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle) +
-                                  wheel_center_points[0].z + rotated_component;
+            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle)
+                                  + wheel_center_points[0].z + rotated_component;
         }
         for (i = WHEEL_POINTS_PER_RING; i < WHEEL_POINTS_BOTH_RINGS; i++) {
             rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, cos_half_angle);
-            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle) +
-                                  wheel_center_points[1].x + rotated_component;
+            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle)
+                                  + wheel_center_points[1].x + rotated_component;
             rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, cos_half_angle);
-            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle) +
-                                  wheel_center_points[1].z + rotated_component;
+            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle)
+                                  + wheel_center_points[1].z + rotated_component;
         }
         wheel_state_cache[4] = wheel_rotation_angle;
     }
@@ -3689,7 +3743,8 @@ void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_
 /**
  * @brief Reset wheel vertices to neutral position and free car shape resources.
  */
-void shape3d_free_car_shapes() {
+void
+shape3d_free_car_shapes() {
     if (car2resptr != 0) {
         shape3d_update_car_wheel_vertices(&(game3dshapes[127].shape3d_verts[8]), 0,
                                           (short *)car_wheel_vertex_data, game_frame_pointer,
@@ -3710,8 +3765,9 @@ void shape3d_free_car_shapes() {
  * @param endY Parameter value.
  * @param color Parameter value.
  */
-void preRender_line(unsigned short startX, unsigned short startY, unsigned short endX,
-                    unsigned short endY, unsigned short color) {
+void
+preRender_line(unsigned short startX, unsigned short startY, unsigned short endX,
+               unsigned short endY, unsigned short color) {
     int x0 = (int)(int16_t)startX;
     int y0 = (int)(int16_t)startY;
     int x1 = (int)(int16_t)endX;

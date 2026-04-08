@@ -51,7 +51,7 @@ static unsigned sound_volume_control = 0;
 static unsigned char vibration_feedback_state = 0; /* was [2]={0,3}; byte 0 is the active value */
 static unsigned int animation_sequence_state = 0;
 static unsigned int animation_sequence_data = 0;
-static timer_callback_func_local g_timer_callbacks[5] = {0, 0, 0, 0, 0};
+static timer_callback_func_local g_timer_callbacks[5] = { 0, 0, 0, 0, 0 };
 static unsigned long g_timer_last_ms = 0;
 static unsigned char g_timer_dispatching = 0;
 static const unsigned long g_timer_counter_units_per_tick = 5UL;
@@ -63,7 +63,8 @@ static void timer_dispatch_elapsed(void);
 /** @brief Timer get counter from words.
  * @return Function result.
  */
-unsigned long timer_get_counter_from_words(void) {
+unsigned long
+timer_get_counter_from_words(void) {
     unsigned short low;
     unsigned short high;
 
@@ -78,7 +79,8 @@ unsigned long timer_get_counter_from_words(void) {
  * @param low Parameter `low`.
  * @param high Parameter `high`.
  */
-void timer_test_set_frame_words(unsigned short low, unsigned short high) {
+void
+timer_test_set_frame_words(unsigned short low, unsigned short high) {
     frame_timer_state = low;
     frame_counter_state = high;
 }
@@ -88,7 +90,8 @@ void timer_test_set_frame_words(unsigned short low, unsigned short high) {
 /** @brief Timer get counter.
  * @return Function result.
  */
-unsigned long timer_get_counter(void) {
+unsigned long
+timer_get_counter(void) {
     unsigned long val;
 
     timer_dispatch_elapsed();
@@ -100,7 +103,8 @@ unsigned long timer_get_counter(void) {
 /** @brief Timer get dispatch hz.
  * @return Function result.
  */
-unsigned long timer_get_dispatch_hz(void) {
+unsigned long
+timer_get_dispatch_hz(void) {
     unsigned long dispatch_hz;
     dispatch_hz = 1000UL / GAME_TIMER_MS_EFF;
     if (dispatch_hz == 0UL) {
@@ -112,7 +116,8 @@ unsigned long timer_get_dispatch_hz(void) {
 /** @brief Timer get display hz.
  * @return Function result.
  */
-unsigned long timer_get_display_hz(void) {
+unsigned long
+timer_get_display_hz(void) {
     static unsigned long cached_hz = 0UL;
     if (cached_hz == 0UL) {
         const char *env_hz = getenv("STUNTS_DISPLAY_HZ");
@@ -135,7 +140,8 @@ unsigned long timer_get_display_hz(void) {
 /** @brief Timer get counter units per second.
  * @return Function result.
  */
-unsigned long timer_get_counter_units_per_second(void) {
+unsigned long
+timer_get_counter_units_per_second(void) {
     return timer_get_dispatch_hz() * g_timer_counter_units_per_tick;
 }
 
@@ -144,7 +150,8 @@ unsigned long timer_get_counter_units_per_second(void) {
  * @param accum Parameter `accum`.
  * @return Function result.
  */
-unsigned long timer_get_subticks_for_rate(unsigned long rate_hz, unsigned long *accum) {
+unsigned long
+timer_get_subticks_for_rate(unsigned long rate_hz, unsigned long *accum) {
     unsigned long dispatch_hz;
     unsigned long subticks;
 
@@ -164,7 +171,8 @@ unsigned long timer_get_subticks_for_rate(unsigned long rate_hz, unsigned long *
  * @param accum Parameter `accum`.
  * @return Function result.
  */
-unsigned long timer_get_counter_step_for_rate(unsigned long rate_hz, unsigned long *accum) {
+unsigned long
+timer_get_counter_step_for_rate(unsigned long rate_hz, unsigned long *accum) {
     unsigned long units_per_sec;
     unsigned long step;
 
@@ -187,8 +195,9 @@ unsigned long timer_get_counter_step_for_rate(unsigned long rate_hz, unsigned lo
  * @param next_counter Parameter `next_counter`.
  * @param accum Parameter `accum`.
  */
-void timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_counter,
-                                 unsigned long *accum) {
+void
+timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_counter,
+                            unsigned long *accum) {
     unsigned long current;
     unsigned long step;
 
@@ -197,8 +206,8 @@ void timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_coun
     }
 
     current = timer_get_counter();
-    if (*next_counter == 0UL || current + 250UL < *next_counter ||
-        current > *next_counter + 250UL) {
+    if (*next_counter == 0UL || current + 250UL < *next_counter
+        || current > *next_counter + 250UL) {
         *next_counter = current;
         *accum = 0UL;
     }
@@ -220,7 +229,8 @@ void timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_coun
 /** @brief Timer get delta.
  * @return Function result.
  */
-unsigned long timer_get_delta(void) {
+unsigned long
+timer_get_delta(void) {
     /* Drive the timer dispatch first (mirrors DOS ISR firing before any read).
 	 * Without this, menu loops that call timer_get_delta_alt() directly never
 	 * advance timer_callback_counter and spin at CPU speed. */
@@ -250,7 +260,8 @@ unsigned long timer_get_delta(void) {
 /** @brief Timer get delta alt.
  * @return Function result.
  */
-unsigned long timer_get_delta_alt(void) {
+unsigned long
+timer_get_delta_alt(void) {
     return timer_get_delta();
 }
 
@@ -260,7 +271,8 @@ unsigned long timer_get_delta_alt(void) {
  * @param ticks Parameter `ticks`.
  * @return Function result.
  */
-unsigned long timer_custom_delta(unsigned long ticks) {
+unsigned long
+timer_custom_delta(unsigned long ticks) {
     return timer_get_counter() - ticks;
 }
 
@@ -268,7 +280,8 @@ unsigned long timer_custom_delta(unsigned long ticks) {
 
 /** @brief Timer reset.
  */
-void timer_reset() {
+void
+timer_reset() {
     timer_callback_counter = 0;
     last_timer_callback_counter = 0;
     g_timer_last_ms = timer_now_ms();
@@ -280,7 +293,8 @@ void timer_reset() {
  * @param ticks Parameter `ticks`.
  * @return Function result.
  */
-unsigned long timer_copy_counter(unsigned long ticks) {
+unsigned long
+timer_copy_counter(unsigned long ticks) {
     timer_copy_unk = timer_get_counter() + ticks;
     return timer_copy_unk;
 }
@@ -290,7 +304,8 @@ unsigned long timer_copy_counter(unsigned long ticks) {
 /** @brief Timer wait for dx.
  * @return Function result.
  */
-unsigned long timer_wait_for_dx(void) {
+unsigned long
+timer_wait_for_dx(void) {
     unsigned long res;
     unsigned long spin_guard = 0;
     do {
@@ -309,7 +324,8 @@ unsigned long timer_wait_for_dx(void) {
 /** @brief Timer compare dx.
  * @return Function result.
  */
-int timer_compare_dx(void) {
+int
+timer_compare_dx(void) {
     return timer_get_counter() >= timer_copy_unk;
 }
 
@@ -319,7 +335,8 @@ int timer_compare_dx(void) {
  * @param ticks Parameter `ticks`.
  * @return Function result.
  */
-unsigned long timer_wait_ticks_and_get_counter(unsigned long ticks) {
+unsigned long
+timer_wait_ticks_and_get_counter(unsigned long ticks) {
     unsigned long target, res;
     target = timer_get_counter() + ticks;
 
@@ -335,7 +352,8 @@ unsigned long timer_wait_ticks_and_get_counter(unsigned long ticks) {
 /** @brief Timer now ms.
  * @return Function result.
  */
-static unsigned long timer_now_ms(void) {
+static unsigned long
+timer_now_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
@@ -346,7 +364,8 @@ static unsigned long timer_now_ms(void) {
 /** @brief Timer dispatch elapsed.
  * @return Function result.
  */
-static void timer_dispatch_elapsed(void) {
+static void
+timer_dispatch_elapsed(void) {
     unsigned long now_ms;
     unsigned long elapsed_ms;
     unsigned long ticks_to_dispatch;
@@ -398,7 +417,8 @@ static void timer_dispatch_elapsed(void) {
 
 /** @brief Timer setup interrupt.
  */
-void timer_setup_interrupt(void) {
+void
+timer_setup_interrupt(void) {
     int i;
 
     music_tempo_state = 5;
@@ -422,7 +442,8 @@ void timer_setup_interrupt(void) {
 
 /** @brief Timer stop dispatch.
  */
-void timer_stop_dispatch(void) {
+void
+timer_stop_dispatch(void) {
     g_timer_dispatching = 0;
 }
 
@@ -431,7 +452,8 @@ void timer_stop_dispatch(void) {
 /* Port of nopsub_30180: enable countdown while keeping timer ISR installed. */
 /** @brief Timer setup interrupt countdown.
  */
-void timer_setup_interrupt_countdown(void) {
+void
+timer_setup_interrupt_countdown(void) {
     timer_setup_interrupt();
     sound_effects_queue = 100;
     audio_sfx_enabled_flag = 1;
@@ -442,7 +464,8 @@ void timer_setup_interrupt_countdown(void) {
 
 /** @brief Timer enable countdown.
  */
-void timer_enable_countdown(void) {
+void
+timer_enable_countdown(void) {
     timer_setup_interrupt_countdown();
 }
 
@@ -456,7 +479,8 @@ void timer_enable_countdown(void) {
  * Searches the timerintr array for an empty slot and adds the callback.
  * Calls fatal_error if no free slots are available.
  */
-void timer_reg_callback(void *callback) {
+void
+timer_reg_callback(void *callback) {
     int i;
     timer_callback_func_local cb = (timer_callback_func_local)callback;
 
@@ -486,7 +510,8 @@ void timer_reg_callback(void *callback) {
  * Searches the timerintr array for the callback and removes it,
  * shifting subsequent entries down to fill the gap.
  */
-void timer_remove_callback(void *callback) {
+void
+timer_remove_callback(void *callback) {
     int i, j;
     timer_callback_func_local cb = (timer_callback_func_local)callback;
 
@@ -513,7 +538,8 @@ void timer_remove_callback(void *callback) {
  * @param delta_lo Parameter `delta_lo`.
  * @param delta_hi Parameter `delta_hi`.
  */
-void set_add_value(unsigned int delta_lo, unsigned int delta_hi) {
+void
+set_add_value(unsigned int delta_lo, unsigned int delta_hi) {
     unsigned long curr, deadline;
 
     curr = timer_get_counter();
@@ -535,7 +561,8 @@ void set_add_value(unsigned int delta_lo, unsigned int delta_hi) {
  * 
  * @return 1 if timer_get_counter() >= animation_sequence_state:animation_sequence_data, 0 otherwise
  */
-int timer_deadline_reached(void) {
+int
+timer_deadline_reached(void) {
     unsigned long curr, deadline;
 
     curr = timer_get_counter();
@@ -555,7 +582,8 @@ int timer_deadline_reached(void) {
  * @param delta Parameter `delta`.
  * @return Function result.
  */
-void timer_wait_ticks(unsigned long delta) {
+void
+timer_wait_ticks(unsigned long delta) {
     unsigned long curr, deadline;
 
     curr = timer_get_counter();

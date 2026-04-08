@@ -179,7 +179,7 @@ static unsigned int g_audio_dma_ring_read = 0;
 static unsigned int g_audio_phase_accum = 0;
 static SDL_AudioDeviceID g_audio_sdl_dev = 0;
 /* Per-channel OPL2 ownership: g_opl2_ch_owner[ch] = handle_id, or -1 if free */
-static int g_opl2_ch_owner[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
+static int g_opl2_ch_owner[9] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 /* Shared render buffer for OPL2 engine samples (all channels mixed by the chip) */
 static short g_opl2_sample_buf[4096];
 static unsigned int g_audio_output_rate_hz = 22050u;
@@ -193,7 +193,7 @@ static unsigned int g_audio_music_tick_counter = 0;
 static unsigned int g_audio_music_note_index = 0;
 static unsigned char g_audio_menu_music_enabled = 0;
 static unsigned char g_audio_menu_music_paused = 0;
-static char g_audio_menu_music_name[5] = {0, 0, 0, 0, 0};
+static char g_audio_menu_music_name[5] = { 0, 0, 0, 0, 0 };
 static int g_audio_engine_gain = 160;
 static int g_audio_menu_note_transpose = -12;
 static unsigned int g_audio_menu_duration_scale = 1u;
@@ -274,7 +274,8 @@ static unsigned char audio_sfx_duration_ticks(short chunk_id);
  * @return SB DSP time-constant byte.
  */
 
-static unsigned short audio_sb_time_constant_for_rate(unsigned int rate_hz) {
+static unsigned short
+audio_sb_time_constant_for_rate(unsigned int rate_hz) {
     unsigned int div;
     unsigned int tc;
     if (rate_hz < 4000u) {
@@ -303,7 +304,8 @@ static unsigned short audio_sb_time_constant_for_rate(unsigned int rate_hz) {
  * @return Effective audio refresh rate in Hz.
  */
 
-static unsigned int audio_default_refresh_hz(void) {
+static unsigned int
+audio_default_refresh_hz(void) {
     unsigned long hz = timer_get_dispatch_hz();
     if (hz < 30UL) {
         hz = 30UL;
@@ -322,7 +324,8 @@ static unsigned int audio_default_refresh_hz(void) {
 * @return 1 if the first 4 characters match (case-insensitive), 0 otherwise.
  */
 
-static int audio_name_tag_is(const char *name, const char tag[4]) {
+static int
+audio_name_tag_is(const char *name, const char tag[4]) {
     int i;
     if (name == 0) {
         return 0;
@@ -352,10 +355,11 @@ static int audio_name_tag_is(const char *name, const char tag[4]) {
  * @return 1 if it is a menu-music track name, 0 otherwise.
  */
 
-static int audio_is_menu_track_name(const char *name) {
-    if (audio_name_tag_is(name, "TITL") || audio_name_tag_is(name, "SLCT") ||
-        audio_name_tag_is(name, "VICT") || audio_name_tag_is(name, "OVER") ||
-        audio_name_tag_is(name, "DEMO")) {
+static int
+audio_is_menu_track_name(const char *name) {
+    if (audio_name_tag_is(name, "TITL") || audio_name_tag_is(name, "SLCT")
+        || audio_name_tag_is(name, "VICT") || audio_name_tag_is(name, "OVER")
+        || audio_name_tag_is(name, "DEMO")) {
         return 1;
     }
     return 0;
@@ -369,7 +373,8 @@ static int audio_is_menu_track_name(const char *name) {
 * @return 1 if equal (ignoring ASCII case), 0 otherwise.
  */
 
-static int audio_name4_eq(const char *a, const char *b) {
+static int
+audio_name4_eq(const char *a, const char *b) {
     int i;
     for (i = 0; i < 4; i++) {
         unsigned char ca = (unsigned char)a[i];
@@ -388,7 +393,8 @@ static int audio_name4_eq(const char *a, const char *b) {
  * load_sfx_file - load driver-prefixed SFX files
 * Called by file_load_resource(type=6, "eng") to load e.g. "geeng.sfx" or "adeng.sfx"
  */
-void *load_sfx_file(const char *filename) {
+void *
+load_sfx_file(const char *filename) {
     char prefix[3];
     char path[260];
     void *ptr;
@@ -450,7 +456,8 @@ void *load_sfx_file(const char *filename) {
  * For indefinite-sustain sounds (SKID/SKI2 with dur=32767) returns 254 so the
  * caller can use AUDIO_FX_TICKS_PERSIST (255) instead.
  */
-static unsigned char audio_sfx_compute_kms_duration(const unsigned char *bc, unsigned int bc_len) {
+static unsigned char
+audio_sfx_compute_kms_duration(const unsigned char *bc, unsigned int bc_len) {
     unsigned int pos = 0;
     uint32_t abs_tick = 0;
     uint32_t max_end = 0;
@@ -516,8 +523,8 @@ static unsigned char audio_sfx_compute_kms_duration(const unsigned char *bc, uns
  *         count*4 names, count*4 offsets, data_area...}.
  *         The first 4 bytes of each sub-chunk record is u32 LE record_size.
  */
-static const unsigned char *audio_sfx_find_t0s0(const unsigned char *chunk, unsigned int chunk_len,
-                                                unsigned int *out_len) {
+static const unsigned char *
+audio_sfx_find_t0s0(const unsigned char *chunk, unsigned int chunk_len, unsigned int *out_len) {
     unsigned int sub_count, sub_names, sub_offs, sub_data;
     unsigned int j;
 
@@ -542,21 +549,21 @@ static const unsigned char *audio_sfx_find_t0s0(const unsigned char *chunk, unsi
         unsigned int ni = sub_names + j * 4u;
         if (ni + 4u > chunk_len)
             break;
-        if (chunk[ni] == 'T' && chunk[ni + 1] == '0' && chunk[ni + 2] == 'S' &&
-            chunk[ni + 3] == '0') {
+        if (chunk[ni] == 'T' && chunk[ni + 1] == '0' && chunk[ni + 2] == 'S'
+            && chunk[ni + 3] == '0') {
             unsigned int oi = sub_offs + j * 4u;
             unsigned int rel_off;
             unsigned int rec_abs;
             unsigned int rec_size;
             if (oi + 4u > chunk_len)
                 break;
-            rel_off = (unsigned int)(chunk[oi] | (chunk[oi + 1] << 8) | (chunk[oi + 2] << 16) |
-                                     (chunk[oi + 3] << 24));
+            rel_off = (unsigned int)(chunk[oi] | (chunk[oi + 1] << 8) | (chunk[oi + 2] << 16)
+                                     | (chunk[oi + 3] << 24));
             rec_abs = sub_data + rel_off;
             if (rec_abs + 4u > chunk_len)
                 break;
-            rec_size = (unsigned int)(chunk[rec_abs] | (chunk[rec_abs + 1] << 8) |
-                                      (chunk[rec_abs + 2] << 16) | (chunk[rec_abs + 3] << 24));
+            rec_size = (unsigned int)(chunk[rec_abs] | (chunk[rec_abs + 1] << 8)
+                                      | (chunk[rec_abs + 2] << 16) | (chunk[rec_abs + 3] << 24));
             if (rec_size < 5u || rec_abs + rec_size > chunk_len)
                 break;
             *out_len = rec_size - 4u;
@@ -577,7 +584,8 @@ static const unsigned char *audio_sfx_find_t0s0(const unsigned char *chunk, unsi
  * @param sfxres  Pointer to the loaded SFX resource data.
  */
 
-static void audio_sfx_parse_directory(void *sfxres) {
+static void
+audio_sfx_parse_directory(void *sfxres) {
     const unsigned char *data = (const unsigned char *)sfxres;
     unsigned int file_size;
     unsigned int count;
@@ -626,17 +634,17 @@ static void audio_sfx_parse_directory(void *sfxres) {
         g_audio_sfx_chunk_name[i][4] = '\0';
 
         /* Read 32-bit LE offset relative to data_area */
-        rel_ofs = (unsigned int)(data[pofs] | (data[pofs + 1] << 8) | (data[pofs + 2] << 16) |
-                                 (data[pofs + 3] << 24));
+        rel_ofs = (unsigned int)(data[pofs] | (data[pofs + 1] << 8) | (data[pofs + 2] << 16)
+                                 | (data[pofs + 3] << 24));
         abs_ofs = data_area + rel_ofs;
         if (abs_ofs >= file_size)
             continue;
 
         /* First 4 bytes of the record are u32 LE chunk_size */
         {
-            unsigned int rec_size = (unsigned int)(data[abs_ofs] | (data[abs_ofs + 1] << 8) |
-                                                   (data[abs_ofs + 2] << 16) |
-                                                   (data[abs_ofs + 3] << 24));
+            unsigned int rec_size = (unsigned int)(data[abs_ofs] | (data[abs_ofs + 1] << 8)
+                                                   | (data[abs_ofs + 2] << 16)
+                                                   | (data[abs_ofs + 3] << 24));
             chunk_end = abs_ofs + rec_size;
             if (chunk_end > file_size)
                 chunk_end = file_size;
@@ -668,7 +676,8 @@ static void audio_sfx_parse_directory(void *sfxres) {
  * @param name4  4-character chunk name to search for.
 * @return Chunk index, or AUDIO_INVALID_CHUNK (-1) if not found.
  */
-static short audio_sfx_find_chunk(const char *name4) {
+static short
+audio_sfx_find_chunk(const char *name4) {
     unsigned int i;
     if (name4 == 0)
         return AUDIO_INVALID_CHUNK;
@@ -687,7 +696,8 @@ static short audio_sfx_find_chunk(const char *name4) {
  * @return Duration in ticks, or 6 as a safe fallback.
  */
 
-static unsigned char audio_sfx_duration_ticks(short chunk_id) {
+static unsigned char
+audio_sfx_duration_ticks(short chunk_id) {
     if (chunk_id < 0 || (unsigned int)chunk_id >= (unsigned int)g_audio_sfx_chunk_count) {
         return 6u;
     }
@@ -703,7 +713,8 @@ static unsigned char audio_sfx_duration_ticks(short chunk_id) {
  * @param name  4-character track name string.
  */
 
-static void audio_menu_music_set_name(const char *name) {
+static void
+audio_menu_music_set_name(const char *name) {
     int i;
     for (i = 0; i < 4; i++) {
         if (name != 0 && name[i] != '\0') {
@@ -724,7 +735,8 @@ static void audio_menu_music_set_name(const char *name) {
  * @return 1 if strings are equal ignoring ASCII case, 0 otherwise.
  */
 
-static int audio_str_ieq(const char *a, const char *b) {
+static int
+audio_str_ieq(const char *a, const char *b) {
     while (*a != '\0' && *b != '\0') {
         unsigned char ca = (unsigned char)*a;
         unsigned char cb = (unsigned char)*b;
@@ -750,17 +762,18 @@ static int audio_str_ieq(const char *a, const char *b) {
  * @return The 32-bit value.
  */
 
-static unsigned int audio_read_u32_le(const unsigned char *ptr) {
-    return (unsigned int)ptr[0] | ((unsigned int)ptr[1] << 8u) | ((unsigned int)ptr[2] << 16u) |
-           ((unsigned int)ptr[3] << 24u);
+static unsigned int
+audio_read_u32_le(const unsigned char *ptr) {
+    return (unsigned int)ptr[0] | ((unsigned int)ptr[1] << 8u) | ((unsigned int)ptr[2] << 16u)
+           | ((unsigned int)ptr[3] << 24u);
 }
 
 /* -----------------------------------------------------------------------
  * Original AD15.DRV Fnum table (12 entries, one per semitone C..B)
  * Verified from disassembly at CS:0x8B2 of AD15.DRV binary.
  * --------------------------------------------------------------------- */
-static const unsigned short s_ad15_fnum_table[12] = {86,  91,  96,  102, 108, 114,
-                                                     121, 128, 136, 144, 153, 162};
+static const unsigned short s_ad15_fnum_table[12] = { 86,  91,  96,  102, 108, 114,
+                                                      121, 128, 136, 144, 153, 162 };
 
 /**
  * @brief Parse the VCE voice/instrument resource into the global table.
@@ -773,7 +786,8 @@ static const unsigned short s_ad15_fnum_table[12] = {86,  91,  96,  102, 108, 11
  * @return Number of instruments parsed, or 0 on error.
  */
 
-static unsigned short audio_parse_vce_instruments(void *voiceptr) {
+static unsigned short
+audio_parse_vce_instruments(void *voiceptr) {
     const unsigned char *vce;
     unsigned int total_size;
     unsigned short count;
@@ -887,7 +901,8 @@ static unsigned int g_audio_kms_music_hz = 48u; /* music ticks/sec, set from DD 
 
 static const signed char audio_kms_cmd_extra[18] = {
     /* D9  DA  DB  DC  DD  DE  DF  E0  E1  E2  E3  E4  E5  E6  E7  E8  E9  EA */
-    0, 0, 0, 1, 1, 1, 2, 1, 1, 1, 0, 1, 2, 5, -1, -1, 1, 1};
+    0, 0, 0, 1, 1, 1, 2, 1, 1, 1, 0, 1, 2, 5, -1, -1, 1, 1
+};
 
 /**
  * @brief Decode a KMS variable-length quantity (VLQ) from a byte stream.
@@ -900,7 +915,8 @@ static const signed char audio_kms_cmd_extra[18] = {
  * @return Decoded 32-bit value.
  */
 
-static uint32_t audio_kms_read_vlq(const unsigned char *d, size_t *pos, size_t end) {
+static uint32_t
+audio_kms_read_vlq(const unsigned char *d, size_t *pos, size_t end) {
     uint32_t v = 0u;
     while (*pos < end) {
         unsigned char b = d[(*pos)++];
@@ -970,11 +986,12 @@ static int g_audio_kms_opl2_ch[AUDIO_KMS_MAX_TRACKS];
 static int g_audio_kms_opl2_cur_inst[AUDIO_KMS_MAX_TRACKS];
 static int g_audio_kms_hdr1_inst_map[32];
 static unsigned int g_audio_kms_hdr1_inst_count = 0u;
-static const char *const s_kms_drum_names[16] = {"BASD", "TOMM", "SNAR", "TOMM", "TOMM", "TOMM",
-                                                 "CHHT", "TOMM", "OHHT", "TOMM", "OHHT", "TOMM",
-                                                 "TOMM", "RIDE", "TOMM", "CRSH"};
+static const char *const s_kms_drum_names[16] = { "BASD", "TOMM", "SNAR", "TOMM", "TOMM", "TOMM",
+                                                  "CHHT", "TOMM", "OHHT", "TOMM", "OHHT", "TOMM",
+                                                  "TOMM", "RIDE", "TOMM", "CRSH" };
 
-static int audio_chunk_name_eq4(const unsigned char *lhs, const char *rhs) {
+static int
+audio_chunk_name_eq4(const unsigned char *lhs, const char *rhs) {
     int i;
 
     if (lhs == 0 || rhs == 0) {
@@ -990,8 +1007,9 @@ static int audio_chunk_name_eq4(const unsigned char *lhs, const char *rhs) {
     return 1;
 }
 
-static int audio_container_get_chunk_ci(const unsigned char *container, const char *name4,
-                                        const unsigned char **out_chunk, unsigned int *out_size) {
+static int
+audio_container_get_chunk_ci(const unsigned char *container, const char *name4,
+                             const unsigned char **out_chunk, unsigned int *out_size) {
     unsigned int total_size;
     unsigned int count;
     unsigned int names_base;
@@ -1044,7 +1062,8 @@ static int audio_container_get_chunk_ci(const unsigned char *container, const ch
     return 0;
 }
 
-static void audio_debug_music_log(const char *fmt, ...) {
+static void
+audio_debug_music_log(const char *fmt, ...) {
     va_list args;
 
     if (!g_audio_debug_music) {
@@ -1062,25 +1081,26 @@ static void audio_debug_music_log(const char *fmt, ...) {
     g_audio_debug_music_lines++;
 }
 
-static int audio_debug_music_is_trace_track(const AUDIO_KMS_TRACK_INFO *tr,
-                                            const AUDIO_VCE_INSTRUMENT *ins) {
+static int
+audio_debug_music_is_trace_track(const AUDIO_KMS_TRACK_INFO *tr, const AUDIO_VCE_INSTRUMENT *ins) {
     if (tr != 0 && tr->synth_type != 0) {
         return 1;
     }
-    if (ins != 0 && (ins->drum_flag == 5u || memcmp(ins->name, "CHHT", 4u) == 0 ||
-                     memcmp(ins->name, "OHHT", 4u) == 0 || memcmp(ins->name, "CRSH", 4u) == 0 ||
-                     memcmp(ins->name, "RIDE", 4u) == 0 || memcmp(ins->name, "SNAR", 4u) == 0 ||
-                     memcmp(ins->name, "TOMM", 4u) == 0 || memcmp(ins->name, "BASD", 4u) == 0)) {
+    if (ins != 0
+        && (ins->drum_flag == 5u || memcmp(ins->name, "CHHT", 4u) == 0
+            || memcmp(ins->name, "OHHT", 4u) == 0 || memcmp(ins->name, "CRSH", 4u) == 0
+            || memcmp(ins->name, "RIDE", 4u) == 0 || memcmp(ins->name, "SNAR", 4u) == 0
+            || memcmp(ins->name, "TOMM", 4u) == 0 || memcmp(ins->name, "BASD", 4u) == 0)) {
         return 1;
     }
     return 0;
 }
 
-static void audio_debug_music_dump_instrument(const char *prefix, const AUDIO_KMS_TRACK_INFO *tr,
-                                              int ch, const AUDIO_VCE_INSTRUMENT *ins,
-                                              int resolved_index, const AUDIO_KMS_NOTE *ev,
-                                              unsigned int effective_channel_volume,
-                                              unsigned int effective_note_ticks) {
+static void
+audio_debug_music_dump_instrument(const char *prefix, const AUDIO_KMS_TRACK_INFO *tr, int ch,
+                                  const AUDIO_VCE_INSTRUMENT *ins, int resolved_index,
+                                  const AUDIO_KMS_NOTE *ev, unsigned int effective_channel_volume,
+                                  unsigned int effective_note_ticks) {
     if (!audio_debug_music_is_trace_track(tr, ins)) {
         return;
     }
@@ -1098,7 +1118,8 @@ static void audio_debug_music_dump_instrument(const char *prefix, const AUDIO_KM
         ins != 0 ? (unsigned int)ins->op1[3] : 0u, ins != 0 ? (unsigned int)ins->op1[11] : 0u);
 }
 
-static int audio_opl2_music_compute_scale(int velocity, int channel_volume) {
+static int
+audio_opl2_music_compute_scale(int velocity, int channel_volume) {
     int scale = (channel_volume * velocity + 63) / 127;
 
     if (scale > 127)
@@ -1108,7 +1129,8 @@ static int audio_opl2_music_compute_scale(int velocity, int channel_volume) {
     return scale;
 }
 
-static unsigned int audio_opl2_music_compute_tl(unsigned int base_tl, int scale) {
+static unsigned int
+audio_opl2_music_compute_tl(unsigned int base_tl, int scale) {
     int range = 63 - (int)base_tl;
     int attn = (scale * range + 63) / 127;
 
@@ -1134,12 +1156,11 @@ static unsigned int audio_opl2_music_compute_tl(unsigned int base_tl, int scale)
  * @return Number of note events written to @p tmp.
  */
 
-static unsigned int audio_kms_parse_track(const unsigned char *data, size_t start, size_t end,
-                                          AUDIO_KMS_NOTE *tmp, unsigned int max_tmp,
-                                          uint32_t *out_loop_ticks, int *out_instrument_idx,
-                                          int *out_channel_volume, int *out_tempo,
-                                          const int *instrument_map,
-                                          unsigned int instrument_map_count) {
+static unsigned int
+audio_kms_parse_track(const unsigned char *data, size_t start, size_t end, AUDIO_KMS_NOTE *tmp,
+                      unsigned int max_tmp, uint32_t *out_loop_ticks, int *out_instrument_idx,
+                      int *out_channel_volume, int *out_tempo, const int *instrument_map,
+                      unsigned int instrument_map_count) {
     size_t pos = start;
     uint32_t abs_tick = 0u;
     uint32_t loop_end = 0u;
@@ -1233,9 +1254,9 @@ static unsigned int audio_kms_parse_track(const unsigned char *data, size_t star
  * @param out_snd_frames  Output: frames the note should sound.
  */
 
-static void audio_kms_gap_for_event(const AUDIO_KMS_TRACK_INFO *tr, unsigned int ei,
-                                    unsigned int sample_rate, uint32_t *out_gap_frames,
-                                    uint32_t *out_snd_frames) {
+static void
+audio_kms_gap_for_event(const AUDIO_KMS_TRACK_INFO *tr, unsigned int ei, unsigned int sample_rate,
+                        uint32_t *out_gap_frames, uint32_t *out_snd_frames) {
     const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[tr->start_idx + ei];
     uint32_t next_abs = (ei + 1u < tr->count)
                             ? g_audio_kms_evt_pool[tr->start_idx + ei + 1u].abs_tick
@@ -1251,17 +1272,18 @@ static void audio_kms_gap_for_event(const AUDIO_KMS_TRACK_INFO *tr, unsigned int
     *out_snd_frames = snd_f;
 }
 
-static int audio_kms_synth_type(const char *name) {
+static int
+audio_kms_synth_type(const char *name) {
     if (name == 0) {
         return 0;
     }
-    if (strstr(name, "Kick") != 0 || strstr(name, "kick") != 0 || strstr(name, "KICK") != 0 ||
-        strstr(name, "Snare") != 0 || strstr(name, "snare") != 0 || strstr(name, "SNARE") != 0 ||
-        strstr(name, "Tom") != 0 || strstr(name, "tom") != 0 || strstr(name, "TOM") != 0) {
+    if (strstr(name, "Kick") != 0 || strstr(name, "kick") != 0 || strstr(name, "KICK") != 0
+        || strstr(name, "Snare") != 0 || strstr(name, "snare") != 0 || strstr(name, "SNARE") != 0
+        || strstr(name, "Tom") != 0 || strstr(name, "tom") != 0 || strstr(name, "TOM") != 0) {
         return 1;
     }
-    if (strstr(name, "Hat") != 0 || strstr(name, "hat") != 0 || strstr(name, "HAT") != 0 ||
-        strstr(name, "Cym") != 0 || strstr(name, "cym") != 0 || strstr(name, "CYM") != 0) {
+    if (strstr(name, "Hat") != 0 || strstr(name, "hat") != 0 || strstr(name, "HAT") != 0
+        || strstr(name, "Cym") != 0 || strstr(name, "cym") != 0 || strstr(name, "CYM") != 0) {
         return 2;
     }
     return 0;
@@ -1278,7 +1300,8 @@ static int audio_kms_synth_type(const char *name) {
  * @return Total note events loaded across all tracks, or 0 on error.
  */
 
-static unsigned short audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
+static unsigned short
+audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
     const unsigned char *song;
     const unsigned char *menu_chunk;
     const unsigned char *hdr_chunk;
@@ -1371,8 +1394,8 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr, const cha
 
             memcpy(track_name, hdr_chunk + track_pos, 4u);
             track_name[4] = '\0';
-            if (!audio_container_get_chunk_ci(menu_chunk, track_name, &track_chunk, &track_size) ||
-                track_size <= 7u || track_chunk[5] != 231u) {
+            if (!audio_container_get_chunk_ci(menu_chunk, track_name, &track_chunk, &track_size)
+                || track_size <= 7u || track_chunk[5] != 231u) {
                 audio_debug_music_log("audio: hdr1 track %.4s missing or invalid\n", track_name);
                 continue;
             }
@@ -1464,7 +1487,8 @@ static unsigned short audio_extract_menu_resource_notes(void *songptr, const cha
  * No-op when no SDL device is open.
  */
 
-static void audio_sdl_lock(void) {
+static void
+audio_sdl_lock(void) {
     if (g_audio_sdl_dev != 0) {
         SDL_LockAudioDevice(g_audio_sdl_dev);
     }
@@ -1476,7 +1500,8 @@ static void audio_sdl_lock(void) {
  * No-op when no SDL device is open.
  */
 
-static void audio_sdl_unlock(void) {
+static void
+audio_sdl_unlock(void) {
     if (g_audio_sdl_dev != 0) {
         SDL_UnlockAudioDevice(g_audio_sdl_dev);
     }
@@ -1491,7 +1516,8 @@ static void audio_sdl_unlock(void) {
  * @return 1 on success, 0 on failure.
  */
 
-static int audio_sdl_open_device(void) {
+static int
+audio_sdl_open_device(void) {
     SDL_AudioSpec desired;
     SDL_AudioSpec obtained;
     const char *driver_name;
@@ -1538,7 +1564,8 @@ static int audio_sdl_open_device(void) {
  * @brief Close the SDL audio output device and reset the sample rate.
  */
 
-static void audio_sdl_close_device(void) {
+static void
+audio_sdl_close_device(void) {
     if (g_audio_sdl_dev != 0) {
         SDL_CloseAudioDevice(g_audio_sdl_dev);
         g_audio_sdl_dev = 0;
@@ -1553,7 +1580,8 @@ static void audio_sdl_close_device(void) {
  * @return Value clamped to [0, 127].
  */
 
-static unsigned short audio_clamp_u7(int value) {
+static unsigned short
+audio_clamp_u7(int value) {
     if (value < 0) {
         return 0;
     }
@@ -1563,7 +1591,8 @@ static unsigned short audio_clamp_u7(int value) {
     return (unsigned short)value;
 }
 
-static int audio_apply_gain_u7(int value, int gain) {
+static int
+audio_apply_gain_u7(int value, int gain) {
     int scaled = (value * gain + 64) / 128;
 
     if (scaled < 0) {
@@ -1575,7 +1604,8 @@ static int audio_apply_gain_u7(int value, int gain) {
     return scaled;
 }
 
-static int audio_engine_radius3d(int inner_z, int outer_y, int inner_y) {
+static int
+audio_engine_radius3d(int inner_z, int outer_y, int inner_y) {
     return polarRadius2D(polarRadius2D(inner_z, inner_y), outer_y);
 }
 
@@ -1590,7 +1620,8 @@ static int audio_engine_radius3d(int inner_z, int outer_y, int inner_y) {
  * @param value1     Second command parameter.
  */
 
-static void audio_sb_queue_command(unsigned char cmd, short handle_id, short value0, short value1) {
+static void
+audio_sb_queue_command(unsigned char cmd, short handle_id, short value0, short value1) {
     unsigned short next_idx = (unsigned short)((g_audio_cmd_write_idx + 1) % AUDIO_CMD_QUEUE_SIZE);
     if (next_idx == g_audio_cmd_read_idx) {
         g_audio_cmd_read_idx = (unsigned short)((g_audio_cmd_read_idx + 1) % AUDIO_CMD_QUEUE_SIZE);
@@ -1610,7 +1641,8 @@ static void audio_sb_queue_command(unsigned char cmd, short handle_id, short val
  * @param sample  16-bit signed PCM sample.
  */
 
-static void audio_dma_ring_write_sample(int16_t sample) {
+static void
+audio_dma_ring_write_sample(int16_t sample) {
     unsigned int next_write = (g_audio_dma_ring_write + 1u) % AUDIO_DMA_RING_SAMPLES;
     if (next_write == g_audio_dma_ring_read) {
         g_audio_dma_ring_read = (g_audio_dma_ring_read + 1u) % AUDIO_DMA_RING_SAMPLES;
@@ -1627,7 +1659,8 @@ static void audio_dma_ring_write_sample(int16_t sample) {
  * @return 1 if a sample was read, 0 if the buffer was empty.
  */
 
-static int audio_dma_ring_read_sample(int16_t *out_sample) {
+static int
+audio_dma_ring_read_sample(int16_t *out_sample) {
     if (g_audio_dma_ring_read == g_audio_dma_ring_write) {
         return 0;
     }
@@ -1644,7 +1677,8 @@ static int audio_dma_ring_read_sample(int16_t *out_sample) {
  * maintaining a target queue depth to prevent underruns.
  */
 
-static void audio_sdl_queue_from_ring(void) {
+static void
+audio_sdl_queue_from_ring(void) {
     int16_t interleaved[8192];
     int frame_count;
     int frame_budget;
@@ -1703,7 +1737,8 @@ static void audio_sdl_queue_from_ring(void) {
  * @param value  Byte written to the port.
  */
 
-static void audio_sb_write_port(unsigned short port, unsigned char value) {
+static void
+audio_sb_write_port(unsigned short port, unsigned char value) {
     if (port != 556u) {
         return;
     }
@@ -1714,15 +1749,15 @@ static void audio_sb_write_port(unsigned short port, unsigned char value) {
         if (g_audio_dsp.pending_bytes_count >= g_audio_dsp.pending_bytes_expected) {
             if (g_audio_dsp.pending_cmd == 64u) {
                 g_audio_dsp.time_constant = (unsigned short)value;
-                g_audio_dsp.sample_rate_hz =
-                    (unsigned short)(1000000u / (256u - (unsigned short)value));
+                g_audio_dsp.sample_rate_hz
+                    = (unsigned short)(1000000u / (256u - (unsigned short)value));
                 audio_sb_queue_command(AUDIO_SB_CMD_SET_TIME_CONSTANT, -1,
                                        (short)g_audio_dsp.time_constant,
                                        (short)g_audio_dsp.sample_rate_hz);
             }
             else if (g_audio_dsp.pending_cmd == 20u || g_audio_dsp.pending_cmd == 72u) {
-                g_audio_dsp.dma_block_len = (unsigned short)g_audio_dsp.pending_data[0] |
-                                            ((unsigned short)g_audio_dsp.pending_data[1] << 8u);
+                g_audio_dsp.dma_block_len = (unsigned short)g_audio_dsp.pending_data[0]
+                                            | ((unsigned short)g_audio_dsp.pending_data[1] << 8u);
                 if (g_audio_dsp.pending_cmd == 20u) {
                     audio_sb_queue_command(AUDIO_SB_CMD_START_DMA, -1,
                                            (short)g_audio_dsp.dma_block_len, 0);
@@ -1771,7 +1806,8 @@ static void audio_sb_write_port(unsigned short port, unsigned char value) {
  * SET_PITCH, SELECT_CHUNK, and SELECT_SKID_CHUNK commands.
  */
 
-static void audio_sb_process_commands(void) {
+static void
+audio_sb_process_commands(void) {
     while (g_audio_cmd_read_idx != g_audio_cmd_write_idx) {
         AUDIO_SB_COMMAND cmd = g_audio_cmd_queue[g_audio_cmd_read_idx];
         g_audio_cmd_read_idx = (unsigned short)((g_audio_cmd_read_idx + 1) % AUDIO_CMD_QUEUE_SIZE);
@@ -1828,13 +1864,13 @@ static void audio_sb_process_commands(void) {
                         h->opl2_channel, audio_apply_gain_u7((int)h->volume, g_audio_engine_gain),
                         &h->engi_inst);
                 }
-                if (h->opl2_skid_channel >= 0 && h->opl2_skid_keyon && h->has_skid_inst &&
-                    opl2_is_ready()) {
+                if (h->opl2_skid_channel >= 0 && h->opl2_skid_keyon && h->has_skid_inst
+                    && opl2_is_ready()) {
                     audio_opl2_set_volume_ch(h->opl2_skid_channel, (int)h->volume, &h->skid_inst);
                 }
                 if (h->opl2_crash_channel >= 0 && h->opl2_crash_keyon && opl2_is_ready()) {
-                    const AUDIO_VCE_INSTRUMENT *si =
-                        audio_get_sfx_inst_for_chunk(h, (int)h->active_chunk);
+                    const AUDIO_VCE_INSTRUMENT *si
+                        = audio_get_sfx_inst_for_chunk(h, (int)h->active_chunk);
                     if (si)
                         audio_opl2_set_volume_ch(h->opl2_crash_channel, (int)h->volume, si);
                 }
@@ -1916,7 +1952,8 @@ static void audio_sb_process_commands(void) {
  * @param sample_count  Number of samples to generate.
  */
 
-static void audio_sb_generate_dma_samples(unsigned int sample_count) {
+static void
+audio_sb_generate_dma_samples(unsigned int sample_count) {
     unsigned int sample_index;
 
     if (!g_audio_flag2_enabled || !g_audio_dsp.speaker_on || !g_audio_dsp.dma_running) {
@@ -2085,30 +2122,32 @@ static void audio_sb_generate_dma_samples(unsigned int sample_count) {
  * @return 1 if valid and allocated, 0 otherwise.
  */
 
-static int audio_is_valid_handle(short handle_id) {
+static int
+audio_is_valid_handle(short handle_id) {
     if (handle_id < 0 || handle_id >= AUDIO_MAX_HANDLES) {
         return 0;
     }
     return g_audio_handles[handle_id].allocated != 0;
 }
 
-static int audio_find_vce_instrument_index_by_name(const char *name4) {
+static int
+audio_find_vce_instrument_index_by_name(const char *name4) {
     unsigned short i;
 
     if (name4 == 0) {
         return -1;
     }
     for (i = 0; i < g_audio_vce_instrument_count; i++) {
-        if (g_audio_vce_instruments[i].valid &&
-            memcmp(g_audio_vce_instruments[i].name, name4, 4u) == 0) {
+        if (g_audio_vce_instruments[i].valid
+            && memcmp(g_audio_vce_instruments[i].name, name4, 4u) == 0) {
             return (int)i;
         }
     }
     return -1;
 }
 
-static const AUDIO_VCE_INSTRUMENT *audio_kms_resolve_instrument(const AUDIO_KMS_NOTE *ev,
-                                                                int *resolved_index) {
+static const AUDIO_VCE_INSTRUMENT *
+audio_kms_resolve_instrument(const AUDIO_KMS_NOTE *ev, int *resolved_index) {
     int base_instrument_idx;
     int instrument_idx;
 
@@ -2124,13 +2163,13 @@ static const AUDIO_VCE_INSTRUMENT *audio_kms_resolve_instrument(const AUDIO_KMS_
     if (instrument_idx < 0 || instrument_idx >= (int)g_audio_vce_instrument_count) {
         return 0;
     }
-    if (g_audio_vce_instruments[instrument_idx].drum_flag == 5u && ev->pitch >= 24u &&
-        ev->pitch <= 39u) {
+    if (g_audio_vce_instruments[instrument_idx].drum_flag == 5u && ev->pitch >= 24u
+        && ev->pitch <= 39u) {
         const char *drum_name = s_kms_drum_names[ev->pitch - 24u];
         int drum_index = audio_find_vce_instrument_index_by_name(drum_name);
 
-        if (g_audio_debug_music &&
-            audio_debug_music_is_trace_track(0, &g_audio_vce_instruments[instrument_idx])) {
+        if (g_audio_debug_music
+            && audio_debug_music_is_trace_track(0, &g_audio_vce_instruments[instrument_idx])) {
             audio_debug_music_log(
                 "audio: drum_map base=%d(%.4s) pitch=%u target=%.4s resolved=%d%s\n",
                 base_instrument_idx, g_audio_vce_instruments[base_instrument_idx].name,
@@ -2146,8 +2185,8 @@ static const AUDIO_VCE_INSTRUMENT *audio_kms_resolve_instrument(const AUDIO_KMS_
     if (instrument_idx < 0 || instrument_idx >= (int)g_audio_vce_instrument_count) {
         return 0;
     }
-    if (!g_audio_vce_instruments[instrument_idx].valid ||
-        !g_audio_vce_instruments[instrument_idx].has_fm) {
+    if (!g_audio_vce_instruments[instrument_idx].valid
+        || !g_audio_vce_instruments[instrument_idx].has_fm) {
         return 0;
     }
     if (resolved_index != 0) {
@@ -2163,8 +2202,8 @@ static const AUDIO_VCE_INSTRUMENT *audio_kms_resolve_instrument(const AUDIO_KMS_
  *   ch 3-5: op0 at reg 8,9,10  op1 at reg 11,12,13  (6,7 unused)
  *   ch 6-8: op0 at reg 16,17,18 op1 at reg 19,20,21 (14,15 unused)
  * --------------------------------------------------------------------- */
-static const int s_opl2_op0_reg[9] = {0, 1, 2, 8, 9, 10, 16, 17, 18};
-static const int s_opl2_op1_reg[9] = {3, 4, 5, 11, 12, 13, 19, 20, 21};
+static const int s_opl2_op0_reg[9] = { 0, 1, 2, 8, 9, 10, 16, 17, 18 };
+static const int s_opl2_op1_reg[9] = { 3, 4, 5, 11, 12, 13, 19, 20, 21 };
 
 /* Op field indices (matches VCE record layout from AD15.DRV analysis) */
 #define OPL2F_AR   0
@@ -2185,16 +2224,17 @@ static const int s_opl2_op1_reg[9] = {3, 4, 5, 11, 12, 13, 19, 20, 21};
  * Must only be called when opl2_is_ready() returns 1.
  */
 /** @brief Program an OPL2 channel with instrument operator settings. */
-static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins) {
+static void
+audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins) {
     int s0 = s_opl2_op0_reg[ch];
     int s1 = s_opl2_op1_reg[ch];
     /* 32: AM | VIB | EGT | KSR | MULT */
-    opl2_write(32 + s0, (ins->op0[OPL2F_AM] << 7) | (ins->op0[OPL2F_VIB] << 6) |
-                            (ins->op0[OPL2F_EGT] << 5) | (ins->op0[OPL2F_KSR] << 4) |
-                            ins->op0[OPL2F_MULT]);
-    opl2_write(32 + s1, (ins->op1[OPL2F_AM] << 7) | (ins->op1[OPL2F_VIB] << 6) |
-                            (ins->op1[OPL2F_EGT] << 5) | (ins->op1[OPL2F_KSR] << 4) |
-                            ins->op1[OPL2F_MULT]);
+    opl2_write(32 + s0, (ins->op0[OPL2F_AM] << 7) | (ins->op0[OPL2F_VIB] << 6)
+                            | (ins->op0[OPL2F_EGT] << 5) | (ins->op0[OPL2F_KSR] << 4)
+                            | ins->op0[OPL2F_MULT]);
+    opl2_write(32 + s1, (ins->op1[OPL2F_AM] << 7) | (ins->op1[OPL2F_VIB] << 6)
+                            | (ins->op1[OPL2F_EGT] << 5) | (ins->op1[OPL2F_KSR] << 4)
+                            | ins->op1[OPL2F_MULT]);
     /* 64: KSL | TL */
     opl2_write(64 + s0, (ins->op0[OPL2F_KSL] << 6) | ins->op0[OPL2F_TL]);
     opl2_write(64 + s1, (ins->op1[OPL2F_KSL] << 6) | ins->op1[OPL2F_TL]);
@@ -2211,7 +2251,8 @@ static void audio_opl2_program_channel(int ch, const AUDIO_VCE_INSTRUMENT *ins) 
     opl2_write(224 + s1, ins->op1[OPL2F_WS] & 3);
 }
 
-static unsigned int audio_opl2_music_compute_packed_pitch(int pitch, int fine_tune) {
+static unsigned int
+audio_opl2_music_compute_packed_pitch(int pitch, int fine_tune) {
     unsigned int p = (unsigned int)pitch & 0xFFu;
     unsigned int idx = p % 12u;
     unsigned int fnum = (unsigned int)s_ad15_fnum_table[idx];
@@ -2222,10 +2263,11 @@ static unsigned int audio_opl2_music_compute_packed_pitch(int pitch, int fine_tu
     return packed;
 }
 
-static void audio_debug_music_dump_opl_registers(const AUDIO_KMS_TRACK_INFO *tr, int ch,
-                                                 const AUDIO_VCE_INSTRUMENT *ins,
-                                                 int resolved_index, const AUDIO_KMS_NOTE *ev,
-                                                 int velocity, int effective_channel_volume) {
+static void
+audio_debug_music_dump_opl_registers(const AUDIO_KMS_TRACK_INFO *tr, int ch,
+                                     const AUDIO_VCE_INSTRUMENT *ins, int resolved_index,
+                                     const AUDIO_KMS_NOTE *ev, int velocity,
+                                     int effective_channel_volume) {
     unsigned int packed;
     unsigned int reg20_op0;
     unsigned int reg20_op1;
@@ -2247,18 +2289,18 @@ static void audio_debug_music_dump_opl_registers(const AUDIO_KMS_TRACK_INFO *tr,
     packed = audio_opl2_music_compute_packed_pitch((int)ev->pitch + (int)ins->transpose,
                                                    (int)ins->fine_tune);
     scale = audio_opl2_music_compute_scale(velocity, effective_channel_volume);
-    reg20_op0 = (unsigned int)((ins->op0[OPL2F_AM] << 7) | (ins->op0[OPL2F_VIB] << 6) |
-                               (ins->op0[OPL2F_EGT] << 5) | (ins->op0[OPL2F_KSR] << 4) |
-                               ins->op0[OPL2F_MULT]);
-    reg20_op1 = (unsigned int)((ins->op1[OPL2F_AM] << 7) | (ins->op1[OPL2F_VIB] << 6) |
-                               (ins->op1[OPL2F_EGT] << 5) | (ins->op1[OPL2F_KSR] << 4) |
-                               ins->op1[OPL2F_MULT]);
-    reg40_op0 =
-        (unsigned int)((ins->op0[OPL2F_KSL] << 6) |
-                       (ins->opl_con ? (int)audio_opl2_music_compute_tl(ins->op0[OPL2F_TL], scale)
-                                     : (int)ins->op0[OPL2F_TL]));
-    reg40_op1 = (unsigned int)((ins->op1[OPL2F_KSL] << 6) |
-                               (int)audio_opl2_music_compute_tl(ins->op1[OPL2F_TL], scale));
+    reg20_op0 = (unsigned int)((ins->op0[OPL2F_AM] << 7) | (ins->op0[OPL2F_VIB] << 6)
+                               | (ins->op0[OPL2F_EGT] << 5) | (ins->op0[OPL2F_KSR] << 4)
+                               | ins->op0[OPL2F_MULT]);
+    reg20_op1 = (unsigned int)((ins->op1[OPL2F_AM] << 7) | (ins->op1[OPL2F_VIB] << 6)
+                               | (ins->op1[OPL2F_EGT] << 5) | (ins->op1[OPL2F_KSR] << 4)
+                               | ins->op1[OPL2F_MULT]);
+    reg40_op0 = (unsigned int)((ins->op0[OPL2F_KSL] << 6)
+                               | (ins->opl_con
+                                      ? (int)audio_opl2_music_compute_tl(ins->op0[OPL2F_TL], scale)
+                                      : (int)ins->op0[OPL2F_TL]));
+    reg40_op1 = (unsigned int)((ins->op1[OPL2F_KSL] << 6)
+                               | (int)audio_opl2_music_compute_tl(ins->op1[OPL2F_TL], scale));
     reg60_op0 = (unsigned int)((ins->op0[OPL2F_AR] << 4) | ins->op0[OPL2F_DR]);
     reg60_op1 = (unsigned int)((ins->op1[OPL2F_AR] << 4) | ins->op1[OPL2F_DR]);
     reg80_op0 = (unsigned int)((ins->op0[OPL2F_SL] << 4) | ins->op0[OPL2F_RR]);
@@ -2273,7 +2315,8 @@ static void audio_debug_music_dump_opl_registers(const AUDIO_KMS_TRACK_INFO *tr,
         reg80_op0, regE0_op0, reg20_op1, reg40_op1, reg60_op1, reg80_op1, regE0_op1);
 }
 
-static void audio_opl2_write_packed_pitch(int ch, unsigned int packed, int keyon) {
+static void
+audio_opl2_write_packed_pitch(int ch, unsigned int packed, int keyon) {
     opl2_write(160 + ch, (int)(packed & 0xFFu));
     opl2_write(176 + ch, ((keyon ? 1 : 0) << 5) | (int)((packed >> 8u) & 0x1Fu));
 }
@@ -2283,7 +2326,8 @@ static void audio_opl2_write_packed_pitch(int ch, unsigned int packed, int keyon
  * TL=0 = loudest, TL=63 = nearly silent.
 */
 /** @brief Apply channel volume to OPL2 carrier/modulator operators. */
-static void audio_opl2_set_volume_ch(int ch, int volume, const AUDIO_VCE_INSTRUMENT *ins) {
+static void
+audio_opl2_set_volume_ch(int ch, int volume, const AUDIO_VCE_INSTRUMENT *ins) {
     int s1 = s_opl2_op1_reg[ch];
     int base = (int)ins->op1[OPL2F_TL];
     int tl = base + (127 - volume) * (63 - base) / 127;
@@ -2299,8 +2343,8 @@ static void audio_opl2_set_volume_ch(int ch, int volume, const AUDIO_VCE_INSTRUM
  * Fnum = rpm / freq_div + freq_base * 16.
  * Uses the smallest block value that keeps Fnum in [0..1023].
  */
-static void audio_opl2_set_freq(int ch, unsigned int rpm, const AUDIO_VCE_INSTRUMENT *ins,
-                                int keyon) {
+static void
+audio_opl2_set_freq(int ch, unsigned int rpm, const AUDIO_VCE_INSTRUMENT *ins, int keyon) {
     unsigned int fdiv = ins->freq_div > 0u ? (unsigned int)ins->freq_div : 11u;
     unsigned int fnum = rpm / fdiv + (unsigned int)ins->freq_base * 16u;
     int block = 0;
@@ -2316,16 +2360,16 @@ static void audio_opl2_set_freq(int ch, unsigned int rpm, const AUDIO_VCE_INSTRU
     opl2_write(176 + ch, ((keyon ? 1 : 0) << 5) | (block << 2) | (int)((fnum >> 8u) & 3u));
 }
 
-static void audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune, int carrier_mult_reg,
-                                       int keyon) {
+static void
+audio_opl2_music_set_pitch(int ch, int pitch, int fine_tune, int carrier_mult_reg, int keyon) {
     unsigned int packed = audio_opl2_music_compute_packed_pitch(pitch, fine_tune);
 
     (void)carrier_mult_reg;
     audio_opl2_write_packed_pitch(ch, packed, keyon);
 }
 
-static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
-                                    const AUDIO_VCE_INSTRUMENT *ins) {
+static void
+audio_opl2_music_volume(int ch, int velocity, int channel_volume, const AUDIO_VCE_INSTRUMENT *ins) {
     int scale = audio_opl2_music_compute_scale(velocity, channel_volume);
     int s0 = s_opl2_op0_reg[ch];
     int s1 = s_opl2_op1_reg[ch];
@@ -2347,7 +2391,8 @@ static void audio_opl2_music_volume(int ch, int velocity, int channel_volume,
     }
 }
 
-static void audio_kms_note_off(unsigned int track_index) {
+static void
+audio_kms_note_off(unsigned int track_index) {
     int ch;
     AUDIO_KMS_VOICE *voice;
     const AUDIO_KMS_TRACK_INFO *tr;
@@ -2381,7 +2426,8 @@ static void audio_kms_note_off(unsigned int track_index) {
     voice->note_active = 0u;
 }
 
-static void audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
+static void
+audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev) {
     const AUDIO_VCE_INSTRUMENT *ins;
     const AUDIO_VCE_INSTRUMENT *prev_ins;
     int resolved_index;
@@ -2452,8 +2498,8 @@ static void audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev
         effective_note_ticks = 4u;
     }
     if (g_audio_debug_music) {
-        if (resolved_index >= 0 && resolved_index < AUDIO_VCE_MAX_INSTRUMENTS &&
-            g_audio_debug_inst_seen[resolved_index] == 0u) {
+        if (resolved_index >= 0 && resolved_index < AUDIO_VCE_MAX_INSTRUMENTS
+            && g_audio_debug_inst_seen[resolved_index] == 0u) {
             g_audio_debug_inst_seen[resolved_index] = 1u;
             audio_debug_music_log(
                 "audio: inst_first tick=%u abs=%u track=%.19s synth=%d ch=%d inst=%d(%.4s) pitch=%u raw_vel=%u play_vel=%d chvol=%u reqdur=%u effdur=%u\n",
@@ -2471,8 +2517,9 @@ static void audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev
                 (unsigned int)effective_channel_volume, (unsigned int)ev->dur,
                 effective_note_ticks);
         }
-        else if (tr->synth_type == 0 && (!voice->note_active || voice->active_pitch != ev->pitch ||
-                                         voice->active_requested_dur != ev->dur)) {
+        else if (tr->synth_type == 0
+                 && (!voice->note_active || voice->active_pitch != ev->pitch
+                     || voice->active_requested_dur != ev->dur)) {
             audio_debug_music_log(
                 "audio: inst_note tick=%u abs=%u track=%.19s synth=%d ch=%d inst=%d(%.4s) prev_pitch=%u pitch=%u raw_vel=%u play_vel=%d chvol=%u reqdur=%u effdur=%u\n",
                 voice->tick_pos, (unsigned int)ev->abs_tick, tr->name, tr->synth_type, ch,
@@ -2505,7 +2552,8 @@ static void audio_kms_note_on(unsigned int track_index, const AUDIO_KMS_NOTE *ev
     g_audio_kms_opl2_cur_inst[track_index] = resolved_index;
 }
 
-static void audio_kms_reset_playback(void) {
+static void
+audio_kms_reset_playback(void) {
     unsigned int t;
 
     g_audio_music_tick_accum = 0u;
@@ -2529,7 +2577,8 @@ static void audio_kms_reset_playback(void) {
     }
 }
 
-static void audio_kms_advance_ticks(unsigned int ticks) {
+static void
+audio_kms_advance_ticks(unsigned int ticks) {
     unsigned int step;
 
     for (step = 0u; step < ticks; step++) {
@@ -2544,8 +2593,8 @@ static void audio_kms_advance_ticks(unsigned int ticks) {
             if (voice->note_active && voice->tick_pos >= voice->note_end_tick) {
                 audio_kms_note_off(t);
             }
-            while (voice->ei < tr->count &&
-                   g_audio_kms_evt_pool[tr->start_idx + voice->ei].abs_tick <= voice->tick_pos) {
+            while (voice->ei < tr->count
+                   && g_audio_kms_evt_pool[tr->start_idx + voice->ei].abs_tick <= voice->tick_pos) {
                 const AUDIO_KMS_NOTE *ev = &g_audio_kms_evt_pool[tr->start_idx + voice->ei];
                 uint32_t note_ticks = (uint32_t)ev->dur;
 
@@ -2586,7 +2635,8 @@ static void audio_kms_advance_ticks(unsigned int ticks) {
  * audiodriverbinary+9 uses instrument freq_base for SFX pitch.
 */
 /** @brief Start a one-shot OPL2 SFX note on the selected channel. */
-static void audio_opl2_sfx_keyon(int ch, const AUDIO_VCE_INSTRUMENT *ins, int vol) {
+static void
+audio_opl2_sfx_keyon(int ch, const AUDIO_VCE_INSTRUMENT *ins, int vol) {
     if (ch < 0 || ch >= 9 || !opl2_is_ready())
         return;
     audio_opl2_program_channel(ch, ins);
@@ -2601,7 +2651,8 @@ static void audio_opl2_sfx_keyon(int ch, const AUDIO_VCE_INSTRUMENT *ins, int vo
 * register 176 leaves the sound ringing indefinitely.
  */
 /** @brief Silence an OPL2 channel immediately by forcing key-off. */
-static void audio_opl2_silence_channel(int ch) {
+static void
+audio_opl2_silence_channel(int ch) {
     if (ch < 0 || ch >= 9 || !opl2_is_ready())
         return;
     int s0 = s_opl2_op0_reg[ch];
@@ -2617,8 +2668,8 @@ static void audio_opl2_silence_channel(int ch) {
  * CRAS/crash2 → CRAS; BLOW → BLOW; BUMP → BUMP.
  * Returns NULL when no OPL2 instrument matches.
  */
-static const AUDIO_VCE_INSTRUMENT *audio_get_sfx_inst_for_chunk(const AUDIO_HANDLE_STUB *h,
-                                                                int chunk) {
+static const AUDIO_VCE_INSTRUMENT *
+audio_get_sfx_inst_for_chunk(const AUDIO_HANDLE_STUB *h, int chunk) {
     if (chunk < 0)
         return NULL;
     /* Skid variants */
@@ -2655,7 +2706,8 @@ static const AUDIO_VCE_INSTRUMENT *audio_get_sfx_inst_for_chunk(const AUDIO_HAND
 * @param handle_id  Index into g_audio_handles[] (0..AUDIO_MAX_HANDLES-1).
  */
 
-static void audio_reset_handle(short handle_id) {
+static void
+audio_reset_handle(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     int expected_owner_engine;
     int expected_owner_skid;
@@ -2746,7 +2798,8 @@ static void audio_reset_handle(short handle_id) {
  * @brief Reset all audio handles to their initial state.
  */
 
-static void audio_reset_all_handles(void) {
+static void
+audio_reset_all_handles(void) {
     short i;
     for (i = 0; i < AUDIO_MAX_HANDLES; i++) {
         audio_reset_handle(i);
@@ -2761,7 +2814,8 @@ static void audio_reset_all_handles(void) {
  * defaults.
  */
 
-static void audio_reset_runtime_state(void) {
+static void
+audio_reset_runtime_state(void) {
     g_audio_dsp.speaker_on = 0;
     g_audio_dsp.dma_running = 0;
     g_audio_dsp.pending_cmd = 0;
@@ -2818,7 +2872,8 @@ static void audio_reset_runtime_state(void) {
  * No-op if the timer is already registered.
  */
 
-void audio_add_driver_timer(void) {
+void
+audio_add_driver_timer(void) {
     if (g_audio_driver_timer_registered) {
         return;
     }
@@ -2833,7 +2888,8 @@ void audio_add_driver_timer(void) {
  * No-op if the timer is not registered.
  */
 
-void audio_remove_driver_timer(void) {
+void
+audio_remove_driver_timer(void) {
     if (!g_audio_driver_timer_registered) {
         return;
     }
@@ -2857,7 +2913,8 @@ void audio_remove_driver_timer(void) {
  * @return Allocated handle ID (0..AUDIO_MAX_HANDLES-1), or -1 on error.
  */
 
-short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res) {
+short
+audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res) {
     short i;
     AUDIO_HANDLE_STUB *handle;
     unsigned short vi;
@@ -2900,8 +2957,8 @@ short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voic
                 const AUDIO_VCE_INSTRUMENT *ins = &g_audio_vce_instruments[vi];
                 if (!ins->valid)
                     continue;
-                if (ins->name[0] == 'E' && ins->name[1] == 'N' && ins->name[2] == 'G' &&
-                    ins->name[3] == 'I') {
+                if (ins->name[0] == 'E' && ins->name[1] == 'N' && ins->name[2] == 'G'
+                    && ins->name[3] == 'I') {
                     handle->engi_inst = *ins; /* deep copy */
                     handle->has_engi_inst = 1;
                     if (ins->freq_div > 0u) {
@@ -2925,8 +2982,8 @@ short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voic
             }
 
             /* Program the OPL2 channel with ENGI FM parameters and send key-on */
-            if (handle->opl2_channel >= 0 && handle->has_engi_inst && handle->engi_inst.has_fm &&
-                opl2_is_ready()) {
+            if (handle->opl2_channel >= 0 && handle->has_engi_inst && handle->engi_inst.has_fm
+                && opl2_is_ready()) {
                 audio_opl2_program_channel(handle->opl2_channel, &handle->engi_inst);
                 handle->opl2_programmed = 1;
                 audio_opl2_set_volume_ch(handle->opl2_channel, (int)handle->volume,
@@ -2943,28 +3000,28 @@ short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voic
                 const AUDIO_VCE_INSTRUMENT *ins = &g_audio_vce_instruments[vi];
                 if (!ins->valid || !ins->has_fm)
                     continue;
-                if (ins->name[0] == 'S' && ins->name[1] == 'K' && ins->name[2] == 'I' &&
-                    ins->name[3] == 'D') {
+                if (ins->name[0] == 'S' && ins->name[1] == 'K' && ins->name[2] == 'I'
+                    && ins->name[3] == 'D') {
                     handle->skid_inst = *ins;
                     handle->has_skid_inst = 1;
                 }
-                else if (ins->name[0] == 'S' && ins->name[1] == 'C' && ins->name[2] == 'R' &&
-                         ins->name[3] == 'A') {
+                else if (ins->name[0] == 'S' && ins->name[1] == 'C' && ins->name[2] == 'R'
+                         && ins->name[3] == 'A') {
                     handle->scra_inst = *ins;
                     handle->has_scra_inst = 1;
                 }
-                else if (ins->name[0] == 'C' && ins->name[1] == 'R' && ins->name[2] == 'A' &&
-                         ins->name[3] == 'S') {
+                else if (ins->name[0] == 'C' && ins->name[1] == 'R' && ins->name[2] == 'A'
+                         && ins->name[3] == 'S') {
                     handle->cras_inst = *ins;
                     handle->has_cras_inst = 1;
                 }
-                else if (ins->name[0] == 'B' && ins->name[1] == 'L' && ins->name[2] == 'O' &&
-                         ins->name[3] == 'W') {
+                else if (ins->name[0] == 'B' && ins->name[1] == 'L' && ins->name[2] == 'O'
+                         && ins->name[3] == 'W') {
                     handle->blow_inst = *ins;
                     handle->has_blow_inst = 1;
                 }
-                else if (ins->name[0] == 'B' && ins->name[1] == 'U' && ins->name[2] == 'M' &&
-                         ins->name[3] == 'P') {
+                else if (ins->name[0] == 'B' && ins->name[1] == 'U' && ins->name[2] == 'M'
+                         && ins->name[3] == 'P') {
                     handle->bump_inst = *ins;
                     handle->has_bump_inst = 1;
                 }
@@ -3005,7 +3062,8 @@ short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voic
 * @param handle_id  Engine handle ID returned by audio_init_engine().
  */
 
-void audio_start_engine_note(short handle_id) {
+void
+audio_start_engine_note(short handle_id) {
     if (!audio_is_valid_handle(handle_id)) {
         return;
     }
@@ -3018,7 +3076,8 @@ void audio_start_engine_note(short handle_id) {
  * @param handle_id  Engine handle ID.
  */
 
-void audio_stop_engine_note(short handle_id) {
+void
+audio_stop_engine_note(short handle_id) {
     if (!audio_is_valid_handle(handle_id)) {
         return;
     }
@@ -3042,9 +3101,10 @@ void audio_stop_engine_note(short handle_id) {
 * @param distance_divisor  Distance divisor (minimum 1).
  */
 
-void audio_update_engine_sound(short handle_id, short rpm, short distance_x, short distance_y,
-                               short distance_z, short unused_a, short unused_c, short unused_e,
-                               short distance_divisor) {
+void
+audio_update_engine_sound(short handle_id, short rpm, short distance_x, short distance_y,
+                          short distance_z, short unused_a, short unused_c, short unused_e,
+                          short distance_divisor) {
     AUDIO_HANDLE_STUB *handle;
     int near_metric;
     int far_metric;
@@ -3123,7 +3183,8 @@ void audio_update_engine_sound(short handle_id, short rpm, short distance_x, sho
  * @param handle_id  Engine handle ID.
  */
 
-void audio_select_crash2_fx_and_restart(short handle_id) {
+void
+audio_select_crash2_fx_and_restart(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3149,7 +3210,8 @@ void audio_select_crash2_fx_and_restart(short handle_id) {
  * @param handle_id  Engine handle ID.
  */
 
-void audio_select_crash1_fx(short handle_id) {
+void
+audio_select_crash1_fx(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3170,7 +3232,8 @@ re-triggers when the chunk is already playing (byte [bx+5] != 1).
 }
 
 /** @brief Select the crash2 sound effect for the given engine handle. */
-void audio_select_crash2_fx(short handle_id) {
+void
+audio_select_crash2_fx(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3195,7 +3258,8 @@ void audio_select_crash2_fx(short handle_id) {
  * @param handle_id  Engine handle ID.
  */
 
-void audio_select_skid1_fx(short handle_id) {
+void
+audio_select_skid1_fx(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3214,7 +3278,8 @@ void audio_select_skid1_fx(short handle_id) {
  * @param handle_id  Engine handle ID.
  */
 
-void audio_select_skid2_fx(short handle_id) {
+void
+audio_select_skid2_fx(short handle_id) {
     AUDIO_HANDLE_STUB *handle;
     if (!audio_is_valid_handle(handle_id)) {
         return;
@@ -3236,7 +3301,8 @@ void audio_select_skid2_fx(short handle_id) {
  * @param handle_id  Engine handle ID.
  */
 
-void audio_clear_chunk_fx(short handle_id) {
+void
+audio_clear_chunk_fx(short handle_id) {
     if (!audio_is_valid_handle(handle_id)) {
         return;
     }
@@ -3254,7 +3320,8 @@ void audio_clear_chunk_fx(short handle_id) {
  * buffer, and submits queued audio to SDL. Guards against re-entrant calls.
  */
 
-void audio_driver_timer(void) {
+void
+audio_driver_timer(void) {
     short i;
     unsigned int dispatch_hz;
     unsigned int refresh_hz;
@@ -3306,25 +3373,25 @@ void audio_driver_timer(void) {
                 audio_kms_advance_ticks(music_ticks);
                 g_audio_music_tick_counter += music_ticks;
             }
-            else if (g_audio_kms_n_tracks == 0u && g_audio_menu_use_resource &&
-                     g_audio_menu_resource_count > 0u) {
+            else if (g_audio_kms_n_tracks == 0u && g_audio_menu_use_resource
+                     && g_audio_menu_resource_count > 0u) {
                 while (music_ticks-- > 0u) {
                     g_audio_music_tick_counter++;
                     if (g_audio_menu_resource_ticks_left == 0u) {
-                        g_audio_menu_resource_index =
-                            (unsigned short)((g_audio_menu_resource_index + 1u) %
-                                             g_audio_menu_resource_count);
-                        g_audio_menu_resource_current_note =
-                            g_audio_menu_resource_notes[g_audio_menu_resource_index];
-                        g_audio_menu_resource_ticks_left =
-                            g_audio_menu_resource_durations[g_audio_menu_resource_index];
-                        g_audio_menu_resource_ticks_total =
-                            g_audio_menu_resource_durations[g_audio_menu_resource_index];
+                        g_audio_menu_resource_index
+                            = (unsigned short)((g_audio_menu_resource_index + 1u)
+                                               % g_audio_menu_resource_count);
+                        g_audio_menu_resource_current_note
+                            = g_audio_menu_resource_notes[g_audio_menu_resource_index];
+                        g_audio_menu_resource_ticks_left
+                            = g_audio_menu_resource_durations[g_audio_menu_resource_index];
+                        g_audio_menu_resource_ticks_total
+                            = g_audio_menu_resource_durations[g_audio_menu_resource_index];
                         g_audio_menu_resource_tick_pos = 0;
-                        g_audio_menu_resource_current_instrument =
-                            g_audio_menu_resource_instruments[g_audio_menu_resource_index];
-                        g_audio_menu_resource_current_velocity =
-                            g_audio_menu_resource_velocities[g_audio_menu_resource_index];
+                        g_audio_menu_resource_current_instrument
+                            = g_audio_menu_resource_instruments[g_audio_menu_resource_index];
+                        g_audio_menu_resource_current_velocity
+                            = g_audio_menu_resource_velocities[g_audio_menu_resource_index];
                     }
                     if (g_audio_menu_resource_ticks_left > 0u) {
                         g_audio_menu_resource_ticks_left--;
@@ -3346,8 +3413,8 @@ void audio_driver_timer(void) {
                 handle->dirty = 1;
                 /* Immediately reflect slewed pitch in OPL2 frequency registers */
                 if (handle->opl2_channel >= 0 && handle->has_engi_inst && opl2_is_ready()) {
-                    unsigned int rpmv =
-                        (unsigned int)(handle->current_pitch > 0 ? handle->current_pitch : 0);
+                    unsigned int rpmv
+                        = (unsigned int)(handle->current_pitch > 0 ? handle->current_pitch : 0);
                     audio_opl2_set_freq(handle->opl2_channel, rpmv, &handle->engi_inst,
                                         (int)handle->opl2_keyon);
                 }
@@ -3402,9 +3469,9 @@ void audio_driver_timer(void) {
                 }
             }
 
-            if (handle->playing || handle->engine_active_ticks > 0u ||
-                handle->active_chunk != AUDIO_INVALID_CHUNK ||
-                handle->active_skid_chunk != AUDIO_INVALID_CHUNK) {
+            if (handle->playing || handle->engine_active_ticks > 0u
+                || handle->active_chunk != AUDIO_INVALID_CHUNK
+                || handle->active_skid_chunk != AUDIO_INVALID_CHUNK) {
                 active_handles++;
             }
 
@@ -3413,8 +3480,8 @@ void audio_driver_timer(void) {
             }
         }
 
-        if ((active_handles > 0u || (g_audio_menu_music_enabled && !g_audio_menu_music_paused)) &&
-            !g_audio_dsp.dma_running) {
+        if ((active_handles > 0u || (g_audio_menu_music_enabled && !g_audio_menu_music_paused))
+            && !g_audio_dsp.dma_running) {
             g_audio_dsp.dma_running = 1;
             if (g_audio_dsp.dma_block_len == 0u) {
                 g_audio_dsp.dma_block_len = 4095u;
@@ -3451,7 +3518,8 @@ void audio_driver_timer(void) {
  * @return 0 on success, 1 on failure.
  */
 
-short audio_load_driver(const char *driver, short a2, short a3) {
+short
+audio_load_driver(const char *driver, short a2, short a3) {
     const char *backend;
     const char *debug_music_env;
     const char *debug_music_inst_only_env;
@@ -3476,15 +3544,15 @@ short audio_load_driver(const char *driver, short a2, short a3) {
     menu_transpose_env = getenv("STUNTS_AUDIO_MENU_TRANSPOSE");
     menu_duration_scale_env = getenv("STUNTS_AUDIO_MENU_DURATION_SCALE");
     debug_music_lines_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC_LINES");
-    g_audio_debug_music = (unsigned char)((debug_music_env != 0 && *debug_music_env != '\0' &&
-                                           atoi(debug_music_env) != 0)
+    g_audio_debug_music = (unsigned char)((debug_music_env != 0 && *debug_music_env != '\0'
+                                           && atoi(debug_music_env) != 0)
                                               ? 1
                                               : 0);
-    g_audio_debug_music_inst_only =
-        (unsigned char)((debug_music_inst_only_env != 0 && *debug_music_inst_only_env != '\0' &&
-                         atoi(debug_music_inst_only_env) != 0)
-                            ? 1
-                            : 0);
+    g_audio_debug_music_inst_only
+        = (unsigned char)((debug_music_inst_only_env != 0 && *debug_music_inst_only_env != '\0'
+                           && atoi(debug_music_inst_only_env) != 0)
+                              ? 1
+                              : 0);
     g_audio_debug_music_lines = 0u;
     g_audio_debug_music_max_lines = 400u;
     g_audio_engine_gain = 160;
@@ -3575,8 +3643,8 @@ short audio_load_driver(const char *driver, short a2, short a3) {
     }
     g_audio_refresh_accum = 0u;
     if (backend != 0) {
-        if (audio_str_ieq(backend, "off") || audio_str_ieq(backend, "none") ||
-            audio_str_ieq(backend, "null")) {
+        if (audio_str_ieq(backend, "off") || audio_str_ieq(backend, "none")
+            || audio_str_ieq(backend, "null")) {
             g_audio_driver_loaded = 0;
             g_audio_flag2_enabled = 0;
             g_audio_flag6_enabled = 0;
@@ -3631,7 +3699,8 @@ short audio_load_driver(const char *driver, short a2, short a3) {
  * @return 1 if flag2 is now enabled, 0 if now disabled.
  */
 
-short audio_toggle_flag2(void) {
+short
+audio_toggle_flag2(void) {
     g_audio_flag2_enabled = (unsigned char)!g_audio_flag2_enabled;
     return g_audio_flag2_enabled ? 1 : 0;
 }
@@ -3643,7 +3712,8 @@ short audio_toggle_flag2(void) {
  * timer callback, destroys the OPL2 emulator, and closes SDL audio.
  */
 
-void audiodrv_atexit(void) {
+void
+audiodrv_atexit(void) {
     g_audio_driver_loaded = 0;
     g_audio_flag2_enabled = 0;
     g_audio_flag6_enabled = 0;
@@ -3660,7 +3730,8 @@ void audiodrv_atexit(void) {
  * In the original DOS driver, this faded out the OPL/SB and stopped the
  * timer loop. In our SDL port we simply disable menu music and reset the
  * KMS playback state so it starts fresh next time a menu loads. */
-void audio_driver_func3F(int mode) {
+void
+audio_driver_func3F(int mode) {
     (void)mode;
     /* Silence OPL2 music channels before stopping */
     if (opl2_is_ready()) {
@@ -3684,7 +3755,8 @@ void audio_driver_func3F(int mode) {
 * @brief Disable audio DMA mixing (flag2 gate).
  */
 
-void audio_disable_flag2(void) {
+void
+audio_disable_flag2(void) {
     g_audio_flag2_enabled = 0;
 }
 
@@ -3692,7 +3764,8 @@ void audio_disable_flag2(void) {
 * @brief Re-enable audio DMA mixing (flag2 gate).
  */
 
-void audio_enable_flag2(void) {
+void
+audio_enable_flag2(void) {
     g_audio_flag2_enabled = 1;
 }
 
@@ -3703,7 +3776,8 @@ void audio_enable_flag2(void) {
 * @return Previous paused state (0 or 1).
  */
 
-unsigned short audio_set_menu_music_paused(unsigned short paused) {
+unsigned short
+audio_set_menu_music_paused(unsigned short paused) {
     unsigned short previous = (unsigned short)g_audio_menu_music_paused;
     g_audio_menu_music_paused = (unsigned char)(paused != 0 ? 1 : 0);
     return previous;
@@ -3715,7 +3789,8 @@ unsigned short audio_set_menu_music_paused(unsigned short paused) {
  * Currently a no-op stub; reserved for future audio state synchronisation.
  */
 
-void audio_on_replay_mode_changed(void) {}
+void
+audio_on_replay_mode_changed(void) {}
 
 /**
  * @brief Initialise audio resources for a menu or in-game session.
@@ -3729,7 +3804,8 @@ void audio_on_replay_mode_changed(void) {}
 * @return Always returns (void*)1 (legacy convention).
  */
 
-void *init_audio_resources(void *songptr, void *voiceptr, const char *name) {
+void *
+init_audio_resources(void *songptr, void *voiceptr, const char *name) {
     unsigned short vce_count;
     g_audio_last_init_is_menu = (unsigned char)(audio_is_menu_track_name(name) ? 1 : 0);
     if (!g_audio_last_init_is_menu) {
@@ -3755,7 +3831,8 @@ void *init_audio_resources(void *songptr, void *voiceptr, const char *name) {
  * @param audiores  Ignored (legacy opaque resource pointer).
  */
 
-void load_audio_finalize(void *audiores) {
+void
+load_audio_finalize(void *audiores) {
     (void)audiores;
     if (!g_audio_last_init_is_menu) {
         return;

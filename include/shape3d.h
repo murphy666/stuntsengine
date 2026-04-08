@@ -70,7 +70,8 @@ struct TRANSFORMEDSHAPE3D {
 /**
  * @brief Parse a raw shape buffer and populate a SHAPE3D struct.
  */
-static inline void shape3d_init_shape_pure(char *shapeptr, struct SHAPE3D *gameshape) {
+static inline void
+shape3d_init_shape_pure(char *shapeptr, struct SHAPE3D *gameshape) {
     struct SHAPE3DHEADER *hdr = (struct SHAPE3DHEADER *)shapeptr;
 
     gameshape->shape3d_numverts = hdr->header_numverts;
@@ -79,23 +80,23 @@ static inline void shape3d_init_shape_pure(char *shapeptr, struct SHAPE3D *games
 
     gameshape->shape3d_verts = (struct VECTOR *)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
 
-    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES +
-                               SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
 
-    gameshape->shape3d_cull2 =
-        shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES +
-        hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull2 = shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
+                               + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
 
-    gameshape->shape3d_primitives =
-        shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES +
-        hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_primitives
+        = shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
+          + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
 }
 
 /**
  * @brief Project a 3-D radius into screen pixels.
  */
-static inline unsigned shape3d_project_radius(uint16_t proj_scale, unsigned radius_3d,
-                                              int depth_z) {
+static inline unsigned
+shape3d_project_radius(uint16_t proj_scale, unsigned radius_3d, int depth_z) {
     unsigned long numer;
 
     if (depth_z <= 0) {

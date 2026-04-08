@@ -44,7 +44,8 @@
 /* ui_button_menu_run                                                  */
 /* ------------------------------------------------------------------ */
 
-unsigned char ui_button_menu_run(UIButtonMenu *menu) {
+unsigned char
+ui_button_menu_run(UIButtonMenu *menu) {
     unsigned char selected;
     unsigned char prev_selected;
     unsigned short delta;
@@ -165,6 +166,14 @@ unsigned char ui_button_menu_run(UIButtonMenu *menu) {
                 selected = (selected >= menu->count - 1) ? 0 : (unsigned char)(selected + 1);
             }
         }
+        else if (menu->nav_mode == UI_NAV_LOOKUP) {
+            if (key_code == UI_KEY_LEFT && selected < menu->count) {
+                selected = menu->nav_left[selected];
+            }
+            else if (key_code == UI_KEY_RIGHT && selected < menu->count) {
+                selected = menu->nav_right[selected];
+            }
+        }
         else {
             /* UI_NAV_BOTH (default — matches original) */
             if (UI_IS_NAV_PREV(key_code)) {
@@ -182,8 +191,9 @@ unsigned char ui_button_menu_run(UIButtonMenu *menu) {
 /* Text rendering helpers                                              */
 /* ------------------------------------------------------------------ */
 
-unsigned short ui_draw_text(const char *text, unsigned short x, unsigned short y,
-                            unsigned short fg_color, unsigned short bg_color) {
+unsigned short
+ui_draw_text(const char *text, unsigned short x, unsigned short y, unsigned short fg_color,
+             unsigned short bg_color) {
     unsigned short w;
     font_set_colors((int)fg_color, bg_color);
     font_draw_text((char *)text, x, y);
@@ -191,18 +201,20 @@ unsigned short ui_draw_text(const char *text, unsigned short x, unsigned short y
     return w;
 }
 
-unsigned short ui_measure_text(const char *text) {
+unsigned short
+ui_measure_text(const char *text) {
     return font_get_text_width((char *)text);
 }
 
-unsigned short ui_center_x(unsigned short item_w) {
+unsigned short
+ui_center_x(unsigned short item_w) {
     if (item_w >= UI_SCREEN_W)
         return 0;
     return (UI_SCREEN_W - item_w) / 2;
 }
 
-unsigned short ui_center_in(unsigned short container_x, unsigned short container_w,
-                            unsigned short item_w) {
+unsigned short
+ui_center_in(unsigned short container_x, unsigned short container_w, unsigned short item_w) {
     if (item_w >= container_w)
         return container_x;
     return container_x + (container_w - item_w) / 2;
@@ -212,7 +224,8 @@ unsigned short ui_center_in(unsigned short container_x, unsigned short container
 /* Panel drawing                                                       */
 /* ------------------------------------------------------------------ */
 
-void ui_draw_panel(const UIPanel *panel) {
+void
+ui_draw_panel(const UIPanel *panel) {
     /* Fill background */
     sprite_fill_rect_clipped(panel->x, panel->y, panel->w, panel->h,
                              (unsigned char)panel->fill_color);
@@ -234,7 +247,8 @@ void ui_draw_panel(const UIPanel *panel) {
 /* Text table                                                          */
 /* ------------------------------------------------------------------ */
 
-void ui_draw_text_table(const UITextTable *table, const char *cells[], const char *headers[]) {
+void
+ui_draw_text_table(const UITextTable *table, const char *cells[], const char *headers[]) {
     unsigned short row, col;
     unsigned short y;
 
@@ -250,8 +264,8 @@ void ui_draw_text_table(const UITextTable *table, const char *cells[], const cha
 
     /* Draw data rows */
     for (row = 0; row < table->num_rows && row < UI_TABLE_MAX_ROWS; row++) {
-        y = (unsigned short)(table->y_start + (headers != NULL ? table->row_height : 0) +
-                             row * table->row_height);
+        y = (unsigned short)(table->y_start + (headers != NULL ? table->row_height : 0)
+                             + row * table->row_height);
 
         if (row == table->highlight_row) {
             font_set_colors(0, table->highlight_color);
@@ -285,7 +299,8 @@ void ui_draw_text_table(const UITextTable *table, const char *cells[], const cha
  *   '}' creates a section separator (4px spacing)
  *   '@' marks coordinate output positions (type 3 only)
  */
-static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short buflen) {
+static void
+ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short buflen) {
     unsigned short pos = 0;
     unsigned short i;
 
@@ -323,7 +338,8 @@ static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short 
     buf[pos] = '\0';
 }
 
-short ui_dialog_run(const UIDialog *dlg) {
+short
+ui_dialog_run(const UIDialog *dlg) {
     char text_buf[512];
     unsigned short border;
     unsigned short dx, dy;
@@ -352,7 +368,8 @@ short ui_dialog_run(const UIDialog *dlg) {
     return show_dialog(2, 1, text_buf, dx, dy, border, dlg->coords, dlg->default_button);
 }
 
-short ui_dialog_info(const char *text) {
+short
+ui_dialog_info(const char *text) {
     UIDialog dlg;
     memset(&dlg, 0, sizeof(dlg));
     dlg.mode = UI_DIALOG_INFO;
@@ -364,7 +381,8 @@ short ui_dialog_info(const char *text) {
     return ui_dialog_run(&dlg);
 }
 
-short ui_dialog_confirm(const char *text, const char *btn_yes, const char *btn_no) {
+short
+ui_dialog_confirm(const char *text, const char *btn_yes, const char *btn_no) {
     UIDialog dlg;
     memset(&dlg, 0, sizeof(dlg));
     dlg.mode = UI_DIALOG_CONFIRM;
@@ -384,9 +402,10 @@ short ui_dialog_confirm(const char *text, const char *btn_yes, const char *btn_n
 /* Resource-text dialog wrappers                                       */
 /* ------------------------------------------------------------------ */
 
-short ui_dialog_show_restext(unsigned short mode, unsigned short create_window, void *text_res_ptr,
-                             unsigned short x, unsigned short y, unsigned short border_color,
-                             unsigned short *coords, unsigned char default_button) {
+short
+ui_dialog_show_restext(unsigned short mode, unsigned short create_window, void *text_res_ptr,
+                       unsigned short x, unsigned short y, unsigned short border_color,
+                       unsigned short *coords, unsigned char default_button) {
     unsigned short type;
 
     if (border_color == 0) {
@@ -413,29 +432,34 @@ short ui_dialog_show_restext(unsigned short mode, unsigned short create_window, 
                        default_button);
 }
 
-short ui_dialog_display_only(void *text_res_ptr, unsigned short x, unsigned short y,
-                             unsigned short border_color) {
+short
+ui_dialog_display_only(void *text_res_ptr, unsigned short x, unsigned short y,
+                       unsigned short border_color) {
     if (border_color == 0)
         border_color = dialogarg2;
     return show_dialog(0, 0, text_res_ptr, x, y, border_color, 0, 0);
 }
 
-short ui_dialog_timed(void *text_res_ptr) {
+short
+ui_dialog_timed(void *text_res_ptr) {
     return show_dialog(4, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
                        0);
 }
 
-short ui_dialog_info_restext(void *text_res_ptr) {
+short
+ui_dialog_info_restext(void *text_res_ptr) {
     return show_dialog(1, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
                        0);
 }
 
-short ui_dialog_confirm_restext(void *text_res_ptr, unsigned char default_button) {
+short
+ui_dialog_confirm_restext(void *text_res_ptr, unsigned char default_button) {
     return show_dialog(2, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
                        default_button);
 }
 
-short ui_dialog_layout(void *text_res_ptr, unsigned short border_color, unsigned short *coords) {
+short
+ui_dialog_layout(void *text_res_ptr, unsigned short border_color, unsigned short *coords) {
     if (border_color == 0)
         border_color = dialogarg2;
     return show_dialog(3, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, border_color,

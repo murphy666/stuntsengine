@@ -23,12 +23,14 @@
 /* Screen allocation                                                   */
 /* ------------------------------------------------------------------ */
 
-UIScreen *ui_screen_alloc(void) {
+UIScreen *
+ui_screen_alloc(void) {
     UIScreen *s = (UIScreen *)calloc(1, sizeof(UIScreen));
     return s;
 }
 
-void ui_screen_free(UIScreen *scr) {
+void
+ui_screen_free(UIScreen *scr) {
     if (!scr)
         return;
     if (scr->on_destroy) {
@@ -44,7 +46,8 @@ void ui_screen_free(UIScreen *scr) {
 static UIScreen *s_stack[UI_SCREEN_STACK_MAX];
 static int s_depth = 0;
 
-void ui_screen_push(UIScreen *scr) {
+void
+ui_screen_push(UIScreen *scr) {
     UIEvent ev;
 
     if (!scr || s_depth >= UI_SCREEN_STACK_MAX)
@@ -67,7 +70,8 @@ void ui_screen_push(UIScreen *scr) {
     }
 }
 
-void ui_screen_pop(void) {
+void
+ui_screen_pop(void) {
     UIEvent ev;
 
     if (s_depth <= 0)
@@ -84,11 +88,13 @@ void ui_screen_pop(void) {
     }
 }
 
-UIScreen *ui_screen_top(void) {
+UIScreen *
+ui_screen_top(void) {
     return (s_depth > 0) ? s_stack[s_depth - 1] : NULL;
 }
 
-int ui_screen_depth(void) {
+int
+ui_screen_depth(void) {
     return s_depth;
 }
 
@@ -101,7 +107,8 @@ int ui_screen_depth(void) {
  * to the top screen.  Returns 0 normally, non-zero if the top screen
  * wants to pop.
  */
-static int dispatch_events(UIScreen *scr, unsigned short delta) {
+static int
+dispatch_events(UIScreen *scr, unsigned short delta) {
     UIEvent ev;
     unsigned short key;
     unsigned short mbut, mx, my;
@@ -123,41 +130,6 @@ static int dispatch_events(UIScreen *scr, unsigned short delta) {
         result = scr->on_event(scr, &ev);
         if (result != 0)
             return result;
-    }
-
-    /* --- joystick mapped to key events --- */
-    {
-        unsigned short joy = get_joy_flags();
-        static unsigned short prev_joy = 0;
-        unsigned short changed = (prev_joy ^ joy) & joy;
-        prev_joy = joy;
-
-        if (changed) {
-            unsigned short jkey = 0;
-            if (changed & 32)
-                jkey = UI_KEY_ENTER;
-            else if (changed & 16)
-                jkey = UI_KEY_SPACE;
-            else if (changed & 1)
-                jkey = UI_KEY_UP;
-            else if (changed & 2)
-                jkey = UI_KEY_DOWN;
-            else if (changed & 8)
-                jkey = UI_KEY_LEFT;
-            else if (changed & 4)
-                jkey = UI_KEY_RIGHT;
-
-            if (jkey != 0) {
-                kbormouse = 0;
-                memset(&ev, 0, sizeof(ev));
-                ev.type = UI_EVENT_KEY_DOWN;
-                ev.key = jkey;
-                ev.delta = delta;
-                result = scr->on_event(scr, &ev);
-                if (result != 0)
-                    return result;
-            }
-        }
     }
 
     /* --- mouse events --- */
@@ -223,7 +195,8 @@ static int dispatch_events(UIScreen *scr, unsigned short delta) {
 /* Run loops                                                           */
 /* ------------------------------------------------------------------ */
 
-void ui_screen_run(void) {
+void
+ui_screen_run(void) {
     while (s_depth > 0) {
         UIScreen *top = s_stack[s_depth - 1];
         unsigned short delta;
@@ -254,7 +227,8 @@ void ui_screen_run(void) {
     }
 }
 
-int ui_screen_run_modal(UIScreen *scr) {
+int
+ui_screen_run_modal(UIScreen *scr) {
     int saved_depth = s_depth;
 
     ui_screen_push(scr);
@@ -308,7 +282,8 @@ typedef struct {
     unsigned char initialized;
 } BtnMenuScreenState;
 
-static int btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
+static int
+btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
     BtnMenuScreenState *st = (BtnMenuScreenState *)self->userdata;
     UIButtonMenu *m = st->menu;
 
@@ -371,6 +346,14 @@ static int btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
             else if (key == UI_KEY_LEFT || key == UI_KEY_DOWN) {
                 st->selected = (st->selected >= m->count - 1) ? 0
                                                               : (unsigned char)(st->selected + 1);
+            }
+        }
+        else if (m->nav_mode == UI_NAV_LOOKUP) {
+            if (key == UI_KEY_LEFT && st->selected < m->count) {
+                st->selected = m->nav_left[st->selected];
+            }
+            else if (key == UI_KEY_RIGHT && st->selected < m->count) {
+                st->selected = m->nav_right[st->selected];
             }
         }
         else {
@@ -440,14 +423,16 @@ static int btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
     return 0;
 }
 
-static void btnmenu_on_destroy(UIScreen *self) {
+static void
+btnmenu_on_destroy(UIScreen *self) {
     if (self->userdata) {
         free(self->userdata);
         self->userdata = NULL;
     }
 }
 
-UIScreen *ui_screen_from_button_menu(UIButtonMenu *menu) {
+UIScreen *
+ui_screen_from_button_menu(UIButtonMenu *menu) {
     UIScreen *scr;
     BtnMenuScreenState *st;
 

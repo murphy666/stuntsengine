@@ -45,7 +45,7 @@
 #include "framebuffer.h"
 
 /* Variables moved from data_game.c */
-static void (*exitlistfuncs[11])(void) = {0};
+static void (*exitlistfuncs[11])(void) = { 0 };
 static char dashb_toggle_copy = 0;
 static void *eng1ptr = 0;
 static void *engptr = 0;
@@ -54,28 +54,28 @@ static int roofbmpheight_copy = 0;
 static short sprite_animation_frame_counter = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static unsigned char audio_adlib_config[12] = {244, 1, 16, 39, 40, 35, 0, 0, 24, 48, 0, 0};
-static unsigned char audio_mt32_config[48] = {
-    244, 1,  16, 39, 40, 35, 0, 0, 74,  48, 0, 0, 79,  48, 0, 0, 84,  48, 0, 0, 89,  48, 0, 0,
-    94,  48, 0,  0,  99, 48, 0, 0, 104, 48, 0, 0, 109, 48, 0, 0, 114, 48, 0, 0, 119, 48, 0, 0};
+static unsigned char audio_adlib_config[12] = { 244, 1, 16, 39, 40, 35, 0, 0, 24, 48, 0, 0 };
+static unsigned char audio_mt32_config[48]
+    = { 244, 1,  16, 39, 40, 35, 0, 0, 74,  48, 0, 0, 79,  48, 0, 0, 84,  48, 0, 0, 89,  48, 0, 0,
+        94,  48, 0,  0,  99, 48, 0, 0, 104, 48, 0, 0, 109, 48, 0, 0, 114, 48, 0, 0, 119, 48, 0, 0 };
 static int dashbmp_y_copy = 0;
 static char followOpponentFlag_copy = 0;
 static short fps_times_thirty = 0;
-static unsigned char g_kevinrandom_seed[] = {0, 0, 0, 0, 0, 0};
+static unsigned char g_kevinrandom_seed[] = { 0, 0, 0, 0, 0, 0 };
 static char game_input_keyboard_state = 0;
-static struct GAMEINFO gameconfigcopy = {0};
-static struct RECTANGLE rect_windshield = {0, 0, 0, 0};
+static struct GAMEINFO gameconfigcopy = { 0 };
+static struct RECTANGLE rect_windshield = { 0, 0, 0, 0 };
 static char replaybar_toggle_copy = 0;
 static unsigned short someZeroVideoConst = 0;
-static char sprite_buffer_x_coords[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-static char sprite_buffer_y_coords[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+static char sprite_buffer_x_coords[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+static char sprite_buffer_y_coords[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 static char *track_file_append = 0;
 
 
 /* file-local data (moved from data_global.c) */
 static char input_status_stack_index = 0;
 
-struct SIMD simd_opponent_rt = {0};
+struct SIMD simd_opponent_rt = { 0 };
 
 void call_exitlist(void);
 
@@ -130,7 +130,8 @@ struct SIMD_RESOURCE {
  * @param src Source resource data pointer
  * @return 0 on success, non-zero on error
  */
-static int simd_copy_from_resource(struct SIMD *dst, size_t dst_capacity, const void *src) {
+static int
+simd_copy_from_resource(struct SIMD *dst, size_t dst_capacity, const void *src) {
     const struct SIMD_RESOURCE *res;
     int i;
 
@@ -284,24 +285,24 @@ enum { STN_PERSIST_PATH_LEN = 82, STN_PERSIST_TRACKNAME_LEN = 9, STN_PERSIST_VER
 static const char STN_PERSIST_CONFIG_FILE[] = "stunts.cfg";
 static const char STN_DEFAULT_TRACK_NAME[] = "DEFAULT";
 static char aMisc_1[] = "misc";
-static unsigned char steerWhlRespTable_20fps[64] = {
-    0,   8, 248, 0, 0,   7, 249, 0, 0,   6, 250, 0, 0,   5, 251, 0, 0,   4, 252, 0, 0,   4,
-    252, 0, 0,   3, 253, 0, 0,   3, 253, 0, 0,   2, 254, 0, 0,   2, 254, 0, 0,   2, 254, 0,
-    0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0};
-static unsigned char steerWhlRespTable_10fps[62] = {
-    0,   16,  240, 0, 0,   14,  242, 0, 0,   12,  244, 0, 0,   10,  246, 0, 0,   8,   248, 0, 0,
-    8,   248, 0,   0, 6,   250, 0,   0, 6,   250, 0,   0, 4,   252, 0,   0, 4,   252, 0,   0, 4,
-    252, 0,   0,   2, 254, 0,   0,   2, 254, 0,   0,   1, 255, 0,   0,   1, 255, 0,   0,   1};
+static unsigned char steerWhlRespTable_20fps[64]
+    = { 0,   8, 248, 0, 0,   7, 249, 0, 0,   6, 250, 0, 0,   5, 251, 0, 0,   4, 252, 0, 0,   4,
+        252, 0, 0,   3, 253, 0, 0,   3, 253, 0, 0,   2, 254, 0, 0,   2, 254, 0, 0,   2, 254, 0,
+        0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0, 0,   1, 255, 0 };
+static unsigned char steerWhlRespTable_10fps[62]
+    = { 0,   16,  240, 0, 0,   14,  242, 0, 0,   12,  244, 0, 0,   10,  246, 0, 0,   8,   248, 0, 0,
+        8,   248, 0,   0, 6,   250, 0,   0, 6,   250, 0,   0, 4,   252, 0,   0, 4,   252, 0,   0, 4,
+        252, 0,   0,   2, 254, 0,   0,   2, 254, 0,   0,   1, 255, 0,   0,   1, 255, 0,   0,   1 };
 
-char track_highscore_path_buffer[82] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+char track_highscore_path_buffer[82]
+    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-char replay_file_path_buffer[82] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+char replay_file_path_buffer[82] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 char aDefault_1[10] = "DEFAULT";
 
@@ -321,7 +322,8 @@ struct STN_PERSIST_CONFIG {
 /** @brief Check if the saved track file exists on disk
  * @return Non-zero if available, 0 otherwise
  */
-static int stn_persist_track_is_available(void) {
+static int
+stn_persist_track_is_available(void) {
     file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk", g_path_buf,
                     sizeof(g_path_buf));
     return file_paras_nofatal(g_path_buf) != 0;
@@ -329,7 +331,8 @@ static int stn_persist_track_is_available(void) {
 
 /** @brief Validate and fix persisted game configuration state
  */
-static void stn_persist_sanitize_runtime_state(void) {
+static void
+stn_persist_sanitize_runtime_state(void) {
     gameconfig.game_trackname[STN_PERSIST_TRACKNAME_LEN - 1] = '\0';
     track_highscore_path_buffer[STN_PERSIST_PATH_LEN - 1] = '\0';
     replay_file_path_buffer[STN_PERSIST_PATH_LEN - 1] = '\0';
@@ -353,7 +356,8 @@ static void stn_persist_sanitize_runtime_state(void) {
 /** @brief Load persistent configuration from stunts.cfg
  * @return Non-zero on success, 0 on failure
  */
-static int stn_persist_load(void) {
+static int
+stn_persist_load(void) {
     struct STN_PERSIST_CONFIG cfg;
     FILE *fp = fopen(STN_PERSIST_CONFIG_FILE, "rb");
 
@@ -387,7 +391,8 @@ static int stn_persist_load(void) {
 
 /** @brief Save persistent configuration to stunts.cfg
  */
-static void stn_persist_save(void) {
+static void
+stn_persist_save(void) {
     struct STN_PERSIST_CONFIG cfg;
     FILE *fp;
 
@@ -425,7 +430,8 @@ typedef void (*exit_handler_func)(void);
  * If the handler is already registered, does nothing.
  * Calls fatal_error if no free slots are available.
  */
-void add_exit_handler(exit_handler_func handler) {
+void
+add_exit_handler(exit_handler_func handler) {
     int i;
 
     for (i = 0; i < 10; i++) {
@@ -455,7 +461,8 @@ void add_exit_handler(exit_handler_func handler) {
  * @param call_exitlist Parameter `call_exitlist`.
  * @return Function result.
  */
-void call_exitlist(void) {
+void
+call_exitlist(void) {
     int i;
 
     for (i = 10; i >= 0; i--) {
@@ -467,7 +474,8 @@ void call_exitlist(void) {
 
 /** @brief Call all exit handlers and terminate the program
  */
-void call_exitlist2(void) {
+void
+call_exitlist2(void) {
     call_exitlist();
     exit(0);
 }
@@ -477,7 +485,8 @@ void call_exitlist2(void) {
  * @param ch Character to convert
  * @return Uppercase version of ch, or ch if not lowercase
  */
-int toupper(int ch) {
+int
+toupper(int ch) {
     if (ch >= 'a' && ch <= 'z') {
         ch -= ' ';
     }
@@ -490,23 +499,24 @@ void copy_string(char *dest, char *src);
 
 /** @brief Initialize track grid row and column lookup tables
  */
-void init_row_tables(void) {
+void
+init_row_tables(void) {
     int i;
     for (i = 0; i < STN_TRACK_GRID_SIZE; i++) {
         trackrows[i] = STN_TRACK_GRID_SIZE * (STN_TRACK_LAST_INDEX - i);
         terrainrows[i] = STN_TRACK_GRID_SIZE * i;
         trackpos[i] = (STN_TRACK_LAST_INDEX - i) << STN_TRACK_CELL_SHIFT;
         trackpos2[i] = i << STN_TRACK_CELL_SHIFT;
-        trackcenterpos[i] = ((STN_TRACK_LAST_INDEX - i) << STN_TRACK_CELL_SHIFT) +
-                            STN_TRACK_CELL_CENTER_OFFSET;
+        trackcenterpos[i] = ((STN_TRACK_LAST_INDEX - i) << STN_TRACK_CELL_SHIFT)
+                            + STN_TRACK_CELL_CENTER_OFFSET;
         terrainpos[i] = i << STN_TRACK_CELL_SHIFT;
         terraincenterpos[i] = (i << STN_TRACK_CELL_SHIFT) + STN_TRACK_CELL_CENTER_OFFSET;
         trackcenterpos2[i] = (i << STN_TRACK_CELL_SHIFT) + STN_TRACK_CELL_CENTER_OFFSET;
     }
 
     terrainrows[STN_TRACK_GRID_SIZE] = STN_TRACK_GRID_SIZE * STN_TRACK_GRID_SIZE;
-    trackrows[STN_TRACK_GRID_SIZE] = STN_TRACK_GRID_SIZE *
-                                     (STN_TRACK_LAST_INDEX - STN_TRACK_GRID_SIZE);
+    trackrows[STN_TRACK_GRID_SIZE] = STN_TRACK_GRID_SIZE
+                                     * (STN_TRACK_LAST_INDEX - STN_TRACK_GRID_SIZE);
     trackpos[STN_TRACK_GRID_SIZE] = STN_TRACK_POS_SENTINEL;
     trackpos2[STN_TRACK_GRID_SIZE] = STN_TRACK_GRID_SIZE << STN_TRACK_CELL_SHIFT;
     terrainpos[STN_TRACK_GRID_SIZE] = STN_TRACK_GRID_SIZE << STN_TRACK_CELL_SHIFT;
@@ -514,7 +524,8 @@ void init_row_tables(void) {
 
 /** @brief Set default player and opponent car configuration
  */
-void set_default_car(void) {
+void
+set_default_car(void) {
     gameconfig.game_playercarid[0] = 'C';
     gameconfig.game_playercarid[1] = 'O';
     gameconfig.game_playercarid[2] = 'U';
@@ -523,14 +534,15 @@ void set_default_car(void) {
     gameconfig.game_playertransmission = 1;
     gameconfig.game_opponenttype = 0;     /* default opponent: Clock */
     gameconfig.game_opponentmaterial = 1; /* alternate material from player */
-    gameconfig.game_opponentcarid[0] =
-        STN_TRACK_OPPONENT_AUTOSELECT; /* auto-select at race start */
+    gameconfig.game_opponentcarid[0]
+        = STN_TRACK_OPPONENT_AUTOSELECT; /* auto-select at race start */
     gameconfig.game_opponenttransmission = 0;
 }
 
 /** @brief Allocate and partition the track data buffer
  */
-void init_trackdata(void) {
+void
+init_trackdata(void) {
     unsigned char *trkptr;
     trkptr = (unsigned char *)mmgr_alloc_resbytes("trakdata", STN_TRACKDATA_TOTAL_SIZE);
 
@@ -605,14 +617,15 @@ void init_trackdata(void) {
     trkptr += 48;
 }
 
-struct RECTANGLE shaperect = {0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT};
+struct RECTANGLE shaperect = { 0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT };
 struct TRANSFORMEDSHAPE3D transshape;
-struct RECTANGLE cliprect = {0, STN_SCREEN_WIDTH, 0, STN_CLIPRECT_BOTTOM};
-struct VECTOR carpos = {0, 64696, 2880}; // from the original
+struct RECTANGLE cliprect = { 0, STN_SCREEN_WIDTH, 0, STN_CLIPRECT_BOTTOM };
+struct VECTOR carpos = { 0, 64696, 2880 }; // from the original
 
 /** @brief Reset replay-related runtime variables to defaults
  */
-void reset_replay_runtime_state(void) {
+void
+reset_replay_runtime_state(void) {
     replay_fps_inverse_scale = 1;
     replay_capture_frame_skip_counter = 2;
     replay_frame_counter = 0;
@@ -631,8 +644,9 @@ void reset_replay_runtime_state(void) {
  * @param posZ Initial Z position
  * @param track_angle Initial track heading angle
  */
-void init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char transmission,
-                             long posX, long posY, long posZ, short track_angle) {
+void
+init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char transmission,
+                        long posX, long posY, long posZ, short track_angle) {
     int i;
     struct VECTOR whlPos;
 
@@ -711,7 +725,8 @@ void init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, ch
  * @param arg Parameter `arg`.
  * @return Function result.
  */
-void init_game_state(short arg) {
+void
+init_game_state(short arg) {
     int i, tmpcol, tmprow;
 
     if (arg == -1) {
@@ -755,17 +770,17 @@ void init_game_state(short arg) {
             state.game_obstacle_active[i] = 0;
         }
 
-        state.game_vec1[0].x =
-            multiply_and_scale(sin_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL) +
-            multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE) +
-            ((short)startcol2 << STN_TRACK_CELL_SHIFT);
+        state.game_vec1[0].x
+            = multiply_and_scale(sin_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
+              + multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
+              + ((short)startcol2 << STN_TRACK_CELL_SHIFT);
 
         state.game_vec1[0].y = hillHeightConsts[hillFlag] + STN_TRACK_SPAWN_Y_OFFSET;
 
-        state.game_vec1[0].z =
-            multiply_and_scale(cos_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL) +
-            multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE) +
-            trackpos[startrow2];
+        state.game_vec1[0].z
+            = multiply_and_scale(cos_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
+              + multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
+              + trackpos[startrow2];
 
         state.game_vec1[1] = state.game_vec1[0];
         state.game_vec3 = state.game_vec1[0];
@@ -783,11 +798,11 @@ void init_game_state(short arg) {
         state.game_jumpCount = 0;
 
         // Init player car.
-        tmpcol = multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_START_OFFSET_NEAR) +
-                 multiply_and_scale(sin_fast(track_angle + 256), STN_TRACK_START_OFFSET_SIDE);
+        tmpcol = multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_START_OFFSET_NEAR)
+                 + multiply_and_scale(sin_fast(track_angle + 256), STN_TRACK_START_OFFSET_SIDE);
 
-        tmprow = multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_START_OFFSET_NEAR) +
-                 multiply_and_scale(cos_fast(track_angle + 256), STN_TRACK_START_OFFSET_SIDE);
+        tmprow = multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_START_OFFSET_NEAR)
+                 + multiply_and_scale(cos_fast(track_angle + 256), STN_TRACK_START_OFFSET_SIDE);
 
         init_carstate_from_simd(
             &state.playerstate, &simd_player, gameconfig.game_playertransmission,
@@ -845,8 +860,8 @@ void init_game_state(short arg) {
             short opponent_path_index = 0;
             short opponent_seq_index = state.opponentstate.car_waypoint_seq_index;
 
-            if ((unsigned short)opponent_seq_index <
-                (unsigned short)(STN_TRACKDATA_BLOCK_MAIN / (int)sizeof(short))) {
+            if ((unsigned short)opponent_seq_index
+                < (unsigned short)(STN_TRACKDATA_BLOCK_MAIN / (int)sizeof(short))) {
                 opponent_path_index = ((short *)track_waypoint_order)[opponent_seq_index];
                 if ((unsigned short)opponent_path_index >= STN_TRACKDATA_BLOCK_PATH) {
                     opponent_path_index = 0;
@@ -867,7 +882,8 @@ void init_game_state(short arg) {
 /** @brief Restore game state from CVX checkpoint buffer
  * @param frame Frame number to restore from
  */
-void restore_gamestate(unsigned short frame) {
+void
+restore_gamestate(unsigned short frame) {
     unsigned short curframe;
 
     if (frame == 0 && elapsed_time1 == 0) {
@@ -903,7 +919,8 @@ void restore_gamestate(unsigned short frame) {
 
 /** @brief Per-frame game state update handling physics and input
  */
-void update_gamestate() {
+void
+update_gamestate() {
     char var_carInputByte;
 
     var_carInputByte = replay_buffer[state.game_frame];
@@ -918,8 +935,8 @@ void update_gamestate() {
     }
 
     state.game_frame++;
-    if (state.game_3F6autoLoadEvalFlag != 0 &&
-        state.game_frame_in_sec < state.game_frames_per_sec) {
+    if (state.game_3F6autoLoadEvalFlag != 0
+        && state.game_frame_in_sec < state.game_frames_per_sec) {
         state.game_frame_in_sec++;
         if (state.game_frame_in_sec == state.game_frames_per_sec && game_finish_state == 0) {
             if (state.playerstate.car_crashBmpFlag == 1 && state.playerstate.car_speed2 != 0) {
@@ -960,12 +977,12 @@ void update_gamestate() {
 
             if (game_pause_counter == 2) {
                 if (multiply_and_scale(cos_fast(track_angle),
-                                       trackcenterpos[startrow2] -
-                                           (state.playerstate.car_posWorld1.lz >> 6)) +
-                        multiply_and_scale(sin_fast(track_angle),
-                                           trackcenterpos2[startcol2] -
-                                               (state.playerstate.car_posWorld1.lx >> 6)) <=
-                    228) {
+                                       trackcenterpos[startrow2]
+                                           - (state.playerstate.car_posWorld1.lz >> 6))
+                        + multiply_and_scale(sin_fast(track_angle),
+                                             trackcenterpos2[startcol2]
+                                                 - (state.playerstate.car_posWorld1.lx >> 6))
+                    <= 228) {
                     if (state.playerstate.car_speed != 0) {
                         update_player_car_state(2);
                     }
@@ -997,7 +1014,8 @@ unsigned short unused_state_word_3B1EE;
  * @param dest Destination buffer
  * @param src Source string pointer
  */
-void copy_string(char *dest, char *src) {
+void
+copy_string(char *dest, char *src) {
     while (*src != '\0') {
         *dest++ = *src++;
     }
@@ -1008,7 +1026,8 @@ void copy_string(char *dest, char *src) {
  * @param dest Output buffer for the extracted filename
  * @param source Full file path input
  */
-void parse_filepath_separators(char *dest, char *source) {
+void
+parse_filepath_separators(char *dest, char *source) {
     int len = 0;
     int destidx;
 
@@ -1045,7 +1064,8 @@ void parse_filepath_separators(char *dest, char *source) {
 // Display "Please wait..." dialog
 /** @brief Display a "Please wait..." dialog on screen
  */
-void show_waiting(void) {
+void
+show_waiting(void) {
     char *textresptr;
     unsigned short prev_menu_pause;
 
@@ -1071,7 +1091,8 @@ void show_waiting(void) {
 // before gameplay begins.
 /** @brief Unload audio song and voice resources
  */
-void audio_unload(void) {
+void
+audio_unload(void) {
     if (is_audioloaded == 0) {
         return;
     }
@@ -1086,7 +1107,8 @@ void audio_unload(void) {
 // Push current input status onto stack
 /** @brief Push current input state onto the input stack
  */
-void input_push_status(void) {
+void
+input_push_status(void) {
     int idx = input_status_stack_index;
     sprite_buffer_x_coords[idx] = mouse_motion_detected_flag;
     sprite_buffer_y_coords[idx] = kbormouse;
@@ -1095,7 +1117,8 @@ void input_push_status(void) {
 
 /** @brief Pop input state from the input stack
  */
-void input_pop_status(void) {
+void
+input_pop_status(void) {
     int idx;
     if (input_status_stack_index == 0) {
         return;
@@ -1115,7 +1138,8 @@ void input_pop_status(void) {
  * @param zeroPadFlag If non-zero, pad with '0' instead of spaces
  * @param width Minimum field width
  */
-void print_int_as_string_maybe(char *dest, int value, int zeroPadFlag, int width) {
+void
+print_int_as_string_maybe(char *dest, int value, int zeroPadFlag, int width) {
     int len = 0;
     int i;
 
@@ -1159,7 +1183,8 @@ void print_int_as_string_maybe(char *dest, int value, int zeroPadFlag, int width
  * @param frames Frame count to format
  * @param showFractions If non-zero, include fractional frames
  */
-void format_frame_as_string(char *dest, unsigned short frames, unsigned short showFractions) {
+void
+format_frame_as_string(char *dest, unsigned short frames, unsigned short showFractions) {
     unsigned short framesPerMinute;
     unsigned short minutes;
     unsigned short seconds;
@@ -1191,7 +1216,8 @@ void format_frame_as_string(char *dest, unsigned short frames, unsigned short sh
 // Wait for input to be released
 /** @brief Spin-wait until all keys and buttons are released
  */
-void check_input(void) {
+void
+check_input(void) {
     char done;
     do {
         short flags;
@@ -1223,7 +1249,8 @@ void check_input(void) {
  * @param delta Time delta for input processing
  * @return Input code received
  */
-int input_do_checking(int delta) {
+int
+input_do_checking(int delta) {
     return input_checking(delta);
 }
 
@@ -1231,7 +1258,8 @@ int input_do_checking(int delta) {
  * @param timeout Timeout value in ticks
  * @return Input code if received, 0 if timeout
  */
-unsigned short input_repeat_check(unsigned short timeout) {
+unsigned short
+input_repeat_check(unsigned short timeout) {
     unsigned short totalTime = 0;
     unsigned short result;
     unsigned short delta;
@@ -1271,7 +1299,8 @@ unsigned short input_repeat_check(unsigned short timeout) {
  * @param mode Parameter `mode`.
  * @return Function result.
  */
-unsigned short sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) {
+unsigned short
+sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) {
     short i;
     unsigned short delta;
     unsigned short input;
@@ -1338,7 +1367,8 @@ unsigned short sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) 
 // Show key configuration dialog
 /** @brief Show keyboard configuration dialog
  */
-void do_key_restext(void) {
+void
+do_key_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1358,7 +1388,8 @@ void do_key_restext(void) {
 // Show mouse configuration dialog
 /** @brief Show mouse configuration dialog
  */
-void do_mou_restext(void) {
+void
+do_mou_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1377,7 +1408,8 @@ void do_mou_restext(void) {
 // Show pause text resource
 /** @brief Show pause text dialog
  */
-void do_pau_restext(void) {
+void
+do_pau_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1395,7 +1427,8 @@ void do_pau_restext(void) {
 // Show music on/off dialog
 /** @brief Show music on/off toggle dialog
  */
-void do_mof_restext(void) {
+void
+do_mof_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1417,7 +1450,8 @@ void do_mof_restext(void) {
 // Show sons of dialog
 /** @brief Show sound on/off toggle dialog
  */
-void do_sonsof_restext(void) {
+void
+do_sonsof_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1435,7 +1469,8 @@ void do_sonsof_restext(void) {
 // Show DOS text resource dialog
 /** @brief Show DOS quit confirmation dialog
  */
-void do_dos_restext(void) {
+void
+do_dos_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1452,7 +1487,8 @@ void do_dos_restext(void) {
 
 /** @brief Show memory error text dialog
  */
-void do_mer_restext(void) {
+void
+do_mer_restext(void) {
     void *textptr;
 
     input_push_status();
@@ -1470,7 +1506,8 @@ void do_mer_restext(void) {
 /** @brief Show disk error dialog with abort/retry option
  * @return 0 = cancel/abort, 1 = retry, 2 = special abort
  */
-short do_dea_textres(void) {
+short
+do_dea_textres(void) {
     void *textptr;
     short result;
 
@@ -1503,7 +1540,8 @@ short do_dea_textres(void) {
  * @param buffer Parameter `buffer`.
  * @return Function result.
  */
-void *file_read_with_mode(unsigned short op, const char *filename, void *buffer) {
+void *
+file_read_with_mode(unsigned short op, const char *filename, void *buffer) {
     void *result;
 
     while (1) {
@@ -1542,8 +1580,9 @@ void *file_read_with_mode(unsigned short op, const char *filename, void *buffer)
  * @param col2 Middle border color
  * @param col3 Bottom/right shadow color
  */
-void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w, unsigned short h,
-                         unsigned short col1, unsigned short col2, unsigned short col3) {
+void
+draw_beveled_border(unsigned short x, unsigned short y, unsigned short w, unsigned short h,
+                    unsigned short col1, unsigned short col2, unsigned short col3) {
     unsigned short right = x + w;
     unsigned short bottom = y + h;
 
@@ -1572,7 +1611,8 @@ void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w, u
  * @param carresptr Car resource data pointer
  * @param is_opponent Non-zero if setting up opponent car
  */
-void setup_aero_trackdata(void *carresptr, int is_opponent) {
+void
+setup_aero_trackdata(void *carresptr, int is_opponent) {
     int i;
     if (is_opponent == 0) {
         if (!simd_copy_from_resource(&simd_player, sizeof(simd_player),
@@ -1597,8 +1637,8 @@ void setup_aero_trackdata(void *carresptr, int is_opponent) {
         simd_opponent_rt.aerorestable = (uintptr_t)aero_table_opponent;
 
         for (i = 0; i < 64; i++) {
-            aero_table_opponent[i] = ((long)simd_opponent_rt.aero_resistance * (long)i * (long)i) >>
-                                     9;
+            aero_table_opponent[i] = ((long)simd_opponent_rt.aero_resistance * (long)i * (long)i)
+                                     >> 9;
         }
         copy_string(gsna_string, locate_shape_alt(carresptr, "gsna"));
     }
@@ -1607,7 +1647,8 @@ void setup_aero_trackdata(void *carresptr, int is_opponent) {
 // Initialize opponent track plan data and car state (ported from seg001 init_plantrak)
 /** @brief Initialize opponent track plan and car state
  */
-void init_plantrak_(void) {
+void
+init_plantrak_(void) {
     unsigned short *td3 = (unsigned short *)track_waypoint_order;
     unsigned char *td17 = (unsigned char *)track_elem_ordered;
     unsigned char *td18 = (unsigned char *)path_conn_flags;
@@ -1690,14 +1731,15 @@ void init_plantrak_(void) {
 /** @brief Full car setup for gameplay including shapes, audio and physics
  * @return 0 on success, non-zero on error
  */
-int setup_player_cars(void) {
+int
+setup_player_cars(void) {
     void *carresptr;
     unsigned long var_8;
 
     /* If opponent is enabled but no car was selected, use the player's car
 	   (matching original DOS behaviour and the opponent menu "Done" fallback). */
-    if (gameconfig.game_opponenttype != 0 &&
-        (unsigned char)gameconfig.game_opponentcarid[0] == STN_TRACK_OPPONENT_AUTOSELECT) {
+    if (gameconfig.game_opponenttype != 0
+        && (unsigned char)gameconfig.game_opponentcarid[0] == STN_TRACK_OPPONENT_AUTOSELECT) {
         memcpy(gameconfig.game_opponentcarid, gameconfig.game_playercarid, 4);
         gameconfig.game_opponentmaterial = (char)((gameconfig.game_playermaterial & 1) ^ 1);
         gameconfig.game_opponenttransmission = 0;
@@ -1784,7 +1826,8 @@ int setup_player_cars(void) {
 
 /** @brief Free all car-related resources
  */
-void free_player_cars(void) {
+void
+free_player_cars(void) {
     if (video_flag5_is0 == 0) {
         if (wndsprite != 0) {
             sprite_free_wnd(wndsprite);
@@ -1811,7 +1854,8 @@ void shape2d_render_bmp_as_mask(void *data);
 
 /** @brief Main game loop handling driving, replay and pause
  */
-void run_game(void) {
+void
+run_game(void) {
     unsigned short var_16[2];
     int var_12, var_E;
     struct RECTANGLE var_rect;
@@ -1885,10 +1929,10 @@ void run_game(void) {
                 kbormouse = 0;
                 game_replay_mode = 1;
 
-                state.playerstate.car_posWorld1.lx +=
-                    multiply_and_scale(sin_fast(track_angle), -240) << STN_WORLD_SCALE_SHIFT;
-                state.playerstate.car_posWorld1.lz +=
-                    multiply_and_scale(cos_fast(track_angle), -240) << STN_WORLD_SCALE_SHIFT;
+                state.playerstate.car_posWorld1.lx
+                    += multiply_and_scale(sin_fast(track_angle), -240) << STN_WORLD_SCALE_SHIFT;
+                state.playerstate.car_posWorld1.lz
+                    += multiply_and_scale(cos_fast(track_angle), -240) << STN_WORLD_SCALE_SHIFT;
                 state.playerstate.car_posWorld1.ly += STN_CAR_START_Y_LIFT;
                 replay_mode_state_flag = 1;
             }
@@ -1915,15 +1959,15 @@ void run_game(void) {
             timer_get_counter(); /* drive timer ISR: frame_callback → replay_capture_frame_input → replay_frame_counter++ */
 
             if (state.game_frame != replay_frame_counter) {
-                if ((mouse_motion_state_flag != 0 || joystick_assigned_flags != 0) &&
-                    game_replay_mode == 0) {
+                if ((mouse_motion_state_flag != 0 || joystick_assigned_flags != 0)
+                    && game_replay_mode == 0) {
                     replay_apply_steering_correction();
                 }
                 update_gamestate();
                 /* Safety valve: if physics is significantly behind rendering,
 				 * yield briefly so the render path is not starved. */
                 if ((int)(replay_frame_counter - state.game_frame) > 2) {
-                    struct timespec ts_yield = {0, GAME_YIELD_NS};
+                    struct timespec ts_yield = { 0, GAME_YIELD_NS };
                     nanosleep(&ts_yield, NULL);
                 }
                 continue;
@@ -1967,9 +2011,9 @@ void run_game(void) {
                 sprite_select_wnd_as_sprite1();
             }
 
-            if (game_replay_mode != game_replay_mode_copy || dashb_toggle != dashb_toggle_copy ||
-                replaybar_toggle != replaybar_toggle_copy || is_in_replay != is_in_replay_copy ||
-                followOpponentFlag != followOpponentFlag_copy) {
+            if (game_replay_mode != game_replay_mode_copy || dashb_toggle != dashb_toggle_copy
+                || replaybar_toggle != replaybar_toggle_copy || is_in_replay != is_in_replay_copy
+                || followOpponentFlag != followOpponentFlag_copy) {
                 game_replay_mode_copy = game_replay_mode;
                 dashb_toggle_copy = dashb_toggle;
                 replaybar_toggle_copy = replaybar_toggle;
@@ -1978,8 +2022,8 @@ void run_game(void) {
                 roofbmpheight_copy = 0;
                 game_input_keyboard_state = 0;
 
-                if (game_replay_mode != 2 || idle_expired != 0 ||
-                    (replaybar_toggle == 0 && is_in_replay == 0)) {
+                if (game_replay_mode != 2 || idle_expired != 0
+                    || (replaybar_toggle == 0 && is_in_replay == 0)) {
                     replaybar_enabled = 0;
                 }
                 else {
@@ -2011,8 +2055,8 @@ void run_game(void) {
                     dashbmp_y_copy = dashbmp_y;
                 }
 
-                if (var_2 != roofbmpheight_copy || dashbmp_y_copy != timer_tick_counter ||
-                    var_E != height_above_replaybar) {
+                if (var_2 != roofbmpheight_copy || dashbmp_y_copy != timer_tick_counter
+                    || var_E != height_above_replaybar) {
                     race_condition_state_flag = video_flag6_is1;
                     set_projection(35, dashbmp_y_copy / 6, STN_SCREEN_WIDTH, dashbmp_y_copy);
                     rect_windshield.top = roofbmpheight_copy;
@@ -2086,8 +2130,8 @@ void run_game(void) {
 
             if (idle_expired == 0) {
                 if (game_finish_state != 0) {
-                    if ((game_replay_mode != 0 || state.game_3F6autoLoadEvalFlag == 4) &&
-                        game_finish_state != 2) {
+                    if ((game_replay_mode != 0 || state.game_3F6autoLoadEvalFlag == 4)
+                        && game_finish_state != 2) {
                         game_finish_state = 0;
                         game_replay_mode = 2;
                         mouse_minmax_position(0);
@@ -2125,8 +2169,8 @@ void run_game(void) {
                         break;
                     }
 
-                } while (var_12 == UI_KEY_UP || var_12 == UI_KEY_LEFT || var_12 == UI_KEY_RIGHT ||
-                         var_12 == UI_KEY_DOWN);
+                } while (var_12 == UI_KEY_UP || var_12 == UI_KEY_LEFT || var_12 == UI_KEY_RIGHT
+                         || var_12 == UI_KEY_DOWN);
 
                 if (game_replay_mode == 1) {
                     mouse_get_state(&mouse_butstate, &mouse_xpos, &mouse_ypos);
@@ -2158,8 +2202,8 @@ void run_game(void) {
         is_in_replay = 1;
         audio_sync_car_audio();
         audio_remove_driver_timer();
-        if (game_replay_mode == 0 && gameconfig.game_opponenttype != 0 &&
-            state.opponentstate.car_crashBmpFlag == 0) {
+        if (game_replay_mode == 0 && gameconfig.game_opponenttype != 0
+            && state.opponentstate.car_crashBmpFlag == 0) {
             ui_dialog_show_restext(3, 0, locate_text_res(gameresptr, "cop"), UI_DIALOG_AUTO_POS, 80,
                                    performGraphColor, var_16, 0);
             *(char *)&lap_completion_trigger_flag = 1;
@@ -2210,8 +2254,9 @@ void run_game(void) {
  * @param patlist2 Destination pattern list 2 pointer
  * @param direction Copy direction flag
  */
-void copy_material_list_pointers(void *clrlist, void *clrlist2, void *patlist, void *patlist2,
-                                 unsigned short videoConst) {
+void
+copy_material_list_pointers(void *clrlist, void *clrlist2, void *patlist, void *patlist2,
+                            unsigned short videoConst) {
     material_clrlist_ptr_cpy = clrlist;
     material_clrlist2_ptr_cpy = clrlist2;
     material_patlist_ptr_cpy = patlist;
@@ -2228,7 +2273,8 @@ void copy_material_list_pointers(void *clrlist, void *clrlist2, void *patlist, v
  * @param load_palandcursor Parameter `load_palandcursor`.
  * @return Function result.
  */
-void load_palandcursor(void) {
+void
+load_palandcursor(void) {
     unsigned char palette[STN_PALETTE_BYTES];
     char *shapedata;
     char *palptr;
@@ -2295,7 +2341,8 @@ void load_palandcursor(void) {
  * @param argc Argument count
  * @param argv Argument vector
  */
-void init_main(int argc, char *argv[]) {
+void
+init_main(int argc, char *argv[]) {
     unsigned int i;
     unsigned char argnosound;
     unsigned long timerdelta1, timerdelta2, timerdelta3;
@@ -2345,10 +2392,12 @@ void init_main(int argc, char *argv[]) {
             case 's':
                 if ((((g_ascii_props[(unsigned char)argv[i][2]] & RST_ASC_CHAR_UPPER)
                           ? (argv[i][2] + ' ')
-                          : (argv[i][2])) == 's') &&
-                    (((g_ascii_props[(unsigned char)argv[i][3]] & RST_ASC_CHAR_UPPER)
-                          ? (argv[i][3] + ' ')
-                          : (argv[i][3])) == 'b')) {
+                          : (argv[i][2]))
+                     == 's')
+                    && (((g_ascii_props[(unsigned char)argv[i][3]] & RST_ASC_CHAR_UPPER)
+                             ? (argv[i][3] + ' ')
+                             : (argv[i][3]))
+                        == 'b')) {
                     audiodriverstring[0] = argv[i][2];
                     audiodriverstring[1] = argv[i][3];
                 }
@@ -2434,7 +2483,8 @@ void init_main(int argc, char *argv[]) {
  * @param argv Argument vector
  * @return Exit code
  */
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
 
     int i, result;
     int regsi;
@@ -2648,7 +2698,8 @@ int main(int argc, char *argv[]) {
  */
 /* ── Utility functions (previously in utils.c) ───────────────────────────── */
 
-void fatal_error(const char *fmt, ...) {
+void
+fatal_error(const char *fmt, ...) {
     va_list args;
     fprintf(stderr, "FATAL: ");
     va_start(args, fmt);
@@ -2665,7 +2716,8 @@ void fatal_error(const char *fmt, ...) {
  * @param radix Parameter `radix`.
  * @return Function result.
  */
-char *stunts_itoa(int value, char *str, int radix) {
+char *
+stunts_itoa(int value, char *str, int radix) {
     unsigned int uvalue, digit;
     char tmp[34];
     int pos = 0, out = 0, negative = 0;
@@ -2699,7 +2751,8 @@ char *stunts_itoa(int value, char *str, int radix) {
 /** @brief Initialize kevinrandom.
  * @param seed Parameter `seed`.
  */
-void init_kevinrandom(const char *seed) {
+void
+init_kevinrandom(const char *seed) {
     int i;
     for (i = 0; i < 6; ++i)
         g_kevinrandom_seed[i] = (unsigned char)seed[i];
@@ -2708,7 +2761,8 @@ void init_kevinrandom(const char *seed) {
 /** @brief Get kevinrandom seed.
  * @param seed Parameter `seed`.
  */
-void get_kevinrandom_seed(char *seed) {
+void
+get_kevinrandom_seed(char *seed) {
     int i;
     for (i = 0; i < 6; ++i)
         seed[i] = (char)g_kevinrandom_seed[i];
@@ -2717,7 +2771,8 @@ void get_kevinrandom_seed(char *seed) {
 /** @brief Get kevinrandom.
  * @return Function result.
  */
-int get_kevinrandom(void) {
+int
+get_kevinrandom(void) {
     g_kevinrandom_seed[4] += g_kevinrandom_seed[5];
     g_kevinrandom_seed[3] += g_kevinrandom_seed[4];
     g_kevinrandom_seed[2] += g_kevinrandom_seed[3];
@@ -2744,7 +2799,8 @@ int get_kevinrandom(void) {
 /** @brief Get super random.
  * @return Function result.
  */
-int get_super_random(void) {
+int
+get_super_random(void) {
     int val = rand() + get_kevinrandom() + (int)timer_get_counter() + gState_frame;
     return val < 0 ? -val : val;
 }
@@ -2752,7 +2808,8 @@ int get_super_random(void) {
 /** @brief Random wait.
  * @return Function result.
  */
-int random_wait(void) {
+int
+random_wait(void) {
     int i = (int)(unsigned char)aMisc_1[0];
     while (i--) {
         rand();

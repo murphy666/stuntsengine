@@ -38,22 +38,22 @@
 #include "ui_screen.h"
 
 /* Variables moved from data_game.c */
-static unsigned short highscore_secondary_indices[] = {0, 0, 0, 0, 0, 0};
+static unsigned short highscore_secondary_indices[] = { 0, 0, 0, 0, 0, 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static unsigned short end_hiscore_random = 0;
-static struct RECTANGLE hiscore_draw_text_rect = {0, 0, 0, 0};
+static struct RECTANGLE hiscore_draw_text_rect = { 0, 0, 0, 0 };
 static unsigned char input_button_repeat_state = 0;
-static char input_replay_buffer[17] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static char input_replay_buffer[17] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
 /* file-local data (moved from data_global.c) */
 static unsigned short game_object_rotation_x = 4;
 static unsigned short rotation_matrix_pitch = 84;
 static unsigned short rotation_matrix_yaw = 164;
-static unsigned char rotation_matrix_element_scale[4] = {244, 0, 128, 0};
-static unsigned short hiscore_buttons_y1[] = {174, 174, 174, 174, 174};
-static unsigned short hiscore_buttons_y2[] = {197, 197, 197, 197, 197};
+static unsigned char rotation_matrix_element_scale[4] = { 244, 0, 128, 0 };
+static unsigned short hiscore_buttons_y1[] = { 174, 174, 174, 174, 174 };
+static unsigned short hiscore_buttons_y2[] = { 197, 197, 197, 197, 197 };
 
 
 /** @brief Data.
@@ -76,7 +76,8 @@ static unsigned short hiscore_buttons_y2[] = {197, 197, 197, 197, 197};
  * @return Function result.
  */
 
-struct RECTANGLE *hiscore_draw_text(char *str, int x, int y, int colour, int shadowColour) {
+struct RECTANGLE *
+hiscore_draw_text(char *str, int x, int y, int colour, int shadowColour) {
     unsigned short textWidth;
 
     // Set up bounding rectangle (with -1 padding)
@@ -108,7 +109,8 @@ struct RECTANGLE *hiscore_draw_text(char *str, int x, int y, int colour, int sha
 // Reset idle/menu timers used by main menu highlighting
 /** @brief Menu reset idle timers.
  */
-void menu_reset_idle_timers(void) {
+void
+menu_reset_idle_timers(void) {
     distance_accumulator_counter = 0;
     game_timer_milliseconds = 0;
     idle_counter = 0;
@@ -125,7 +127,8 @@ void menu_reset_idle_timers(void) {
  * @param write_defaults Parameter `write_defaults`.
  * @return Function result.
  */
-unsigned short highscore_write_a_(unsigned short write_defaults) {
+unsigned short
+highscore_write_a_(unsigned short write_defaults) {
     unsigned short i;
     unsigned char entry[52];
     unsigned short j;
@@ -171,7 +174,8 @@ unsigned short highscore_write_a_(unsigned short write_defaults) {
  * @return Function result.
  */
 
-unsigned short highscore_write_b(void) {
+unsigned short
+highscore_write_b(void) {
     unsigned char buffer[364];
     unsigned short i;
     unsigned short j;
@@ -210,11 +214,12 @@ unsigned short highscore_write_b(void) {
  * @param arg6 Parameter `arg6`.
  * @return Function result.
  */
-unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
+unsigned short
+enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
     unsigned char entry[52];
     unsigned short insertion = 0;
     unsigned short i;
-    unsigned short dialog_coords[2] = {0, 0};
+    unsigned short dialog_coords[2] = { 0, 0 };
 
     if (framespersec == 10) {
         score <<= 1;
@@ -233,8 +238,8 @@ unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned c
     }
 
     while (insertion < 7) {
-        unsigned short existing =
-            *(unsigned short *)((unsigned char *)highscore_data + (insertion * 52) + 50);
+        unsigned short existing
+            = *(unsigned short *)((unsigned char *)highscore_data + (insertion * 52) + 50);
         if (score < existing) {
             break;
         }
@@ -306,7 +311,8 @@ unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned c
  * @param lengths Parameter `lengths`.
  */
 
-void print_highscore_entry_(unsigned short index, unsigned char *lengths) {
+void
+print_highscore_entry_(unsigned short index, unsigned char *lengths) {
     unsigned char entry[52];
     unsigned short mapped_index;
     unsigned short offset;
@@ -375,7 +381,8 @@ void print_highscore_entry_(unsigned short index, unsigned char *lengths) {
 /** @brief Highscore draw screen.
  */
 
-void highscore_draw_screen(void) {
+void
+highscore_draw_screen(void) {
     unsigned char lengths[4];
     unsigned short i;
     unsigned short y;
@@ -439,7 +446,8 @@ typedef struct {
     unsigned short button_y2[4];
 } HiscoreMenuState;
 
-static int hiscore_on_event(UIScreen *self, const UIEvent *ev) {
+static int
+hiscore_on_event(UIScreen *self, const UIEvent *ev) {
     HiscoreMenuState *st = (HiscoreMenuState *)self->userdata;
 
     if (ev->type == UI_EVENT_KEY_DOWN) {
@@ -472,7 +480,8 @@ static int hiscore_on_event(UIScreen *self, const UIEvent *ev) {
     return 0;
 }
 
-static void hiscore_on_render(UIScreen *self) {
+static void
+hiscore_on_render(UIScreen *self) {
     HiscoreMenuState *st = (HiscoreMenuState *)self->userdata;
     unsigned short replay_delta;
 
@@ -491,8 +500,8 @@ static void hiscore_on_render(UIScreen *self) {
                                            camera_view_matrix, object_visibility_state);
 
     st->anim_timer += replay_delta;
-    if (st->allow_animation && st->anim_timer >= st->anim_speed && st->opp_anim_shape != 0 &&
-        st->opp_text_res != 0) {
+    if (st->allow_animation && st->anim_timer >= st->anim_speed && st->opp_anim_shape != 0
+        && st->opp_text_res != 0) {
         unsigned char loop_frames = (st->race_result == 0) ? 1 : 3;
         char anim_name[4];
         char *anim_txt;
@@ -511,7 +520,8 @@ static void hiscore_on_render(UIScreen *self) {
     }
 }
 
-static void hiscore_on_destroy(UIScreen *self) {
+static void
+hiscore_on_destroy(UIScreen *self) {
     HiscoreMenuState *st = (HiscoreMenuState *)self->userdata;
     if (!st)
         return;
@@ -540,7 +550,8 @@ static void hiscore_on_destroy(UIScreen *self) {
  * @return Function result.
  */
 
-unsigned short end_hiscore(void) {
+unsigned short
+end_hiscore(void) {
     void *misc_res;
     void *opp_res = 0;
     void *opp_text_res = 0;
@@ -679,8 +690,8 @@ unsigned short end_hiscore(void) {
         opp_anim_shape = (struct SHAPE2D *)locate_shape_alt(opp_res,
                                                             (race_result == 0) ? "winn" : "lose");
         anim_letter = (race_result == 0) ? 'v' : 'd';
-        anim_frame = end_hiscore_random =
-            (unsigned char)((get_kevinrandom() + gState_frame) & ((race_result == 0) ? 1 : 3));
+        anim_frame = end_hiscore_random
+            = (unsigned char)((get_kevinrandom() + gState_frame) & ((race_result == 0) ? 1 : 3));
     }
 
     // Verify current track matches loaded data; determine if we can update highscores.
@@ -693,8 +704,8 @@ unsigned short end_hiscore(void) {
             if (track_res != 0) {
                 unsigned short i;
                 for (i = 0; i < 901; ++i) {
-                    if (*((unsigned char *)track_res + i) !=
-                        *((unsigned char *)track_elem_map + i)) {
+                    if (*((unsigned char *)track_res + i)
+                        != *((unsigned char *)track_elem_map + i)) {
                         has_track_match = 0;
                         break;
                     }
@@ -757,8 +768,8 @@ unsigned short end_hiscore(void) {
     button_x1[0] = game_object_rotation_x;
     button_x1[1] = rotation_matrix_pitch;
     button_x1[2] = rotation_matrix_yaw;
-    button_x1[3] = (unsigned short)rotation_matrix_element_scale[0] |
-                   ((unsigned short)rotation_matrix_element_scale[1] << 8);
+    button_x1[3] = (unsigned short)rotation_matrix_element_scale[0]
+                   | ((unsigned short)rotation_matrix_element_scale[1] << 8);
     button_y1[0] = hiscore_buttons_y1[0];
     button_y1[1] = hiscore_buttons_y1[1];
     button_y1[2] = hiscore_buttons_y1[2];

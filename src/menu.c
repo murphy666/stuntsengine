@@ -42,26 +42,26 @@
 static void *tempdataptr = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static struct RECTANGLE intro_draw_text_rect = {0, 0, 0, 0};
+static struct RECTANGLE intro_draw_text_rect = { 0, 0, 0, 0 };
 static char *miscptr = 0;
-static char *oppresources[] = {0, 0, 0, 0, 0, 0, 0};
+static char *oppresources[] = { 0, 0, 0, 0, 0, 0, 0 };
 static unsigned short terrain_type_lookup = 9;
 
 
 /* file-local data (moved from data_global.c) */
-static struct RECTANGLE carmenu_cliprect = {0, 320, 0, 95};
-static struct RECTANGLE menu_clip_rect = {0, 320, 0, 0};
-static struct VECTOR carmenu_carpos = {0, 64696, 2880};
+static struct RECTANGLE carmenu_cliprect = { 0, 320, 0, 95 };
+static struct RECTANGLE menu_clip_rect = { 0, 320, 0, 0 };
+static struct VECTOR carmenu_carpos = { 0, 64696, 2880 };
 
 /* menu button arrays (moved from data_global.c) */
-static unsigned short menu_buttons_x1[] = {105, 66, 5, 190, 255};
-static unsigned short menu_buttons_x2[] = {208, 107, 67, 253, 312};
-static unsigned short menu_buttons_y1[] = {119, 77, 114, 76, 116};
-static unsigned short menu_buttons_y2[] = {197, 120, 170, 122, 166};
-static unsigned short carmenu_buttons_y1[] = {229, 229, 229, 229, 229};
-static unsigned short carmenu_buttons_y2[] = {316, 316, 316, 316, 316};
-static unsigned short carmenu_buttons_x1[] = {107, 125, 143, 161, 179};
-static unsigned short carmenu_buttons_x2[] = {124, 142, 160, 178, 196};
+static unsigned short menu_buttons_x1[] = { 105, 66, 5, 190, 255 };
+static unsigned short menu_buttons_x2[] = { 208, 107, 67, 253, 312 };
+static unsigned short menu_buttons_y1[] = { 119, 77, 114, 76, 116 };
+static unsigned short menu_buttons_y2[] = { 197, 120, 170, 122, 166 };
+static unsigned short carmenu_buttons_y1[] = { 229, 229, 229, 229, 229 };
+static unsigned short carmenu_buttons_y2[] = { 316, 316, 316, 316, 316 };
+static unsigned short carmenu_buttons_x1[] = { 107, 125, 143, 161, 179 };
+static unsigned short carmenu_buttons_x2[] = { 124, 142, 160, 178, 196 };
 
 /** @brief Spin-wait until all keyboard and mouse buttons are released. */
 
@@ -200,7 +200,8 @@ enum {
 };
 
 /** @brief Spin-wait until all keyboard and mouse buttons are released. */
-static void wait_input_release_strict(void) {
+static void
+wait_input_release_strict(void) {
     unsigned short buttons;
     unsigned short mouse_x;
     unsigned short mouse_y;
@@ -227,7 +228,8 @@ static void wait_input_release_strict(void) {
  * @param timeout  Maximum wait time in timer ticks.
  * @return Non-zero input code if a key/button was pressed, 0 on timeout.
  */
-static unsigned short input_repeat_check_intro_stable(unsigned short timeout) {
+static unsigned short
+input_repeat_check_intro_stable(unsigned short timeout) {
     unsigned short elapsed = 0;
     unsigned short spin_guard = 0;
 
@@ -272,7 +274,8 @@ static unsigned short input_repeat_check_intro_stable(unsigned short timeout) {
  * @return Function result.
  */
 
-unsigned short load_intro_resources(void) {
+unsigned short
+load_intro_resources(void) {
     static const struct {
         const char *name;
         unsigned short x;
@@ -281,14 +284,18 @@ unsigned short load_intro_resources(void) {
         unsigned short align;
         unsigned char is_text;
     } credits[] = {
-        {"cre", 120, 0, 11, 3, 1},    {"gds0", 60, 12, 15, 8, 0},   {"gds1", 104, 20, 15, 8, 0},
-        {"des", 32, 20, 12, 4, 1},    {"gdon", 44, 20, 15, 8, 0},   {"gkev", 52, 20, 15, 8, 0},
-        {"gbra", 60, 20, 15, 8, 0},   {"grob", 68, 20, 15, 8, 0},   {"gsta", 76, 20, 15, 8, 0},
-        {"mus", 92, 20, 13, 5, 1},    {"gmsy", 104, 20, 15, 8, 0},  {"gkri", 112, 20, 15, 8, 0},
-        {"gbri", 120, 20, 15, 8, 0},  {"pro", 32, 172, 9, 1, 1},    {"gkev", 44, 172, 15, 8, 0},
-        {"opr", 56, 172, 9, 1, 1},    {"gbra", 64, 172, 15, 8, 0},  {"gric", 72, 172, 15, 8, 0},
-        {"art", 84, 172, 10, 2, 1},   {"gmsm", 96, 172, 15, 8, 0},  {"gdav", 104, 172, 15, 8, 0},
-        {"gnic", 112, 172, 15, 8, 0}, {"gkev", 120, 172, 15, 8, 0},
+        { "cre", 120, 0, 11, 3, 1 },    { "gds0", 60, 12, 15, 8, 0 },
+        { "gds1", 104, 20, 15, 8, 0 },  { "des", 32, 20, 12, 4, 1 },
+        { "gdon", 44, 20, 15, 8, 0 },   { "gkev", 52, 20, 15, 8, 0 },
+        { "gbra", 60, 20, 15, 8, 0 },   { "grob", 68, 20, 15, 8, 0 },
+        { "gsta", 76, 20, 15, 8, 0 },   { "mus", 92, 20, 13, 5, 1 },
+        { "gmsy", 104, 20, 15, 8, 0 },  { "gkri", 112, 20, 15, 8, 0 },
+        { "gbri", 120, 20, 15, 8, 0 },  { "pro", 32, 172, 9, 1, 1 },
+        { "gkev", 44, 172, 15, 8, 0 },  { "opr", 56, 172, 9, 1, 1 },
+        { "gbra", 64, 172, 15, 8, 0 },  { "gric", 72, 172, 15, 8, 0 },
+        { "art", 84, 172, 10, 2, 1 },   { "gmsm", 96, 172, 15, 8, 0 },
+        { "gdav", 104, 172, 15, 8, 0 }, { "gnic", 112, 172, 15, 8, 0 },
+        { "gkev", 120, 172, 15, 8, 0 },
     };
     static const char arrow_names[] = "arowarrwarw1arw2arw3arw4arw5arw6arw7arw8type";
     char *arrows[11];
@@ -394,7 +401,8 @@ unsigned short load_intro_resources(void) {
  * @return Function result.
  */
 
-struct RECTANGLE *intro_draw_text(char *str, int x, int y, int colour, int shadowColour) {
+struct RECTANGLE *
+intro_draw_text(char *str, int x, int y, int colour, int shadowColour) {
     unsigned short textWidth;
 
     // Set up bounding rectangle
@@ -430,7 +438,8 @@ struct RECTANGLE *intro_draw_text(char *str, int x, int y, int colour, int shado
  * @param idx Parameter `idx`.
  */
 
-void security_check(unsigned short idx) {
+void
+security_check(unsigned short idx) {
     (void)idx;
     passed_security = 1;
 }
@@ -442,7 +451,8 @@ void security_check(unsigned short idx) {
  * @return Function result.
  */
 
-unsigned short run_option_menu_(void) {
+unsigned short
+run_option_menu_(void) {
     unsigned char should_repeat;
     unsigned char dialog_choice;
     unsigned char dialog_case;
@@ -549,7 +559,8 @@ exit_loop:
 /* --- run_tracks_menu --- */
 
 /* Per-frame callback for track menu: composites wndsprite content each frame */
-static unsigned short trackmenu_frame_cb(unsigned char sel, unsigned short delta, void *ctx) {
+static unsigned short
+trackmenu_frame_cb(unsigned char sel, unsigned short delta, void *ctx) {
     (void)sel;
     (void)delta;
     (void)ctx;
@@ -565,7 +576,8 @@ struct trackmenu_ctx {
     unsigned short blit_mode;
 };
 
-static void trackmenu_on_selection(unsigned char sel, void *ctx_ptr) {
+static void
+trackmenu_on_selection(unsigned char sel, void *ctx_ptr) {
     struct trackmenu_ctx *ctx = (struct trackmenu_ctx *)ctx_ptr;
     (void)sel;
     sprite_blit_to_video(wndsprite, ctx->blit_mode);
@@ -576,7 +588,8 @@ static void trackmenu_on_selection(unsigned char sel, void *ctx_ptr) {
 /** @brief Run the track-selection menu and return once a choice is made.
  * @param unused Reserved parameter kept for compatibility with the original call sites.
  */
-void run_tracks_menu(unsigned short unused) {
+void
+run_tracks_menu(unsigned short unused) {
     unsigned char lengths[4];
     unsigned char selection;
     unsigned char *best_entry;
@@ -626,10 +639,10 @@ rebuild_ui:
                     dialog_fnt_colour, 0);
 
     if (highscore_write_a_(0) == 0) {
-        best_entry = (unsigned char *)highscore_data +
-                     (highscore_primary_index[0] * MENU_HIGHSCORE_ENTRY_SIZE);
-        if (*(unsigned short *)(best_entry + MENU_HIGHSCORE_TIME_OFFSET) !=
-            MENU_HIGHSCORE_INVALID_TIME) {
+        best_entry = (unsigned char *)highscore_data
+                     + (highscore_primary_index[0] * MENU_HIGHSCORE_ENTRY_SIZE);
+        if (*(unsigned short *)(best_entry + MENU_HIGHSCORE_TIME_OFFSET)
+            != MENU_HIGHSCORE_INVALID_TIME) {
             copy_string(resID_byte1, locate_text_res(mainresptr, "hs0"));
             intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_HS_TITLE_Y,
                             dialog_fnt_colour, 0);
@@ -688,8 +701,8 @@ rebuild_ui:
         modal = ui_screen_run_modal(scr);
         selection = UI_MODAL_TO_SEL(modal);
 
-        if (selection == UI_SEL_CANCEL || selection == UI_SEL_TIMEOUT ||
-            selection == MENU_TRACK_BTN_DONE) {
+        if (selection == UI_SEL_CANCEL || selection == UI_SEL_TIMEOUT
+            || selection == MENU_TRACK_BTN_DONE) {
             sprite_free_wnd(wndsprite);
             return;
         }
@@ -732,7 +745,8 @@ rebuild_ui:
 /** @brief Opponent menu draw description.
  * @param textresptr Parameter `textresptr`.
  */
-static void opponent_menu_draw_description(char *textresptr) {
+static void
+opponent_menu_draw_description(char *textresptr) {
     unsigned short text_len = 0;
     unsigned short y_offset = 0;
     char *buffer = resID_byte1;
@@ -790,7 +804,8 @@ typedef struct {
 } OppMenuState;
 
 /** Update selection from mouse position via hittest. */
-static void opp_update_hittest(OppMenuState *st) {
+static void
+opp_update_hittest(OppMenuState *st) {
     short hit = mouse_multi_hittest(MENU_OPP_BUTTON_COUNT, opponentmenu_buttons_x1,
                                     opponentmenu_buttons_x2, opponentmenu_buttons_y1,
                                     opponentmenu_buttons_y2);
@@ -802,7 +817,8 @@ static void opp_update_hittest(OppMenuState *st) {
 }
 
 /** Activate the currently selected button.  Returns non-zero to pop. */
-static int opp_activate(OppMenuState *st) {
+static int
+opp_activate(OppMenuState *st) {
     if (st->selected == MENU_OPP_BTN_PREV) {
         gameconfig.game_opponenttype--;
         if (gameconfig.game_opponenttype < 1)
@@ -855,7 +871,8 @@ static int opp_activate(OppMenuState *st) {
     return 0;
 }
 
-static int opp_on_event(UIScreen *self, const UIEvent *ev) {
+static int
+opp_on_event(UIScreen *self, const UIEvent *ev) {
     OppMenuState *st = (OppMenuState *)self->userdata;
 
     if (ev->type == UI_EVENT_KEY_DOWN) {
@@ -908,7 +925,8 @@ static int opp_on_event(UIScreen *self, const UIEvent *ev) {
     return 0;
 }
 
-static void opp_on_render(UIScreen *self) {
+static void
+opp_on_render(UIScreen *self) {
     OppMenuState *st = (OppMenuState *)self->userdata;
     char *opponent_text;
 
@@ -1011,7 +1029,8 @@ static void opp_on_render(UIScreen *self) {
                             object_visibility_state);
 }
 
-static void opp_on_destroy(UIScreen *self) {
+static void
+opp_on_destroy(UIScreen *self) {
     OppMenuState *st = (OppMenuState *)self->userdata;
     if (!st)
         return;
@@ -1028,7 +1047,8 @@ static void opp_on_destroy(UIScreen *self) {
     self->userdata = NULL;
 }
 
-static UIScreen *make_opponent_screen(void) {
+static UIScreen *
+make_opponent_screen(void) {
     UIScreen *scr;
     OppMenuState *st;
 
@@ -1053,7 +1073,8 @@ static UIScreen *make_opponent_screen(void) {
 
 /** @brief Run the opponent-selection menu and apply the chosen opponent settings.
  */
-void run_opponent_menu(void) {
+void
+run_opponent_menu(void) {
     ui_screen_run_modal(make_opponent_screen());
 }
 
@@ -1069,7 +1090,8 @@ void run_opponent_menu(void) {
  * @param textresptr Parameter `textresptr`.
  * @param y_start Parameter `y_start`.
  */
-static void car_menu_draw_description(char *textresptr, unsigned short y_start) {
+static void
+car_menu_draw_description(char *textresptr, unsigned short y_start) {
 
     unsigned short text_len = 0;
     unsigned short y = y_start;
@@ -1154,7 +1176,8 @@ typedef struct {
 } CarMenuState;
 
 /** Write selected car ID to output buffer (shared by Done + idle). */
-static int car_do_done(CarMenuState *st) {
+static int
+car_do_done(CarMenuState *st) {
     if (!st->rendered_flag)
         return 0;
     st->caridptr[0] = st->carids[st->car_index][0];
@@ -1165,7 +1188,8 @@ static int car_do_done(CarMenuState *st) {
 }
 
 /** Activate the currently hovered car-menu button.  Returns non-zero to pop. */
-static int car_activate(CarMenuState *st) {
+static int
+car_activate(CarMenuState *st) {
     char *descptr;
 
     switch (st->hover_index) {
@@ -1201,7 +1225,8 @@ static int car_activate(CarMenuState *st) {
     }
 }
 
-static int car_on_event(UIScreen *self, const UIEvent *ev) {
+static int
+car_on_event(UIScreen *self, const UIEvent *ev) {
     CarMenuState *st = (CarMenuState *)self->userdata;
 
     if (ev->type == UI_EVENT_KEY_DOWN) {
@@ -1209,8 +1234,8 @@ static int car_on_event(UIScreen *self, const UIEvent *ev) {
 
         menu_reset_idle_timers();
 
-        if (key == MENU_KEY_ENTER || key == MENU_KEY_ESCAPE || key == MENU_KEY_SPACE ||
-            key == MENU_KEY_ENTER_EXT || key == MENU_KEY_SPACE_EXT) {
+        if (key == MENU_KEY_ENTER || key == MENU_KEY_ESCAPE || key == MENU_KEY_SPACE
+            || key == MENU_KEY_ENTER_EXT || key == MENU_KEY_SPACE_EXT) {
             return car_activate(st);
         }
 
@@ -1253,7 +1278,8 @@ static int car_on_event(UIScreen *self, const UIEvent *ev) {
     return 0;
 }
 
-static void car_draw_opponent_portrait(CarMenuState *st) {
+static void
+car_draw_opponent_portrait(CarMenuState *st) {
     if (st->opponenttype == 0) {
         return;
     }
@@ -1266,7 +1292,8 @@ static void car_draw_opponent_portrait(CarMenuState *st) {
     }
 }
 
-static void car_on_render(UIScreen *self) {
+static void
+car_on_render(UIScreen *self) {
     CarMenuState *st = (CarMenuState *)self->userdata;
     unsigned short need_blit;
     unsigned short carpos_polar;
@@ -1349,16 +1376,16 @@ static void car_on_render(UIScreen *self) {
         state.playerstate.car_transmission = 1;
         for (graph_x = 0; graph_x < MENU_CAR_GRAPH_DIVISOR; ++graph_x) {
             update_car_speed(1, 0, &state.playerstate, &simd_player);
-            graph_y = (unsigned short)(MENU_CAR_GRAPH_Y_BASE -
-                                       (((unsigned long)(state.playerstate.car_speed >> 8)
-                                         << MENU_CAR_GRAPH_SCALE_SHIFT) /
-                                        MENU_WAITFLAG_CREDITS));
+            graph_y = (unsigned short)(MENU_CAR_GRAPH_Y_BASE
+                                       - (((unsigned long)(state.playerstate.car_speed >> 8)
+                                           << MENU_CAR_GRAPH_SCALE_SHIFT)
+                                          / MENU_WAITFLAG_CREDITS));
             if (graph_y < MENU_CAR_GRAPH_Y_MIN)
                 break;
             putpixel_single_clipped(
                 performGraphColor, graph_y,
-                (unsigned short)((MENU_CAR_GRAPH_X_NUM * graph_x) / MENU_CAR_GRAPH_DIVISOR +
-                                 MENU_CAR_GRAPH_X_BASE));
+                (unsigned short)((MENU_CAR_GRAPH_X_NUM * graph_x) / MENU_CAR_GRAPH_DIVISOR
+                                 + MENU_CAR_GRAPH_X_BASE));
         }
         framespersec = old_frames;
 
@@ -1442,8 +1469,8 @@ static void car_on_render(UIScreen *self) {
             sprite_copy_2_to_1();
             sprite_set_1_size(
                 st->button_x1[st->prev_hover],
-                (unsigned short)((st->button_x2[st->prev_hover] + video_flag2_is1) &
-                                 video_flag3_isFFFF),
+                (unsigned short)((st->button_x2[st->prev_hover] + video_flag2_is1)
+                                 & video_flag3_isFFFF),
                 st->button_y1[st->prev_hover],
                 (unsigned short)(st->button_y2[st->prev_hover] + MENU_CAR_HOVER_OUTLINE_PAD_Y));
             mouse_draw_opaque_check();
@@ -1487,7 +1514,8 @@ static void car_on_render(UIScreen *self) {
     }
 }
 
-static void car_on_destroy(UIScreen *self) {
+static void
+car_on_destroy(UIScreen *self) {
     CarMenuState *st = (CarMenuState *)self->userdata;
     if (!st)
         return;
@@ -1509,8 +1537,9 @@ static void car_on_destroy(UIScreen *self) {
     self->userdata = NULL;
 }
 
-static UIScreen *make_car_screen(char *caridptr, unsigned char *materialofs,
-                                 unsigned char *transmissionofs, unsigned int opponenttype) {
+static UIScreen *
+make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *transmissionofs,
+                unsigned int opponenttype) {
     UIScreen *scr;
     CarMenuState *st;
     const char *findfile;
@@ -1580,10 +1609,10 @@ static UIScreen *make_car_screen(char *caridptr, unsigned char *materialofs,
     }
 
     for (st->car_index = 0; st->car_index < st->car_count; ++st->car_index) {
-        if (st->carids[st->car_index][0] == caridptr[0] &&
-            st->carids[st->car_index][1] == caridptr[1] &&
-            st->carids[st->car_index][2] == caridptr[2] &&
-            st->carids[st->car_index][3] == caridptr[3])
+        if (st->carids[st->car_index][0] == caridptr[0]
+            && st->carids[st->car_index][1] == caridptr[1]
+            && st->carids[st->car_index][2] == caridptr[2]
+            && st->carids[st->car_index][3] == caridptr[3])
             break;
     }
     if (st->car_index >= st->car_count)
@@ -1645,8 +1674,9 @@ static UIScreen *make_car_screen(char *caridptr, unsigned char *materialofs,
 
 /* --- run_car_menu --- */
 
-void run_car_menu(char *caridptr, unsigned char *materialofs, unsigned char *transmissionofs,
-                  unsigned int opponenttype) {
+void
+run_car_menu(char *caridptr, unsigned char *materialofs, unsigned char *transmissionofs,
+             unsigned int opponenttype) {
     UIScreen *scr = make_car_screen(caridptr, materialofs, transmissionofs, opponenttype);
     if (scr) {
         ui_screen_run_modal(scr);
@@ -1664,7 +1694,8 @@ void run_car_menu(char *caridptr, unsigned char *materialofs, unsigned char *tra
 /** @brief Run intro.
  * @return Function result.
  */
-unsigned short run_intro_(void) {
+unsigned short
+run_intro_(void) {
 
     unsigned short result;
     struct SHAPE2D *shape;
@@ -1718,7 +1749,8 @@ unsigned short run_intro_(void) {
 /** @brief Run intro looped.
  * @return Function result.
  */
-unsigned short run_intro_looped_(void) {
+unsigned short
+run_intro_looped_(void) {
 
     unsigned short result = 0;
 
@@ -1823,7 +1855,8 @@ struct main_menu_ctx {
     unsigned short blit_mode;
 };
 
-static void main_menu_on_selection(unsigned char sel, void *ctx_ptr) {
+static void
+main_menu_on_selection(unsigned char sel, void *ctx_ptr) {
     struct main_menu_ctx *ctx = (struct main_menu_ctx *)ctx_ptr;
     (void)sel;
     sprite_select_wnd_as_sprite1();
@@ -1841,7 +1874,8 @@ static void main_menu_on_selection(unsigned char sel, void *ctx_ptr) {
 /** @brief Run menu.
  * @return Function result.
  */
-char run_menu_(void) {
+char
+run_menu_(void) {
 
     UIButtonMenu btnmenu;
     struct main_menu_ctx cb_ctx;
@@ -1872,7 +1906,18 @@ char run_menu_(void) {
     btnmenu.sprite_lo = object_visibility_state;
     btnmenu.default_sel = 0;
     btnmenu.idle_timeout = MENU_IDLE_TIMEOUT_SHORT;
-    btnmenu.nav_mode = UI_NAV_BOTH_LR_SWAP;
+    btnmenu.nav_mode = UI_NAV_LOOKUP;
+
+    /* Original spatial navigation tables from dseg.asm:
+     * LEFT  moves to the spatially-left button,
+     * RIGHT moves to the spatially-right button.
+     * Spatial order: 2(OPP)–1(CAR)–0(DRIVE)–3(TRACK)–4(OPT) */
+    {
+        static const unsigned char nav_l[5] = { 1, 2, 4, 0, 3 };
+        static const unsigned char nav_r[5] = { 3, 0, 1, 4, 2 };
+        memcpy(btnmenu.nav_left, nav_l, sizeof(nav_l));
+        memcpy(btnmenu.nav_right, nav_r, sizeof(nav_r));
+    }
 
     cb_ctx.sprite = sprite_ptr;
     cb_ctx.blit_mode = MENU_BLIT_MODE_FULL;

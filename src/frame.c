@@ -32,12 +32,12 @@ struct RECTANGLE *rect_buffer_primary = 0;
 struct RECTANGLE *rect_buffer_secondary = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static struct TRANSFORMEDSHAPE3D currenttransshape[29] = {0};
-static struct RECTANGLE hud_timer_rect = {0, 0, 0, 0};
-static struct RECTANGLE opponent_car_rect = {0, 0, 0, 0};
-static struct RECTANGLE player_car_rect = {0, 0, 0, 0};
-static struct RECTANGLE sky_starfield_rect = {
-    0, 0, 0, 0}; /* was 64 bytes padding - only 1 RECTANGLE needed */
+static struct TRANSFORMEDSHAPE3D currenttransshape[29] = { 0 };
+static struct RECTANGLE hud_timer_rect = { 0, 0, 0, 0 };
+static struct RECTANGLE opponent_car_rect = { 0, 0, 0, 0 };
+static struct RECTANGLE player_car_rect = { 0, 0, 0, 0 };
+static struct RECTANGLE sky_starfield_rect
+    = { 0, 0, 0, 0 }; /* was 64 bytes padding - only 1 RECTANGLE needed */
 
 
 /* Render distance multiplier.
@@ -49,7 +49,7 @@ static struct RECTANGLE sky_starfield_rect = {
 #define REND_DIST_MULT 1
 
 /* file-local data (moved from data_global.c) */
-static unsigned short off_3BE44[8] = {31340, 31318, 31296, 31340, 31318, 31296, 31340, 31318};
+static unsigned short off_3BE44[8] = { 31340, 31318, 31296, 31340, 31318, 31296, 31340, 31318 };
 static char tile_scan_pattern_octant_7[135] = {
     255, 248, 2, 0,   248, 2, 1,   248, 2,                       /* dist=8 (3 tiles) */
     254, 249, 2, 255, 249, 2, 0,   249, 2, 1, 249, 2, 2, 249, 2, /* dist=7 (5 tiles) */
@@ -139,35 +139,35 @@ static char tile_scan_pattern_octant_6[135] = {
     0,   255, 0, 0,   1,   0, 0,   0,   0,                       /* dist=0 (3 tiles) */
     1,   255, 2, 1,   1,   2                                     /* dist=-1 behind (2 tiles) */
 };
-static unsigned char sprite_clip_region_selector[6] = {2, 2, 1, 0, 0, 0};
-static short terrain_multitile_type1[2] = {0, 0};
-static short terrain_multitile_type2[4] = {0, 512, 0, (short)65024};
-static short terrain_multitile_type3[4] = {512, 0, (short)65024, 0};
-static short terrain_multitile_type4[8] = {(short)65024, 512, (short)65024, (short)65024,
-                                           512,          512, 512,          (short)65024};
-static unsigned char polygon_edge_direction_table[16] = {0, 0, 0, 0, 1, 1, 1, 1,
-                                                         2, 2, 2, 2, 3, 3, 3, 3};
-static unsigned short animation_frame_lookup[8] = {0, 0, 256, 256, 512, 512, 768, 768};
-static unsigned char fence_TrkObjCodes[8] = {214, 215, 214, 215, 214, 215, 214, 215};
-static signed char terrain_offset_type0[2] = {0, 0};
-static signed char terrain_offset_type1[4] = {0, 0, 0, 1};
-static signed char terrain_offset_type2[6] = {0, 0, 1, 0, 0, 0};
-static signed char terrain_offset_type3[16] = {0,
-                                               0,
-                                               1,
-                                               0,
-                                               0,
-                                               1,
-                                               1,
-                                               1,
-                                               (signed char)128,
-                                               0,
-                                               (signed char)128,
-                                               1,
-                                               (signed char)128,
-                                               2,
-                                               (signed char)128,
-                                               3};
+static unsigned char sprite_clip_region_selector[6] = { 2, 2, 1, 0, 0, 0 };
+static short terrain_multitile_type1[2] = { 0, 0 };
+static short terrain_multitile_type2[4] = { 0, 512, 0, (short)65024 };
+static short terrain_multitile_type3[4] = { 512, 0, (short)65024, 0 };
+static short terrain_multitile_type4[8] = { (short)65024, 512, (short)65024, (short)65024,
+                                            512,          512, 512,          (short)65024 };
+static unsigned char polygon_edge_direction_table[16] = { 0, 0, 0, 0, 1, 1, 1, 1,
+                                                          2, 2, 2, 2, 3, 3, 3, 3 };
+static unsigned short animation_frame_lookup[8] = { 0, 0, 256, 256, 512, 512, 768, 768 };
+static unsigned char fence_TrkObjCodes[8] = { 214, 215, 214, 215, 214, 215, 214, 215 };
+static signed char terrain_offset_type0[2] = { 0, 0 };
+static signed char terrain_offset_type1[4] = { 0, 0, 0, 1 };
+static signed char terrain_offset_type2[6] = { 0, 0, 1, 0, 0, 0 };
+static signed char terrain_offset_type3[16] = { 0,
+                                                0,
+                                                1,
+                                                0,
+                                                0,
+                                                1,
+                                                1,
+                                                1,
+                                                (signed char)128,
+                                                0,
+                                                (signed char)128,
+                                                1,
+                                                (signed char)128,
+                                                2,
+                                                (signed char)128,
+                                                3 };
 
 
 static char tile_scan_pattern_octant_3[135] = {
@@ -205,7 +205,8 @@ void heapsort_by_order(int n, int *heap, int *data);
  * @param count Parameter `count`.
  * @return Function result.
  */
-static void transformedshape_sort_desc(short *zvals, short *indices, int count) {
+static void
+transformedshape_sort_desc(short *zvals, short *indices, int count) {
     int i;
     int j;
     for (i = 0; i < count - 1; i++) {
@@ -240,7 +241,8 @@ enum { TRACKOBJECT_LIST_COUNT = 215, SCENESHAPES2_COUNT = 19, SCENESHAPES3_COUNT
  * @param index Parameter `index`.
  * @return Function result.
  */
-static inline const unsigned char *trkobj_entry(const unsigned char *table, unsigned index) {
+static inline const unsigned char *
+trkobj_entry(const unsigned char *table, unsigned index) {
     return table + index * TRACKOBJECT_RAW_SIZE;
 }
 
@@ -248,7 +250,8 @@ static inline const unsigned char *trkobj_entry(const unsigned char *table, unsi
  * @param index Parameter `index`.
  * @return Function result.
  */
-static inline const unsigned char *trkobj_entry_legacy_scene_index(unsigned index) {
+static inline const unsigned char *
+trkobj_entry_legacy_scene_index(unsigned index) {
     if (index < TRACKOBJECT_LIST_COUNT) {
         return trkobj_entry(trkObjectList, index);
     }
@@ -268,7 +271,8 @@ static inline const unsigned char *trkobj_entry_legacy_scene_index(unsigned inde
  * @param offset Parameter `offset`.
  * @return Function result.
  */
-static inline unsigned short trkobj_u16_field(const unsigned char *obj, unsigned offset) {
+static inline unsigned short
+trkobj_u16_field(const unsigned char *obj, unsigned offset) {
     return (unsigned short)obj[offset] | ((unsigned short)obj[offset + 1] << 8);
 }
 
@@ -277,7 +281,8 @@ static inline unsigned short trkobj_u16_field(const unsigned char *obj, unsigned
  * @param offset Parameter `offset`.
  * @return Function result.
  */
-static inline unsigned char trkobj_u8_field(const unsigned char *obj, unsigned offset) {
+static inline unsigned char
+trkobj_u8_field(const unsigned char *obj, unsigned offset) {
     return obj[offset];
 }
 
@@ -285,7 +290,8 @@ static inline unsigned char trkobj_u8_field(const unsigned char *obj, unsigned o
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned short trkobj_ofs_shape(const unsigned char *obj) {
+static inline unsigned short
+trkobj_ofs_shape(const unsigned char *obj) {
     return trkobj_u16_field(obj, TRACKOBJECT_SHAPE_OFS_OFFSET);
 }
 
@@ -293,7 +299,8 @@ static inline unsigned short trkobj_ofs_shape(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned short trkobj_ofs_loshape(const unsigned char *obj) {
+static inline unsigned short
+trkobj_ofs_loshape(const unsigned char *obj) {
     return trkobj_u16_field(obj, TRACKOBJECT_LOSHAPE_OFS_OFFSET);
 }
 
@@ -331,7 +338,8 @@ enum {
  * @param ofs Parameter `ofs`.
  * @return Function result.
  */
-static inline struct SHAPE3D *shape3d_from_dos_dseg_offset(unsigned short ofs) {
+static inline struct SHAPE3D *
+shape3d_from_dos_dseg_offset(unsigned short ofs) {
     int idx;
     if (ofs == 0) {
         return (struct SHAPE3D *)0;
@@ -353,7 +361,8 @@ static inline struct SHAPE3D *shape3d_from_dos_dseg_offset(unsigned short ofs) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline struct SHAPE3D *trkobj_shape(const unsigned char *obj) {
+static inline struct SHAPE3D *
+trkobj_shape(const unsigned char *obj) {
     return shape3d_from_dos_dseg_offset(trkobj_ofs_shape(obj));
 }
 
@@ -361,7 +370,8 @@ static inline struct SHAPE3D *trkobj_shape(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline struct SHAPE3D *trkobj_loshape(const unsigned char *obj) {
+static inline struct SHAPE3D *
+trkobj_loshape(const unsigned char *obj) {
     return shape3d_from_dos_dseg_offset(trkobj_ofs_loshape(obj));
 }
 
@@ -369,7 +379,8 @@ static inline struct SHAPE3D *trkobj_loshape(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline short trkobj_roty(const unsigned char *obj) {
+static inline short
+trkobj_roty(const unsigned char *obj) {
     return (short)trkobj_u16_field(obj, TRACKOBJECT_ROT_Y_OFFSET);
 }
 
@@ -377,7 +388,8 @@ static inline short trkobj_roty(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned char trkobj_overlay(const unsigned char *obj) {
+static inline unsigned char
+trkobj_overlay(const unsigned char *obj) {
     return trkobj_u8_field(obj, TRACKOBJECT_OVERLAY_OFFSET);
 }
 
@@ -385,7 +397,8 @@ static inline unsigned char trkobj_overlay(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline signed char trkobj_surface(const unsigned char *obj) {
+static inline signed char
+trkobj_surface(const unsigned char *obj) {
     return (signed char)trkobj_u8_field(obj, TRACKOBJECT_SURFACE_OFFSET);
 }
 
@@ -393,7 +406,8 @@ static inline signed char trkobj_surface(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned char trkobj_ignore_zbias(const unsigned char *obj) {
+static inline unsigned char
+trkobj_ignore_zbias(const unsigned char *obj) {
     return trkobj_u8_field(obj, TRACKOBJECT_IGNORE_ZBIAS_OFFSET);
 }
 
@@ -401,7 +415,8 @@ static inline unsigned char trkobj_ignore_zbias(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned char trkobj_multi(const unsigned char *obj) {
+static inline unsigned char
+trkobj_multi(const unsigned char *obj) {
     return trkobj_u8_field(obj, TRACKOBJECT_MULTI_OFFSET);
 }
 
@@ -409,13 +424,14 @@ static inline unsigned char trkobj_multi(const unsigned char *obj) {
  * @param obj Parameter `obj`.
  * @return Function result.
  */
-static inline unsigned char trkobj_physical(const unsigned char *obj) {
+static inline unsigned char
+trkobj_physical(const unsigned char *obj) {
     return trkobj_u8_field(obj, TRACKOBJECT_PHYS_OFFSET);
 }
 
-static inline int frame_multitile_contains_tile(int anchor_col, int anchor_row,
-                                                unsigned char multi_tile_flag, int target_col,
-                                                int target_row) {
+static inline int
+frame_multitile_contains_tile(int anchor_col, int anchor_row, unsigned char multi_tile_flag,
+                              int target_col, int target_row) {
     if (target_col == anchor_col && target_row == anchor_row) {
         return 1;
     }
@@ -429,9 +445,9 @@ static inline int frame_multitile_contains_tile(int anchor_col, int anchor_row,
     }
 
     if (multi_tile_flag == 3) {
-        return (target_col == anchor_col + 1 && target_row == anchor_row) ||
-               (target_col == anchor_col && target_row == anchor_row + 1) ||
-               (target_col == anchor_col + 1 && target_row == anchor_row + 1);
+        return (target_col == anchor_col + 1 && target_row == anchor_row)
+               || (target_col == anchor_col && target_row == anchor_row + 1)
+               || (target_col == anchor_col + 1 && target_row == anchor_row + 1);
     }
 
     return 0;
@@ -441,7 +457,8 @@ static inline int frame_multitile_contains_tile(int anchor_col, int anchor_row,
  * @param view_index Parameter `view_index`.
  * @param clip_rect Parameter `clip_rect`.
  */
-void update_frame(int view_index, struct RECTANGLE *clip_rect) {
+void
+update_frame(int view_index, struct RECTANGLE *clip_rect) {
     int si;
     char base_ts_flags;
     char default_material;
@@ -577,14 +594,16 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
         camera_pos.z = car_pos.z + temp_vec_b.z;
     }
     else if (cameramode == 3) {
-        camera_pos.x =
-            waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3 + 0];
-        camera_pos.y =
-            waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3 +
-                               1] +
-            camera_y_offset + FRAME_CAMERA_HEIGHT_OFFSET;
-        camera_pos.z =
-            waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3 + 2];
+        camera_pos.x
+            = waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3
+                                 + 0];
+        camera_pos.y
+            = waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3
+                                 + 1]
+              + camera_y_offset + FRAME_CAMERA_HEIGHT_OFFSET;
+        camera_pos.z
+            = waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3
+                                 + 2];
     }
 
     if (view_yaw == -1) {
@@ -611,12 +630,12 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
-        view_yaw = (-polarAngle(car_pos.x - camera_pos.x, car_pos.z - camera_pos.z)) &
-                   FRAME_ANGLE_MASK;
+        view_yaw = (-polarAngle(car_pos.x - camera_pos.x, car_pos.z - camera_pos.z))
+                   & FRAME_ANGLE_MASK;
         camera_distance_xz = polarRadius2D(car_pos.x - camera_pos.x, car_pos.z - camera_pos.z);
         view_pitch = polarAngle(car_pos.y - camera_pos.y + FRAME_VIEW_PITCH_OFFSET,
-                                camera_distance_xz) &
-                     FRAME_ANGLE_MASK;
+                                camera_distance_xz)
+                     & FRAME_ANGLE_MASK;
     }
 
     if (view_roll_raw > 1 && view_roll_raw < FRAME_ANGLE_MASK) {
@@ -635,10 +654,10 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
     clip_heading = select_cliprect_rotate(view_roll, view_pitch, view_yaw, clip_rect, 0);
     {
-        static char *lookahead_tiles_tables[8] = {
-            tile_scan_pattern_octant_0, tile_scan_pattern_octant_1, tile_scan_pattern_octant_2,
-            tile_scan_pattern_octant_3, tile_scan_pattern_octant_4, tile_scan_pattern_octant_5,
-            tile_scan_pattern_octant_6, tile_scan_pattern_octant_7};
+        static char *lookahead_tiles_tables[8]
+            = { tile_scan_pattern_octant_0, tile_scan_pattern_octant_1, tile_scan_pattern_octant_2,
+                tile_scan_pattern_octant_3, tile_scan_pattern_octant_4, tile_scan_pattern_octant_5,
+                tile_scan_pattern_octant_6, tile_scan_pattern_octant_7 };
         lookahead_tiles = lookahead_tiles_tables[(clip_heading & FRAME_ANGLE_MASK) >> 7];
     }
 
@@ -663,8 +682,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
         currenttransshape[0].material = 0;
 
         for (loop_count = 0; loop_count < 8; loop_count++) {
-            si = (animation_duration_table[loop_count] + view_yaw + run_game_random) &
-                 FRAME_ANGLE_MASK;
+            si = (animation_duration_table[loop_count] + view_yaw + run_game_random)
+                 & FRAME_ANGLE_MASK;
             if (si < 135 || si > 889) {
                 mat_rot_y(&y_rot_mat, si);
                 temp_vec_a.x = 0;
@@ -674,8 +693,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 temp_vec_b.z = FRAME_STARFIELD_Z; //15000
                 mat_mul_vector(&temp_vec_b, &view_rot_mat, &currenttransshape[0].pos);
                 if (currenttransshape[0].pos.z > FRAME_SCREEN_HEIGHT) {
-                    currenttransshape[0].shapeptr =
-                        shape3d_from_dos_dseg_offset(off_3BE44[loop_count]);
+                    currenttransshape[0].shapeptr
+                        = shape3d_from_dos_dseg_offset(off_3BE44[loop_count]);
                     currenttransshape[0].rotvec.z = -view_yaw;
                     render_result = shape3d_render_transformed(&currenttransshape[0]);
                 }
@@ -708,8 +727,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
         if (lookahead_tiles[si * 3 + 2] <= clip_region_limit) {
             tile_col = lookahead_tiles[si * 3] + tile_col_bias;
             tile_row = lookahead_tiles[si * 3 + 1] + tile_row_bias;
-            if (tile_col >= 0 && tile_col <= FRAME_TILE_MAX_INDEX && tile_row >= 0 &&
-                tile_row <= FRAME_TILE_MAX_INDEX) {
+            if (tile_col >= 0 && tile_col <= FRAME_TILE_MAX_INDEX && tile_row >= 0
+                && tile_row <= FRAME_TILE_MAX_INDEX) {
                 elem_map_value = track_elem_map[tile_col + trackrows[tile_row]];
                 terr_map_value = track_terrain_map[tile_col + terrainrows[tile_row]];
 
@@ -746,8 +765,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 if (elem_map_value != 0 && timertestflag2 != 0) {
                     const unsigned char *elem_obj = trkobj_entry_legacy_scene_index(elem_map_value);
-                    if (elem_obj != 0 && trkobj_physical(elem_obj) >= 64 &&
-                        (tile_col != player_tile_col || tile_row != player_tile_row)) {
+                    if (elem_obj != 0 && trkobj_physical(elem_obj) >= 64
+                        && (tile_col != player_tile_col || tile_row != player_tile_row)) {
                         elem_map_value = 0;
                     }
                 }
@@ -759,10 +778,10 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     const unsigned char *tile_obj = trkobj_entry_legacy_scene_index(elem_map_value);
                     if (tile_obj != 0) {
                         multi_tile_value = trkobj_multi(tile_obj);
-                        if (multi_tile_value != 0 &&
-                            frame_multitile_contains_tile(tile_col, tile_row,
-                                                          (unsigned char)multi_tile_value,
-                                                          focus_tile_col, focus_tile_row)) {
+                        if (multi_tile_value != 0
+                            && frame_multitile_contains_tile(tile_col, tile_row,
+                                                             (unsigned char)multi_tile_value,
+                                                             focus_tile_col, focus_tile_row)) {
                             tile_detail_levels[si] = 0;
                         }
                     }
@@ -775,28 +794,28 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         tile_row_adj = tile_row - tile_row_bias;
                         if (multi_tile_value == 1) {
                             for (di = 0; di < si; di++) {
-                                if (lookahead_tiles[di * 3] == tile_col_adj &&
-                                    (lookahead_tiles[di * 3 + 1] == tile_row_adj ||
-                                     lookahead_tiles[di * 3 + 1] == tile_row_adj + 1)) {
+                                if (lookahead_tiles[di * 3] == tile_col_adj
+                                    && (lookahead_tiles[di * 3 + 1] == tile_row_adj
+                                        || lookahead_tiles[di * 3 + 1] == tile_row_adj + 1)) {
                                     tile_scan_state[di] = 1;
                                 }
                             }
                         }
                         else if (multi_tile_value == 2) {
                             for (di = 0; di < si; di++) {
-                                if (lookahead_tiles[di * 3 + 1] == tile_row_adj &&
-                                    (lookahead_tiles[di * 3] == tile_col_adj ||
-                                     lookahead_tiles[di * 3] == tile_col_adj + 1)) {
+                                if (lookahead_tiles[di * 3 + 1] == tile_row_adj
+                                    && (lookahead_tiles[di * 3] == tile_col_adj
+                                        || lookahead_tiles[di * 3] == tile_col_adj + 1)) {
                                     tile_scan_state[di] = 1;
                                 }
                             }
                         }
                         else if (multi_tile_value == 3) {
                             for (di = 0; di < si; di++) {
-                                if ((lookahead_tiles[di * 3] == tile_col_adj ||
-                                     lookahead_tiles[di * 3] == tile_col_adj + 1) &&
-                                    (lookahead_tiles[di * 3 + 1] == tile_row_adj ||
-                                     lookahead_tiles[di * 3 + 1] == tile_row_adj + 1)) {
+                                if ((lookahead_tiles[di * 3] == tile_col_adj
+                                     || lookahead_tiles[di * 3] == tile_col_adj + 1)
+                                    && (lookahead_tiles[di * 3 + 1] == tile_row_adj
+                                        || lookahead_tiles[di * 3 + 1] == tile_row_adj + 1)) {
                                     tile_scan_state[di] = 1;
                                 }
                             }
@@ -834,9 +853,9 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 tile_row = -(((temp_vec_c.z + state.playerstate.car_posWorld1.lz) >> 16) - 29);
 
                 for (si = 44; si > multi_tile_value; si--) {
-                    if (tile_scan_state[si] != 2 &&
-                        lookahead_tiles[si * 3] + tile_col_bias == tile_col &&
-                        lookahead_tiles[si * 3 + 1] + tile_row_bias == tile_row) {
+                    if (tile_scan_state[si] != 2
+                        && lookahead_tiles[si * 3] + tile_col_bias == tile_col
+                        && lookahead_tiles[si * 3 + 1] + tile_row_bias == tile_row) {
                         player_contact_col = tile_col;
                         player_contact_row = tile_row;
                         multi_tile_value = si;
@@ -846,10 +865,10 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
 
             if (di != -1) {
-                if (state.playerstate.car_surfaceWhl[0] != 4 ||
-                    state.playerstate.car_surfaceWhl[1] != 4 ||
-                    state.playerstate.car_surfaceWhl[2] != 4 ||
-                    state.playerstate.car_surfaceWhl[3] != 4) {
+                if (state.playerstate.car_surfaceWhl[0] != 4
+                    || state.playerstate.car_surfaceWhl[1] != 4
+                    || state.playerstate.car_surfaceWhl[2] != 4
+                    || state.playerstate.car_surfaceWhl[3] != 4) {
                     temp_vec_a.x = 0;
                     temp_vec_a.z = 0;
                     temp_vec_a.y = 30000;
@@ -882,15 +901,15 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     temp_vec_a = simd_opponent_rt.wheel_coords[wheel_index];
                     mat_mul_vector(&temp_vec_a, rot_mat_ptr,
                                    &temp_vec_c); //; rotating car wheels, maybe?
-                    tile_col = (temp_vec_c.x + state.opponentstate.car_posWorld1.lx) >>
-                               16; // bits 16-24
-                    tile_row =
-                        -(((temp_vec_c.z + state.opponentstate.car_posWorld1.lz) >> 16) - 29);
+                    tile_col = (temp_vec_c.x + state.opponentstate.car_posWorld1.lx)
+                               >> 16; // bits 16-24
+                    tile_row
+                        = -(((temp_vec_c.z + state.opponentstate.car_posWorld1.lz) >> 16) - 29);
 
                     for (si = 44; si > multi_tile_value; si--) {
-                        if (tile_scan_state[si] != 2 &&
-                            lookahead_tiles[si * 3] + tile_col_bias == tile_col &&
-                            lookahead_tiles[si * 3 + 1] + tile_row_bias == tile_row) {
+                        if (tile_scan_state[si] != 2
+                            && lookahead_tiles[si * 3] + tile_col_bias == tile_col
+                            && lookahead_tiles[si * 3 + 1] + tile_row_bias == tile_row) {
                             opponent_contact_col = tile_col;
                             opponent_contact_row = tile_row;
                             multi_tile_value = si;
@@ -901,10 +920,10 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 if (di != -1) {
 
-                    if (state.opponentstate.car_surfaceWhl[0] != 4 ||
-                        state.opponentstate.car_surfaceWhl[1] != 4 ||
-                        state.opponentstate.car_surfaceWhl[2] != 4 ||
-                        state.opponentstate.car_surfaceWhl[3] != 4) {
+                    if (state.opponentstate.car_surfaceWhl[0] != 4
+                        || state.opponentstate.car_surfaceWhl[1] != 4
+                        || state.opponentstate.car_surfaceWhl[2] != 4
+                        || state.opponentstate.car_surfaceWhl[3] != 4) {
                         temp_vec_a.x = 0;
                         temp_vec_a.z = 0;
                         temp_vec_a.y = 30000;
@@ -981,8 +1000,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             tile_col_adj = terrain_offset_table[multi_tile_value * 2] + tile_col;
             tile_row_adj = terrain_offset_table[multi_tile_value * 2 + 1] + tile_row;
 
-            if (timertestflag2 < 3 ||
-                (tile_col_adj == player_tile_col && tile_row_adj == player_tile_row)) {
+            if (timertestflag2 < 3
+                || (tile_col_adj == player_tile_col && tile_row_adj == player_tile_row)) {
                 if (tile_col_adj == 0) {
                     if (tile_row_adj == 0) {
                         di = 7;
@@ -1031,13 +1050,13 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].pos.y = -camera_pos.y;
                         currenttransshape[0].pos.z = trackcenterpos[tile_row_adj] - camera_pos.z;
                         currenttransshape[0].rectptr = &terrain_rect;
-                        currenttransshape[0].ts_flags = base_ts_flags | 5 |
-                                                        TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                        currenttransshape[0].ts_flags = base_ts_flags | 5
+                                                        | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
                         currenttransshape[0].rotvec.x = 0;
                         currenttransshape[0].rotvec.y = 0;
                         currenttransshape[0].rotvec.z = animation_frame_lookup[di];
-                        currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                          REND_DIST_MULT;
+                        currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                          * REND_DIST_MULT;
                         currenttransshape[0].material = 0;
                         render_result = shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
@@ -1078,13 +1097,13 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].pos.y = -camera_pos.y;
                         currenttransshape[0].pos.z = trackcenterpos[tile_row_adj] - camera_pos.z;
                         currenttransshape[0].rectptr = &terrain_rect;
-                        currenttransshape[0].ts_flags = base_ts_flags | 5 |
-                                                        TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                        currenttransshape[0].ts_flags = base_ts_flags | 5
+                                                        | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
                         currenttransshape[0].rotvec.x = 0;
                         currenttransshape[0].rotvec.y = 0;
                         currenttransshape[0].rotvec.z = trkobj_roty(trk_object_entry);
-                        currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                          REND_DIST_MULT;
+                        currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                          * REND_DIST_MULT;
                         currenttransshape[0].material = 0;
                         render_result = shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
@@ -1193,8 +1212,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     currenttransshape[0].rotvec.x = 0;
                     currenttransshape[0].rotvec.y = 0;
                     currenttransshape[0].rotvec.z = 0;
-                    currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_HILL *
-                                                                      REND_DIST_MULT;
+                    currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_HILL
+                                                                      * REND_DIST_MULT;
                     currenttransshape[0].material = 0;
                     render_result = shape3d_render_transformed(&currenttransshape[0]);
                     if (render_result > 0)
@@ -1218,12 +1237,12 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[1].rotvec.y = 0;
                         currenttransshape[1].rotvec.z = trkobj_roty(trk_object_ptr);
                         if (trkobj_multi(trk_object_ptr) != 0) {
-                            currenttransshape[1].shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                              REND_DIST_MULT;
+                            currenttransshape[1].shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                              * REND_DIST_MULT;
                         }
                         else {
-                            currenttransshape[1].shape_visibility_threshold =
-                                FRAME_VISIBILITY_HILL * REND_DIST_MULT;
+                            currenttransshape[1].shape_visibility_threshold = FRAME_VISIBILITY_HILL
+                                                                              * REND_DIST_MULT;
                         }
 
                         if (trkobj_surface(trk_object_ptr) >= 0) {
@@ -1233,8 +1252,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                             currenttransshape[1].material = default_material;
                         }
 
-                        currenttransshape[1].ts_flags = trkobj_ignore_zbias(trk_object_ptr) |
-                                                        base_ts_flags | 4;
+                        currenttransshape[1].ts_flags = trkobj_ignore_zbias(trk_object_ptr)
+                                                        | base_ts_flags | 4;
                         if ((currenttransshape[1].ts_flags & 1) != 0) {
                             currenttransshape[1].rectptr = &terrain_rect;
                             render_result = shape3d_render_transformed(&currenttransshape[1]);
@@ -1261,16 +1280,16 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             currenttransshape[0].rotvec.y = 0;
             currenttransshape[0].rotvec.z = trkobj_roty(trk_object_entry);
             if (trkobj_multi(trk_object_entry) != 0) {
-                currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                  REND_DIST_MULT;
+                currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                  * REND_DIST_MULT;
             }
             else {
-                currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_HILL *
-                                                                  REND_DIST_MULT;
+                currenttransshape[0].shape_visibility_threshold = FRAME_VISIBILITY_HILL
+                                                                  * REND_DIST_MULT;
             }
 
-            currenttransshape[0].ts_flags = trkobj_ignore_zbias(trk_object_entry) | base_ts_flags |
-                                            4;
+            currenttransshape[0].ts_flags = trkobj_ignore_zbias(trk_object_entry) | base_ts_flags
+                                            | 4;
             if (trkobj_surface(trk_object_entry) >= 0) {
                 currenttransshape[0].material = trkobj_surface(trk_object_entry);
             }
@@ -1325,46 +1344,46 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     if (trk_object_entry == 0) {
                         continue;
                     }
-                    curtransshape_ptr->pos.x = obstacle_world_pos[obstacle_slot * 3 + 0] -
-                                               camera_pos.x;
-                    curtransshape_ptr->pos.y = obstacle_world_pos[obstacle_slot * 3 + 1] -
-                                               camera_pos.y;
-                    curtransshape_ptr->pos.z = obstacle_world_pos[obstacle_slot * 3 + 2] -
-                                               camera_pos.z;
+                    curtransshape_ptr->pos.x = obstacle_world_pos[obstacle_slot * 3 + 0]
+                                               - camera_pos.x;
+                    curtransshape_ptr->pos.y = obstacle_world_pos[obstacle_slot * 3 + 1]
+                                               - camera_pos.y;
+                    curtransshape_ptr->pos.z = obstacle_world_pos[obstacle_slot * 3 + 2]
+                                               - camera_pos.z;
                     curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                     curtransshape_ptr->rectptr = &world_object_rect;
                     curtransshape_ptr->ts_flags = base_ts_flags | 4;
                     curtransshape_ptr->rotvec.x = 0;
                     curtransshape_ptr->rotvec.y = 0;
                     curtransshape_ptr->rotvec.z = obstacle_rot_z[obstacle_slot];
-                    curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_NEAR *
-                                                                    REND_DIST_MULT;
+                    curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_NEAR
+                                                                    * REND_DIST_MULT;
                     curtransshape_ptr->material = 0;
                     transformed_shape_add_for_sort(0, 0);
                 }
                 else if (state.game_obstacle_count != 0) {
                     for (di = 0; di < 24; di++) {
-                        if (state.game_obstacle_active[di] != 0 &&
-                            obstacle_slot + 2 == state.game_obstacle_status[di]) {
+                        if (state.game_obstacle_active[di] != 0
+                            && obstacle_slot + 2 == state.game_obstacle_status[di]) {
                             trk_object_entry = trkobj_entry(sceneshapes3,
                                                             state.game_obstacle_shape[di]);
-                            curtransshape_ptr->pos.x = (state.game_longs1[di] >> 6) +
-                                                       obstacle_world_pos[obstacle_slot * 3 + 0] -
-                                                       camera_pos.x;
-                            curtransshape_ptr->pos.y = (state.game_longs2[di] >> 6) +
-                                                       obstacle_world_pos[obstacle_slot * 3 + 1] -
-                                                       camera_pos.y;
-                            curtransshape_ptr->pos.z = (state.game_longs3[di] >> 6) +
-                                                       obstacle_world_pos[obstacle_slot * 3 + 2] -
-                                                       camera_pos.z;
+                            curtransshape_ptr->pos.x = (state.game_longs1[di] >> 6)
+                                                       + obstacle_world_pos[obstacle_slot * 3 + 0]
+                                                       - camera_pos.x;
+                            curtransshape_ptr->pos.y = (state.game_longs2[di] >> 6)
+                                                       + obstacle_world_pos[obstacle_slot * 3 + 1]
+                                                       - camera_pos.y;
+                            curtransshape_ptr->pos.z = (state.game_longs3[di] >> 6)
+                                                       + obstacle_world_pos[obstacle_slot * 3 + 2]
+                                                       - camera_pos.z;
                             curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                             curtransshape_ptr->rectptr = &world_object_rect;
                             curtransshape_ptr->ts_flags = base_ts_flags | 5;
                             curtransshape_ptr->rotvec.x = -state.game_obstacle_rotx[di];
                             curtransshape_ptr->rotvec.y = -state.game_obstacle_roty[di];
                             curtransshape_ptr->rotvec.z = -state.game_obstacle_rotz[di];
-                            curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                            REND_DIST_MULT;
+                            curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                            * REND_DIST_MULT;
                             curtransshape_ptr->material = 0;
                             transformed_shape_add_for_sort(0, 0);
                         }
@@ -1373,31 +1392,31 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
-        if ((player_contact_col == tile_col || player_contact_col == tile_col_adj) &&
-            (player_contact_row == tile_row || player_contact_row == tile_row_adj)) {
+        if ((player_contact_col == tile_col || player_contact_col == tile_col_adj)
+            && (player_contact_row == tile_row || player_contact_row == tile_row_adj)) {
             if (state.game_obstacle_count != 0) {
                 for (di = 0; di < 24; di++) {
-                    if (state.game_obstacle_active[di] != 0 &&
-                        state.game_obstacle_status[di] == 0) {
+                    if (state.game_obstacle_active[di] != 0
+                        && state.game_obstacle_status[di] == 0) {
                         trk_object_entry = trkobj_entry(sceneshapes3,
                                                         state.game_obstacle_shape[di]);
-                        curtransshape_ptr->pos.x =
-                            ((state.game_longs1[di] + state.playerstate.car_posWorld1.lx) >> 6) -
-                            camera_pos.x;
-                        curtransshape_ptr->pos.y =
-                            ((state.game_longs2[di] + state.playerstate.car_posWorld1.ly) >> 6) -
-                            camera_pos.y;
-                        curtransshape_ptr->pos.z =
-                            ((state.game_longs3[di] + state.playerstate.car_posWorld1.lz) >> 6) -
-                            camera_pos.z;
+                        curtransshape_ptr->pos.x
+                            = ((state.game_longs1[di] + state.playerstate.car_posWorld1.lx) >> 6)
+                              - camera_pos.x;
+                        curtransshape_ptr->pos.y
+                            = ((state.game_longs2[di] + state.playerstate.car_posWorld1.ly) >> 6)
+                              - camera_pos.y;
+                        curtransshape_ptr->pos.z
+                            = ((state.game_longs3[di] + state.playerstate.car_posWorld1.lz) >> 6)
+                              - camera_pos.z;
                         curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                         curtransshape_ptr->rectptr = &world_object_rect;
                         curtransshape_ptr->ts_flags = base_ts_flags | 5;
                         curtransshape_ptr->rotvec.x = -state.game_obstacle_rotx[di];
                         curtransshape_ptr->rotvec.y = -state.game_obstacle_roty[di];
                         curtransshape_ptr->rotvec.z = -state.game_obstacle_rotz[di];
-                        curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                        REND_DIST_MULT;
+                        curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                        * REND_DIST_MULT;
                         curtransshape_ptr->material = gameconfig.game_playermaterial;
                         transformed_shape_add_for_sort(player_sort_bias & start_tile_sort_mask, 0);
                     }
@@ -1436,8 +1455,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
             curtransshape_ptr->rotvec.x = -state.playerstate.car_rotate.z;
             curtransshape_ptr->rotvec.y = -state.playerstate.car_rotate.y;
             curtransshape_ptr->rotvec.z = -state.playerstate.car_rotate.x;
-            curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_MEDIUM *
-                                                            REND_DIST_MULT;
+            curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_MEDIUM
+                                                            * REND_DIST_MULT;
             curtransshape_ptr->material = gameconfig.game_playermaterial;
             transformed_shape_add_for_sort(player_sort_bias & start_tile_sort_mask, 2);
         }
@@ -1450,29 +1469,26 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                             if (state.game_obstacle_status[di] == 1) {
                                 trk_object_entry = trkobj_entry(sceneshapes3,
                                                                 state.game_obstacle_shape[di]);
-                                curtransshape_ptr->pos.x =
-                                    ((state.game_longs1[di] +
-                                      state.opponentstate.car_posWorld1.lx) >>
-                                     6) -
-                                    camera_pos.x;
-                                curtransshape_ptr->pos.y =
-                                    ((state.game_longs2[di] +
-                                      state.opponentstate.car_posWorld1.ly) >>
-                                     6) -
-                                    camera_pos.y;
-                                curtransshape_ptr->pos.z =
-                                    ((state.game_longs3[di] +
-                                      state.opponentstate.car_posWorld1.lz) >>
-                                     6) -
-                                    camera_pos.z;
+                                curtransshape_ptr->pos.x = ((state.game_longs1[di]
+                                                             + state.opponentstate.car_posWorld1.lx)
+                                                            >> 6)
+                                                           - camera_pos.x;
+                                curtransshape_ptr->pos.y = ((state.game_longs2[di]
+                                                             + state.opponentstate.car_posWorld1.ly)
+                                                            >> 6)
+                                                           - camera_pos.y;
+                                curtransshape_ptr->pos.z = ((state.game_longs3[di]
+                                                             + state.opponentstate.car_posWorld1.lz)
+                                                            >> 6)
+                                                           - camera_pos.z;
                                 curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                                 curtransshape_ptr->rectptr = &world_object_rect;
                                 curtransshape_ptr->ts_flags = base_ts_flags | 5;
                                 curtransshape_ptr->rotvec.x = -state.game_obstacle_rotx[di];
                                 curtransshape_ptr->rotvec.y = -state.game_obstacle_roty[di];
                                 curtransshape_ptr->rotvec.z = -state.game_obstacle_rotz[di];
-                                curtransshape_ptr->shape_visibility_threshold =
-                                    FRAME_VISIBILITY_FAR * REND_DIST_MULT;
+                                curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                                * REND_DIST_MULT;
                                 curtransshape_ptr->material = gameconfig.game_opponentmaterial;
                                 transformed_shape_add_for_sort(
                                     opponent_sort_bias & start_tile_sort_mask, 0);
@@ -1481,12 +1497,12 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     }
                 }
                 trk_object_entry = trkobj_entry(trkObjectList, 3);
-                curtransshape_ptr->pos.x = (state.opponentstate.car_posWorld1.lx >> 6) -
-                                           camera_pos.x;
-                curtransshape_ptr->pos.y = (state.opponentstate.car_posWorld1.ly >> 6) -
-                                           camera_pos.y;
-                curtransshape_ptr->pos.z = (state.opponentstate.car_posWorld1.lz >> 6) -
-                                           camera_pos.z;
+                curtransshape_ptr->pos.x = (state.opponentstate.car_posWorld1.lx >> 6)
+                                           - camera_pos.x;
+                curtransshape_ptr->pos.y = (state.opponentstate.car_posWorld1.ly >> 6)
+                                           - camera_pos.y;
+                curtransshape_ptr->pos.z = (state.opponentstate.car_posWorld1.lz >> 6)
+                                           - camera_pos.z;
 
                 if (tile_detail_level != 0 || timertestflag2 > 2) {
                     curtransshape_ptr->shapeptr = trkobj_loshape(trk_object_entry);
@@ -1517,22 +1533,22 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 curtransshape_ptr->rotvec.x = -state.opponentstate.car_rotate.z;
                 curtransshape_ptr->rotvec.y = -state.opponentstate.car_rotate.y;
                 curtransshape_ptr->rotvec.z = -state.opponentstate.car_rotate.x;
-                curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_MEDIUM *
-                                                                REND_DIST_MULT;
+                curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_MEDIUM
+                                                                * REND_DIST_MULT;
                 curtransshape_ptr->material = gameconfig.game_opponentmaterial;
                 transformed_shape_add_for_sort(opponent_sort_bias & start_tile_sort_mask, 3);
             }
         }
 
         if (state.game_inputmode == 0) {
-            if ((tile_col == startcol2 || tile_col_adj == startcol2) &&
-                (tile_row == startrow2 || tile_row_adj == startrow2)) {
+            if ((tile_col == startcol2 || tile_col_adj == startcol2)
+                && (tile_row == startrow2 || tile_row_adj == startrow2)) {
 
                 multi_tile_value = multiply_and_scale(cos_fast(current_rotation_angle_value),
                                                       FRAME_START_ARROW_RADIUS);
                 loop_count = multiply_and_scale(sin_fast(current_rotation_angle_value),
-                                                FRAME_START_ARROW_RADIUS) +
-                             FRAME_START_ARROW_Z_BIAS;
+                                                FRAME_START_ARROW_RADIUS)
+                             + FRAME_START_ARROW_Z_BIAS;
 
                 arrow_shape_verts = &game3dshapes[2442 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8];
                 arrow_shape_verts[0].x = multi_tile_value - FRAME_START_ARROW_RADIUS;
@@ -1545,15 +1561,15 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 arrow_shape_verts[2].z = loop_count;
                 arrow_shape_verts[3].z = loop_count;
 
-                curtransshape_ptr->pos.x =
-                    multiply_and_scale(sin_fast(track_angle + 256), FRAME_START_ARROW_RADIUS) +
-                    multiply_and_scale(sin_fast(track_angle + 512), FRAME_START_ARROW_FORWARD) +
-                    trackcenterpos2[(unsigned char)startcol2] - camera_pos.x;
+                curtransshape_ptr->pos.x
+                    = multiply_and_scale(sin_fast(track_angle + 256), FRAME_START_ARROW_RADIUS)
+                      + multiply_and_scale(sin_fast(track_angle + 512), FRAME_START_ARROW_FORWARD)
+                      + trackcenterpos2[(unsigned char)startcol2] - camera_pos.x;
                 curtransshape_ptr->pos.y = hillHeightConsts[(unsigned char)hillFlag] - camera_pos.y;
-                curtransshape_ptr->pos.z =
-                    multiply_and_scale(cos_fast(track_angle + 256), FRAME_START_ARROW_RADIUS) +
-                    multiply_and_scale(cos_fast(track_angle + 512), FRAME_START_ARROW_FORWARD) +
-                    trackcenterpos[(unsigned char)startrow2] - camera_pos.z;
+                curtransshape_ptr->pos.z
+                    = multiply_and_scale(cos_fast(track_angle + 256), FRAME_START_ARROW_RADIUS)
+                      + multiply_and_scale(cos_fast(track_angle + 512), FRAME_START_ARROW_FORWARD)
+                      + trackcenterpos[(unsigned char)startrow2] - camera_pos.z;
 
                 curtransshape_ptr->shapeptr = &game3dshapes[2442 / GAME3DSHAPES_DOS_STRIDE];
                 curtransshape_ptr->rectptr = &world_object_rect;
@@ -1561,8 +1577,8 @@ void update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 curtransshape_ptr->rotvec.x = 0;
                 curtransshape_ptr->rotvec.y = 0;
                 curtransshape_ptr->rotvec.z = track_angle;
-                curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR *
-                                                                REND_DIST_MULT;
+                curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR
+                                                                * REND_DIST_MULT;
                 multi_tile_value = current_rotation_angle_value >> 6;
                 if (multi_tile_value > 3) {
                     multi_tile_value = 3;

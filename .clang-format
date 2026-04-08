@@ -5,7 +5,7 @@
 Language: Cpp
 
 # Start from a well-known base and override what differs.
-BasedOnStyle: LLVM
+BasedOnStyle: GNU
 
 # --- Indentation ---
 IndentWidth: 4

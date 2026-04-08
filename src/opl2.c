@@ -40,7 +40,8 @@ static int s_sample_rate = 49716;
 /** @brief Initialize the OPL backend at the requested output sample rate.
  * @param sample_rate Output sample rate in Hz.
  */
-void opl2_init(int sample_rate) {
+void
+opl2_init(int sample_rate) {
     if (sample_rate <= 0) {
         s_ready = 0;
         return;
@@ -62,7 +63,8 @@ void opl2_init(int sample_rate) {
 
 /** @brief Opl2 reset.
  */
-void opl2_reset(void) {
+void
+opl2_reset(void) {
     if (!s_ready) {
         return;
     }
@@ -80,7 +82,8 @@ void opl2_reset(void) {
  * @param reg OPL register index.
  * @param val Register value to write.
  */
-void opl2_write(int reg, int val) {
+void
+opl2_write(int reg, int val) {
 
     if (!s_ready) {
         return;
@@ -92,7 +95,8 @@ void opl2_write(int reg, int val) {
  * @param buf Destination sample buffer.
  * @param n Number of mono samples to generate.
  */
-void opl2_generate(short *buf, int n) {
+void
+opl2_generate(short *buf, int n) {
     int i;
 
     if (!s_ready || !buf || n <= 0) {
@@ -115,14 +119,16 @@ void opl2_generate(short *buf, int n) {
 /** @brief Report whether the OPL backend has been initialized.
  * @return Non-zero when ready to render audio.
  */
-int opl2_is_ready(void) {
+int
+opl2_is_ready(void) {
 
     return s_ready;
 }
 
 /** @brief Opl2 destroy.
  */
-void opl2_destroy(void) {
+void
+opl2_destroy(void) {
 
     memset(&s_opl, 0, sizeof(s_opl));
     s_ready = 0;

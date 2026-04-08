@@ -67,7 +67,8 @@ void video_wait_menu_refresh(void);
  * @param accum Parameter `accum`.
  * @return Function result.
  */
-static void video_wait_refresh_slot(unsigned long *next_counter, unsigned long *accum) {
+static void
+video_wait_refresh_slot(unsigned long *next_counter, unsigned long *accum) {
     timer_wait_for_counter_rate(timer_get_display_hz(), next_counter, accum);
 }
 
@@ -78,13 +79,15 @@ static void (*video_scale_changed_cb)(void) = NULL;
 
 /** @brief Register a callback invoked whenever the scale changes.
  */
-void video_set_scale_changed_cb(void (*cb)(void)) {
+void
+video_set_scale_changed_cb(void (*cb)(void)) {
     video_scale_changed_cb = cb;
 }
 
 /** @brief Increase the SDL render scale by one step.
  */
-void video_scale_up(void) {
+void
+video_scale_up(void) {
     if (sdl_fullscreen)
         return;
     if (sdl_scale >= 3)
@@ -97,7 +100,8 @@ void video_scale_up(void) {
 
 /** @brief Decrease the SDL render scale by one step.
  */
-void video_scale_down(void) {
+void
+video_scale_down(void) {
 
     if (sdl_fullscreen)
         return;
@@ -111,13 +115,15 @@ void video_scale_down(void) {
 
 /** @brief Return current render scale multiplier.
  */
-int video_get_scale(void) {
+int
+video_get_scale(void) {
     return sdl_scale;
 }
 
 /** @brief Set render scale multiplier (1–3), applying immediately if SDL is active.
  */
-void video_set_scale(int scale) {
+void
+video_set_scale(int scale) {
     if (scale < 1)
         scale = 1;
     if (scale > 3)
@@ -130,7 +136,8 @@ void video_set_scale(int scale) {
 
 /** @brief Toggle SDL fullscreen mode and reinitialize the video surface.
  */
-void video_toggle_fullscreen(void) {
+void
+video_toggle_fullscreen(void) {
 
     sdl_fullscreen = !sdl_fullscreen;
     fb_sdl2_toggle_fullscreen(&sdl_ctx);
@@ -138,7 +145,8 @@ void video_toggle_fullscreen(void) {
 
 /** @brief Try to initialize SDL video and the main rendering surface.
  */
-static void video_try_init_sdl(void) {
+static void
+video_try_init_sdl(void) {
 
     if (sdl_init_attempted != 0) {
         return;
@@ -172,7 +180,8 @@ static void video_try_init_sdl(void) {
 /** @brief Return the active 8-bit framebuffer.
  * @return Function result.
  */
-unsigned char *video_get_framebuffer(void) {
+unsigned char *
+video_get_framebuffer(void) {
 
     if (sdl_active != 0) {
         return sdl_framebuffer;
@@ -183,14 +192,16 @@ unsigned char *video_get_framebuffer(void) {
 /** @brief Report whether SDL video output is currently active.
  * @return Function result.
  */
-int video_is_sdl_active(void) {
+int
+video_is_sdl_active(void) {
 
     return sdl_active != 0;
 }
 
 /** @brief Present the current framebuffer, applying timing and palette updates.
  */
-void video_present_frame(void) {
+void
+video_present_frame(void) {
 
     static unsigned long next_present_counter = 0;
     static unsigned long present_accum = 0;
@@ -200,8 +211,8 @@ void video_present_frame(void) {
     }
 
     /* Silently recover from any pointer corruption. */
-    if (sdl_ctx.window != sdl_ctx_saved_window || sdl_ctx.renderer != sdl_ctx_saved_renderer ||
-        sdl_ctx.texture != sdl_ctx_saved_texture) {
+    if (sdl_ctx.window != sdl_ctx_saved_window || sdl_ctx.renderer != sdl_ctx_saved_renderer
+        || sdl_ctx.texture != sdl_ctx_saved_texture) {
         sdl_ctx.window = sdl_ctx_saved_window;
         sdl_ctx.renderer = sdl_ctx_saved_renderer;
         sdl_ctx.texture = sdl_ctx_saved_texture;
@@ -215,20 +226,23 @@ void video_present_frame(void) {
 
 /** @brief Video refresh.
  */
-void video_refresh(void) {
+void
+video_refresh(void) {
     video_present_frame();
 }
 
 /** @brief Video wait menu refresh.
  */
-void video_wait_menu_refresh(void) {
+void
+video_wait_menu_refresh(void) {
     video_present_frame();
 }
 
 /**
  * video_clear_color - Clear framebuffer with color value
  */
-void video_clear_color(unsigned short color) {
+void
+video_clear_color(unsigned short color) {
     unsigned int i;
     unsigned char *framebuffer;
 
@@ -252,7 +266,8 @@ void video_clear_color(unsigned short color) {
  * @param colors Parameter `colors`.
  * @return Function result.
  */
-void video_set_palette(unsigned short start, unsigned short count, unsigned char *colors) {
+void
+video_set_palette(unsigned short start, unsigned short count, unsigned char *colors) {
     unsigned int i;
 
     if (sdl_active == 0) {
@@ -273,7 +288,8 @@ void video_set_palette(unsigned short start, unsigned short count, unsigned char
  * @param video_sdl_init Parameter `video_sdl_init`.
  * @return Function result.
  */
-void video_sdl_init(void) {
+void
+video_sdl_init(void) {
     video_try_init_sdl();
     video_add_exithandler();
 
@@ -290,7 +306,8 @@ void video_sdl_init(void) {
  * 
  * Registers video_on_exit exactly once.
  */
-void video_add_exithandler(void) {
+void
+video_add_exithandler(void) {
     if (video_exit_handler_registered != 0) {
         return;
     }
@@ -309,7 +326,8 @@ void video_add_exithandler(void) {
  * 
  * Called during program exit to shutdown SDL video resources.
  */
-void video_on_exit(void) {
+void
+video_on_exit(void) {
     if (sdl_init_attempted == 0) {
         return;
     }

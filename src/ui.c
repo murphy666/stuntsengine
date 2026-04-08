@@ -55,9 +55,9 @@
 #include "ui_widgets.h"
 
 /* Variables moved from data_game.c */
-static void *sprite_ptrs[10] = {0};
-static unsigned short window_x_positions[10] = {0};
-static unsigned short window_y_positions[10] = {0};
+static void *sprite_ptrs[10] = { 0 };
+static unsigned short window_x_positions[10] = { 0 };
+static unsigned short window_y_positions[10] = { 0 };
 
 
 /* file-local data (moved from data_global.c) */
@@ -80,7 +80,8 @@ static unsigned char g_window_stack_save[WINDOW_STACK_MAX][sizeof(struct SPRITE)
  * @param idx Parameter `idx`.
  * @return Function result.
  */
-static char *window_stack_get_save_ptr(unsigned short idx) {
+static char *
+window_stack_get_save_ptr(unsigned short idx) {
     if (idx >= WINDOW_STACK_MAX) {
         return NULL;
     }
@@ -118,7 +119,8 @@ static unsigned short rl_cursor_pos;     /* menu_state_data - cursor position in
 /** @brief Read line helper2.
  * @return Function result.
  */
-static void read_line_helper2(void) {
+static void
+read_line_helper2(void) {
     unsigned short text_len;
     unsigned short text_width;
     unsigned short remaining_width;
@@ -177,7 +179,8 @@ static void read_line_helper2(void) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-static void read_line_helper(void) {
+static void
+read_line_helper(void) {
     unsigned short char_width;
     unsigned short x_offset;
     unsigned short y_offset;
@@ -224,10 +227,10 @@ static void read_line_helper(void) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-unsigned short read_line(char *buffer, unsigned char flags, unsigned short max_chars,
-                         unsigned short width, unsigned short height, void *fontptr,
-                         unsigned short x, unsigned short y, void *callback_ptr,
-                         unsigned short timeout) {
+unsigned short
+read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned short width,
+          unsigned short height, void *fontptr, unsigned short x, unsigned short y,
+          void *callback_ptr, unsigned short timeout) {
     unsigned short key_code;
     unsigned short first_key;
     unsigned short insert_mode;
@@ -503,8 +506,8 @@ unsigned short read_line(char *buffer, unsigned char flags, unsigned short max_c
  * @param y2 Parameter `y2`.
  * @return Function result.
  */
-unsigned char ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2,
-                                   unsigned short y2) {
+unsigned char
+ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2) {
     struct SPRITE saved_sprites[2];
     unsigned long required_mem;
     unsigned long avail_mem;
@@ -575,7 +578,8 @@ unsigned char ui_window_push_modal(unsigned short x1, unsigned short y1, unsigne
  /*--------------------------------------------------------------*/
 /** @brief Ui window pop modal.
  */
-void ui_window_pop_modal(void) {
+void
+ui_window_pop_modal(void) {
     struct SPRITE saved_sprites[2];
     unsigned short idx;
     char *save_ptr;
@@ -634,8 +638,9 @@ void ui_window_pop_modal(void) {
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-unsigned short call_read_line(char *buffer, unsigned short max_chars, unsigned short dialog_x,
-                              unsigned short dialog_y, void *fontptr) {
+unsigned short
+call_read_line(char *buffer, unsigned short max_chars, unsigned short dialog_x,
+               unsigned short dialog_y, void *fontptr) {
     unsigned short result;
     unsigned short text_len, i;
 
@@ -670,9 +675,10 @@ unsigned short call_read_line(char *buffer, unsigned short max_chars, unsigned s
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-void draw_button(char *buttontext, unsigned short x, unsigned short y, unsigned short width,
-                 unsigned short height, unsigned short topcolor, unsigned short bottomcolor,
-                 unsigned short fillcolor, unsigned short textcolor) {
+void
+draw_button(char *buttontext, unsigned short x, unsigned short y, unsigned short width,
+            unsigned short height, unsigned short topcolor, unsigned short bottomcolor,
+            unsigned short fillcolor, unsigned short textcolor) {
     unsigned short right_edge, bottom_edge;
     unsigned short text_width;
     unsigned short line_count;
@@ -771,9 +777,10 @@ void draw_button(char *buttontext, unsigned short x, unsigned short y, unsigned 
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-unsigned short mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2,
-                              unsigned short y1, unsigned short y2, unsigned short value,
-                              unsigned short range_offset, unsigned short max_value) {
+unsigned short
+mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsigned short y1,
+               unsigned short y2, unsigned short value, unsigned short range_offset,
+               unsigned short max_value) {
     unsigned short is_vertical;
     unsigned short slider_size;
     unsigned short scaled_divisor;
@@ -799,11 +806,11 @@ unsigned short mouse_track_op(unsigned short mode, unsigned short x1, unsigned s
     scaled_divisor = max_value * 4;
 
     /* Calculate slider handle start and end positions */
-    slider_pos_start =
-        (unsigned short)(((unsigned long)(slider_size - 1) * value * 4) / scaled_divisor);
-    slider_pos_end =
-        (unsigned short)(((unsigned long)(slider_size - 1) * (value + range_offset) * 4) /
-                         scaled_divisor);
+    slider_pos_start
+        = (unsigned short)(((unsigned long)(slider_size - 1) * value * 4) / scaled_divisor);
+    slider_pos_end
+        = (unsigned short)(((unsigned long)(slider_size - 1) * (value + range_offset) * 4)
+                           / scaled_divisor);
     slider_handle_size = slider_pos_end - slider_pos_start;
 
     /* Mode 0: Just draw the slider */
@@ -891,17 +898,17 @@ unsigned short mouse_track_op(unsigned short mode, unsigned short x1, unsigned s
 
         /* Calculate final value from slider position */
         if (temp_value == 65535) {
-            value = (unsigned short)((((slider_size / max_value / 2) + new_pos) * max_value) /
-                                     slider_size);
+            value = (unsigned short)((((slider_size / max_value / 2) + new_pos) * max_value)
+                                     / slider_size);
         }
     }
 
     /* Recalculate final handle position */
-    slider_pos_start =
-        (unsigned short)(((unsigned long)(slider_size - 1) * value * 4) / scaled_divisor);
-    slider_pos_end =
-        (unsigned short)(((unsigned long)(slider_size - 1) * (value + range_offset) * 4) /
-                         scaled_divisor);
+    slider_pos_start
+        = (unsigned short)(((unsigned long)(slider_size - 1) * value * 4) / scaled_divisor);
+    slider_pos_end
+        = (unsigned short)(((unsigned long)(slider_size - 1) * (value + range_offset) * 4)
+                           / scaled_divisor);
     slider_handle_size = slider_pos_end - slider_pos_start;
 
     /* Redraw with final position */
@@ -930,7 +937,8 @@ unsigned short mouse_track_op(unsigned short mode, unsigned short x1, unsigned s
  * @return Function result.
  */
 
-unsigned short input_checking(unsigned short delta) {
+unsigned short
+input_checking(unsigned short delta) {
     unsigned short key_code;
     unsigned short joy_flags_new;
     unsigned short joy_changed;
@@ -1174,7 +1182,8 @@ unsigned short input_checking(unsigned short delta) {
  * @return Function result.
  */
 
-short do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
+short
+do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
     void *dialog_text_ptr;
     unsigned short dialog_result;
     unsigned short coords[6];
@@ -1255,7 +1264,8 @@ short do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
 /** @brief Perform joy restext.
  */
 
-void do_joy_restext(void) {
+void
+do_joy_restext(void) {
     unsigned short coords[22];     /* Legacy 16-bit stack words mapped into 22 dialog coordinates */
     unsigned char joy_assigned[9]; /* 9 bytes, one assignment flag per joystick function */
     unsigned short temp_width, temp_height;
@@ -1401,9 +1411,10 @@ cleanup:
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-short show_dialog(unsigned short dialog_type, unsigned short create_window, void *text_res_ptr,
-                  unsigned short dialog_x, unsigned short dialog_y, unsigned short border_color,
-                  unsigned short *coords_array, unsigned char default_button) {
+short
+show_dialog(unsigned short dialog_type, unsigned short create_window, void *text_res_ptr,
+            unsigned short dialog_x, unsigned short dialog_y, unsigned short border_color,
+            unsigned short *coords_array, unsigned char default_button) {
     /* Local variables matching assembly stack layout */
     unsigned char current_char;              /* Current character */
     unsigned short line_height;              /* Line height (fontdef_line_height + 2) */
@@ -1776,8 +1787,8 @@ short show_dialog(unsigned short dialog_type, unsigned short create_window, void
                     }
 
                     text_ptr = button_text_ptrs[loop_index];
-                    for (line_char_index = 0; line_char_index < button_text_lengths[loop_index] &&
-                                              line_char_index < (sizeof(button_text_buf) - 1);
+                    for (line_char_index = 0; line_char_index < button_text_lengths[loop_index]
+                                              && line_char_index < (sizeof(button_text_buf) - 1);
                          line_char_index++) {
                         button_text_buf[line_char_index] = text_ptr[line_char_index];
                     }
@@ -1891,8 +1902,8 @@ short show_dialog(unsigned short dialog_type, unsigned short create_window, void
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-unsigned short do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext,
-                                    void *textresptr) {
+unsigned short
+do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *textresptr) {
     /* Forward declaration for DOS-style file path parsing function from fileio.c */
     extern void parse_filepath_separators_dosptr(const char *src_path, void *dst_path_buffer);
 
@@ -2296,7 +2307,8 @@ cleanup:
  * @return Function result.
  */
 /*--------------------------------------------------------------*/
-void do_mrl_textres(void) {
+void
+do_mrl_textres(void) {
     unsigned short saved_framespersec2;
     char marker_flags[9];
     char text_buf[514]; /* 514 bytes for text */
@@ -2406,7 +2418,8 @@ static const char aOpp1_[] = "opp1.*\0\xDE\x33\xE2\x33\xE6\x33\0";
 /** @brief Ensure file exists.
  * @param file_idx Parameter `file_idx`.
  */
-void ensure_file_exists(int file_idx) {
+void
+ensure_file_exists(int file_idx) {
     char disktext_id[4];
     const char *query;
     const char *find_table[5];

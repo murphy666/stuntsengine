@@ -44,6 +44,7 @@
 #define UI_NAV_VERTICAL     1 /* Up/Down navigate, Left/Right ignored  */
 #define UI_NAV_BOTH         2 /* Both axes navigate (original default) */
 #define UI_NAV_BOTH_LR_SWAP 3 /* Both axes, LEFT=next/RIGHT=prev       */
+#define UI_NAV_LOOKUP       4 /* Use nav_left[]/nav_right[] tables      */
 
 /* -------- Button menu widget ---------------------------------------- */
 
@@ -66,6 +67,12 @@ typedef struct UIButtonMenu {
     unsigned char default_sel;     /* Initially selected button index   */
     unsigned short idle_timeout;   /* Ticks before auto-select (0=off)  */
     unsigned char nav_mode;        /* UI_NAV_HORIZONTAL / _VERTICAL / _BOTH */
+
+    /* Lookup-table navigation (UI_NAV_LOOKUP): nav_left[i] is the button
+     * to jump to when LEFT is pressed while button i is selected, and
+     * nav_right[i] likewise for RIGHT.  Unused when nav_mode != LOOKUP. */
+    unsigned char nav_left[UI_BTN_MAX];
+    unsigned char nav_right[UI_BTN_MAX];
 
     /*
      * Optional per-iteration callback.  If non-NULL, called once per

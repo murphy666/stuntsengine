@@ -45,55 +45,57 @@
 #include "ui_widgets.h"
 
 /* Variables moved from data_game.c */
-static void *digshapes[10] = {0};
-static void *gnobshapes[6] = {0};
-static void *rplyshapes[23] = {0};
+static void *digshapes[10] = { 0 };
+static void *gnobshapes[6] = { 0 };
+static void *rplyshapes[23] = { 0 };
 static void *stdaresptr = 0;
 static void *stdbresptr = 0;
-static void *whlshapes[9] = {0};
+static void *whlshapes[9] = { 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static unsigned char car_camera_mode_array[2] = {0, 0};
-static unsigned char car_collision_flags[2] = {0, 0};
-static unsigned short car_damage_data_table[2] = {0, 0};
-static unsigned short car_damage_state_array[2] = {0, 0};
-static unsigned short car_orientation_data[2] = {0, 0};
-static unsigned short car_position_x_array[2] = {0, 0};
-static unsigned short car_position_xyz_array[2] = {0, 0};
-static unsigned short car_position_y_array[2] = {0, 0};
-static unsigned short car_position_z_array[2] = {0, 0};
+static unsigned char car_camera_mode_array[2] = { 0, 0 };
+static unsigned char car_collision_flags[2] = { 0, 0 };
+static unsigned short car_damage_data_table[2] = { 0, 0 };
+static unsigned short car_damage_state_array[2] = { 0, 0 };
+static unsigned short car_orientation_data[2] = { 0, 0 };
+static unsigned short car_position_x_array[2] = { 0, 0 };
+static unsigned short car_position_xyz_array[2] = { 0, 0 };
+static unsigned short car_position_y_array[2] = { 0, 0 };
+static unsigned short car_position_z_array[2] = { 0, 0 };
 static unsigned char car_track_interaction_state = 0;
-static unsigned short car_velocity_vector_x[2] = {0, 0};
+static unsigned short car_velocity_vector_x[2] = { 0, 0 };
 static unsigned char palette_fade_state_buffer = 0;
-static unsigned char race_driver_status_array[2] = {0, 0};
-static unsigned short race_timer_display_values[2] = {0, 0};
-static unsigned char sprite_offset_table[64] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static unsigned char sprite_palette_indices[64] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static unsigned char suspension_compression_state[18] = {0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                                         0, 0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned char race_driver_status_array[2] = { 0, 0 };
+static unsigned short race_timer_display_values[2] = { 0, 0 };
+static unsigned char sprite_offset_table[64] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static unsigned char sprite_palette_indices[64]
+    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static unsigned char suspension_compression_state[18] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                          0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static char tire_grip_state = 0;
-static unsigned char wheel_ground_contact[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+static unsigned char wheel_ground_contact[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static char wheel_rotation_speed = 0;
-static unsigned char wheel_slip_direction[2] = {0, 0};
-static unsigned short wheel_velocity_state[2] = {0, 0};
+static unsigned char wheel_slip_direction[2] = { 0, 0 };
+static unsigned short wheel_velocity_state[2] = { 0, 0 };
 static struct SPRITE *whlsprite1 = 0;
 static struct SPRITE *whlsprite2 = 0;
 static struct SPRITE *whlsprite3 = 0;
 
 
 /* file-local data (moved from data_global.c) */
-static unsigned char HKeyFlag[1] = {0}; /* 'H' key toggle: bit 0 flipped on keypress */
-static unsigned char collision_surface_type[34] = {
-    0,  0,  0,  0,  0,  0,  4,  8,  12, 16, 20, 24,  28,  32,  36,  40,  44,
-    48, 52, 56, 60, 64, 68, 72, 76, 84, 90, 98, 106, 114, 121, 127, 127, 127};
+static unsigned char HKeyFlag[1] = { 0 }; /* 'H' key toggle: bit 0 flipped on keypress */
+static unsigned char collision_surface_type[34]
+    = { 0,  0,  0,  0,  0,  0,  4,  8,  12, 16, 20, 24,  28,  32,  36,  40,  44,
+        48, 52, 56, 60, 64, 68, 72, 76, 84, 90, 98, 106, 114, 121, 127, 127, 127 };
 static char aStdaxxxx[] = "stdaxxxx";
 static char aStdbxxxx[] = "stdbxxxx";
 static unsigned char minimum_bump_counter = 6;
-static unsigned char sprite_animation_frame[10] = {1, 7, 3, 4, 5, 6, 7, 8, 8, 0};
+static unsigned char sprite_animation_frame[10] = { 1, 7, 3, 4, 5, 6, 7, 8, 8, 0 };
 
 
 /* shape/sprite pointers (arrays of  ptrs in dseg) */
@@ -108,16 +110,16 @@ void *g_dast_shape_ptr = NULL;
 /* replay bar button arrays */
 
 /* menu navigation tables (moved from data_global.c) */
-static unsigned char particle_effect_state[10] = {0, 0, 2, 2, 3, 4, 5, 1, 7, 0};
-static unsigned char light_level_table[10] = {2, 6, 2, 3, 4, 5, 6, 7, 8, 0};
-static unsigned char shadow_render_flags[10] = {0, 1, 0, 0, 1, 1, 1, 7, 8, 0};
+static unsigned char particle_effect_state[10] = { 0, 0, 2, 2, 3, 4, 5, 1, 7, 0 };
+static unsigned char light_level_table[10] = { 2, 6, 2, 3, 4, 5, 6, 7, 8, 0 };
+static unsigned char shadow_render_flags[10] = { 0, 1, 0, 0, 1, 1, 1, 7, 8, 0 };
 
 /* game camera button tables (moved from data_global.c) */
-static unsigned char game_camera_buttons_count[4] = {6, 6, 8, 7};
-static unsigned short game_camera_buttons_x1[9] = {272, 109, 274, 232, 190, 151, 108, 66, 10};
-static unsigned short game_camera_buttons_x2[9] = {314, 151, 314, 274, 232, 190, 151, 91, 47};
-static unsigned short game_camera_buttons_y1[9] = {176, 176, 156, 156, 156, 156, 156, 156, 156};
-static unsigned short game_camera_buttons_y2[9] = {193, 193, 173, 173, 173, 173, 173, 193, 193};
+static unsigned char game_camera_buttons_count[4] = { 6, 6, 8, 7 };
+static unsigned short game_camera_buttons_x1[9] = { 272, 109, 274, 232, 190, 151, 108, 66, 10 };
+static unsigned short game_camera_buttons_x2[9] = { 314, 151, 314, 274, 232, 190, 151, 91, 47 };
+static unsigned short game_camera_buttons_y1[9] = { 176, 176, 156, 156, 156, 156, 156, 156, 156 };
+static unsigned short game_camera_buttons_y2[9] = { 193, 193, 173, 173, 173, 173, 173, 193, 193 };
 static unsigned short gameunk_button_x1 = 0;
 static unsigned short gameunk_button_x2 = 104;
 static unsigned short gameunk_button_y1 = 151;
@@ -155,7 +157,8 @@ void loop_game(int command, int context_value, int frame_value);
  * @param command Parameter `command`.
  * @return Function result.
  */
-int handle_ingame_kb_shortcuts(int command) {
+int
+handle_ingame_kb_shortcuts(int command) {
     int ax = command;
 
     if (ax == 283 || ax == 27) { /* ESC */
@@ -242,7 +245,8 @@ int handle_ingame_kb_shortcuts(int command) {
  * @param set_frame_callback Parameter `set_frame_callback`.
  * @return Function result.
  */
-void set_frame_callback(void) {
+void
+set_frame_callback(void) {
     game_mode_state_register = 0;
     timer_reg_callback((void *)frame_callback);
     palette_fade_state_buffer = 0;
@@ -256,7 +260,8 @@ void set_frame_callback(void) {
  * @param remove_frame_callback Parameter `remove_frame_callback`.
  * @return Function result.
  */
-void remove_frame_callback(void) {
+void
+remove_frame_callback(void) {
     timer_wait_ticks_and_get_counter(10L);
     timer_remove_callback((void *)frame_callback);
 }
@@ -269,7 +274,8 @@ void remove_frame_callback(void) {
  * checks game-finish / checkpoint conditions, and manages replay
  * frame capture at the configured FPS rate.
  */
-void frame_callback(void) {
+void
+frame_callback(void) {
     if (!compare_ds_ss())
         return;
 
@@ -353,7 +359,8 @@ done:
 /** @brief Replay capture frame input.
  * @param command Parameter `command`.
  */
-void replay_capture_frame_input(int command) {
+void
+replay_capture_frame_input(int command) {
     int si, di;
     int replayTimeLimit;
 
@@ -435,8 +442,8 @@ void replay_capture_frame_input(int command) {
                 }
                 else if ((char)car_track_interaction_state < 0) {
                     char neg_al = -((char)car_track_interaction_state);
-                    car_track_interaction_state =
-                        -(char)collision_surface_type[(int)(unsigned char)neg_al];
+                    car_track_interaction_state
+                        = -(char)collision_surface_type[(int)(unsigned char)neg_al];
                 }
             }
             si = get_kb_or_joy_flags() & 51;
@@ -549,7 +556,8 @@ set_end:
  * @param update_follow_camera_vectors Parameter `update_follow_camera_vectors`.
  * @return Function result.
  */
-void update_follow_camera_vectors(void) {
+void
+update_follow_camera_vectors(void) {
     int si, di;
     int trackedCarCount;
     struct CARSTATE *pState;
@@ -722,7 +730,8 @@ void update_follow_camera_vectors(void) {
  * @param command Parameter `command`.
  * @return Function result.
  */
-void setup_car_shapes(int command) {
+void
+setup_car_shapes(int command) {
     void *shapePtr;
     int arrayIndex, screenSlot;
     int steeringBucket;
@@ -883,8 +892,8 @@ void setup_car_shapes(int command) {
         arrayIndex = (int)(char)screen_display_toggle_flag;
         if (wheel_slip_direction[arrayIndex] == state.playerstate.car_changing_gear) {
             screenSlot = arrayIndex * 2;
-            if (car_position_z_array[screenSlot / 2] == state.playerstate.car_knob_x &&
-                car_position_y_array[screenSlot / 2] == state.playerstate.car_knob_y) {
+            if (car_position_z_array[screenSlot / 2] == state.playerstate.car_knob_x
+                && car_position_y_array[screenSlot / 2] == state.playerstate.car_knob_y) {
                 if (state.playerstate.car_fpsmul2 == 0)
                     goto do_steeringwheel;
                 if (wheel_slip_direction[arrayIndex] != 0)
@@ -986,8 +995,8 @@ void setup_car_shapes(int command) {
         /* check if gauges need redraw */
         if (steeringWheelChanged == 0 && race_condition_state_flag == 0) {
             arrayIndex = (int)(char)screen_display_toggle_flag * 2;
-            if (car_orientation_data[arrayIndex / 2] == si &&
-                car_position_xyz_array[arrayIndex / 2] == di)
+            if (car_orientation_data[arrayIndex / 2] == si
+                && car_position_xyz_array[arrayIndex / 2] == di)
                 goto do_steeringdot;
         }
 
@@ -1088,8 +1097,8 @@ void setup_car_shapes(int command) {
     do_steeringdot:
         /* Steering dot overlay */
         arrayIndex = (int)(char)screen_display_toggle_flag;
-        if (car_damage_state_array[arrayIndex] == steeringBucket &&
-            race_condition_state_flag == 0 && restoredDotThisFrame == 0)
+        if (car_damage_state_array[arrayIndex] == steeringBucket && race_condition_state_flag == 0
+            && restoredDotThisFrame == 0)
             goto steer_done;
 
         if (video_flag5_is0 == 0)
@@ -1122,10 +1131,10 @@ void setup_car_shapes(int command) {
         arrayIndex = (int)(char)screen_display_toggle_flag * 2;
         {
             struct SHAPE2D *dotShape = (struct SHAPE2D *)gnobshapes[2]; /* dot */
-            car_velocity_vector_x[arrayIndex / 2] =
-                ((unsigned char)steeringDotX - dotShape->s2d_hotspot_x) & video_flag3_isFFFF;
-            car_damage_data_table[arrayIndex / 2] = (unsigned char)steeringDotY -
-                                                    dotShape->s2d_hotspot_y;
+            car_velocity_vector_x[arrayIndex / 2]
+                = ((unsigned char)steeringDotX - dotShape->s2d_hotspot_x) & video_flag3_isFFFF;
+            car_damage_data_table[arrayIndex / 2] = (unsigned char)steeringDotY
+                                                    - dotShape->s2d_hotspot_y;
         }
 
         sprite_clear_shape_alt(gnobshapes[(int)(char)current_screen_buffer_selector + 4],
@@ -1182,7 +1191,8 @@ void setup_car_shapes(int command) {
  *
  * @param command  Non-zero for gameplay-constrained bounds, 0 for full screen.
  */
-void mouse_minmax_position(int command) {
+void
+mouse_minmax_position(int command) {
     if (command != 0) {
         mouse_set_minmax(15, 0, 305, 200);
         mouse_set_position(160, 100);
@@ -1201,7 +1211,8 @@ void mouse_minmax_position(int command) {
  * corrective left/right flags into the current replay frame so that
  * the car converges toward the desired steering angle.
  */
-void replay_apply_steering_correction(void) {
+void
+replay_apply_steering_correction(void) {
     int si, di;
     char responseStep, correctionMask;
 
@@ -1213,8 +1224,8 @@ void replay_apply_steering_correction(void) {
     di = (int)(char)*((char *)&sprite_offset_table + si);
 
     /* compute response rate from speed */
-    responseStep = *((unsigned char *)steerWhlRespTable_ptr +
-                     ((state.playerstate.car_speed2 >> 10) & 252) + 1);
+    responseStep = *((unsigned char *)steerWhlRespTable_ptr
+                     + ((state.playerstate.car_speed2 >> 10) & 252) + 1);
 
     /* double response if steering same direction */
     if (state.playerstate.car_steeringAngle < di) {
@@ -1279,7 +1290,8 @@ void replay_apply_steering_correction(void) {
  * @param frame_value Parameter `frame_value`.
  * @return Function result.
  */
-void loop_game(int command, int context_value, int frame_value) {
+void
+loop_game(int command, int context_value, int frame_value) {
     int si, di;
     int screenIndex, screenValue;
     unsigned char ctrlModifierActive;
@@ -1352,8 +1364,8 @@ void loop_game(int command, int context_value, int frame_value) {
         /* update time display if changed */
         screenValue = frame_value + elapsed_time1;
         {
-            unsigned short *time_display_ptr =
-                &race_timer_display_values[(int)(char)screen_display_toggle_flag];
+            unsigned short *time_display_ptr
+                = &race_timer_display_values[(int)(char)screen_display_toggle_flag];
             if (*time_display_ptr != (unsigned short)screenValue) {
                 *time_display_ptr = (unsigned short)screenValue;
                 format_frame_as_string(resID_byte1, screenValue, 1);
@@ -1396,8 +1408,8 @@ void loop_game(int command, int context_value, int frame_value) {
 
         /* update progress bar if changed */
         screenIndex = (int)(char)screen_display_toggle_flag * 2;
-        if (wheel_velocity_state[screenIndex / 2] != si ||
-            car_position_x_array[screenIndex / 2] != di) {
+        if (wheel_velocity_state[screenIndex / 2] != si
+            || car_position_x_array[screenIndex / 2] != di) {
             mouse_draw_opaque_check();
             wheel_velocity_state[screenIndex / 2] = si;
             car_position_x_array[screenIndex / 2] = di;
@@ -1428,11 +1440,13 @@ void loop_game(int command, int context_value, int frame_value) {
             /* unhighlight inactive buttons */
             for (buttonIndex = 0; buttonIndex < 7; buttonIndex++) {
                 if (wheel_ground_contact[buttonIndex] == 0) {
-                    if (suspension_compression_state[buttonIndex * 2 +
-                                                     (int)(char)screen_display_toggle_flag] != 0) {
+                    if (suspension_compression_state[buttonIndex * 2
+                                                     + (int)(char)screen_display_toggle_flag]
+                        != 0) {
                         shape2d_draw_rle_copy(rplyshapes[5 + buttonIndex]); /* normal */
-                        suspension_compression_state[buttonIndex * 2 +
-                                                     (int)(char)screen_display_toggle_flag] = 0;
+                        suspension_compression_state[buttonIndex * 2
+                                                     + (int)(char)screen_display_toggle_flag]
+                            = 0;
                     }
                 }
             }
@@ -1440,11 +1454,13 @@ void loop_game(int command, int context_value, int frame_value) {
             /* highlight active buttons */
             for (buttonIndex = 0; buttonIndex < 7; buttonIndex++) {
                 if (wheel_ground_contact[buttonIndex] != 0) {
-                    suspension_compression_state[buttonIndex * 2 +
-                                                 (int)(char)screen_display_toggle_flag] = 1;
+                    suspension_compression_state[buttonIndex * 2
+                                                 + (int)(char)screen_display_toggle_flag]
+                        = 1;
                     shape2d_draw_rle_copy(rplyshapes[14 + buttonIndex]); /* highlighted */
-                    suspension_compression_state[buttonIndex * 2 +
-                                                 (int)(char)screen_display_toggle_flag] = 1;
+                    suspension_compression_state[buttonIndex * 2
+                                                 + (int)(char)screen_display_toggle_flag]
+                        = 1;
                 }
             }
 
@@ -1876,10 +1892,10 @@ void loop_game(int command, int context_value, int frame_value) {
                 if (elemMap[900] != (unsigned char)savedSkyId)
                     si = 1;
             }
-            if (gameconfig.game_playercarid[0] != savedGameconfigSnapshot[0] ||
-                gameconfig.game_playercarid[1] != savedGameconfigSnapshot[1] ||
-                gameconfig.game_playercarid[2] != savedGameconfigSnapshot[2] ||
-                gameconfig.game_playercarid[3] != savedGameconfigSnapshot[3]) {
+            if (gameconfig.game_playercarid[0] != savedGameconfigSnapshot[0]
+                || gameconfig.game_playercarid[1] != savedGameconfigSnapshot[1]
+                || gameconfig.game_playercarid[2] != savedGameconfigSnapshot[2]
+                || gameconfig.game_playercarid[3] != savedGameconfigSnapshot[3]) {
                 si = 1;
             }
             else {
@@ -1887,10 +1903,10 @@ void loop_game(int command, int context_value, int frame_value) {
                     si = 1;
                 }
                 else if (gameconfig.game_opponenttype != 0) {
-                    if (gameconfig.game_opponentcarid[0] != savedGameconfigSnapshot[9] ||
-                        gameconfig.game_opponentcarid[1] != savedGameconfigSnapshot[10] ||
-                        gameconfig.game_opponentcarid[2] != savedGameconfigSnapshot[11] ||
-                        gameconfig.game_opponentcarid[3] != savedGameconfigSnapshot[12]) {
+                    if (gameconfig.game_opponentcarid[0] != savedGameconfigSnapshot[9]
+                        || gameconfig.game_opponentcarid[1] != savedGameconfigSnapshot[10]
+                        || gameconfig.game_opponentcarid[2] != savedGameconfigSnapshot[11]
+                        || gameconfig.game_opponentcarid[3] != savedGameconfigSnapshot[12]) {
                         si = 1;
                     }
                     else {

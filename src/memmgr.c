@@ -45,7 +45,8 @@ static unsigned short g_resmem_paras;
  * @param ptr Parameter `ptr`.
  * @param size Parameter `size`.
  */
-static void mmgr_store_entry(const char *name, void *ptr, size_t size) {
+static void
+mmgr_store_entry(const char *name, void *ptr, size_t size) {
     unsigned short i;
     const char *chunk_name;
     if (ptr == NULL) {
@@ -86,7 +87,8 @@ static void mmgr_store_entry(const char *name, void *ptr, size_t size) {
  * @param ptr Parameter `ptr`.
  * @return Function result.
  */
-static MMGR_ENTRY *mmgr_find_entry_by_ptr(void *ptr) {
+static MMGR_ENTRY *
+mmgr_find_entry_by_ptr(void *ptr) {
 
     unsigned short i;
     for (i = 0; i < g_mmgr_count; i++) {
@@ -101,7 +103,8 @@ static MMGR_ENTRY *mmgr_find_entry_by_ptr(void *ptr) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-static MMGR_ENTRY *mmgr_find_entry_by_name(const char *name) {
+static MMGR_ENTRY *
+mmgr_find_entry_by_name(const char *name) {
 
     unsigned short i;
     const char *chunk_name;
@@ -121,7 +124,8 @@ static MMGR_ENTRY *mmgr_find_entry_by_name(const char *name) {
  * @param filename Parameter `filename`.
  * @return Function result.
  */
-const char *mmgr_path_to_name(const char *filename) {
+const char *
+mmgr_path_to_name(const char *filename) {
 
     const char *c;
     const char *result = filename;
@@ -140,7 +144,8 @@ const char *mmgr_path_to_name(const char *filename) {
  * @param chunk_name Parameter `chunk_name`.
  * @param size_paras Parameter `size_paras`.
  */
-void *mmgr_alloc_pages(const char *chunk_name, unsigned short size_paras) {
+void *
+mmgr_alloc_pages(const char *chunk_name, unsigned short size_paras) {
 
     size_t bytes = ((size_t)size_paras) << 4;
     void *ptr = malloc(bytes == 0 ? 1 : bytes);
@@ -156,7 +161,8 @@ void *mmgr_alloc_pages(const char *chunk_name, unsigned short size_paras) {
  * @param name Parameter `name`.
  * @param size Parameter `size`.
  */
-void *mmgr_alloc_resbytes(const char *name, long int size) {
+void *
+mmgr_alloc_resbytes(const char *name, long int size) {
 
     size_t bytes = (size <= 0) ? 1u : (size_t)size;
     void *ptr = malloc(bytes);
@@ -171,7 +177,8 @@ void *mmgr_alloc_resbytes(const char *name, long int size) {
 /** @brief Manage memory for alloc resmem.
  * @param size_paras Parameter `size_paras`.
  */
-void mmgr_alloc_resmem(unsigned short size_paras) {
+void
+mmgr_alloc_resmem(unsigned short size_paras) {
 
     size_t bytes = ((size_t)size_paras) << 4;
 
@@ -199,14 +206,16 @@ void mmgr_alloc_resmem(unsigned short size_paras) {
 /** @brief Manage memory for alloc resmem simple.
  * @param paras Parameter `paras`.
  */
-void mmgr_alloc_resmem_simple(unsigned short paras) {
+void
+mmgr_alloc_resmem_simple(unsigned short paras) {
 
     mmgr_alloc_resmem(paras);
 }
 
 /** @brief Manage memory for alloc a000.
  */
-void mmgr_alloc_a000(void) {
+void
+mmgr_alloc_a000(void) {
 
     mmgr_alloc_resmem(40960u);
 }
@@ -214,7 +223,8 @@ void mmgr_alloc_a000(void) {
 /** @brief Manage memory for get ofs diff.
  * @return Function result.
  */
-unsigned short mmgr_get_ofs_diff() {
+unsigned short
+mmgr_get_ofs_diff() {
 
     return g_resmem_paras;
 }
@@ -222,7 +232,8 @@ unsigned short mmgr_get_ofs_diff() {
 /** @brief Manage memory for free.
  * @param ptr Parameter `ptr`.
  */
-void *mmgr_free(char *ptr) {
+void *
+mmgr_free(char *ptr) {
 
     MMGR_ENTRY *entry = mmgr_find_entry_by_ptr(ptr);
     if (entry != NULL) {
@@ -237,7 +248,8 @@ void *mmgr_free(char *ptr) {
  * @param ret0_unused Parameter `ret0_unused`.
  * @param seg Parameter `seg`.
  */
-void mmgr_free_compact(unsigned short ret0_unused, unsigned short seg) {
+void
+mmgr_free_compact(unsigned short ret0_unused, unsigned short seg) {
 
     (void)ret0_unused;
     (void)seg;
@@ -248,7 +260,8 @@ void mmgr_free_compact(unsigned short ret0_unused, unsigned short seg) {
  * @param destseg Parameter `destseg`.
  * @param paras Parameter `paras`.
  */
-void mmgr_copy_paras(unsigned short srcseg, unsigned short destseg, short paras) {
+void
+mmgr_copy_paras(unsigned short srcseg, unsigned short destseg, short paras) {
 
     (void)srcseg;
     (void)destseg;
@@ -260,7 +273,8 @@ void mmgr_copy_paras(unsigned short srcseg, unsigned short destseg, short paras)
  * @param destseg Parameter `destseg`.
  * @param paras Parameter `paras`.
  */
-void copy_paras_reverse(unsigned short srcseg, unsigned short destseg, short paras) {
+void
+copy_paras_reverse(unsigned short srcseg, unsigned short destseg, short paras) {
     (void)srcseg;
     (void)destseg;
     (void)paras;
@@ -268,12 +282,14 @@ void copy_paras_reverse(unsigned short srcseg, unsigned short destseg, short par
 
 /** @brief Manage memory for find free.
  */
-void mmgr_find_free() {}
+void
+mmgr_find_free() {}
 
 /** @brief Manage memory for get chunk by name.
  * @param chunk_name Parameter `chunk_name`.
  */
-void *mmgr_get_chunk_by_name(const char *chunk_name) {
+void *
+mmgr_get_chunk_by_name(const char *chunk_name) {
 
     MMGR_ENTRY *entry = mmgr_find_entry_by_name(chunk_name);
     return entry ? entry->ptr : NULL;
@@ -283,7 +299,8 @@ void *mmgr_get_chunk_by_name(const char *chunk_name) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-int mmgr_chunk_exists(const char *name) {
+int
+mmgr_chunk_exists(const char *name) {
 
     return mmgr_find_entry_by_name(name) != NULL;
 }
@@ -291,7 +308,8 @@ int mmgr_chunk_exists(const char *name) {
 /** @brief Manage memory for release.
  * @param ptr Parameter `ptr`.
  */
-void mmgr_release(char *ptr) {
+void
+mmgr_release(char *ptr) {
 
     (void)mmgr_free(ptr);
 }
@@ -300,7 +318,8 @@ void mmgr_release(char *ptr) {
  * @param ptr Parameter `ptr`.
  * @return Function result.
  */
-unsigned short mmgr_get_chunk_size(char *ptr) {
+unsigned short
+mmgr_get_chunk_size(char *ptr) {
 
     MMGR_ENTRY *entry = mmgr_find_entry_by_ptr(ptr);
     if (entry == NULL) {
@@ -312,14 +331,16 @@ unsigned short mmgr_get_chunk_size(char *ptr) {
 /** @brief Manage memory for normalize ptr.
  * @param ptr Parameter `ptr`.
  */
-void *mmgr_normalize_ptr(char *ptr) {
+void *
+mmgr_normalize_ptr(char *ptr) {
     return ptr;
 }
 
 /** @brief Manage memory for get res ofs diff scaled.
  * @return Function result.
  */
-unsigned long mmgr_get_res_ofs_diff_scaled(void) {
+unsigned long
+mmgr_get_res_ofs_diff_scaled(void) {
 
     if (g_resmem_size != 0) {
         return (unsigned long)g_resmem_size;
@@ -334,7 +355,8 @@ unsigned long mmgr_get_res_ofs_diff_scaled(void) {
  * @param ptr Parameter `ptr`.
  * @return Function result.
  */
-unsigned long mmgr_get_chunk_size_bytes(char *ptr) {
+unsigned long
+mmgr_get_chunk_size_bytes(char *ptr) {
 
     MMGR_ENTRY *entry = mmgr_find_entry_by_ptr(ptr);
     return entry ? (unsigned long)entry->size : 0ul;
@@ -351,8 +373,8 @@ struct resheader {
  * @param header_mode Parameter `header_mode`.
  * @return Function result.
  */
-static int memmgr_layout_valid(uint32_t data_size, unsigned short chunks,
-                               unsigned short header_mode) {
+static int
+memmgr_layout_valid(uint32_t data_size, unsigned short chunks, unsigned short header_mode) {
 
     uint32_t header_size;
 
@@ -374,12 +396,13 @@ static int memmgr_layout_valid(uint32_t data_size, unsigned short chunks,
  * @param lookup Parameter `lookup`.
  * @return Function result.
  */
-static int memmgr_layout_has_name(const char *names, unsigned short chunks, const char lookup[4]) {
+static int
+memmgr_layout_has_name(const char *names, unsigned short chunks, const char lookup[4]) {
     unsigned short j;
     for (j = 0; j < chunks; j++) {
         const char *cur = names + ((unsigned long)j * 4ul);
-        if (cur[0] == lookup[0] && cur[1] == lookup[1] && cur[2] == lookup[2] &&
-            cur[3] == lookup[3]) {
+        if (cur[0] == lookup[0] && cur[1] == lookup[1] && cur[2] == lookup[2]
+            && cur[3] == lookup[3]) {
             return 1;
         }
     }
@@ -392,7 +415,8 @@ static int memmgr_layout_has_name(const char *names, unsigned short chunks, cons
  * @param fatal Parameter `fatal`.
  * @return Function result.
  */
-char *locate_resource(char *data, char *name, unsigned short fatal) {
+char *
+locate_resource(char *data, char *name, unsigned short fatal) {
 
     unsigned short j;
     char lookup[4];
@@ -432,8 +456,8 @@ char *locate_resource(char *data, char *name, unsigned short fatal) {
     }
 
     chunks6 = hdr->chunks;
-    alt_chunks = (unsigned short)((unsigned short)(unsigned char)data[8] |
-                                  ((unsigned short)(unsigned char)data[9] << 8));
+    alt_chunks = (unsigned short)((unsigned short)(unsigned char)data[8]
+                                  | ((unsigned short)(unsigned char)data[9] << 8));
     chunks10 = alt_chunks;
 
     valid6 = memmgr_layout_valid(data_size, chunks6, 6);
@@ -483,8 +507,8 @@ char *locate_resource(char *data, char *name, unsigned short fatal) {
 
     for (j = 0; j < chunks; j++) {
         char *cur = names + ((unsigned long)j * 4ul);
-        if (cur[0] == lookup[0] && cur[1] == lookup[1] && cur[2] == lookup[2] &&
-            cur[3] == lookup[3]) {
+        if (cur[0] == lookup[0] && cur[1] == lookup[1] && cur[2] == lookup[2]
+            && cur[3] == lookup[3]) {
             return data + base + offsets[j];
         }
     }
@@ -500,7 +524,8 @@ char *locate_resource(char *data, char *name, unsigned short fatal) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-char *locate_shape_nofatal(char *data, char *name) {
+char *
+locate_shape_nofatal(char *data, char *name) {
 
     return locate_resource(data, name, 0);
 }
@@ -510,7 +535,8 @@ char *locate_shape_nofatal(char *data, char *name) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-char *locate_shape_fatal(char *data, char *name) {
+char *
+locate_shape_fatal(char *data, char *name) {
 
     return locate_resource(data, name, 1);
 }
@@ -519,7 +545,8 @@ char *locate_shape_fatal(char *data, char *name) {
  * @param data Parameter `data`.
  * @param name Parameter `name`.
  */
-void *locate_shape_alt(void *data, char *name) {
+void *
+locate_shape_alt(void *data, char *name) {
 
     return locate_shape_fatal((char *)data, name);
 }
@@ -529,7 +556,8 @@ void *locate_shape_alt(void *data, char *name) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-char *locate_sound_fatal(char *data, char *name) {
+char *
+locate_sound_fatal(char *data, char *name) {
     return locate_resource(data, name, 1);
 }
 
@@ -538,7 +566,8 @@ char *locate_sound_fatal(char *data, char *name) {
  * @param names Parameter `names`.
  * @param result Parameter `result`.
  */
-void locate_many_resources(char *data, char *names, char **result) {
+void
+locate_many_resources(char *data, char *names, char **result) {
 
     while (names != NULL && result != NULL && *names != 0) {
         *result++ = locate_shape_fatal(data, names);
@@ -551,7 +580,8 @@ void locate_many_resources(char *data, char *names, char **result) {
  * @param name Parameter `name`.
  * @return Function result.
  */
-char *locate_text_res(char *data, char *name) {
+char *
+locate_text_res(char *data, char *name) {
 
     char textname[4];
     textname[0] = (char)textresprefix;

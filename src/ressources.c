@@ -43,7 +43,7 @@ static int g_find_match_count;
 static int g_find_match_index;
 static int file_resolve_existing_path(const char *filename, char *out, size_t out_size);
 
-static const char *const g_file_search_prefixes[] = {"", "ressources/", "build/", NULL};
+static const char *const g_file_search_prefixes[] = { "", "ressources/", "build/", NULL };
 
 /* ── Decompression constants ────────────────────────────────────────── */
 
@@ -55,14 +55,16 @@ static const char *const g_file_search_prefixes[] = {"", "ressources/", "build/"
 #define RS_VLE_ESC_WIDTH     64
 #define RS_VLE_NUM_SYMB      128
 
-static uint32_t file_read_u24_le(const uint8_t *p) {
+static uint32_t
+file_read_u24_le(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
 }
 
 /* ── RLE decompression ──────────────────────────────────────────────── */
 
-static int file_decomp_rle_seq_gnu(const uint8_t *src, size_t src_len, uint8_t esc, uint8_t *dst,
-                                   size_t dst_cap, size_t *out_len) {
+static int
+file_decomp_rle_seq_gnu(const uint8_t *src, size_t src_len, uint8_t esc, uint8_t *dst,
+                        size_t dst_cap, size_t *out_len) {
     const uint8_t *src_end = src + src_len;
     size_t written = 0;
 
@@ -105,8 +107,9 @@ static int file_decomp_rle_seq_gnu(const uint8_t *src, size_t src_len, uint8_t e
     return 1;
 }
 
-static int file_decomp_rle_single_gnu(const uint8_t *src, size_t src_len, const uint8_t *esclookup,
-                                      uint8_t *dst, size_t dst_len) {
+static int
+file_decomp_rle_single_gnu(const uint8_t *src, size_t src_len, const uint8_t *esclookup,
+                           uint8_t *dst, size_t dst_len) {
     size_t src_pos = 0, dst_pos = 0;
 
     while (dst_pos < dst_len) {
@@ -150,7 +153,8 @@ static int file_decomp_rle_single_gnu(const uint8_t *src, size_t src_len, const 
     return 1;
 }
 
-static int file_decomp_rle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *out_len) {
+static int
+file_decomp_rle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *out_len) {
     uint32_t len, srclen;
     uint8_t esclen, skipseq, esclookup[RS_RLE_ESCLOOKUP_LEN];
     uint8_t *dst;
@@ -207,7 +211,8 @@ static int file_decomp_rle_gnu(const uint8_t *src, size_t src_len, uint8_t **out
 
 /* ── VLE decompression ──────────────────────────────────────────────── */
 
-static int file_decomp_vle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *out_len) {
+static int
+file_decomp_vle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *out_len) {
     uint32_t len, lenleft;
     uint8_t *dst;
     size_t dst_pos = 0;
@@ -363,7 +368,8 @@ static int file_decomp_vle_gnu(const uint8_t *src, size_t src_len, uint8_t **out
 
 /* ── Audio helpers ──────────────────────────────────────────────────── */
 
-static void *file_try_binary_with_exts(const char *filename, const char *const *exts) {
+static void *
+file_try_binary_with_exts(const char *filename, const char *const *exts) {
     if (!filename || !exts)
         return NULL;
     for (int i = 0; exts[i]; i++) {
@@ -376,7 +382,8 @@ static void *file_try_binary_with_exts(const char *filename, const char *const *
     return NULL;
 }
 
-static void *file_try_driver_prefixed_binary(const char *filename, const char *const *exts) {
+static void *
+file_try_driver_prefixed_binary(const char *filename, const char *const *exts) {
     char prefix[3], stem[FS_PATH_MAX];
     if (!filename || !exts)
         return NULL;
@@ -399,7 +406,8 @@ static void *file_try_driver_prefixed_binary(const char *filename, const char *c
 
 /* Walk every path component and resolve each via case-insensitive dir scan.
    On Windows the FS is already CI so we just check existence. */
-static int file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
+static int
+file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
     if (!input || !out || out_size == 0)
         return 0;
 #ifdef _WIN32
@@ -465,7 +473,8 @@ static int file_resolve_case_insensitive(const char *input, char *out, size_t ou
 
 /* Case-insensitive wildcard match (*, ?) */
 #if !defined(_WIN32) || defined(HAVE_DIRENT_H)
-static int file_match_pattern_ci(const char *pattern, const char *text) {
+static int
+file_match_pattern_ci(const char *pattern, const char *text) {
     const char *star = NULL, *star_text = NULL;
     if (!pattern || !text)
         return 0;
@@ -495,7 +504,8 @@ static int file_match_pattern_ci(const char *pattern, const char *text) {
 #endif
 
 /* Split path into directory + basename at the last separator */
-static const char *path_split_dir(const char *path, char *dirout, size_t dirsize) {
+static const char *
+path_split_dir(const char *path, char *dirout, size_t dirsize) {
     const char *sep = strrchr(path, '/');
     if (!sep)
         sep = strrchr(path, '\\');
@@ -512,7 +522,8 @@ static const char *path_split_dir(const char *path, char *dirout, size_t dirsize
     return path;
 }
 
-static int file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
+static int
+file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
     if (!query || !out || out_size == 0)
         return 0;
 
@@ -621,7 +632,8 @@ static int file_resolve_wildcard_path(const char *query, char *out, size_t out_s
 
 /* ── Path resolution (prefix search + case-insensitive fallback) ──── */
 
-static int file_resolve_existing_path(const char *filename, char *out, size_t out_size) {
+static int
+file_resolve_existing_path(const char *filename, char *out, size_t out_size) {
     if (!filename || !out || out_size == 0)
         return 0;
 
@@ -644,13 +656,15 @@ static int file_resolve_existing_path(const char *filename, char *out, size_t ou
 
 /* ── Public file-find API ───────────────────────────────────────────── */
 
-static void file_find_reset(void) {
+static void
+file_find_reset(void) {
     g_find_query[0] = '\0';
     g_find_match_count = 0;
     g_find_match_index = 0;
 }
 
-const char *file_find(const char *query) {
+const char *
+file_find(const char *query) {
     char resolved[FS_PATH_MAX];
     if (!query) {
         file_find_reset();
@@ -676,21 +690,23 @@ const char *file_find(const char *query) {
     return g_find_query;
 }
 
-const char *file_find_next(void) {
+const char *
+file_find_next(void) {
     if (++g_find_match_index >= g_find_match_count)
         return NULL;
     snprintf(g_find_query, sizeof(g_find_query), "%s", g_find_matches[g_find_match_index]);
     return g_find_query;
 }
 
-const char *file_find_next_alt(void) {
+const char *
+file_find_next_alt(void) {
     return file_find_next();
 }
 
 /* ── Path building ──────────────────────────────────────────────────── */
 
-void file_build_path(const char *dir, const char *name, const char *ext, char *dst,
-                     size_t dst_size) {
+void
+file_build_path(const char *dir, const char *name, const char *ext, char *dst, size_t dst_size) {
     size_t pos = 0;
     if (!dst || dst_size == 0)
         return;
@@ -709,7 +725,8 @@ void file_build_path(const char *dir, const char *name, const char *ext, char *d
         snprintf(dst + pos, dst_size - pos, "%s", ext);
 }
 
-const char *file_combine_and_find(const char *dir, const char *name, const char *ext) {
+const char *
+file_combine_and_find(const char *dir, const char *name, const char *ext) {
     static char path[FS_PATH_MAX];
     file_build_path(dir, name, ext, path, sizeof(path));
     return file_find(path);
@@ -717,7 +734,8 @@ const char *file_combine_and_find(const char *dir, const char *name, const char 
 
 /* ── File size / paragraphs ─────────────────────────────────────────── */
 
-unsigned short file_paras(const char *filename, int fatal) {
+unsigned short
+file_paras(const char *filename, int fatal) {
     char resolved[FS_PATH_MAX];
     FILE *f;
     long size;
@@ -739,25 +757,31 @@ unsigned short file_paras(const char *filename, int fatal) {
     return (size > 0) ? (unsigned short)(((unsigned long)size + 15UL) >> 4) : 0;
 }
 
-unsigned short file_paras_fatal(const char *filename) {
+unsigned short
+file_paras_fatal(const char *filename) {
     return file_paras(filename, 1);
 }
-unsigned short file_paras_nofatal(const char *filename) {
+unsigned short
+file_paras_nofatal(const char *filename) {
     return file_paras(filename, 0);
 }
-unsigned short file_decomp_paras(const char *filename, int fatal) {
+unsigned short
+file_decomp_paras(const char *filename, int fatal) {
     return file_paras(filename, fatal);
 }
-unsigned short file_decomp_paras_fatal(const char *filename) {
+unsigned short
+file_decomp_paras_fatal(const char *filename) {
     return file_paras(filename, 1);
 }
-unsigned short file_decomp_paras_nofatal(const char *filename) {
+unsigned short
+file_decomp_paras_nofatal(const char *filename) {
     return file_paras(filename, 0);
 }
 
 /* ── File read / write ──────────────────────────────────────────────── */
 
-void *file_read(const char *filename, void *dst, int fatal) {
+void *
+file_read(const char *filename, void *dst, int fatal) {
     char resolved[FS_PATH_MAX];
     FILE *f;
     long size;
@@ -792,14 +816,17 @@ void *file_read(const char *filename, void *dst, int fatal) {
     return dst;
 }
 
-void *file_read_fatal(const char *filename, void *dst) {
+void *
+file_read_fatal(const char *filename, void *dst) {
     return file_read(filename, dst, 1);
 }
-void *file_read_nofatal(const char *filename, void *dst) {
+void *
+file_read_nofatal(const char *filename, void *dst) {
     return file_read(filename, dst, 0);
 }
 
-short file_write(const char *filename, void *src, unsigned long length, int fatal) {
+short
+file_write(const char *filename, void *src, unsigned long length, int fatal) {
     FILE *f = fopen(filename, "wb");
     if (!f) {
         if (fatal)
@@ -812,16 +839,19 @@ short file_write(const char *filename, void *src, unsigned long length, int fata
     return 0;
 }
 
-short file_write_fatal(const char *filename, void *src, unsigned long length) {
+short
+file_write_fatal(const char *filename, void *src, unsigned long length) {
     return file_write(filename, src, length, 1);
 }
-short file_write_nofatal(const char *filename, void *src, unsigned long length) {
+short
+file_write_nofatal(const char *filename, void *src, unsigned long length) {
     return file_write(filename, src, length, 0);
 }
 
 /* ── Decompression (multi-pass RLE/VLE) ─────────────────────────────── */
 
-static int file_get_size_resolved(const char *filename, size_t *out_size) {
+static int
+file_get_size_resolved(const char *filename, size_t *out_size) {
     char resolved[FS_PATH_MAX];
     FILE *f;
     long size;
@@ -843,7 +873,8 @@ static int file_get_size_resolved(const char *filename, size_t *out_size) {
     return 1;
 }
 
-void *file_decomp(const char *filename, int fatal) {
+void *
+file_decomp(const char *filename, int fatal) {
     void *cached;
     uint8_t *src_raw, *src, *pass_src, *current = NULL;
     size_t src_size, src_padded_size, pass_src_len, current_len = 0, current_out_len = 0;
@@ -959,26 +990,32 @@ void *file_decomp(const char *filename, int fatal) {
     return result;
 }
 
-void *file_decomp_fatal(const char *filename) {
+void *
+file_decomp_fatal(const char *filename) {
     return file_decomp(filename, 1);
 }
-void *file_decomp_nofatal(const char *filename) {
+void *
+file_decomp_nofatal(const char *filename) {
     return file_decomp(filename, 0);
 }
 
-void *file_load_binary(const char *filename, int fatal) {
+void *
+file_load_binary(const char *filename, int fatal) {
     return file_read(filename, NULL, fatal);
 }
-void *file_load_binary_nofatal(const char *filename) {
+void *
+file_load_binary_nofatal(const char *filename) {
     return file_read(filename, NULL, 0);
 }
-void *file_load_binary_fatal(const char *filename) {
+void *
+file_load_binary_fatal(const char *filename) {
     return file_read(filename, NULL, 1);
 }
 
 /* ── Resource loading ───────────────────────────────────────────────── */
 
-void *file_load_resfile(const char *filename) {
+void *
+file_load_resfile(const char *filename) {
     char name[FS_PATH_MAX];
     void *r;
     if (!filename)
@@ -993,12 +1030,13 @@ void *file_load_resfile(const char *filename) {
     return file_load_resource(7, name);
 }
 
-void *file_load_resource(int type, const char *filename) {
-    static const char *const song_exts[] = {"", ".kms", NULL};
-    static const char *const voice_exts[] = {"", ".vce", NULL};
-    static const char *const sfx_exts[] = {"", ".sfx", NULL};
-    static const char *const shape_exts[] = {"", ".p3s", NULL};
-    static const char *const res_exts[] = {"", ".res", NULL};
+void *
+file_load_resource(int type, const char *filename) {
+    static const char *const song_exts[] = { "", ".kms", NULL };
+    static const char *const voice_exts[] = { "", ".vce", NULL };
+    static const char *const sfx_exts[] = { "", ".sfx", NULL };
+    static const char *const shape_exts[] = { "", ".p3s", NULL };
+    static const char *const res_exts[] = { "", ".res", NULL };
 
     if (!filename)
         return NULL;
@@ -1040,11 +1078,13 @@ void *file_load_resource(int type, const char *filename) {
     }
 }
 
-void unload_resource(void *resptr) {
+void
+unload_resource(void *resptr) {
     mmgr_release((char *)resptr);
 }
 
-void file_load_audiores(const char *songfile, const char *voicefile, const char *name) {
+void
+file_load_audiores(const char *songfile, const char *voicefile, const char *name) {
     void *audiores;
     voicefileptr = file_load_resource(5, voicefile);
     if (!voicefileptr) {
@@ -1068,7 +1108,8 @@ void file_load_audiores(const char *songfile, const char *voicefile, const char 
     is_audioloaded = 1;
 }
 
-void *file_load_3dres(const char *filename) {
+void *
+file_load_3dres(const char *filename) {
     char name[FS_PATH_MAX];
     void *r;
     if (!filename)
@@ -1085,7 +1126,8 @@ void *file_load_3dres(const char *filename) {
 
 /* ── Replay I/O ─────────────────────────────────────────────────────── */
 
-short file_load_replay(const char *dir, const char *name) {
+short
+file_load_replay(const char *dir, const char *name) {
     file_build_path(dir, name, ".rpl", g_path_buf, sizeof(g_path_buf));
     g_is_busy = 1;
     file_read_fatal(g_path_buf, replay_header);
@@ -1094,7 +1136,8 @@ short file_load_replay(const char *dir, const char *name) {
     return 0;
 }
 
-short file_write_replay(const char *filename) {
+short
+file_write_replay(const char *filename) {
     short ret;
     if (!filename)
         return -1;
@@ -1108,7 +1151,8 @@ short file_write_replay(const char *filename) {
 
 /* ── DOS path parsing (legacy compat) ───────────────────────────────── */
 
-void parse_filepath_separators_dosptr(const char *src_path, void *dst_path_buffer) {
+void
+parse_filepath_separators_dosptr(const char *src_path, void *dst_path_buffer) {
     const char *src = src_path;
     const char *base;
     char *dest = (char *)dst_path_buffer;

@@ -32,10 +32,10 @@ static struct MATRIX mat_rot_temp;
 static struct MATRIX mat_x_rot;
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static struct MATRIX mat_planetmp = {0};
-static struct MATRIX mat_y_rot = {0};
-static struct MATRIX mat_yaw_step = {0};
-static struct MATRIX mat_z_rot = {0};
+static struct MATRIX mat_planetmp = { 0 };
+static struct MATRIX mat_y_rot = { 0 };
+static struct MATRIX mat_yaw_step = { 0 };
+static struct MATRIX mat_z_rot = { 0 };
 
 
 /* file-local data (moved from data_global.c) */
@@ -56,7 +56,8 @@ static unsigned short sine_lookup_cache_key = 9999;
  * @param start  Index of the node to sift down.
  * @param end    Last valid index in the heap.
  */
-static void heapify(int *heap, int *data, int start, int end) {
+static void
+heapify(int *heap, int *data, int start, int end) {
     int last_parent = ((end + 1) >> 1);
     while (start < last_parent) {
         int left_child = (start << 1) + 1;
@@ -93,7 +94,8 @@ static void heapify(int *heap, int *data, int start, int end) {
  * @param data Parameter `data`.
  * @return Function result.
  */
-void heapsort_by_order(int n, int *heap, int *data) {
+void
+heapsort_by_order(int n, int *heap, int *data) {
     int i;
     for (i = (n - 1) / 2; i >= 0; i--) {
         heapify(heap, data, i, n - 1);
@@ -118,7 +120,8 @@ static unsigned short mat_y_rot_angle = 65535;
  * @param src  Source byte pointer.
  * @return The loaded 32-bit value.
  */
-static int32_t load_i32(const unsigned char *src) {
+static int32_t
+load_i32(const unsigned char *src) {
     int32_t value;
     memcpy(&value, src, sizeof(value));
     return value;
@@ -148,43 +151,44 @@ static int32_t load_i32(const unsigned char *src) {
 #define NORMAL_DOT_DIVISOR      8192
 #define SHAPE2D_LOW_NIBBLE_MASK 15
 
-short sintab[] = {
-    0,     101,   201,   302,   402,   503,   603,   704,   804,   904,   1005,  1105,  1205,
-    1306,  1406,  1506,  1606,  1706,  1806,  1906,  2006,  2105,  2205,  2305,  2404,  2503,
-    2603,  2702,  2801,  2900,  2999,  3098,  3196,  3295,  3393,  3492,  3590,  3688,  3786,
-    3883,  3981,  4078,  4176,  4273,  4370,  4467,  4563,  4660,  4756,  4852,  4948,  5044,
-    5139,  5235,  5330,  5425,  5520,  5614,  5708,  5803,  5897,  5990,  6084,  6177,  6270,
-    6363,  6455,  6547,  6639,  6731,  6823,  6914,  7005,  7096,  7186,  7276,  7366,  7456,
-    7545,  7635,  7723,  7812,  7900,  7988,  8076,  8163,  8250,  8337,  8423,  8509,  8595,
-    8680,  8765,  8850,  8935,  9019,  9102,  9186,  9269,  9352,  9434,  9516,  9598,  9679,
-    9760,  9841,  9921,  10001, 10080, 10159, 10238, 10316, 10394, 10471, 10549, 10625, 10702,
-    10778, 10853, 10928, 11003, 11077, 11151, 11224, 11297, 11370, 11442, 11514, 11585, 11656,
-    11727, 11797, 11866, 11935, 12004, 12072, 12140, 12207, 12274, 12340, 12406, 12472, 12537,
-    12601, 12665, 12729, 12792, 12854, 12916, 12978, 13039, 13100, 13160, 13219, 13279, 13337,
-    13395, 13453, 13510, 13567, 13623, 13678, 13733, 13788, 13842, 13896, 13949, 14001, 14053,
-    14104, 14155, 14206, 14256, 14305, 14354, 14402, 14449, 14497, 14543, 14589, 14635, 14680,
-    14724, 14768, 14811, 14854, 14896, 14937, 14978, 15019, 15059, 15098, 15137, 15175, 15213,
-    15250, 15286, 15322, 15357, 15392, 15426, 15460, 15493, 15525, 15557, 15588, 15619, 15649,
-    15679, 15707, 15736, 15763, 15791, 15817, 15843, 15868, 15893, 15917, 15941, 15964, 15986,
-    16008, 16029, 16049, 16069, 16088, 16107, 16125, 16143, 16160, 16176, 16192, 16207, 16221,
-    16235, 16248, 16261, 16273, 16284, 16295, 16305, 16315, 16324, 16332, 16340, 16347, 16353,
-    16359, 16364, 16369, 16373, 16376, 16379, 16381, 16383, 16384, 16384};
+short sintab[]
+    = { 0,     101,   201,   302,   402,   503,   603,   704,   804,   904,   1005,  1105,  1205,
+        1306,  1406,  1506,  1606,  1706,  1806,  1906,  2006,  2105,  2205,  2305,  2404,  2503,
+        2603,  2702,  2801,  2900,  2999,  3098,  3196,  3295,  3393,  3492,  3590,  3688,  3786,
+        3883,  3981,  4078,  4176,  4273,  4370,  4467,  4563,  4660,  4756,  4852,  4948,  5044,
+        5139,  5235,  5330,  5425,  5520,  5614,  5708,  5803,  5897,  5990,  6084,  6177,  6270,
+        6363,  6455,  6547,  6639,  6731,  6823,  6914,  7005,  7096,  7186,  7276,  7366,  7456,
+        7545,  7635,  7723,  7812,  7900,  7988,  8076,  8163,  8250,  8337,  8423,  8509,  8595,
+        8680,  8765,  8850,  8935,  9019,  9102,  9186,  9269,  9352,  9434,  9516,  9598,  9679,
+        9760,  9841,  9921,  10001, 10080, 10159, 10238, 10316, 10394, 10471, 10549, 10625, 10702,
+        10778, 10853, 10928, 11003, 11077, 11151, 11224, 11297, 11370, 11442, 11514, 11585, 11656,
+        11727, 11797, 11866, 11935, 12004, 12072, 12140, 12207, 12274, 12340, 12406, 12472, 12537,
+        12601, 12665, 12729, 12792, 12854, 12916, 12978, 13039, 13100, 13160, 13219, 13279, 13337,
+        13395, 13453, 13510, 13567, 13623, 13678, 13733, 13788, 13842, 13896, 13949, 14001, 14053,
+        14104, 14155, 14206, 14256, 14305, 14354, 14402, 14449, 14497, 14543, 14589, 14635, 14680,
+        14724, 14768, 14811, 14854, 14896, 14937, 14978, 15019, 15059, 15098, 15137, 15175, 15213,
+        15250, 15286, 15322, 15357, 15392, 15426, 15460, 15493, 15525, 15557, 15588, 15619, 15649,
+        15679, 15707, 15736, 15763, 15791, 15817, 15843, 15868, 15893, 15917, 15941, 15964, 15986,
+        16008, 16029, 16049, 16069, 16088, 16107, 16125, 16143, 16160, 16176, 16192, 16207, 16221,
+        16235, 16248, 16261, 16273, 16284, 16295, 16305, 16315, 16324, 16332, 16340, 16347, 16353,
+        16359, 16364, 16369, 16373, 16376, 16379, 16381, 16383, 16384, 16384 };
 
-static unsigned char atantable[258] = {
-    0,   1,   1,   2,   3,   3,   4,   4,   5,   6,   6,   7,   8,   8,   9,   10,  10,  11,  11,
-    12,  13,  13,  14,  15,  15,  16,  16,  17,  18,  18,  19,  20,  20,  21,  22,  22,  23,  23,
-    24,  25,  25,  26,  27,  27,  28,  28,  29,  30,  30,  31,  31,  32,  33,  33,  34,  34,  35,
-    36,  36,  37,  38,  38,  39,  39,  40,  41,  41,  42,  42,  43,  44,  44,  45,  45,  46,  46,
-    47,  48,  48,  49,  49,  50,  51,  51,  52,  52,  53,  53,  54,  55,  55,  56,  56,  57,  57,
-    58,  58,  59,  60,  60,  61,  61,  62,  62,  63,  63,  64,  65,  65,  66,  66,  67,  67,  68,
-    68,  69,  69,  70,  70,  71,  71,  72,  72,  73,  74,  74,  75,  75,  76,  76,  77,  77,  78,
-    78,  79,  79,  80,  80,  81,  81,  82,  82,  83,  83,  84,  84,  84,  85,  85,  86,  86,  87,
-    87,  88,  88,  89,  89,  90,  90,  91,  91,  91,  92,  92,  93,  93,  94,  94,  95,  95,  96,
-    96,  96,  97,  97,  98,  98,  99,  99,  99,  100, 100, 101, 101, 102, 102, 102, 103, 103, 104,
-    104, 104, 105, 105, 106, 106, 106, 107, 107, 108, 108, 108, 109, 109, 110, 110, 110, 111, 111,
-    112, 112, 112, 113, 113, 113, 114, 114, 115, 115, 115, 116, 116, 116, 117, 117, 118, 118, 118,
-    119, 119, 119, 120, 120, 120, 121, 121, 121, 122, 122, 122, 123, 123, 123, 124, 124, 124, 125,
-    125, 125, 126, 126, 126, 127, 127, 127, 128, 128, 0};
+static unsigned char atantable[258]
+    = { 0,   1,   1,   2,   3,   3,   4,   4,   5,   6,   6,   7,   8,   8,   9,   10,  10,  11,
+        11,  12,  13,  13,  14,  15,  15,  16,  16,  17,  18,  18,  19,  20,  20,  21,  22,  22,
+        23,  23,  24,  25,  25,  26,  27,  27,  28,  28,  29,  30,  30,  31,  31,  32,  33,  33,
+        34,  34,  35,  36,  36,  37,  38,  38,  39,  39,  40,  41,  41,  42,  42,  43,  44,  44,
+        45,  45,  46,  46,  47,  48,  48,  49,  49,  50,  51,  51,  52,  52,  53,  53,  54,  55,
+        55,  56,  56,  57,  57,  58,  58,  59,  60,  60,  61,  61,  62,  62,  63,  63,  64,  65,
+        65,  66,  66,  67,  67,  68,  68,  69,  69,  70,  70,  71,  71,  72,  72,  73,  74,  74,
+        75,  75,  76,  76,  77,  77,  78,  78,  79,  79,  80,  80,  81,  81,  82,  82,  83,  83,
+        84,  84,  84,  85,  85,  86,  86,  87,  87,  88,  88,  89,  89,  90,  90,  91,  91,  91,
+        92,  92,  93,  93,  94,  94,  95,  95,  96,  96,  96,  97,  97,  98,  98,  99,  99,  99,
+        100, 100, 101, 101, 102, 102, 102, 103, 103, 104, 104, 104, 105, 105, 106, 106, 106, 107,
+        107, 108, 108, 108, 109, 109, 110, 110, 110, 111, 111, 112, 112, 112, 113, 113, 113, 114,
+        114, 115, 115, 115, 116, 116, 116, 117, 117, 118, 118, 118, 119, 119, 119, 120, 120, 120,
+        121, 121, 121, 122, 122, 122, 123, 123, 123, 124, 124, 124, 125, 125, 125, 126, 126, 126,
+        127, 127, 127, 128, 128, 0 };
 
 /** @brief Fast sine lookup using the pre-computed table.
  *
@@ -192,7 +196,8 @@ static unsigned char atantable[258] = {
  * @param s Parameter `s`.
  * @return Function result.
  */
-short sin_fast(unsigned short s) {
+short
+sin_fast(unsigned short s) {
     unsigned char c = s & ANGLE_BYTE_MASK;
     switch ((s >> 8) & 3) {
     case 0:
@@ -216,7 +221,8 @@ short sin_fast(unsigned short s) {
  * @param s  Angle in the engine's fixed-point unit.
  * @return Cosine value in 14-bit fixed point.
  */
-short cos_fast(unsigned short s) {
+short
+cos_fast(unsigned short s) {
     return sin_fast(s + ANGLE_QUADRANT);
 }
 
@@ -230,7 +236,8 @@ short cos_fast(unsigned short s) {
  * @param y  Vertical component.
  * @return Angle in the engine's fixed-point unit.
  */
-int polarAngle(int z, int y) {
+int
+polarAngle(int z, int y) {
 
     unsigned flag;
     int temp, result = 0;
@@ -297,7 +304,8 @@ int polarAngle(int z, int y) {
  * @param y  Vertical component.
  * @return Length of the vector as an integer.
  */
-int polarRadius2D(int z, int y) {
+int
+polarRadius2D(int z, int y) {
     long result;
 
     result = polarAngle(z, y);
@@ -333,7 +341,8 @@ int polarRadius2D(int z, int y) {
  * @param vec  Pointer to the input vector.
  * @return Length of the vector as an integer.
  */
-int polarRadius3D(struct VECTOR *vec) {
+int
+polarRadius3D(struct VECTOR *vec) {
     return polarRadius2D(polarRadius2D(vec->x, vec->y), vec->z);
 }
 
@@ -346,7 +355,8 @@ int polarRadius3D(struct VECTOR *vec) {
  * @param pt  Pointer to the point to test.
  * @return Bit-flags indicating which edges the point lies outside.
  */
-unsigned rect_compare_point(struct POINT2D *pt) {
+unsigned
+rect_compare_point(struct POINT2D *pt) {
     unsigned char flag;
     if (pt->py < select_rect_rc.top)
         flag = 1;
@@ -374,7 +384,8 @@ unsigned rect_compare_point(struct POINT2D *pt) {
  * @param mat     Transformation matrix.
  * @param outvec  Output vector receiving the result.
  */
-void mat_mul_vector(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) {
+void
+mat_mul_vector(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) {
 
     if (mat->m._11 != 0 && invec->x != 0)
         outvec->x = ((long)mat->m._11 * invec->x) >> FIXED_POINT_SHIFT;
@@ -424,7 +435,8 @@ void mat_mul_vector(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *out
  * @param mat     Transformation matrix.
  * @param outvec  Output vector receiving the result.
  */
-void mat_mul_vector2(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) {
+void
+mat_mul_vector2(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) {
     struct MATRIX tmpmat = *mat;
 
     mat_mul_vector(invec, &tmpmat, outvec);
@@ -440,7 +452,8 @@ void mat_mul_vector2(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *ou
  * @param lmat    Left-hand matrix.
  * @param outmat  Output matrix receiving the product.
  */
-void mat_multiply(struct MATRIX *rmat, struct MATRIX *lmat, struct MATRIX *outmat) {
+void
+mat_multiply(struct MATRIX *rmat, struct MATRIX *lmat, struct MATRIX *outmat) {
     int counter;
     int16_t *rmatvals = rmat->vals;
     int16_t *lmatvals = lmat->vals;
@@ -482,7 +495,8 @@ void mat_multiply(struct MATRIX *rmat, struct MATRIX *lmat, struct MATRIX *outma
  * @param inmat   Input matrix.
  * @param outmat  Output matrix receiving the transpose.
  */
-void mat_invert(struct MATRIX *inmat, struct MATRIX *outmat) {
+void
+mat_invert(struct MATRIX *inmat, struct MATRIX *outmat) {
     int temp;
     if (inmat == outmat) {
         temp = outmat->m._21;
@@ -518,7 +532,8 @@ void mat_invert(struct MATRIX *inmat, struct MATRIX *outmat) {
  * @param outmat  Output matrix.
  * @param angle   Rotation angle in engine units.
  */
-void mat_rot_x(struct MATRIX *outmat, int angle) {
+void
+mat_rot_x(struct MATRIX *outmat, int angle) {
     int c, s;
 
     c = cos_fast(angle);
@@ -539,7 +554,8 @@ void mat_rot_x(struct MATRIX *outmat, int angle) {
  * @param outmat  Output matrix.
  * @param angle   Rotation angle in engine units.
  */
-void mat_rot_y(struct MATRIX *outmat, int angle) {
+void
+mat_rot_y(struct MATRIX *outmat, int angle) {
     int c, s;
 
     c = cos_fast(angle);
@@ -560,7 +576,8 @@ void mat_rot_y(struct MATRIX *outmat, int angle) {
  * @param outmat  Output matrix.
  * @param angle   Rotation angle in engine units.
  */
-void mat_rot_z(struct MATRIX *outmat, int angle) {
+void
+mat_rot_z(struct MATRIX *outmat, int angle) {
     int c, s;
 
     c = cos_fast(angle);
@@ -587,7 +604,8 @@ void mat_rot_z(struct MATRIX *outmat, int angle) {
  * @param use_alt_mult_order  Non-zero selects YXZ multiplication order.
  * @return Pointer to one of the static rotation matrices containing the result.
  */
-struct MATRIX *mat_rot_zxy(int z, int x, int y, int use_alt_mult_order) {
+struct MATRIX *
+mat_rot_zxy(int z, int x, int y, int use_alt_mult_order) {
     mat_rot_z(&mat_z_rot, z);
     mat_rot_x(&mat_x_rot, x);
 
@@ -616,7 +634,8 @@ struct MATRIX *mat_rot_zxy(int z, int x, int y, int use_alt_mult_order) {
  * @param pt  Point to include.
  * @param rc  Rectangle to adjust in place.
  */
-void rect_adjust_from_point(struct POINT2D *pt, struct RECTANGLE *rc) {
+void
+rect_adjust_from_point(struct POINT2D *pt, struct RECTANGLE *rc) {
     int temp;
 
     if (rc->left > pt->px) {
@@ -648,7 +667,8 @@ void rect_adjust_from_point(struct POINT2D *pt, struct RECTANGLE *rc) {
  * @param r2     Second rectangle.
  * @param outrc  Output rectangle receiving the union.
  */
-void rect_union(struct RECTANGLE *r1, struct RECTANGLE *r2, struct RECTANGLE *outrc) {
+void
+rect_union(struct RECTANGLE *r1, struct RECTANGLE *r2, struct RECTANGLE *outrc) {
     if (r1->left <= r2->left) {
         outrc->left = r1->left;
     }
@@ -691,7 +711,8 @@ void rect_union(struct RECTANGLE *r1, struct RECTANGLE *r2, struct RECTANGLE *ou
  * @param r2 Parameter `r2`.
  * @return Function result.
  */
-int rect_intersect(struct RECTANGLE *r1, struct RECTANGLE *r2) {
+int
+rect_intersect(struct RECTANGLE *r1, struct RECTANGLE *r2) {
     if (r1->right <= r1->left)
         return 1;
     if (r2->right <= r1->left)
@@ -727,7 +748,8 @@ int rect_intersect(struct RECTANGLE *r1, struct RECTANGLE *r2) {
  * @param r2  Outer bounding rectangle.
  * @return 1 if r1 is inside r2, 0 otherwise.
  */
-int rect_is_inside(struct RECTANGLE *r1, struct RECTANGLE *r2) {
+int
+rect_is_inside(struct RECTANGLE *r1, struct RECTANGLE *r2) {
     if (r1->right > r2->right) {
         return 0;
     }
@@ -753,7 +775,8 @@ int rect_is_inside(struct RECTANGLE *r1, struct RECTANGLE *r2) {
  * @param r2  Second rectangle.
  * @return 1 if overlapping, 0 otherwise.
  */
-int rect_is_overlapping(struct RECTANGLE *r1, struct RECTANGLE *r2) {
+int
+rect_is_overlapping(struct RECTANGLE *r1, struct RECTANGLE *r2) {
     if (r1->right <= r2->left) {
         return 0;
     }
@@ -784,7 +807,8 @@ int rect_is_overlapping(struct RECTANGLE *r1, struct RECTANGLE *r2) {
  * @param r2  Second rectangle.
  * @return 1 if adjacent, 0 otherwise.
  */
-int rect_is_adjacent(struct RECTANGLE *r1, struct RECTANGLE *r2) {
+int
+rect_is_adjacent(struct RECTANGLE *r1, struct RECTANGLE *r2) {
     if (r1->bottom == r2->top || r1->top == r2->bottom) {
         if (r1->left == r2->left && r1->right == r2->right)
             return 1;
@@ -806,8 +830,8 @@ int rect_is_adjacent(struct RECTANGLE *r1, struct RECTANGLE *r2) {
  * @param rect_array_ptr         Array of rectangles forming the list.
  * @param rect                       Rectangle to insert.
  */
-void rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr,
-                       struct RECTANGLE *rect) {
+void
+rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr, struct RECTANGLE *rect) {
     int i;
     struct RECTANGLE merged_rect;
     struct RECTANGLE top_rect;
@@ -953,9 +977,10 @@ void rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr,
  * @param rect_array_ptr Parameter `rect_array_ptr`.
  * @return Function result.
  */
-void rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *rect_array_a,
-                        struct RECTANGLE *rect_array_b, struct RECTANGLE *clip_rect,
-                        char *rect_count_ptr, struct RECTANGLE *rect_array_ptr) {
+void
+rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *rect_array_a,
+                   struct RECTANGLE *rect_array_b, struct RECTANGLE *clip_rect,
+                   char *rect_count_ptr, struct RECTANGLE *rect_array_ptr) {
     struct RECTANGLE *rectptr_b;
     struct RECTANGLE *rectptr_a;
     struct RECTANGLE *best_rectptr;
@@ -1017,7 +1042,8 @@ void rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANG
  * @param rect_array     Rectangle array.
  * @param array_indices  Output index array giving the sorted order.
  */
-void rect_array_sort_by_top(char array_length, struct RECTANGLE *rect_array, short *array_indices) {
+void
+rect_array_sort_by_top(char array_length, struct RECTANGLE *rect_array, short *array_indices) {
     int i;
     int intbuffer[256];
     int indexbuf[256];
@@ -1045,7 +1071,8 @@ void rect_array_sort_by_top(char array_length, struct RECTANGLE *rect_array, sho
  * @param vec Parameter `vec`.
  * @return Function result.
  */
-int vector_direction_bucket32(struct VECTOR *vec) {
+int
+vector_direction_bucket32(struct VECTOR *vec) {
     long y;
     long temp;
     int flag;
@@ -1117,7 +1144,8 @@ int vector_direction_bucket32(struct VECTOR *vec) {
  * @param outpt Parameter `outpt`.
  * @return Function result.
  */
-void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
+void
+vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     unsigned short z;
     unsigned long proj;
     unsigned short ax;
@@ -1134,8 +1162,8 @@ void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     z = (unsigned short)vec->z;
 
     if (vec->x >= 0) {
-        proj = (unsigned long)(unsigned short)vec->x *
-               (unsigned long)(unsigned short)projectiondata9;
+        proj = (unsigned long)(unsigned short)vec->x
+               * (unsigned long)(unsigned short)projectiondata9;
         ax = (unsigned short)proj;
         bx = (unsigned short)(proj >> 16);
         bx = (unsigned short)(bx << 1);
@@ -1164,8 +1192,8 @@ void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
         }
     }
     else {
-        proj = (unsigned long)(unsigned short)(-vec->x) *
-               (unsigned long)(unsigned short)projectiondata9;
+        proj = (unsigned long)(unsigned short)(-vec->x)
+               * (unsigned long)(unsigned short)projectiondata9;
         ax = (unsigned short)proj;
         bx = (unsigned short)(proj >> 16);
         bx = (unsigned short)(bx << 1);
@@ -1196,8 +1224,8 @@ void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     }
 
     if (vec->y >= 0) {
-        proj = (unsigned long)(unsigned short)vec->y *
-               (unsigned long)(unsigned short)projectiondata10;
+        proj = (unsigned long)(unsigned short)vec->y
+               * (unsigned long)(unsigned short)projectiondata10;
         ax = (unsigned short)proj;
         bx = (unsigned short)(proj >> 16);
         bx = (unsigned short)(bx << 1);
@@ -1227,8 +1255,8 @@ void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
         }
     }
     else {
-        proj = (unsigned long)(unsigned short)(-vec->y) *
-               (unsigned long)(unsigned short)projectiondata10;
+        proj = (unsigned long)(unsigned short)(-vec->y)
+               * (unsigned long)(unsigned short)projectiondata10;
         ax = (unsigned short)proj;
         bx = (unsigned short)(proj >> 16);
         bx = (unsigned short)(bx << 1);
@@ -1265,7 +1293,8 @@ void vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
  * @param outvec  Output vector at the interpolated position.
  * @param i       Target Z value for the interpolation.
  */
-void vector_lerp_at_z(struct VECTOR *vec1, struct VECTOR *vec2, struct VECTOR *outvec, short i) {
+void
+vector_lerp_at_z(struct VECTOR *vec1, struct VECTOR *vec2, struct VECTOR *outvec, short i) {
 
     long z_offset, z_range;
 
@@ -1288,7 +1317,8 @@ void vector_lerp_at_z(struct VECTOR *vec1, struct VECTOR *vec2, struct VECTOR *o
  * @param a2  Second operand.
  * @return Scaled product with rounding.
  */
-short multiply_and_scale(short a1, short a2) {
+short
+multiply_and_scale(short a1, short a2) {
     long mul = (long)a1 * (long)a2 * 4L;
     return (mul >> SCALE_MUL_SHIFT) + ((mul & SCALE_MUL_ROUND_MASK) >> SCALE_MUL_BIAS_SHIFT);
 }
@@ -1309,9 +1339,10 @@ short multiply_and_scale(short a1, short a2) {
  * @param normal  Pointer to the normal vector.
  * @return Scaled dot product.
  */
-int vec_normalInnerProduct(int x, int y, int z, struct VECTOR *normal) {
-    return (((long)normal->x * x) + ((long)normal->z * z) + ((long)normal->y * y)) /
-           NORMAL_DOT_DIVISOR;
+int
+vec_normalInnerProduct(int x, int y, int z, struct VECTOR *normal) {
+    return (((long)normal->x * x) + ((long)normal->z * z) + ((long)normal->y * y))
+           / NORMAL_DOT_DIVISOR;
 }
 
 /** @brief Compute the signed distance from a point to a terrain plane.
@@ -1324,7 +1355,8 @@ int vec_normalInnerProduct(int x, int y, int z, struct VECTOR *normal) {
  * @param z Parameter `z`.
  * @return Function result.
  */
-int plane_get_collision_point(int plane_index, int x, int y, int z) {
+int
+plane_get_collision_point(int plane_index, int x, int y, int z) {
     struct PLANE *curplane;
     struct VECTOR a;
     struct VECTOR b;
@@ -1357,7 +1389,8 @@ int plane_get_collision_point(int plane_index, int x, int y, int z) {
  * Transforms vec_movement_local through the appropriate rotation chain and
  * stores the result in vec_planerotopresult.
  */
-void plane_apply_rotation_matrix(void) {
+void
+plane_apply_rotation_matrix(void) {
     struct PLANE *plane;
     struct VECTOR rotated_vec;
     struct MATRIX inv_rotation;
@@ -1367,8 +1400,8 @@ void plane_apply_rotation_matrix(void) {
 
     if (planindex_copy != -1) {
         plane = &planptr[planindex_copy];
-        if (plane->plane_xy == pState_minusRotate_x_2 &&
-            plane->plane_yz == pState_minusRotate_z_2) {
+        if (plane->plane_xy == pState_minusRotate_x_2
+            && plane->plane_yz == pState_minusRotate_z_2) {
             si = pState_minusRotate_y_2;
         }
         else {
@@ -1415,7 +1448,8 @@ void plane_apply_rotation_matrix(void) {
  * @param high Parameter `high`.
  * @return Function result.
  */
-unsigned long parse_shape2d_helper(unsigned int low, unsigned int high) {
+unsigned long
+parse_shape2d_helper(unsigned int low, unsigned int high) {
     unsigned long result;
     result = ((unsigned long)high << 4) + low;
     return result;
@@ -1427,7 +1461,8 @@ unsigned long parse_shape2d_helper(unsigned int low, unsigned int high) {
  * @param high Parameter `high`.
  * @return Function result.
  */
-unsigned long parse_shape2d_helper2(unsigned int low, unsigned int high) {
+unsigned long
+parse_shape2d_helper2(unsigned int low, unsigned int high) {
     unsigned long combined;
     unsigned int shifted;
     unsigned int remainder;
@@ -1446,7 +1481,8 @@ unsigned long parse_shape2d_helper2(unsigned int low, unsigned int high) {
  * @param compare_ds_ss Parameter `compare_ds_ss`.
  * @return Function result.
  */
-int compare_ds_ss(void) {
+int
+compare_ds_ss(void) {
     return 1;
 }
 
@@ -1458,7 +1494,8 @@ int compare_ds_ss(void) {
  * @param divisor  Divisor.
  * @return Quotient as a 16-bit unsigned value.
  */
-unsigned int div_uint32(unsigned int low, unsigned int high, unsigned int divisor) {
+unsigned int
+div_uint32(unsigned int low, unsigned int high, unsigned int divisor) {
     unsigned long combined = ((unsigned long)high << 16) | low;
     return (unsigned int)(combined / divisor);
 }
@@ -1469,7 +1506,8 @@ unsigned int div_uint32(unsigned int low, unsigned int high, unsigned int diviso
  * @param arg  Operand.
  * @return 32-bit product.
  */
-unsigned long mul_by_proj_data9(unsigned int arg) {
+unsigned long
+mul_by_proj_data9(unsigned int arg) {
     return (unsigned long)projectiondata9 * arg;
 }
 
@@ -1479,7 +1517,8 @@ unsigned long mul_by_proj_data9(unsigned int arg) {
  * @param arg  Operand.
  * @return 32-bit product.
  */
-unsigned long mul_by_proj_data10(unsigned int arg) {
+unsigned long
+mul_by_proj_data10(unsigned int arg) {
     return (unsigned long)projectiondata10 * arg;
 }
 
@@ -1493,7 +1532,8 @@ unsigned long mul_by_proj_data10(unsigned int arg) {
  * @param divisor Parameter `divisor`.
  * @return Function result.
  */
-unsigned int mul_div_proj_data10(unsigned int multiplicand, unsigned int divisor) {
+unsigned int
+mul_div_proj_data10(unsigned int multiplicand, unsigned int divisor) {
     unsigned long product = (unsigned long)projectiondata10 * multiplicand;
     return (unsigned int)(product / divisor);
 }

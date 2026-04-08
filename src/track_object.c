@@ -37,36 +37,36 @@ static char corkFlag = 0;
 
 /* file-local data (moved from data_global.c) */
 static short loopSurface_maxZ = 449;
-static short loopSurface_ZBounds0[6] = {0, 224, 389, 449, 389, 224};
-static short loopSurface_ZBounds1[6] = {224, 389, 449, 389, 224, 0};
-static short loopSurface_XBounds0[6] = {-400, -400, -352, -304, -270, -235};
-static short loopSurface_XBounds1[6] = {-400, -352, -304, -270, -235, -200};
-static short loopBase_ZBounds0[6] = {0, 178, 360, 536, 704, 868};
-static short loopBase_ZBounds1[6] = {178, 360, 536, 704, 868, 2000};
-static short loopBae_InnXBounds0[6] = {0, -20, -40, -60, -80, -100};
-static short loopBase_InnXBounds1[6] = {-20, -40, -60, -80, -100, -120};
-static short loopBase_OutXBounds0[6] = {400, 361, 320, 276, 226, 174};
-static short loopBase_OutXBounds1[6] = {361, 320, 276, 226, 174, 120};
-static short bkRdEntr_triang_zAdjust[4] = {-251, -84, 84, 251};
-static short corkLR_negZBound[12] = {0,    -94,  -187, -280, -373, -466,
-                                     -559, -652, -745, -838, -931, -1024};
-static short corkLR_posZBound[12] = {0, 1024, 931, 838, 745, 652, 559, 466, 373, 280, 187, 94};
-static short highEntrZBounds0[6] = {-512, -334, -168, 0, 168, 334};
-static short highEntrZBounds1[6] = {-334, -168, 0, 168, 334, 1000};
-static short highEntrXInnBounds0[6] = {0, 0, 0, 0, 0, 120};
-static short highEntrXInnBounds1[6] = {0, 0, 0, 0, 120, 120};
-static short highEntrXOutBounds0[6] = {120, 168, 216, 264, 312, 360};
-static short highEntrXOutBounds1[6] = {168, 216, 264, 312, 360, 360};
-static unsigned char phys_model_0B_points[6] = {0, 0, 0, 0, 0, 0};
-static unsigned char phys_model_0x12_points[48] = {
-    136, 255, 0,   0,   231, 254, 136, 255, 0,   0, 25,  255, 136, 255, 0,   0,
-    25,  1,   136, 255, 0,   0,   231, 0,   120, 0, 0,   0,   231, 254, 120, 0,
-    0,   0,   25,  255, 120, 0,   0,   0,   25,  1, 120, 0,   0,   0,   231, 0};
-static unsigned char phys_model_0x23_points[12] = {196, 255, 0, 0, 0, 254, 60, 0, 0, 0, 0, 2};
-static unsigned char phys_model_0x20_points[12] = {120, 254, 0, 0, 0, 0, 136, 253, 0, 0, 0, 0};
-static unsigned char phys_model_0x21_points[12] = {136, 1, 0, 0, 0, 0, 120, 2, 0, 0, 0, 0};
-static unsigned char phys_model_0x22_points[24] = {
-    23, 0, 0, 0, 1, 255, 97, 0, 0, 0, 1, 255, 159, 255, 0, 0, 255, 0, 233, 255, 0, 0, 255, 0};
+static short loopSurface_ZBounds0[6] = { 0, 224, 389, 449, 389, 224 };
+static short loopSurface_ZBounds1[6] = { 224, 389, 449, 389, 224, 0 };
+static short loopSurface_XBounds0[6] = { -400, -400, -352, -304, -270, -235 };
+static short loopSurface_XBounds1[6] = { -400, -352, -304, -270, -235, -200 };
+static short loopBase_ZBounds0[6] = { 0, 178, 360, 536, 704, 868 };
+static short loopBase_ZBounds1[6] = { 178, 360, 536, 704, 868, 2000 };
+static short loopBae_InnXBounds0[6] = { 0, -20, -40, -60, -80, -100 };
+static short loopBase_InnXBounds1[6] = { -20, -40, -60, -80, -100, -120 };
+static short loopBase_OutXBounds0[6] = { 400, 361, 320, 276, 226, 174 };
+static short loopBase_OutXBounds1[6] = { 361, 320, 276, 226, 174, 120 };
+static short bkRdEntr_triang_zAdjust[4] = { -251, -84, 84, 251 };
+static short corkLR_negZBound[12] = { 0,    -94,  -187, -280, -373, -466,
+                                      -559, -652, -745, -838, -931, -1024 };
+static short corkLR_posZBound[12] = { 0, 1024, 931, 838, 745, 652, 559, 466, 373, 280, 187, 94 };
+static short highEntrZBounds0[6] = { -512, -334, -168, 0, 168, 334 };
+static short highEntrZBounds1[6] = { -334, -168, 0, 168, 334, 1000 };
+static short highEntrXInnBounds0[6] = { 0, 0, 0, 0, 0, 120 };
+static short highEntrXInnBounds1[6] = { 0, 0, 0, 0, 120, 120 };
+static short highEntrXOutBounds0[6] = { 120, 168, 216, 264, 312, 360 };
+static short highEntrXOutBounds1[6] = { 168, 216, 264, 312, 360, 360 };
+static unsigned char phys_model_0B_points[6] = { 0, 0, 0, 0, 0, 0 };
+static unsigned char phys_model_0x12_points[48]
+    = { 136, 255, 0,   0,   231, 254, 136, 255, 0,   0, 25,  255, 136, 255, 0,   0,
+        25,  1,   136, 255, 0,   0,   231, 0,   120, 0, 0,   0,   231, 254, 120, 0,
+        0,   0,   25,  255, 120, 0,   0,   0,   25,  1, 120, 0,   0,   0,   231, 0 };
+static unsigned char phys_model_0x23_points[12] = { 196, 255, 0, 0, 0, 254, 60, 0, 0, 0, 0, 2 };
+static unsigned char phys_model_0x20_points[12] = { 120, 254, 0, 0, 0, 0, 136, 253, 0, 0, 0, 0 };
+static unsigned char phys_model_0x21_points[12] = { 136, 1, 0, 0, 0, 0, 120, 2, 0, 0, 0, 0 };
+static unsigned char phys_model_0x22_points[24]
+    = { 23, 0, 0, 0, 1, 255, 97, 0, 0, 0, 1, 255, 159, 255, 0, 0, 255, 0, 233, 255, 0, 0, 255, 0 };
 
 /* Grass=4, Water=5, from structs.inc */
 #define SURF_GRASS 4
@@ -411,7 +411,8 @@ enum {
  * @param out Parameter `out`.
  * @return Function result.
  */
-static int bto_trackobj_decode(unsigned char elem, state_trackobject_raw *out) {
+static int
+bto_trackobj_decode(unsigned char elem, state_trackobject_raw *out) {
     return state_trackobject_raw_decode((const unsigned char *)trkObjectList, (unsigned int)elem,
                                         out);
 }
@@ -420,7 +421,8 @@ static int bto_trackobj_decode(unsigned char elem, state_trackobject_raw *out) {
  * @param value Parameter `value`.
  * @return Function result.
  */
-static int bto_abs_int(int value) {
+static int
+bto_abs_int(int value) {
     return value < 0 ? -value : value;
 }
 
@@ -428,7 +430,8 @@ static int bto_abs_int(int value) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static unsigned char bto_trackobj_multi(unsigned char elem) {
+static unsigned char
+bto_trackobj_multi(unsigned char elem) {
     state_trackobject_raw obj;
 
     if (!bto_trackobj_decode(elem, &obj)) {
@@ -442,7 +445,8 @@ static unsigned char bto_trackobj_multi(unsigned char elem) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static signed char bto_trackobj_surface(unsigned char elem) {
+static signed char
+bto_trackobj_surface(unsigned char elem) {
     state_trackobject_raw obj;
 
     if (!bto_trackobj_decode(elem, &obj)) {
@@ -456,7 +460,8 @@ static signed char bto_trackobj_surface(unsigned char elem) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static signed char bto_trackobj_phys(unsigned char elem) {
+static signed char
+bto_trackobj_phys(unsigned char elem) {
     state_trackobject_raw obj;
 
     if (!bto_trackobj_decode(elem, &obj)) {
@@ -470,7 +475,8 @@ static signed char bto_trackobj_phys(unsigned char elem) {
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-static short bto_trackobj_roty(unsigned char elem) {
+static short
+bto_trackobj_roty(unsigned char elem) {
     state_trackobject_raw obj;
 
     if (!bto_trackobj_decode(elem, &obj)) {
@@ -489,7 +495,8 @@ static short bto_trackobj_roty(unsigned char elem) {
  * @param world_pos Parameter `world_pos`.
  * @param next_world_pos Parameter `next_world_pos`.
  */
-void build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
+void
+build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     short *currentWallPtrUnused;
     int tempValue3C;
     int wallOrientationOffset;
@@ -749,8 +756,8 @@ compute_elem_crds:
     nextElemPos.z = next_world_pos->z - elem_zCenter;
 
     /* Substitute hill road track if terrain is 7..10 */
-    if (tileElement != 0 && (unsigned char)terrainTile >= BTO_TERRAIN_HILL_MIN &&
-        (unsigned char)terrainTile < BTO_TERRAIN_HILL_MAX_EXCL) {
+    if (tileElement != 0 && (unsigned char)terrainTile >= BTO_TERRAIN_HILL_MIN
+        && (unsigned char)terrainTile < BTO_TERRAIN_HILL_MAX_EXCL) {
         tileElement = subst_hillroad_track((unsigned char)terrainTile, (unsigned char)tileElement);
     }
 
@@ -1130,8 +1137,8 @@ compute_elem_crds:
         {
             int currentPzAdj = elemPos.z + BTO_TURN_OFFSET_LARGE;
             int currentPxAdj = elemPos.x + BTO_TURN_OFFSET_LARGE;
-            int currentTurnRadius = polarRadius2D(currentPxAdj, currentPzAdj) -
-                                    BTO_TURN_RADIUS_BASE_LARGE;
+            int currentTurnRadius = polarRadius2D(currentPxAdj, currentPzAdj)
+                                    - BTO_TURN_RADIUS_BASE_LARGE;
             if (currentTurnRadius <= BTO_ELEVCORNER_RADIUS_MIN)
                 goto code_bto_blank;
             if (currentTurnRadius >= BTO_ELEVCORNER_RADIUS_MAX)
@@ -1141,8 +1148,8 @@ compute_elem_crds:
             planindex = BTO_PLAN_SOLID_ROAD;
             track_object_render_enabled = 0;
 
-            if (currentTurnRadius >= BTO_ELEVCORNER_WALL_FREE_MIN &&
-                currentTurnRadius <= BTO_ELEVCORNER_WALL_FREE_MAX) {
+            if (currentTurnRadius >= BTO_ELEVCORNER_WALL_FREE_MIN
+                && currentTurnRadius <= BTO_ELEVCORNER_WALL_FREE_MAX) {
                 goto code_bto_blank;
             }
 
@@ -1626,8 +1633,8 @@ compute_elem_crds:
         }
 
         /* Half-pipe special floor case */
-        if (tempValue22 != 0 && pipeUpperSectionFlag == 0 && absElemX <= BTO_HALFPIPE_FLOOR_MAX_X &&
-            absElemZ <= BTO_HALFPIPE_FLOOR_MAX_Z) {
+        if (tempValue22 != 0 && pipeUpperSectionFlag == 0 && absElemX <= BTO_HALFPIPE_FLOOR_MAX_X
+            && absElemZ <= BTO_HALFPIPE_FLOOR_MAX_Z) {
             planindex = BTO_PLAN_HALFPIPE_FLOOR;
             if (nextElemPos.z < BTO_HALFPIPE_FLOOR_FRONT_Z) {
                 wallindex = BTO_WALLIDX_HALFPIPE_FRONT;
@@ -1734,8 +1741,8 @@ compute_elem_crds:
         /* Cork ascending exit ramp check */
         if (elemPos.z > 0) {
             if (world_pos->y - terrainHeight > BTO_CORK_EXIT_MIN_Y) {
-                if (corkLateralCoord < BTO_CORK_RADIUS_MAX &&
-                    corkLateralCoord > BTO_CORK_RADIUS_MIN) {
+                if (corkLateralCoord < BTO_CORK_RADIUS_MAX
+                    && corkLateralCoord > BTO_CORK_RADIUS_MIN) {
                     wallHeight = BTO_WALL_HEIGHT_RAIL;
                     elRdWallRelated = BTO_ELRD_WALL_SHORT;
                     if (corkLateralCoord > BTO_CORK_RADIUS_MID)
@@ -1790,8 +1797,8 @@ compute_elem_crds:
         }
 
         /* First slalom block test */
-        if (elemPos.x >= BTO_SLALOM_BLOCK1_MIN_X && elemPos.x <= BTO_SLALOM_BLOCK1_MAX_X &&
-            elemPos.z > BTO_SLALOM_BLOCK1_MIN_Z && elemPos.z < BTO_SLALOM_BLOCK1_MAX_Z) {
+        if (elemPos.x >= BTO_SLALOM_BLOCK1_MIN_X && elemPos.x <= BTO_SLALOM_BLOCK1_MAX_X
+            && elemPos.z > BTO_SLALOM_BLOCK1_MIN_Z && elemPos.z < BTO_SLALOM_BLOCK1_MAX_Z) {
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             if (nextElemPos.z <= BTO_SLALOM_BLOCK1_MIN_Z) {
                 wallindex = BTO_WALLIDX_SLALOM_B1_NZ;
@@ -2361,7 +2368,8 @@ exit_func:
  * @param elem Parameter `elem`.
  * @return Function result.
  */
-char subst_hillroad_track(int terr, int elem) {
+char
+subst_hillroad_track(int terr, int elem) {
     switch (terr) {
     case 7:
         switch (elem) {
@@ -2437,7 +2445,8 @@ char subst_hillroad_track(int terr, int elem) {
  */
 /* Data tables in dseg - arrays of VECTOR (3 shorts = 6 bytes per entry) */
 
-int bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
+int
+bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     unsigned char tileElement;
     int tileCenterX;      /* x center */
     int tileCenterZ;      /* z center */
@@ -2471,8 +2480,8 @@ int bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
         switch (tileElement) {
         case BTO_MARKER_CORNER:
             /* Filler: look up tile at (col-1, row-1) using trackrows[row-1] */
-            tileElement =
-                *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col - 1));
+            tileElement
+                = *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col - 1));
             multiTileFlags = bto_trackobj_multi(tileElement);
             /* Check multiTileFlag bit 0 → update z center */
             if (multiTileFlags & 1) {
@@ -2627,7 +2636,8 @@ done_filler:
  */
 /** @brief Load opponent data.
  */
-void load_opponent_data(void) {
+void
+load_opponent_data(void) {
     /* Stack arrays matching ASM layout */
     short pathNodes[905]; /* bp-2848: path node indices */
     short siArr[256];     /* bp-522: branch si (tile index) stack */
@@ -2763,8 +2773,8 @@ void load_opponent_data(void) {
         if (!isEndNode) {
             /* Not at end: check for branch point */
             branchNode = track_waypoint_alt[si];
-            if (branchNode != -1 && branchNode >= 0 && branchNode < BTO_TRACKDATA_PATH_COUNT &&
-                stackDepth < (int)(sizeof(siArr) / sizeof(siArr[0]))) {
+            if (branchNode != -1 && branchNode >= 0 && branchNode < BTO_TRACKDATA_PATH_COUNT
+                && stackDepth < (int)(sizeof(siArr) / sizeof(siArr[0]))) {
                 /* Push branch state onto stack */
                 siArr[stackDepth] = branchNode;
                 cntArr[stackDepth] = nodeCount;
@@ -2778,8 +2788,8 @@ void load_opponent_data(void) {
 
         /* At end: check if this path is the best */
         if (nextNode != 0) {
-            long bestCost = ((long)(unsigned short)bestCostHigh << 16) |
-                            (unsigned long)(unsigned short)bestCostLow;
+            long bestCost = ((long)(unsigned short)bestCostHigh << 16)
+                            | (unsigned long)(unsigned short)bestCostLow;
             if (runningCost < bestCost && nodeCount + 1 < BTO_TRACK_WAYPOINT_ORDER_CAPACITY) {
                 /* Record termination marker */
                 pathNodes[nodeCount] = 0;

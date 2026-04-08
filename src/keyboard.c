@@ -29,16 +29,16 @@
 #include <string.h>
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static void (*callbacks[64])(void) = {0};
-static unsigned char callbackflags[128] = {0};
-static unsigned char callbackflags2[134] = {0};
+static void (*callbacks[64])(void) = { 0 };
+static unsigned char callbackflags[128] = { 0 };
+static unsigned char callbackflags2[134] = { 0 };
 static unsigned short camera_rotation_state = 0;
-static unsigned char collision_debug_state[16] = {0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0};
+static unsigned char collision_debug_state[16] = { 0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0 };
 static unsigned char in_kb_parse_key = 0;
 static unsigned short joyflag1 = 0;
 static unsigned char joyinput = 0;
 static unsigned short kblastinput = 0;
-static unsigned char kbscancodes[10] = {57, 28, 71, 72, 73, 77, 81, 80, 79, 75};
+static unsigned char kbscancodes[10] = { 57, 28, 71, 72, 73, 77, 81, 80, 79, 75 };
 static unsigned short render_depth_sort = 0;
 static unsigned short rendering_viewport_offset = 80;
 static unsigned short screen_scroll_values = 80;
@@ -123,11 +123,13 @@ static SDL_GameController *kb_sdl_controller = 0;
 // --- DOS compatibility stubs (removed) ---
 #define PTR_SEG(x) 0
 #define PTR_OFF(x) 0
-static inline void disable(void) {}
+static inline void
+disable(void) {}
 /** @brief Enable.
  * @return Function result.
  */
-static inline void enable(void) {}
+static inline void
+enable(void) {}
 typedef int REGS; // Dummy type
 
 // --- Joystick stub globals for portability ---
@@ -136,7 +138,8 @@ typedef int REGS; // Dummy type
  * @param sc Parameter `sc`.
  * @return Function result.
  */
-static unsigned char kb_sdl_scancode(SDL_Scancode sc) {
+static unsigned char
+kb_sdl_scancode(SDL_Scancode sc) {
     switch (sc) {
     case SDL_SCANCODE_ESCAPE:
         return 1;
@@ -298,7 +301,8 @@ static unsigned char kb_sdl_scancode(SDL_Scancode sc) {
  * @param mod Parameter `mod`.
  * @return Function result.
  */
-static unsigned char kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
+static unsigned char
+kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
     if (key >= SDLK_a && key <= SDLK_z) {
         unsigned char ch = (unsigned char)('a' + (key - SDLK_a));
         if ((mod & KMOD_SHIFT) != 0 || (mod & KMOD_CAPS) != 0) {
@@ -326,7 +330,8 @@ static unsigned char kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
  * @param key Parameter `key`.
  * @return Function result.
  */
-static void kb_sdl_queue_push(unsigned short key) {
+static void
+kb_sdl_queue_push(unsigned short key) {
     unsigned short next = (unsigned short)((kb_sdl_queue_tail + 1u) & KB_SDL_QUEUE_MASK);
     if (next == kb_sdl_queue_head) {
         return;
@@ -338,7 +343,8 @@ static void kb_sdl_queue_push(unsigned short key) {
 /** @brief Kb sdl queue pop.
  * @return Function result.
  */
-static unsigned short kb_sdl_queue_pop(void) {
+static unsigned short
+kb_sdl_queue_pop(void) {
     unsigned short key;
     if (kb_sdl_queue_head == kb_sdl_queue_tail) {
         return 0;
@@ -351,21 +357,24 @@ static unsigned short kb_sdl_queue_pop(void) {
 /** @brief Kb sdl requeue key.
  * @param key Parameter `key`.
  */
-void kb_sdl_requeue_key(unsigned short key) {
+void
+kb_sdl_requeue_key(unsigned short key) {
     kb_sdl_queue_push(key);
 }
 
 /** @brief Kb has pending input.
  * @return Function result.
  */
-static int kb_has_pending_input(void) {
+static int
+kb_has_pending_input(void) {
     return (kb_sdl_queue_head != kb_sdl_queue_tail) ? 1 : 0;
 }
 
 /** @brief Kb sdl update mouse from system.
  * @return Function result.
  */
-static void kb_sdl_update_mouse_from_system(void) {
+static void
+kb_sdl_update_mouse_from_system(void) {
     int sx, sy;
     int win_w = 0;
     int win_h = 0;
@@ -411,7 +420,8 @@ static void kb_sdl_update_mouse_from_system(void) {
 
 /** @brief Kb poll sdl input.
  */
-void kb_poll_sdl_input(void) {
+void
+kb_poll_sdl_input(void) {
     SDL_Event ev;
     if (kb_sdl_inited == 0) {
         return;
@@ -454,9 +464,9 @@ void kb_poll_sdl_input(void) {
                 kblastinput = dos_sc;
                 if (ev.type == SDL_KEYDOWN && ev.key.repeat == 0) {
                     unsigned char ascii = kb_sdl_ascii(ev.key.keysym.sym, ev.key.keysym.mod);
-                    unsigned short key =
-                        (unsigned short)(((unsigned short)dos_sc << KB_KEYCODE_SCANCODE_SHIFT) |
-                                         ascii);
+                    unsigned short key
+                        = (unsigned short)(((unsigned short)dos_sc << KB_KEYCODE_SCANCODE_SHIFT)
+                                           | ascii);
                     if (ascii == 0) {
                         key = (unsigned short)(dos_sc << KB_KEYCODE_SCANCODE_SHIFT);
                     }
@@ -474,8 +484,8 @@ void kb_poll_sdl_input(void) {
         }
 
         if (ev.type == SDL_CONTROLLERDEVICEREMOVED && kb_sdl_controller != 0) {
-            SDL_JoystickID jid =
-                SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(kb_sdl_controller));
+            SDL_JoystickID jid
+                = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(kb_sdl_controller));
             if (jid == ev.cdevice.which) {
                 SDL_GameControllerClose(kb_sdl_controller);
                 kb_sdl_controller = 0;
@@ -493,8 +503,9 @@ void kb_poll_sdl_input(void) {
  * @param max_x Parameter `max_x`.
  * @param max_y Parameter `max_y`.
  */
-void kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x,
-                             unsigned short max_y) {
+void
+kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x,
+                        unsigned short max_y) {
     kb_sdl_mouse_min_x = min_x;
     kb_sdl_mouse_min_y = min_y;
     kb_sdl_mouse_max_x = max_x;
@@ -513,7 +524,8 @@ void kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigne
  * @param x Parameter `x`.
  * @param y Parameter `y`.
  */
-void kb_sdl_set_mouse_position(unsigned short x, unsigned short y) {
+void
+kb_sdl_set_mouse_position(unsigned short x, unsigned short y) {
     kb_sdl_mouse_x = x;
     kb_sdl_mouse_y = y;
     kb_sdl_set_mouse_limits(kb_sdl_mouse_min_x, kb_sdl_mouse_min_y, kb_sdl_mouse_max_x,
@@ -525,7 +537,8 @@ void kb_sdl_set_mouse_position(unsigned short x, unsigned short y) {
  * @param x Parameter `x`.
  * @param y Parameter `y`.
  */
-void kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
+void
+kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
     kb_poll_sdl_input();
     if (buttons)
         *buttons = kb_sdl_mouse_buttons;
@@ -537,7 +550,8 @@ void kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned
 
 /** @brief Initialize keyboard input state and SDL input backends.
  */
-void kb_init_interrupt(void) {
+void
+kb_init_interrupt(void) {
     memset(kbinput, 0, KBINPUT_SIZE);
     kb_sdl_queue_head = 0;
     kb_sdl_queue_tail = 0;
@@ -554,7 +568,8 @@ void kb_init_interrupt(void) {
 
 /** @brief Shutdown keyboard input handling and release SDL resources.
  */
-void kb_exit_handler(void) {
+void
+kb_exit_handler(void) {
 
     if (kb_sdl_controller != 0) {
         SDL_GameControllerClose(kb_sdl_controller);
@@ -567,7 +582,8 @@ void kb_exit_handler(void) {
  * @param key Parameter `key`.
  * @return Function result.
  */
-int kb_get_key_state(int key) {
+int
+kb_get_key_state(int key) {
 
     if (key < 0 || (unsigned int)key >= KBINPUT_SIZE) {
         return 0;
@@ -578,7 +594,8 @@ int kb_get_key_state(int key) {
 /** @brief Invoke the installed read-char callback, if present.
  * @return Function result.
  */
-int kb_call_readchar_callback(void) {
+int
+kb_call_readchar_callback(void) {
 
     // the orginal code uses a (hard-coded, non-changing) callback for
     // reading chars.. we just call kb_read_char() directly:
@@ -588,7 +605,8 @@ int kb_call_readchar_callback(void) {
 /** @brief Read one key code from SDL queue or DOS callback fallback.
  * @return Function result.
  */
-int kb_read_char(void) {
+int
+kb_read_char(void) {
 
     unsigned short key;
     kb_poll_sdl_input();
@@ -603,7 +621,8 @@ int kb_read_char(void) {
 /** @brief Check whether keyboard input is currently available.
  * @return Function result.
  */
-int kb_checking(void) {
+int
+kb_checking(void) {
 
     kb_poll_sdl_input();
     return kb_has_pending_input();
@@ -615,7 +634,8 @@ static unsigned char kb_shift_flags_shadow = 0;
 
 /** @brief Force the NumLock bit on in the keyboard shift-state shadow.
  */
-void kb_shift_checking1(void) {
+void
+kb_shift_checking1(void) {
 
     kb_shift_flags_shadow |= KB_SHIFTFLAG_NUMLOCK_BIT; // Set bit 5 (NumLock)
     kb_checking();
@@ -623,7 +643,8 @@ void kb_shift_checking1(void) {
 
 /** @brief Clear the NumLock bit in the keyboard shift-state shadow.
  */
-void kb_shift_checking2(void) {
+void
+kb_shift_checking2(void) {
 
     kb_shift_flags_shadow &= KB_SHIFTFLAG_NUMLOCK_CLEAR_MASK; // Clear bit 5 (NumLock)
     kb_checking();
@@ -632,7 +653,8 @@ void kb_shift_checking2(void) {
 /** @brief Return a non-zero value when a key event is pending.
  * @return Function result.
  */
-int kb_check(void) {
+int
+kb_check(void) {
 
     kb_poll_sdl_input();
     return kb_has_pending_input();
@@ -646,7 +668,8 @@ int kb_check(void) {
  * Returns BIOS keycode in AX (AL=ASCII, AH=scancode) or 0 if no new input.
  * Keyboard has priority; joystick is debounced to avoid spamming repeats.
  */
-unsigned short kb_read_key_or_joy(void) {
+unsigned short
+kb_read_key_or_joy(void) {
     // DOS BIOS keyboard and joystick read removed for portability
     // Implement SDL-based key reading if needed
     return 0;
@@ -657,7 +680,8 @@ unsigned short kb_read_key_or_joy(void) {
  * 
  * Sets joystick enabled flag and default calibration values.
  */
-void joystick_init_calibration(void) {
+void
+joystick_init_calibration(void) {
     joystick_assigned_flags = 1;
     screen_scroll_values = 80;
     camera_rotation_state = 0;
@@ -673,7 +697,8 @@ void joystick_init_calibration(void) {
  * @param joy_flags Parameter `joy_flags`.
  * @return Function result.
  */
-short joystick_direction_lookup(unsigned short joy_flags) {
+short
+joystick_direction_lookup(unsigned short joy_flags) {
     return (short)collision_debug_state[joy_flags & 15];
 }
 
@@ -684,7 +709,8 @@ short joystick_direction_lookup(unsigned short joy_flags) {
 /** @brief Joystick get scaled x.
  * @return Function result.
  */
-short joystick_get_scaled_x(void) {
+short
+joystick_get_scaled_x(void) {
     short ax;
     unsigned long result;
 
@@ -709,7 +735,8 @@ short joystick_get_scaled_x(void) {
 /** @brief Get kb or joy flags.
  * @return Function result.
  */
-short get_kb_or_joy_flags(void) {
+short
+get_kb_or_joy_flags(void) {
     short flags = 0;
 
     /* Check each keyboard scancode against input array */
@@ -749,7 +776,8 @@ short get_kb_or_joy_flags(void) {
 /** @brief Kb get char.
  * @return Function result.
  */
-int kb_get_char(void) {
+int
+kb_get_char(void) {
     unsigned short key_ax;
 
     kb_poll_sdl_input();
@@ -770,7 +798,8 @@ int kb_get_char(void) {
  * @param get_joy_flags Parameter `get_joy_flags`.
  * @return Function result.
  */
-short get_joy_flags(void) {
+short
+get_joy_flags(void) {
     unsigned short joy = 0;
     const Uint8 *state;
 
@@ -820,7 +849,8 @@ short get_joy_flags(void) {
  * @param slot_index Parameter `slot_index`.
  * @return Function result.
  */
-static void kb_set_callback_flag(unsigned short key, unsigned char slot_index) {
+static void
+kb_set_callback_flag(unsigned short key, unsigned char slot_index) {
     unsigned short scancode;
 
     if ((key & KB_CALLBACK_KEY_LOBYTE_MASK) != 0) {
@@ -843,7 +873,8 @@ static void kb_set_callback_flag(unsigned short key, unsigned char slot_index) {
  * 
  * Returns 0 if callback was called, or the key code if no callback.
  */
-unsigned short kb_parse_key(unsigned short key) {
+unsigned short
+kb_parse_key(unsigned short key) {
     unsigned short scancode;
     unsigned char slot_index;
     int callback_idx;
@@ -893,7 +924,8 @@ unsigned short kb_parse_key(unsigned short key) {
  * Registers a  function pointer to be called when the given key is pressed.
  * The callbacks array has 64 slots. Returns slot index used.
  */
-void kb_reg_callback(unsigned short key, void (*callback)(void)) {
+void
+kb_reg_callback(unsigned short key, void (*callback)(void)) {
     int i;
     const unsigned short cb_ofs = PTR_OFF(callback);
     const unsigned short cb_seg = PTR_SEG(callback);
