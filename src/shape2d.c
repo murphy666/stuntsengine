@@ -2055,8 +2055,8 @@ void
 sprite_draw_line_from_info(unsigned short *info) {
     unsigned int *lineofs;
     unsigned char *bitmapptr;
-    unsigned short var_2; /* fractional x (16-bit) */
-    unsigned short var_6; /* fractional y (16-bit) */
+    unsigned short x_fraction; /* fractional x (16-bit) */
+    unsigned short y_fraction; /* fractional y (16-bit) */
     unsigned char color;
     unsigned short slope;
     unsigned short count;
@@ -2069,13 +2069,13 @@ sprite_draw_line_from_info(unsigned short *info) {
     /* Read x coordinate (32-bit) and add 32768 for rounding */
     temp = ((unsigned long)info[1] << 16) | info[0];
     temp += 32768UL;
-    var_2 = (unsigned short)(temp & 65535); /* fractional part */
+    x_fraction = (unsigned short)(temp & 65535); /* fractional part */
     x_int = (unsigned short)(temp >> 16);   /* integer part */
 
     /* Read y coordinate (32-bit) and add 32768 for rounding */
     temp = ((unsigned long)info[3] << 16) | info[2];
     temp += 32768UL;
-    var_6 = (unsigned short)(temp & 65535); /* fractional part */
+    y_fraction = (unsigned short)(temp & 65535); /* fractional part */
     y_int = (unsigned short)(temp >> 16);   /* integer part */
 
     color = (unsigned char)info[8]; /* field_10 */
@@ -2138,66 +2138,66 @@ sprite_draw_line_from_info(unsigned short *info) {
 
     case 5:
         /* Diagonal, y increasing, x decreasing with slope */
-        /* sub var_2, dx; sbb bx, 0 */
+        /* subtract fractional x and borrow into the integer coordinate */
         y_int = info[3];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
             y_int++;
             /* Subtract slope from fractional x, borrow from integer */
-            if (var_2 < slope) {
+            if (x_fraction < slope) {
                 x_int--; /* borrow */
             }
-            var_2 -= slope;
+            x_fraction -= slope;
         }
         break;
 
     case 6:
         /* Diagonal, y increasing, x increasing with slope */
-        /* add var_2, dx; adc bx, 0 */
+        /* add fractional x and carry into the integer coordinate */
         y_int = info[3];
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
             y_int++;
             /* Add slope to fractional x, carry to integer */
-            temp = (unsigned long)var_2 + slope;
+            temp = (unsigned long)x_fraction + slope;
             if (temp > 65535) {
                 x_int++; /* carry */
             }
-            var_2 = (unsigned short)temp;
+            x_fraction = (unsigned short)temp;
         }
         break;
 
     case 7:
         /* Shallow diagonal, x decreasing, y varies with slope */
-        /* add var_6, dx; adc var_8, 0 */
+        /* add fractional y and carry into the integer coordinate */
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
             x_int--;
             /* Add slope to fractional y, carry to integer */
-            temp = (unsigned long)var_6 + slope;
+            temp = (unsigned long)y_fraction + slope;
             if (temp > 65535) {
                 y_int++; /* carry */
             }
-            var_6 = (unsigned short)temp;
+            y_fraction = (unsigned short)temp;
         }
         break;
 
     case 8:
         /* Shallow diagonal, x increasing, y varies with slope */
-        /* add var_6, dx; adc var_8, 0 */
+        /* add fractional y and carry into the integer coordinate */
         for (i = 0; i < count; i++) {
             ofs = lineofs[y_int] + x_int;
             bitmapptr[ofs] = color;
             x_int++;
             /* Add slope to fractional y, carry to integer */
-            temp = (unsigned long)var_6 + slope;
+            temp = (unsigned long)y_fraction + slope;
             if (temp > 65535) {
                 y_int++; /* carry */
             }
-            var_6 = (unsigned short)temp;
+            y_fraction = (unsigned short)temp;
         }
         break;
     }
@@ -2230,16 +2230,16 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
     unsigned char *bitmapptr1;
     unsigned char *src_data;
     struct SHAPE2D *shape;
-    int var_2;             /* x offset in sprite1 */
-    int var_4;             /* line offset table base */
-    int var_6;             /* max line offset */
-    int var_8;             /* source width */
-    int var_A;             /* row stride in source (width * 12) */
-    short var_E;           /* row counter */
-    int var_10;            /* source offset within row */
-    int var_12;            /* current line offset pointer */
-    int var_14 = 0;        /* saved source pointer */
-    unsigned short var_16; /* dither phase counter */
+    int dst_x;                  /* x offset in sprite1 */
+    int dst_y_start;            /* first destination row */
+    int dst_y_end;              /* exclusive destination row limit */
+    int src_width;              /* source width */
+    int src_row_stride;         /* row stride in source (width * 12) */
+    short dither_row_idx;       /* row counter */
+    int src_row_offset;         /* source offset within row */
+    int dst_y_cursor;           /* current destination row */
+    int saved_src_offset = 0;   /* saved source pointer */
+    unsigned short dither_phase; /* dither phase counter */
     int cx;                /* pixel counter */
     int di;                /* destination offset */
     int si;                /* source offset */
@@ -2262,21 +2262,18 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
     lineofs1 = shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
 
     /* Use signed positions: shape fields are stored as 16-bit signed in resources */
-    var_2 = (short)shape->s2d_pos_x;
+    dst_x = (short)shape->s2d_pos_x;
 
-    /* var_4 = [si+0Ah] * 2 + sprite1.sprite_lineofs (as offset in array) */
-    var_4 = (short)shape->s2d_pos_y;
+    dst_y_start = (short)shape->s2d_pos_y;
 
-    /* var_6 = var_4 + [si+2] = starting y + height */
-    var_6 = var_4 + shape->s2d_height;
+    dst_y_end = dst_y_start + shape->s2d_height;
 
-    /* var_8 = [si+0] = width */
-    var_8 = shape->s2d_width;
+    src_width = shape->s2d_width;
     src_height = shape->s2d_height;
-    if (var_8 <= 0 || src_height <= 0) {
+    if (src_width <= 0 || src_height <= 0) {
         return;
     }
-    src_size = var_8 * src_height;
+    src_size = src_width * src_height;
     if (src_size <= 0) {
         return;
     }
@@ -2290,48 +2287,47 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
         return;
     }
 
-    /* var_A = width * 12 (row stride between same-phase rows) */
-    var_A = var_8 * SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
+    src_row_stride = src_width * SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
 
     /* var_C = source data start (at offset 16 from shape) */
     src_data = ((unsigned char *)shape) + SHAPE2D_HEADER_BYTES;
 
     /* Process 12 rows in dithered order */
-    for (var_E = 11; var_E >= 0; var_E--) {
+    for (dither_row_idx = 11; dither_row_idx >= 0; dither_row_idx--) {
         /* Get row order from lookup table */
-        row_order = dither_row_order_table[var_E];
+        row_order = dither_row_order_table[dither_row_idx];
 
         /* Calculate source offset for this row */
-        var_10 = var_8 * row_order;
+        src_row_offset = src_width * row_order;
 
         /* Starting line in destination */
-        var_12 = var_4 + row_order;
+        dst_y_cursor = dst_y_start + row_order;
 
         /* Source pointer offset for this row */
-        si = var_10;
+        si = src_row_offset;
 
         /* Initialize dither phase from idx */
-        var_16 = idx;
+        dither_phase = idx;
 
         /* Process each scanline (every 12th line in destination) */
-        var_14 = si;
-        while (var_12 < var_6) {
-            dst_y = var_12;
+        saved_src_offset = si;
+        while (dst_y_cursor < dst_y_end) {
+            dst_y = dst_y_cursor;
             if (dst_y < 0 || dst_y >= (int)sprite1.sprite_height) {
-                var_16++;
-                var_12 += 12;
-                si = var_14 + var_A;
+                dither_phase++;
+                dst_y_cursor += 12;
+                si = saved_src_offset + src_row_stride;
                 continue;
             }
 
             /* Get destination line offset from sprite1 */
-            di = lineofs1[var_12] + var_2;
+            di = lineofs1[dst_y_cursor] + dst_x;
 
             /* Copy pixels with dithering */
-            cx = var_8;
-            var_14 = si;
+            cx = src_width;
+            saved_src_offset = si;
 
-            bx = var_16;
+            bx = dither_phase;
             while (cx > 0) {
                 /* Get skip and step values based on dither phase */
                 bx = bx & 3;
@@ -2363,11 +2359,11 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
             }
 
             /* Next dither phase */
-            var_16++;
+            dither_phase++;
 
             /* Advance to next row (12 rows ahead in destination) */
-            var_12 += 12;
-            si = var_14 + var_A;
+            dst_y_cursor += 12;
+            si = saved_src_offset + src_row_stride;
         }
 
         /* Advance idx for next pass */
@@ -4240,9 +4236,9 @@ sprite_copy_rect_2_to_1(int left, int top, int width, int height, int xofs) {
     unsigned char *ds_ptr;
     unsigned short *lineofs1;
     unsigned short *lineofs2;
-    int var_2; /* adjusted x dest */
-    int var_4; /* sprite2 line table idx * 2 */
-    int var_6; /* sprite1 line table idx * 2 */
+    int dst_x;   /* adjusted destination x */
+    int src_row; /* sprite2 row index */
+    int dst_row; /* sprite1 row index */
     int dx;    /* height counter */
     int cx;    /* width */
     int quotient, remainder;
@@ -4254,15 +4250,15 @@ sprite_copy_rect_2_to_1(int left, int top, int width, int height, int xofs) {
     lineofs1 = (unsigned short *)shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
     lineofs2 = (unsigned short *)shape2d_lineofs_flat((unsigned int *)sprite2.sprite_lineofs);
 
-    var_2 = left;
-    var_4 = top; /* row index for sprite2 */
-    var_6 = top; /* row index for sprite1 */
+    dst_x = left;
+    src_row = top;
+    dst_row = top;
 
     /* Handle x wrapping calculation:
 	 * quotient = (xofs + left) / sprite1.sprite_width2
 	 * remainder = (xofs + left) % sprite1.sprite_width2
-	 * var_6 (row) gets adjusted by quotient
-	 * var_2 (x offset) gets adjusted by remainder - left
+     * dst_row gets adjusted by quotient
+     * dst_x gets adjusted by remainder - left
 	 */
     {
         int val = xofs + left;
@@ -4275,22 +4271,22 @@ sprite_copy_rect_2_to_1(int left, int top, int width, int height, int xofs) {
                 quotient--;
                 remainder += w2;
             }
-            var_6 = top + quotient;
-            var_2 = left + (remainder - left);
+            dst_row = top + quotient;
+            dst_x = left + (remainder - left);
         }
     }
 
     dx = height;
     while (dx > 0) {
         cx = width;
-        si_ofs = lineofs2[var_4] + left;
-        di_ofs = lineofs1[var_6] + var_2;
+        si_ofs = lineofs2[src_row] + left;
+        di_ofs = lineofs1[dst_row] + dst_x;
 
         /* Copy row */
         memcpy(es_ptr + di_ofs, ds_ptr + si_ofs, cx);
 
-        var_4++;
-        var_6++;
+        src_row++;
+        dst_row++;
         dx--;
     }
 }

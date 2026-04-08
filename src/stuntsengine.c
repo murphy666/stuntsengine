@@ -921,10 +921,10 @@ restore_gamestate(unsigned short frame) {
  */
 void
 update_gamestate() {
-    char var_carInputByte;
+    char replay_input_flags;
 
-    var_carInputByte = replay_buffer[state.game_frame];
-    if (var_carInputByte != 0) {
+    replay_input_flags = replay_buffer[state.game_frame];
+    if (replay_input_flags != 0) {
         state.game_inputmode = 1;
     }
 
@@ -950,7 +950,7 @@ update_gamestate() {
 
     if (state.game_inputmode != 0) {
 
-        update_player_car_state(var_carInputByte);
+        update_player_car_state(replay_input_flags);
 
         if (gameconfig.game_opponenttype != 0) {
             update_opponent_car_state();
@@ -1734,7 +1734,7 @@ init_plantrak_(void) {
 int
 setup_player_cars(void) {
     void *carresptr;
-    unsigned long var_8;
+    unsigned long sprite_window_memory_threshold;
 
     /* If opponent is enabled but no car was selected, use the player's car
 	   (matching original DOS behaviour and the opponent menu "Done" fallback). */
@@ -1812,8 +1812,8 @@ setup_player_cars(void) {
 
     if (!video_flag5_is0) {
 
-        var_8 = 64000 / (video_flag1_is1 * video_flag4_is1);
-        if (mmgr_get_res_ofs_diff_scaled() <= var_8) {
+        sprite_window_memory_threshold = 64000 / (video_flag1_is1 * video_flag4_is1);
+        if (mmgr_get_res_ofs_diff_scaled() <= sprite_window_memory_threshold) {
             return 1;
         }
         wndsprite = sprite_make_wnd(STN_SCREEN_WIDTH, STN_SCREEN_HEIGHT, STN_SCREEN_DEPTH);
@@ -1856,16 +1856,17 @@ void shape2d_render_bmp_as_mask(void *data);
  */
 void
 run_game(void) {
-    unsigned short var_16[2];
-    int var_12, var_E;
-    struct RECTANGLE var_rect;
-    int var_2;
+    unsigned short dialog_coords[2];
+    int input_key;
+    int prev_hud_limit;
+    struct RECTANGLE dashboard_dirty_rect;
+    int prev_roof_height;
     int regsi;
     rect_windshield.left = 0;
     rect_windshield.right = 320;
-    var_2 = -1;
+    prev_roof_height = -1;
     timer_tick_counter = -1;
-    var_E = -1;
+    prev_hud_limit = -1;
     run_game_random = get_kevinrandom() << 3;
     replaybar_toggle = true;
     is_in_replay = false;
@@ -2055,15 +2056,15 @@ run_game(void) {
                     dashbmp_y_copy = dashbmp_y;
                 }
 
-                if (var_2 != roofbmpheight_copy || dashbmp_y_copy != timer_tick_counter
-                    || var_E != height_above_replaybar) {
+                if (prev_roof_height != roofbmpheight_copy || dashbmp_y_copy != timer_tick_counter
+                    || prev_hud_limit != height_above_replaybar) {
                     race_condition_state_flag = video_flag6_is1;
                     set_projection(35, dashbmp_y_copy / 6, STN_SCREEN_WIDTH, dashbmp_y_copy);
                     rect_windshield.top = roofbmpheight_copy;
                     rect_windshield.bottom = dashbmp_y_copy;
-                    var_2 = roofbmpheight_copy;
+                    prev_roof_height = roofbmpheight_copy;
                     timer_tick_counter = dashbmp_y_copy;
-                    var_E = height_above_replaybar;
+                    prev_hud_limit = height_above_replaybar;
                 }
             }
 
@@ -2089,12 +2090,12 @@ run_game(void) {
 
             if (dastbmp_y != 0 && game_input_keyboard_state) {
                 if (timertestflag_copy) {
-                    var_rect.left = 0;
-                    var_rect.right = STN_SCREEN_WIDTH;
-                    var_rect.top = dastbmp_y;
-                    var_rect.bottom = dashbmp_y_copy;
+                    dashboard_dirty_rect.left = 0;
+                    dashboard_dirty_rect.right = STN_SCREEN_WIDTH;
+                    dashboard_dirty_rect.top = dastbmp_y;
+                    dashboard_dirty_rect.bottom = dashbmp_y_copy;
                     if (rect_buffer_primary != 0) {
-                        rect_union(rect_buffer_primary, &var_rect, rect_buffer_primary);
+                        rect_union(rect_buffer_primary, &dashboard_dirty_rect, rect_buffer_primary);
                     }
                 }
 
@@ -2151,11 +2152,11 @@ run_game(void) {
                 }
 
                 do {
-                    var_12 = kb_get_char();
-                    if (var_12 != 0 && var_12 != UI_KEY_ESCAPE_EXT && var_12 != UI_KEY_ESCAPE) {
-                        handle_ingame_kb_shortcuts(var_12);
+                    input_key = kb_get_char();
+                    if (input_key != 0 && input_key != UI_KEY_ESCAPE_EXT && input_key != UI_KEY_ESCAPE) {
+                        handle_ingame_kb_shortcuts(input_key);
                     }
-                    if (var_12 == UI_KEY_ESCAPE_EXT || var_12 == UI_KEY_ESCAPE) {
+                    if (input_key == UI_KEY_ESCAPE_EXT || input_key == UI_KEY_ESCAPE) {
                         /* ESC during driving: switch to replay mode.
 						 * loop_game(3,...) will handle the menu on next iteration. */
                         game_replay_mode = 2;
@@ -2169,8 +2170,8 @@ run_game(void) {
                         break;
                     }
 
-                } while (var_12 == UI_KEY_UP || var_12 == UI_KEY_LEFT || var_12 == UI_KEY_RIGHT
-                         || var_12 == UI_KEY_DOWN);
+                } while (input_key == UI_KEY_UP || input_key == UI_KEY_LEFT || input_key == UI_KEY_RIGHT
+                         || input_key == UI_KEY_DOWN);
 
                 if (game_replay_mode == 1) {
                     mouse_get_state(&mouse_butstate, &mouse_xpos, &mouse_ypos);
@@ -2205,7 +2206,7 @@ run_game(void) {
         if (game_replay_mode == 0 && gameconfig.game_opponenttype != 0
             && state.opponentstate.car_crashBmpFlag == 0) {
             ui_dialog_show_restext(3, 0, locate_text_res(gameresptr, "cop"), UI_DIALOG_AUTO_POS, 80,
-                                   performGraphColor, var_16, 0);
+                                   performGraphColor, dialog_coords, 0);
             lap_completion_trigger_flag = true;
             regsi = framespersec;
             regsi--;
@@ -2219,7 +2220,7 @@ run_game(void) {
                     format_frame_as_string(resID_byte1, state.game_frame + elapsed_time1, 1);
                     mouse_draw_opaque_check();
                     sprite_draw_text_opaque(resID_byte1, font_get_centered_x(resID_byte1),
-                                            var_16[1]);
+                                            dialog_coords[1]);
                     mouse_draw_transparent_check();
                 }
 
@@ -2488,7 +2489,7 @@ main(int argc, char *argv[]) {
 
     int i, result;
     int regsi;
-    bool var_A;
+    bool start_in_replay_mode;
 
     //return stuntsmain_(argc, argv);
     init_main(argc, argv);
@@ -2563,7 +2564,7 @@ main(int argc, char *argv[]) {
                 break;
             }
             else if (!result) {
-                var_A = false;
+                start_in_replay_mode = false;
             }
             else if (result == 1) {
                 check_input();
@@ -2601,7 +2602,7 @@ main(int argc, char *argv[]) {
                 }
                 else {
                     // goto replay-mode if option-menu-result
-                    var_A = true;
+                    start_in_replay_mode = true;
                 }
             }
             else {
@@ -2642,7 +2643,7 @@ main(int argc, char *argv[]) {
             cvxptr = mmgr_alloc_resbytes("cvx", sizeof(struct GAMESTATE) * RST_CVX_NUM);
             init_game_state(-1);
 
-            if (var_A) {
+            if (start_in_replay_mode) {
                 replay_mode_state_flag = 0;
             }
             else {
