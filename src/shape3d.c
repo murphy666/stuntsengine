@@ -450,6 +450,68 @@ void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices,
 
 #define EDGE_STATE_WORD_COUNT 14
 
+#define SHAPE3D_VERTEX_SCAN_LIMIT          8
+#define SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT 4
+
+#define PRIMITIVE_RECORD_HEADER_BYTES     2u
+#define PRIMITIVE_FLAG_SKIP_WINDING_CULL  1u
+#define PRIMITIVE_FLAG_CHAIN_UNSORTED     2u
+
+#define PROJECTION_FALLBACK_EIGHTH_SHIFT    3
+#define PROJECTION_FALLBACK_SIXTEENTH_SHIFT 4
+
+#define SPHERE_RADIUS_QUARTER_SHIFT      2
+#define SPHERE_RADIUS_SIXTEENTH_SHIFT    4
+#define SPHERE_CLIP_MARGIN_QUARTER_SHIFT 2
+
+#define WHEEL_STATE_CACHE_SIZE         (WHEEL_COUNT + 1)
+#define WHEEL_ROTATION_CACHE_SLOT      WHEEL_COUNT
+#define WHEEL_BUFFER_INNER_RING_OFFSET 32
+#define WHEEL_BUFFER_BACK_FACE_OFFSET  64
+#define WHEEL_OUTLINE_LAST_POINT_INDEX 17
+#define WHEEL_OUTLINE_ARC_POINT_COUNT  9
+#define WHEEL_QUAD_VERTEX_COUNT        4
+#define LINE_VERTEX_COUNT              2
+
+#define CAR_WHEEL_VERTEX_BASE_INDEX 8
+#define CAR_WHEEL_RING_MIDPOINT     3
+
+enum Shape3DEdgeMode {
+    SHAPE3D_EDGE_MODE_EMPTY = 0,
+    SHAPE3D_EDGE_MODE_UNUSED = 1,
+    SHAPE3D_EDGE_MODE_VERTICAL = 2,
+    SHAPE3D_EDGE_MODE_DIAGONAL_LEFT = 3,
+    SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT = 4,
+    SHAPE3D_EDGE_MODE_SHALLOW_LEFT = 5,
+    SHAPE3D_EDGE_MODE_SHALLOW_RIGHT = 6,
+    SHAPE3D_EDGE_MODE_STEEP_LEFT = 7,
+    SHAPE3D_EDGE_MODE_STEEP_RIGHT = 8,
+    SHAPE3D_EDGE_MODE_INVALID = 9,
+};
+
+enum Shape3DDrawLineResult {
+    SHAPE3D_DRAW_LINE_OK = 0,
+    SHAPE3D_DRAW_LINE_NO_OUTPUT = 1,
+    SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X = 2,
+};
+
+enum Shape3DShapeSlot {
+    SHAPE3D_SLOT_PLAYER_EXP0 = 116,
+    SHAPE3D_SLOT_PLAYER_EXP1 = 117,
+    SHAPE3D_SLOT_PLAYER_EXP2 = 118,
+    SHAPE3D_SLOT_PLAYER_EXP3 = 119,
+    SHAPE3D_SLOT_OPPONENT_EXP0 = 120,
+    SHAPE3D_SLOT_OPPONENT_EXP1 = 121,
+    SHAPE3D_SLOT_OPPONENT_EXP2 = 122,
+    SHAPE3D_SLOT_OPPONENT_EXP3 = 123,
+    SHAPE3D_SLOT_PLAYER_CAR0 = 124,
+    SHAPE3D_SLOT_OPPONENT_CAR0 = 125,
+    SHAPE3D_SLOT_PLAYER_CAR1 = 126,
+    SHAPE3D_SLOT_OPPONENT_CAR1 = 127,
+    SHAPE3D_SLOT_PLAYER_CAR2 = 128,
+    SHAPE3D_SLOT_OPPONENT_CAR2 = 129,
+};
+
 #define POLYLIST_PTR_SANITY_MIN ((uintptr_t)1048576u)
 
 /*
@@ -697,15 +759,16 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
     zorder_tail_counter = 0;
     accepted_primitive_count = 0;
 
-    if (transshapenumverts <= 8) {
+    if (transshapenumverts <= SHAPE3D_VERTEX_SCAN_LIMIT) {
         transshapenumvertscopy = (unsigned char)transshapenumverts;
     }
     else {
-        transshapenumvertscopy = 8;
+        transshapenumvertscopy = SHAPE3D_VERTEX_SCAN_LIMIT;
     }
 
-    if (transshapenumvertscopy > 4 && transshapeverts[0].y == transshapeverts[4].y) {
-        transshapenumvertscopy = 4;
+    if (transshapenumvertscopy > SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT
+        && transshapeverts[0].y == transshapeverts[SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT].y) {
+        transshapenumvertscopy = SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT;
     }
 
     goto label_init_vertex_visibility_scan;
@@ -764,7 +827,7 @@ label_begin_primitive_processing:
 
 label_primitive_loop_next:
     transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]]
-                        + transshapenumpaints + 2;
+                        + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
     primitive_flags = transshapeprimitives[1];
     primitive_accept_count = 0;
     if ((primitive_cull_table[0] & direction_cull_mask_primary) != 0) {
@@ -781,8 +844,9 @@ label_decode_primitive_header:
     transshapepolyinfo = s_polyinfo_base + polyinfoptrnext;
     polyinfoptrs[polyinfonumpolys] = (int *)transshapepolyinfo;
 
-    transprimitivepaintjob = transshapeprimitives[2 + transshapematerial];
-    transshapeprimitives += 2 + transshapenumpaints;
+    transprimitivepaintjob = transshapeprimitives[PRIMITIVE_RECORD_HEADER_BYTES
+                                                 + transshapematerial];
+    transshapeprimitives += PRIMITIVE_RECORD_HEADER_BYTES + transshapenumpaints;
 
     rect_clip_mask = RECT_CLIP_FULL_MASK;
     all_vertices_behind_near_plane = true;
@@ -961,7 +1025,7 @@ label_prepare_primitive_submission:
         reject_prim_rect_stage2++;
         goto label_finish_current_primitive;
     }
-    if ((primitive_flags & 1) != 0)
+    if ((primitive_flags & PRIMITIVE_FLAG_SKIP_WINDING_CULL) != 0)
         goto label_mark_primitive_accepted;
     if ((paint_cull_mask & *paint_cull_table) != 0)
         goto label_mark_primitive_accepted;
@@ -1018,12 +1082,13 @@ label_finish_current_primitive:
     paint_cull_table++;
     if (primitive_accept_count != 0)
         goto label_store_polyinfo_entry;
-    if ((primitive_flags & 2) != 0)
+    if ((primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0)
         goto label_primitive_loop_exit_or_continue;
 label_skip_hidden_primitive_chain:
-    if ((transshapeprimitives[1] & 2) == 0)
+    if ((transshapeprimitives[1] & PRIMITIVE_FLAG_CHAIN_UNSORTED) == 0)
         goto label_primitive_loop_exit_or_continue;
-    transshapeprimitives += primidxcounttab[transshapeprimitives[0]] + transshapenumpaints + 2;
+    transshapeprimitives += primidxcounttab[transshapeprimitives[0]] + transshapenumpaints
+                            + PRIMITIVE_RECORD_HEADER_BYTES;
     primitive_cull_table++;
     paint_cull_table++;
     goto label_skip_hidden_primitive_chain;
@@ -1222,7 +1287,8 @@ label_store_polyinfo_entry:
 
     ((unsigned short *)transshapepolyinfo)[0] = (unsigned short)temp0;
 
-    if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0 || (primitive_flags & 2) != 0) {
+    if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0
+        || (primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
         temp = 0;
     }
     else {
@@ -1285,7 +1351,9 @@ projection_apply(unsigned short i3, unsigned short i4) {
                            / sin_fast(projectiondata2);
     }
     else {
-        projectiondata10 = projectiondata9 - (projectiondata9 >> 3) - (projectiondata9 >> 4);
+        projectiondata10 = projectiondata9
+                           - (projectiondata9 >> PROJECTION_FALLBACK_EIGHTH_SHIFT)
+                           - (projectiondata9 >> PROJECTION_FALLBACK_SIXTEENTH_SHIFT);
         projectiondata2 = polarAngle(projectiondata10, projectiondata6);
     }
 }
@@ -1593,9 +1661,9 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
     /* Calculate adjusted radius: radius - radius/4 + radius/16 */
     adjusted_radius = radius;
     {
-        int ax = radius >> 2;
+        int ax = radius >> SPHERE_RADIUS_QUARTER_SHIFT;
         adjusted_radius -= ax;
-        ax >>= 2;
+        ax >>= (SPHERE_RADIUS_SIXTEENTH_SHIFT - SPHERE_RADIUS_QUARTER_SHIFT);
         adjusted_radius += ax;
     }
 
@@ -1632,7 +1700,7 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
 
     /* Horizontal clipping check */
     {
-        int dx = bx_val + (bx_val >> 2);
+        int dx = bx_val + (bx_val >> SPHERE_CLIP_MARGIN_QUARTER_SHIFT);
         if (center_x - dx > right_clip) {
             return;
         }
@@ -1813,7 +1881,7 @@ build_interpolated_wheel_rings(int *input_data, int *output_data, int interpolat
     interp[3] = interp_y12;
     interp[4] = interp_x13;
     interp[5] = interp_y13;
-    build_wheel_ring_vertices(interp, output_data + 32);
+    build_wheel_ring_vertices(interp, output_data + WHEEL_BUFFER_INNER_RING_OFFSET);
 }
 
 /** Ported from seg023.asm */
@@ -1832,7 +1900,7 @@ build_wheel_shell_vertices(int *input_data, int *output_data, int interpolation_
 
     /* Copy 16 POINT2D entries from output_data to output_data+128 with offset applied */
     src = output_data;
-    dest = output_data + 64;
+    dest = output_data + WHEEL_BUFFER_BACK_FACE_OFFSET;
 
     for (i = 0; i < WHEEL_RING_POINTS; i++) {
         dest[0] = src[0] + shell_offset_x; /* x */
@@ -1873,7 +1941,7 @@ preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsig
         quadVerts[1] = wheel0[i + 1];
         quadVerts[2] = wheel1[i + 1];
         quadVerts[3] = wheel1[i];
-        draw_wheel_quad(sidewall_color, 4, quadVerts);
+        draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
     }
 
     /* Draw wrap-around quad (i=15 to i=0) */
@@ -1881,7 +1949,7 @@ preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsig
     quadVerts[1] = wheel0[0];
     quadVerts[2] = wheel1[0];
     quadVerts[3] = wheel1[15];
-    draw_wheel_quad(sidewall_color, 4, quadVerts);
+    draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
 
     /* Find point with minimum Y in wheel0 */
     minY = wheel0[0].py;
@@ -1895,11 +1963,11 @@ preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsig
 
     /* Build first half outline: walk forward from minIdx, collecting 9 points from each wheel */
     /* Original ASM uses outer ring (outer_ring_points) and inner ring (inner_ring_points) for the cap outline */
-    struct POINT2D *innerRing = (struct POINT2D *)(wheelBuf + 32);
+    struct POINT2D *innerRing = (struct POINT2D *)(wheelBuf + WHEEL_BUFFER_INNER_RING_OFFSET);
     outPtr = outBuf;
-    outEnd = outBuf + 17; /* Last entry at index 17 */
+    outEnd = outBuf + WHEEL_OUTLINE_LAST_POINT_INDEX;
     curIdx = minIdx;
-    for (i = 0; i <= 8; i++) {
+    for (i = 0; i < WHEEL_OUTLINE_ARC_POINT_COUNT; i++) {
         *outPtr = wheel0[curIdx];
         *outEnd = innerRing[curIdx];
         outPtr++;
@@ -1912,9 +1980,9 @@ preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsig
 
     /* Build second half outline: walk backward from minIdx */
     outPtr = outBuf;
-    outEnd = outBuf + 17;
+    outEnd = outBuf + WHEEL_OUTLINE_LAST_POINT_INDEX;
     curIdx = minIdx;
-    for (i = 0; i < 9; i++) {
+    for (i = 0; i < WHEEL_OUTLINE_ARC_POINT_COUNT; i++) {
         *outPtr = wheel0[curIdx];
         *outEnd = innerRing[curIdx];
         outPtr++;
@@ -2189,7 +2257,8 @@ get_a_poly_info(void) {
                 line_pts[1] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
                 line_pts[2] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
                 line_pts[3] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET);
-                draw_health_note_poly(&draw_health, line_pts, 2, *(unsigned short *)polyinfoptr);
+                draw_health_note_poly(&draw_health, line_pts, LINE_VERTEX_COUNT,
+                                      *(unsigned short *)polyinfoptr);
                 draw_health.drawn_total++;
             }
             preRender_line(*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
@@ -2197,7 +2266,7 @@ get_a_poly_info(void) {
                            *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET),
                            *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET), matcolor);
             break;
-        case 2: /* sphere */
+        case PRIMITIVE_TYPE_SPHERE:
         {
             int sx = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
             int sy = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
@@ -2219,7 +2288,7 @@ get_a_poly_info(void) {
                              *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
                              *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET), matcolor);
             break;
-        case 3: { /* wheel */
+        case PRIMITIVE_TYPE_WHEEL: {
             const struct POINT2D *wheel_pts;
             int wheel_interp;
             bool drop_wheel = false;
@@ -2246,7 +2315,7 @@ get_a_poly_info(void) {
                 continue;
             }
             if (draw_health_enabled) {
-                draw_health_note_poly(&draw_health, polygon_points_xy, 4,
+                draw_health_note_poly(&draw_health, polygon_points_xy, WHEEL_QUAD_VERTEX_COUNT,
                                       *(unsigned short *)polyinfoptr);
                 draw_health.drawn_total++;
             }
@@ -2260,7 +2329,7 @@ get_a_poly_info(void) {
                             clrlist[((unsigned)mattype + 2u) * 2u]);
             break;
         }
-        case 5: /* pixel */
+        case PRIMITIVE_TYPE_PIXEL:
             putpixel_single_clipped(*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
                                     *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET), matcolor);
             break;
@@ -2694,7 +2763,7 @@ preRender_helper2:
     case 0:
     case 1:
         return;
-    case 2:
+    case SHAPE3D_EDGE_MODE_VERTICAL:
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2703,7 +2772,7 @@ preRender_helper2:
             }
         }
         return;
-    case 3:
+    case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2712,7 +2781,7 @@ preRender_helper2:
             }
         }
         return;
-    case 4:
+    case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2721,7 +2790,7 @@ preRender_helper2:
             }
         }
         return;
-    case 5:
+    case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
         value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
                 | (unsigned int)regsi[2];
         value += FIXED_HALF_16;
@@ -2734,7 +2803,7 @@ preRender_helper2:
             value -= (unsigned int)regsi[6];
         }
         return;
-    case 6:
+    case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
         value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
                 | (unsigned int)regsi[2];
         value += FIXED_HALF_16;
@@ -2748,7 +2817,7 @@ preRender_helper2:
             value += (unsigned int)regsi[6];
         }
         return;
-    case 7:
+    case SHAPE3D_EDGE_MODE_STEEP_LEFT:
         value = (unsigned int)regsi[1];
         temp = (unsigned int)regsi[2];
         if (temp + FIXED_HALF_16 > USHRT_MAX)
@@ -2780,7 +2849,7 @@ preRender_helper2:
         }
         return;
 
-    case 8:
+    case SHAPE3D_EDGE_MODE_STEEP_RIGHT:
         value = (unsigned int)regsi[1];
         temp = (unsigned int)regsi[2];
         if (temp + FIXED_HALF_16 > USHRT_MAX)
@@ -2834,7 +2903,7 @@ preRender_helper2:
                 scanline_bounds[480 + ofs + i] = value - 1;
 			}
 			return ;*/
-    case 9:
+    case SHAPE3D_EDGE_MODE_INVALID:
     default:
         return;
     }
@@ -2885,7 +2954,7 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
     ofs = regsi[3];
     mode = regsi[9];
 
-    if (mode == 7) {
+    if (mode == SHAPE3D_EDGE_MODE_STEEP_LEFT) {
         unsigned long temp = (unsigned int)regsi[2];
         unsigned long step = (unsigned int)regsi[6];
         unsigned long sum;
@@ -2942,7 +3011,7 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
         }
         goto done_clip;
     }
-    else if (mode == 8) {
+    else if (mode == SHAPE3D_EDGE_MODE_STEEP_RIGHT) {
         unsigned long temp = (unsigned int)regsi[2];
         unsigned long step = (unsigned int)regsi[6];
         unsigned long sum;
@@ -3007,21 +3076,21 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
 
     for (i = 0; i < count; i++) {
         switch (mode) {
-        case 3:
+        case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
             x = regsi[1] - i;
             break;
-        case 4:
+        case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
             x = regsi[1] + i;
             break;
-        case 5:
+        case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
             x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
             accum -= (unsigned int)regsi[6];
             break;
-        case 6:
+        case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
             x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
             accum += (unsigned int)regsi[6];
             break;
-        case 2:
+        case SHAPE3D_EDGE_MODE_VERTICAL:
         default:
             x = regsi[1];
             break;
@@ -3261,7 +3330,7 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
     long long accum;
 
     if (edge_state == 0) {
-        return 0;
+        return SHAPE3D_DRAW_LINE_OK;
     }
 
     for (dx = 0; dx < EDGE_STATE_WORD_COUNT; dx++) {
@@ -3288,7 +3357,7 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
     bottom = (int)sprite1.sprite_height - 1;
 
     if (y1 < top || y0 > bottom) {
-        return 1;
+        return SHAPE3D_DRAW_LINE_NO_OUTPUT;
     }
 
     yclip_top = 0;
@@ -3302,7 +3371,7 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
         y1 = bottom;
     }
     if (y1 < y0) {
-        return 1;
+        return SHAPE3D_DRAW_LINE_NO_OUTPUT;
     }
 
     dx = x1 - x0;
@@ -3323,32 +3392,32 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
             xh = right;
         }
         edge_state[1] = xh;
-        edge_state[9] = 2;
-        return 0;
+        edge_state[9] = SHAPE3D_EDGE_MODE_VERTICAL;
+        return SHAPE3D_DRAW_LINE_OK;
     }
 
     accum = ((long long)x0) << FIXED_SHIFT_16;
     xstep = (int)(((long long)dx << FIXED_SHIFT_16) / dy);
 
     if (xstep == 0) {
-        mode = 2;
+        mode = SHAPE3D_EDGE_MODE_VERTICAL;
         edge_state[1] = x0;
         edge_state[7] = dy + 1;
     }
     else if (xstep == FIXED_ONE_16) {
-        mode = 4;
+        mode = SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT;
         edge_state[1] = x0;
         edge_state[7] = dy + 1;
     }
     else if (xstep == -FIXED_ONE_16) {
-        mode = 3;
+        mode = SHAPE3D_EDGE_MODE_DIAGONAL_LEFT;
         edge_state[1] = x0;
         edge_state[7] = dy + 1;
     }
     else if (allow_steep_modes != 0 && xstep > FIXED_ONE_16) {
         /* Steep right: dx > dy → mode 8 (x-major DDA, no y-clip adjustment needed) */
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)dx);
-        mode = 8;
+        mode = SHAPE3D_EDGE_MODE_STEEP_RIGHT;
         edge_state[1] = x0;          /* x = startX */
         edge_state[2] = 0;           /* yfrac = 0 */
         edge_state[6] = ystep_steep; /* y step per x advance */
@@ -3358,21 +3427,21 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
         /* Steep left: |dx| > dy → mode 7 (x-major DDA, no y-clip adjustment needed) */
         int absdx = -dx;
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)absdx);
-        mode = 7;
+        mode = SHAPE3D_EDGE_MODE_STEEP_LEFT;
         edge_state[1] = x0;          /* x = startX */
         edge_state[2] = 0;           /* yfrac = 0 */
         edge_state[6] = ystep_steep; /* y step per x advance */
         edge_state[7] = absdx + 1;   /* count = x-pixel steps */
     }
     else if (xstep > 0) {
-        mode = 6;
+        mode = SHAPE3D_EDGE_MODE_SHALLOW_RIGHT;
         edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
         edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
         edge_state[6] = xstep;
         edge_state[7] = dy + 1;
     }
     else {
-        mode = 5;
+        mode = SHAPE3D_EDGE_MODE_SHALLOW_LEFT;
         edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
         edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
         edge_state[6] = -xstep;
@@ -3391,14 +3460,14 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
 
         /* Early-out: line completely outside x bounds */
         if (x_start < left && x_end < left) {
-            return 2;
+            return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
         }
         if (x_start > right && x_end > right) {
-            return 2;
+            return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
         }
 
         /* Clip x coordinates based on mode */
-        if (mode == 2) {
+        if (mode == SHAPE3D_EDGE_MODE_VERTICAL) {
             /* Vertical line: clip x to bounds */
             if (x0 < left) {
                 edge_state[1] = left;
@@ -3407,7 +3476,8 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
                 edge_state[1] = right;
             }
         }
-        else if (mode == 3 || mode == 5) {
+        else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT
+             || mode == SHAPE3D_EDGE_MODE_SHALLOW_LEFT) {
             /** @brief Left.
  * @param high Parameter value.
  * @param left Parameter value.
@@ -3423,29 +3493,30 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
             if (x_end < left && count > 0 && xstep != 0) {
                 /* End of line is left of viewport - clip bottom */
                 int rows_outside = (left - x_end);
-                if (mode == 3) {
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
                     /* dx/dy = -1, so 1 pixel per row */
                     edge_state[12] += rows_outside; /* yclip_bottom */
                     edge_state[7] -= rows_outside;
                     edge_state[5] -= rows_outside;
                     if (edge_state[7] <= 0)
-                        return 2;
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
             if (x_start > right && count > 0 && xstep != 0) {
                 /* Start of line is right of viewport - clip top */
                 int rows_outside = (x_start - right);
-                if (mode == 3) {
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
                     edge_state[10] += rows_outside; /* yclip_top */
                     edge_state[7] -= rows_outside;
                     edge_state[3] += rows_outside;
                     edge_state[1] = right;
                     if (edge_state[7] <= 0)
-                        return 2;
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
         }
-        else if (mode == 4 || mode == 6) {
+        else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT
+                 || mode == SHAPE3D_EDGE_MODE_SHALLOW_RIGHT) {
             /** @brief Right.
  * @param low Parameter value.
  * @param left Parameter value.
@@ -3461,30 +3532,30 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
             if (x_start < left && count > 0 && xstep != 0) {
                 /* Start of line is left of viewport - clip top */
                 int rows_outside = (left - x_start);
-                if (mode == 4) {
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
                     edge_state[10] += rows_outside; /* yclip_top */
                     edge_state[7] -= rows_outside;
                     edge_state[3] += rows_outside;
                     edge_state[1] = left;
                     if (edge_state[7] <= 0)
-                        return 2;
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
             if (x_end > right && count > 0 && xstep != 0) {
                 /* End of line is right of viewport - clip bottom */
                 int rows_outside = (x_end - right);
-                if (mode == 4) {
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
                     edge_state[12] += rows_outside; /* yclip_bottom */
                     edge_state[7] -= rows_outside;
                     edge_state[5] -= rows_outside;
                     if (edge_state[7] <= 0)
-                        return 2;
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
         }
     }
 
-    return 0;
+    return SHAPE3D_DRAW_LINE_OK;
 }
 
 /**
@@ -3532,44 +3603,54 @@ shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
     carresptr = file_load_3dres(aStxxx);
 
     if (carresptr == 0) {
-        memset(&game3dshapes[124], 0, sizeof(game3dshapes[124]));
-        memset(&game3dshapes[126], 0, sizeof(game3dshapes[126]));
-        memset(&game3dshapes[128], 0, sizeof(game3dshapes[128]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR0], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR0]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR2], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR2]));
         return;
     }
 
-    shape3d_try_init_shape((char *)carresptr, "car0", 124);
-    shape3d_try_init_shape((char *)carresptr, "car1", 126);
+    shape3d_try_init_shape((char *)carresptr, "car0", SHAPE3D_SLOT_PLAYER_CAR0);
+    shape3d_try_init_shape((char *)carresptr, "car1", SHAPE3D_SLOT_PLAYER_CAR1);
 
-    if (game3dshapes[126].shape3d_verts != 0
-        && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
-        wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
+    if (game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts != 0
+        && game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+        wheel_vertices_base_ptr
+            = &(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]);
         carshapevec.z = wheel_vertices_base_ptr[0].z;
-        carshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x) / 2;
-        carshapevec2.z = wheel_vertices_base_ptr[6].z;
-        carshapevec2.x = (wheel_vertices_base_ptr[6].x + wheel_vertices_base_ptr[9].x) / 2;
+        carshapevec.x = (wheel_vertices_base_ptr[CAR_WHEEL_RING_MIDPOINT].x
+                         + wheel_vertices_base_ptr[0].x)
+                        / 2;
+        carshapevec2.z = wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].z;
+        carshapevec2.x
+            = (wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].x
+               + wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING + CAR_WHEEL_RING_MIDPOINT].x)
+              / 2;
 
         for (i = 0; i < 6; i++) {
             carshapevecs[i].x = carshapevec.x - wheel_vertices_base_ptr[i + 0].x;
             carshapevecs[i].z = carshapevec.z - wheel_vertices_base_ptr[i + 0].z;
             carshapevecs[i].y = wheel_vertices_base_ptr[i + 0].y;
-            carshapevecs2[i].x = carshapevec2.x - wheel_vertices_base_ptr[i + 6].x;
-            carshapevecs2[i].z = carshapevec2.z - wheel_vertices_base_ptr[i + 6].z;
-            carshapevecs2[i].y = wheel_vertices_base_ptr[i + 6].y;
-            carshapevecs3[i] = wheel_vertices_base_ptr[i + 12];
-            carshapevecs4[i] = wheel_vertices_base_ptr[i + 18];
+            carshapevecs2[i].x = carshapevec2.x - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].x;
+            carshapevecs2[i].z = carshapevec2.z - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].z;
+            carshapevecs2[i].y = wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].y;
+            carshapevecs3[i] = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS];
+            carshapevecs4[i]
+                = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS + WHEEL_POINTS_PER_RING];
         }
     }
 
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < WHEEL_STATE_CACHE_SIZE; i++) {
         viewport_clipping_bounds[i] = 0;
     }
 
-    shape3d_try_init_shape((char *)carresptr, "car2", 128);
-    shape3d_try_init_shape((char *)carresptr, "exp0", 116);
-    shape3d_try_init_shape((char *)carresptr, "exp1", 117);
-    shape3d_try_init_shape((char *)carresptr, "exp2", 118);
-    shape3d_try_init_shape((char *)carresptr, "exp3", 119);
+    shape3d_try_init_shape((char *)carresptr, "car2", SHAPE3D_SLOT_PLAYER_CAR2);
+    shape3d_try_init_shape((char *)carresptr, "exp0", SHAPE3D_SLOT_PLAYER_EXP0);
+    shape3d_try_init_shape((char *)carresptr, "exp1", SHAPE3D_SLOT_PLAYER_EXP1);
+    shape3d_try_init_shape((char *)carresptr, "exp2", SHAPE3D_SLOT_PLAYER_EXP2);
+    shape3d_try_init_shape((char *)carresptr, "exp3", SHAPE3D_SLOT_PLAYER_EXP3);
 
     if (opponent_car_id[0] != -1) {
         if (player_car_id[0] == opponent_car_id[0] && player_car_id[1] == opponent_car_id[1]
@@ -3587,37 +3668,51 @@ shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
             car2resptr = file_load_3dres(aStxxx);
         }
 
-        shape3d_try_init_shape((char *)car2resptr, "car0", 125);
-        shape3d_try_init_shape((char *)car2resptr, "car1", 127);
+        shape3d_try_init_shape((char *)car2resptr, "car0", SHAPE3D_SLOT_OPPONENT_CAR0);
+        shape3d_try_init_shape((char *)car2resptr, "car1", SHAPE3D_SLOT_OPPONENT_CAR1);
 
-        /* Reference uses game3dshapes[126] (player's car1) for opponent wheel setup */
-        if (game3dshapes[126].shape3d_verts != 0
-            && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
-            wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
+        /* Reference uses the player car1 wheel vertices for opponent wheel setup. */
+        if (game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts != 0
+            && game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+            wheel_vertices_base_ptr
+                = &(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]);
             oppcarshapevec.z = wheel_vertices_base_ptr[0].z;
-            oppcarshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x) / 2;
-            oppcarshapevec2.z = wheel_vertices_base_ptr[6].z;
-            oppcarshapevec2.x = (wheel_vertices_base_ptr[6].x + wheel_vertices_base_ptr[9].x) / 2;
+            oppcarshapevec.x = (wheel_vertices_base_ptr[CAR_WHEEL_RING_MIDPOINT].x
+                                + wheel_vertices_base_ptr[0].x)
+                               / 2;
+            oppcarshapevec2.z = wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].z;
+            oppcarshapevec2.x
+                = (wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].x
+                   + wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING + CAR_WHEEL_RING_MIDPOINT].x)
+                  / 2;
 
             for (i = 0; i < 6; i++) {
                 oppcarshapevecs[i].x = oppcarshapevec.x - wheel_vertices_base_ptr[i + 0].x;
                 oppcarshapevecs[i].z = oppcarshapevec.z - wheel_vertices_base_ptr[i + 0].z;
                 oppcarshapevecs[i].y = wheel_vertices_base_ptr[i + 0].y;
-                oppcarshapevecs2[i].x = oppcarshapevec2.x - wheel_vertices_base_ptr[i + 6].x;
-                oppcarshapevecs2[i].z = oppcarshapevec2.z - wheel_vertices_base_ptr[i + 6].z;
-                oppcarshapevecs2[i].y = wheel_vertices_base_ptr[i + 6].y;
-                oppcarshapevecs3[i] = wheel_vertices_base_ptr[i + 12];
-                oppcarshapevecs4[i] = wheel_vertices_base_ptr[i + 18];
+                oppcarshapevecs2[i].x
+                    = oppcarshapevec2.x - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].x;
+                oppcarshapevecs2[i].z
+                    = oppcarshapevec2.z - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].z;
+                oppcarshapevecs2[i].y = wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].y;
+                oppcarshapevecs3[i] = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS];
+                oppcarshapevecs4[i]
+                    = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS + WHEEL_POINTS_PER_RING];
             }
         }
-        for (i = 0; i < 5; i++) {
+        for (i = 0; i < WHEEL_STATE_CACHE_SIZE; i++) {
             game_frame_pointer[i] = 0;
         }
-        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "car2"), &game3dshapes[129]);
-        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp0"), &game3dshapes[120]);
-        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp1"), &game3dshapes[121]);
-        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp2"), &game3dshapes[122]);
-        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp3"), &game3dshapes[123]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "car2"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_CAR2]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp0"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP0]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp1"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP1]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp2"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP2]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp3"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP3]);
     }
     else {
         car2resptr = 0;
@@ -3646,7 +3741,7 @@ shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotat
     int wheel_drop;
     int wheel_vertex_end;
     //return shape3d_update_car_wheel_vertices_legacy(wheel_vertices, wheel_rotation_angle, wheel_compression_src, wheel_state_cache, wheel_vertex_offsets, wheel_center_points);
-    if (wheel_state_cache[4] != 0) {
+    if (wheel_state_cache[WHEEL_ROTATION_CACHE_SLOT] != 0) {
         sin_half_angle = sin_fast(wheel_rotation_angle / 2);
         cos_half_angle = cos_fast(wheel_rotation_angle / 2);
 
@@ -3666,7 +3761,7 @@ shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotat
             wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle)
                                   + wheel_center_points[1].z + rotated_component;
         }
-        wheel_state_cache[4] = wheel_rotation_angle;
+        wheel_state_cache[WHEEL_ROTATION_CACHE_SLOT] = wheel_rotation_angle;
     }
 
     for (j = 0; j < WHEEL_COUNT; j++) {
@@ -3693,12 +3788,16 @@ shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotat
 void
 shape3d_free_car_shapes() {
     if (car2resptr != 0) {
-        shape3d_update_car_wheel_vertices(&(game3dshapes[127].shape3d_verts[8]), 0,
+        shape3d_update_car_wheel_vertices(
+            &(game3dshapes[SHAPE3D_SLOT_OPPONENT_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]),
+            0,
                                           (short *)car_wheel_vertex_data, game_frame_pointer,
                                           oppcarshapevecs, &oppcarshapevec);
         mmgr_release((char *)car2resptr);
     }
-    shape3d_update_car_wheel_vertices(&(game3dshapes[126].shape3d_verts[8]), 0,
+    shape3d_update_car_wheel_vertices(
+        &(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]),
+        0,
                                       (short *)car_wheel_vertex_data, viewport_clipping_bounds,
                                       carshapevecs, &carshapevec);
     mmgr_free((char *)carresptr);
