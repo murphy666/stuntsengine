@@ -1524,7 +1524,7 @@ load_tracks_menu_shapes(void) {
                                    cursor_screen_y);
         }
 
-    loc_2AE73:
+    poll_loop:
         if (blink_timer > TRACK_CURSOR_BLINK_THRESHOLD) {
             mouse_draw_opaque_check();
             track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
@@ -1718,7 +1718,7 @@ load_tracks_menu_shapes(void) {
 
         if (input_code == 0) {
             /* No input - keep polling and blink cursor */
-            goto loc_2AE73;
+            goto poll_loop;
         }
 
         /* Delay handling for key repeat */
@@ -1812,13 +1812,13 @@ load_tracks_menu_shapes(void) {
 		 /*--------------------------------------------------------------*/
         if (input_code == 99 || input_code == 67) {
             /* 'C' or 'c' - Check track */
-            goto loc_2B3EA;
+            goto check_track;
         }
 
         if (input_code <= 99) {
             if (input_code == 13) {
                 /* Enter - Place tile or select from picker */
-                goto loc_2B49A;
+                goto place_tile;
             }
             if (input_code == 32) {
                 /* Space - Toggle picker mode */
@@ -1842,23 +1842,23 @@ load_tracks_menu_shapes(void) {
         /* Extended keys */
         if (input_code == 19200) {
             /* Left arrow */
-            goto loc_2BC8A;
+            goto move_cursor_left;
         }
         if (input_code == 18176) {
             /* Home */
-            goto loc_2BB46;
+            goto move_cursor_home;
         }
         if (input_code == 18432) {
             /* Up arrow */
-            goto loc_2BB82;
+            goto move_cursor_up;
         }
         if (input_code == 19712) {
             /* Right arrow */
-            goto loc_2BD20;
+            goto move_cursor_right;
         }
         if (input_code == 20480) {
             /* Down arrow */
-            goto loc_2BC06;
+            goto move_cursor_down;
         }
         if (input_code == 20992) {
             /* Insert - Toggle picker mode */
@@ -1893,7 +1893,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Track validation check (C key)
 		 /*--------------------------------------------------------------*/
-    loc_2B3EA:
+    check_track:
         si = track_setup();
         track_consume_dialog_click();
         ui_dialog_show_restext(
@@ -1922,7 +1922,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Enter key handler - Place tile or select element
 		 /*--------------------------------------------------------------*/
-    loc_2B49A:
+    place_tile:
         if (picker_mode != 0) {
             /* Picker mode - select element */
             if (picker_row < TRACK_PICKER_ROWS) {
@@ -2247,7 +2247,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Home key - Jump to top-left
 		 /*--------------------------------------------------------------*/
-    loc_2BB46:
+    move_cursor_home:
         if (picker_mode != 0) {
             picker_row = 0;
         }
@@ -2264,7 +2264,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Up arrow
 		 /*--------------------------------------------------------------*/
-    loc_2BB82:
+    move_cursor_up:
         if (picker_mode) {
             if (cursor_row > 0) {
                 last_place_col = TRACK_U8_INVALID;
@@ -2299,7 +2299,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Down arrow
 		 /*--------------------------------------------------------------*/
-    loc_2BC06: {
+    move_cursor_down: {
         unsigned char limit = picker_mode ? collision_response_code[picker_mode]
                                           : collision_response_code[0];
         if (picker_mode) {
@@ -2331,7 +2331,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Left arrow
 		 /*--------------------------------------------------------------*/
-    loc_2BC8A:
+    move_cursor_left:
         if (picker_mode != 0 && picker_row == 6) {
             /* Category row - previous category */
             if (current_category > 1)
@@ -2374,7 +2374,7 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
 		 * Right arrow
 		 /*--------------------------------------------------------------*/
-    loc_2BD20:
+    move_cursor_right:
         if (picker_mode != 0 && picker_row == 6) {
             /* Category row - next category */
             if (current_category < 10)
@@ -2437,23 +2437,6 @@ load_tracks_menu_shapes(void) {
 
 /* Extern globals (declared in data_game.h) */
 
-
-#pragma pack(push, 1)
-struct TRKOBJINFO_RAW {
-    uint8_t si_noOfBlocks;
-    uint8_t si_entryPoint;
-    uint8_t si_exitPoint;
-    uint8_t si_entryType;
-    uint8_t si_exitType;
-    uint8_t si_arrowType;
-    int16_t si_arrowOrient;
-    uint16_t si_cameraDataOffset;
-    uint8_t si_opp1;
-    uint8_t si_opp2;
-    uint8_t si_opp3;
-    uint8_t si_oppSpedCode;
-};
-#pragma pack(pop)
 
 /** @brief Trkobject raw entry.
  * @param elem Parameter `elem`.
@@ -2528,24 +2511,6 @@ static unsigned char
 trkobject_multitile_flag(unsigned char elem) {
     return trkobject_raw_entry(elem)[11];
 }
-
-#pragma pack(push, 1)
-struct TCOMP_ENTRY {
-    unsigned char tc_col;        /* +0 */
-    unsigned char tc_row;        /* +1 */
-    unsigned char tc_tileElem;   /* +2 */
-    unsigned char tc_subBlock;   /* +3 */
-    unsigned char tc_connStatus; /* +4 */
-    unsigned char tc_distCount;  /* +5 */
-    unsigned char tc_prevCol;    /* +6 */
-    unsigned char tc_prevRow;    /* +7 */
-    unsigned char tc_prevElem;   /* +8 */
-    unsigned char tc_prevSub;    /* +9 */
-    unsigned char tc_prevConn;   /* +A */
-    unsigned char tc_prevCode;   /* +B */
-    short tc_prevIdx;            /* +C */
-};
-#pragma pack(pop)
 
 /** @brief Track setup.
  * @return Function result.

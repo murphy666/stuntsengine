@@ -290,7 +290,6 @@ enum {
     STN_REPLAY_RENDER_LAG_MAX = 2
 };
 
-enum { STN_PERSIST_PATH_LEN = 82, STN_PERSIST_TRACKNAME_LEN = 9, STN_PERSIST_VERSION = 2 };
 
 static const char STN_PERSIST_CONFIG_FILE[] = "stunts.cfg";
 static const char STN_DEFAULT_TRACK_NAME[] = "DEFAULT";
@@ -315,19 +314,6 @@ char replay_file_path_buffer[82] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 char aDefault_1[10] = "DEFAULT";
-
-#pragma pack(push, 1)
-struct STN_PERSIST_CONFIG {
-    char magic[8];
-    unsigned short version;
-    struct GAMEINFO gameconfig;
-    char track_path[STN_PERSIST_PATH_LEN];
-    char replay_path[STN_PERSIST_PATH_LEN];
-    char mouse_mode;
-    char joystick_mode;
-    char video_scale;
-};
-#pragma pack(pop)
 
 /** @brief Check if the saved track file exists on disk
  * @return Non-zero if available, 0 otherwise
@@ -670,7 +656,7 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_rotate.x = track_angle;
     playerstate->car_rotate.y = 0;
     playerstate->car_rotate.z = 0;
-    playerstate->car_36MwhlAngle = 0;
+    playerstate->car_body_slip_angle = 0;
     playerstate->car_pseudoGravity = 0;
     playerstate->car_steeringAngle = 0;
     playerstate->car_is_braking = false;
@@ -685,12 +671,12 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_lastspeed = 0;
     playerstate->car_gearratio = simd->gear_ratios[1];
     playerstate->car_gearratioshr8 = playerstate->car_gearratio >> 8;
-    playerstate->car_knob_x = simd->knob_points[1].px;
-    playerstate->car_knob_x2 = playerstate->car_knob_x;
-    playerstate->car_knob_y = simd->knob_points[1].py;
-    playerstate->car_knob_y2 = playerstate->car_knob_y;
+    playerstate->car_gearknob_cur_x = simd->knob_points[1].px;
+    playerstate->car_gearknob_target_x = playerstate->car_gearknob_cur_x;
+    playerstate->car_gearknob_cur_y = simd->knob_points[1].py;
+    playerstate->car_gearknob_target_y = playerstate->car_gearknob_cur_y;
     playerstate->car_angle_z = 0;
-    playerstate->car_40MfrontWhlAngle = 0;
+    playerstate->car_front_wheel_angle = 0;
     playerstate->car_steering_residual = 0;
     playerstate->car_heading_angle = 0;
     playerstate->car_waypoint_seq_index = 0;
@@ -706,11 +692,11 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
 
     for (i = 0; i < 4; ++i) {
         playerstate->car_surfaceWhl[i] = 1;
-        playerstate->car_rc1[i] = 0;
-        playerstate->car_rc2[i] = 0;
+        playerstate->car_wheel_susp_ext[i] = 0;
+        playerstate->car_wheel_susp_compress[i] = 0;
         playerstate->car_rc3[i] = 0;
-        playerstate->car_rc4[i] = 0;
-        playerstate->car_rc5[i] = 0;
+        playerstate->car_wheel_susp_damp[i] = 0;
+        playerstate->car_wheel_susp_target[i] = 0;
 
         playerstate->car_whlWorldCrds1[i] = whlPos;
         playerstate->car_whlWorldCrds2[i] = whlPos;
@@ -766,7 +752,7 @@ init_game_state(short arg) {
         state.game_checkpoint_valid = true;
         state.game_frames_per_sec = 1;
         state.game_inputmode = 0;
-        state.game_3F6autoLoadEvalFlag = 0;
+        state.game_crash_eval_type = 0;
         state.game_frame_in_sec = 0;
         state.game_track_segment_working_index = 0;
         state.game_track_indices[0] = 0;
@@ -780,21 +766,21 @@ init_game_state(short arg) {
             state.game_obstacle_active[i] = 0;
         }
 
-        state.game_vec1[0].x
+        state.game_camera_pos[0].x
             = multiply_and_scale(sin_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
               + multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
               + ((short)startcol2 << STN_TRACK_CELL_SHIFT);
 
-        state.game_vec1[0].y = hillHeightConsts[hillFlag] + STN_TRACK_SPAWN_Y_OFFSET;
+        state.game_camera_pos[0].y = hillHeightConsts[hillFlag] + STN_TRACK_SPAWN_Y_OFFSET;
 
-        state.game_vec1[0].z
+        state.game_camera_pos[0].z
             = multiply_and_scale(cos_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
               + multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
               + trackpos[startrow2];
 
-        state.game_vec1[1] = state.game_vec1[0];
-        state.game_vec3 = state.game_vec1[0];
-        state.game_vec4 = state.game_vec1[0];
+        state.game_camera_pos[1] = state.game_camera_pos[0];
+        state.game_camera2_pos[0] = state.game_camera_pos[0];
+        state.game_camera2_pos[1] = state.game_camera_pos[0];
 
         state.game_travDist = 0;
         state.game_frame = 0;
@@ -945,7 +931,7 @@ update_gamestate() {
     }
 
     state.game_frame++;
-    if (state.game_3F6autoLoadEvalFlag != 0
+    if (state.game_crash_eval_type != 0
         && state.game_frame_in_sec < state.game_frames_per_sec) {
         state.game_frame_in_sec++;
         if (state.game_frame_in_sec == state.game_frames_per_sec && game_finish_state == 0) {
@@ -2142,7 +2128,7 @@ run_game(void) {
 
             if (idle_expired == 0) {
                 if (game_finish_state != 0) {
-                    if ((game_replay_mode != 0 || state.game_3F6autoLoadEvalFlag == 4)
+                    if ((game_replay_mode != 0 || state.game_crash_eval_type == 4)
                         && game_finish_state != 2) {
                         game_finish_state = 0;
                         game_replay_mode = 2;

@@ -56,6 +56,21 @@
 
 /* Global state — defined in src/stuntsengine.c */
 
+/* Persistent config on-disk layout */
+enum { STN_PERSIST_PATH_LEN = 82, STN_PERSIST_TRACKNAME_LEN = 9, STN_PERSIST_VERSION = 2 };
+#pragma pack(push, 1)
+struct STN_PERSIST_CONFIG {
+    char magic[8];
+    unsigned short version;
+    struct GAMEINFO gameconfig;
+    char track_path[STN_PERSIST_PATH_LEN];
+    char replay_path[STN_PERSIST_PATH_LEN];
+    char mouse_mode;
+    char joystick_mode;
+    char video_scale;
+};
+#pragma pack(pop)
+
 #ifdef STUNTS_IMPL
 #define _SE_
 #else

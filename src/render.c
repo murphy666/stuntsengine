@@ -953,7 +953,7 @@ no_wraparound:
             }
         }
     }
-    goto done2;
+    return (skybox_drawn = true);
 
 fill_sky:
     di = skybox_sky_color;
@@ -1079,7 +1079,6 @@ no_horizon:
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
-done2:
     skybox_drawn = true;
 done:
     return skybox_drawn;

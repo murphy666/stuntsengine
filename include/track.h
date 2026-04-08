@@ -65,4 +65,38 @@ void setup_aero_trackdata(void *carresptr, int is_opponent);
 /* BTO track helpers */
 int bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points);
 
+/* Track object info (packed on-disk layout) */
+#pragma pack(push, 1)
+struct TRKOBJINFO_RAW {
+    uint8_t si_noOfBlocks;
+    uint8_t si_entryPoint;
+    uint8_t si_exitPoint;
+    uint8_t si_entryType;
+    uint8_t si_exitType;
+    uint8_t si_arrowType;
+    int16_t si_arrowOrient;
+    uint16_t si_cameraDataOffset;
+    uint8_t si_opp1;
+    uint8_t si_opp2;
+    uint8_t si_opp3;
+    uint8_t si_oppSpedCode;
+};
+
+struct TCOMP_ENTRY {
+    unsigned char tc_col;        /* +0 */
+    unsigned char tc_row;        /* +1 */
+    unsigned char tc_tileElem;   /* +2 */
+    unsigned char tc_subBlock;   /* +3 */
+    unsigned char tc_connStatus; /* +4 */
+    unsigned char tc_distCount;  /* +5 */
+    unsigned char tc_prevCol;    /* +6 */
+    unsigned char tc_prevRow;    /* +7 */
+    unsigned char tc_prevElem;   /* +8 */
+    unsigned char tc_prevSub;    /* +9 */
+    unsigned char tc_prevConn;   /* +A */
+    unsigned char tc_prevCode;   /* +B */
+    short tc_prevIdx;            /* +C */
+};
+#pragma pack(pop)
+
 #endif /* TRACK_H */

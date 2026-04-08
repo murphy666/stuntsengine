@@ -571,9 +571,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         camera_pos.z = car_pos.z + temp_vec_b.z;
     }
     else if (cameramode == 1) {
-        camera_pos.x = state.game_vec1[(unsigned char)followOpponentFlag].x;
-        camera_pos.z = state.game_vec1[(unsigned char)followOpponentFlag].z;
-        camera_pos.y = state.game_vec1[(unsigned char)followOpponentFlag].y;
+        camera_pos.x = state.game_camera_pos[(unsigned char)followOpponentFlag].x;
+        camera_pos.z = state.game_camera_pos[(unsigned char)followOpponentFlag].z;
+        camera_pos.y = state.game_camera_pos[(unsigned char)followOpponentFlag].y;
     }
     else if (cameramode == 2) {
         temp_vec_a.x = 0;
@@ -1367,13 +1367,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                             && obstacle_slot + 2 == state.game_obstacle_status[di]) {
                             trk_object_entry = trkobj_entry(sceneshapes3,
                                                             state.game_obstacle_shape[di]);
-                            curtransshape_ptr->pos.x = (state.game_longs1[di] >> 6)
+                            curtransshape_ptr->pos.x = (state.game_debris_dx[di] >> 6)
                                                        + obstacle_world_pos[obstacle_slot * 3 + 0]
                                                        - camera_pos.x;
-                            curtransshape_ptr->pos.y = (state.game_longs2[di] >> 6)
+                            curtransshape_ptr->pos.y = (state.game_debris_dy[di] >> 6)
                                                        + obstacle_world_pos[obstacle_slot * 3 + 1]
                                                        - camera_pos.y;
-                            curtransshape_ptr->pos.z = (state.game_longs3[di] >> 6)
+                            curtransshape_ptr->pos.z = (state.game_debris_dz[di] >> 6)
                                                        + obstacle_world_pos[obstacle_slot * 3 + 2]
                                                        - camera_pos.z;
                             curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
@@ -1401,13 +1401,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         trk_object_entry = trkobj_entry(sceneshapes3,
                                                         state.game_obstacle_shape[di]);
                         curtransshape_ptr->pos.x
-                            = ((state.game_longs1[di] + state.playerstate.car_posWorld1.lx) >> 6)
+                            = ((state.game_debris_dx[di] + state.playerstate.car_posWorld1.lx) >> 6)
                               - camera_pos.x;
                         curtransshape_ptr->pos.y
-                            = ((state.game_longs2[di] + state.playerstate.car_posWorld1.ly) >> 6)
+                            = ((state.game_debris_dy[di] + state.playerstate.car_posWorld1.ly) >> 6)
                               - camera_pos.y;
                         curtransshape_ptr->pos.z
-                            = ((state.game_longs3[di] + state.playerstate.car_posWorld1.lz) >> 6)
+                            = ((state.game_debris_dz[di] + state.playerstate.car_posWorld1.lz) >> 6)
                               - camera_pos.z;
                         curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                         curtransshape_ptr->rectptr = &world_object_rect;
@@ -1435,7 +1435,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                 shape3d_update_car_wheel_vertices(
                     &game3dshapes[2772 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8],
-                    state.playerstate.car_steeringAngle, state.playerstate.car_rc2,
+                    state.playerstate.car_steeringAngle, state.playerstate.car_wheel_susp_compress,
                     viewport_clipping_bounds, carshapevecs, &carshapevec);
             }
 
@@ -1469,15 +1469,15 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                             if (state.game_obstacle_status[di] == 1) {
                                 trk_object_entry = trkobj_entry(sceneshapes3,
                                                                 state.game_obstacle_shape[di]);
-                                curtransshape_ptr->pos.x = ((state.game_longs1[di]
+                                curtransshape_ptr->pos.x = ((state.game_debris_dx[di]
                                                              + state.opponentstate.car_posWorld1.lx)
                                                             >> 6)
                                                            - camera_pos.x;
-                                curtransshape_ptr->pos.y = ((state.game_longs2[di]
+                                curtransshape_ptr->pos.y = ((state.game_debris_dy[di]
                                                              + state.opponentstate.car_posWorld1.ly)
                                                             >> 6)
                                                            - camera_pos.y;
-                                curtransshape_ptr->pos.z = ((state.game_longs3[di]
+                                curtransshape_ptr->pos.z = ((state.game_debris_dz[di]
                                                              + state.opponentstate.car_posWorld1.lz)
                                                             >> 6)
                                                            - camera_pos.z;
@@ -1511,7 +1511,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                     shape3d_update_car_wheel_vertices(
                         &game3dshapes[2794 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8],
-                        state.opponentstate.car_steeringAngle, state.opponentstate.car_rc2,
+                        state.opponentstate.car_steeringAngle, state.opponentstate.car_wheel_susp_compress,
                         game_frame_pointer, oppcarshapevecs, &oppcarshapevec);
                 }
 

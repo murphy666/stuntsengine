@@ -450,7 +450,7 @@ replay_capture_frame_input(int command) {
         si = 0;
         goto store_input;
     }
-    if (state.game_3F6autoLoadEvalFlag != 0) {
+    if (state.game_crash_eval_type != 0) {
         si = 0;
         goto store_input;
     }
@@ -644,10 +644,10 @@ update_follow_camera_vectors(void) {
         trackedCarCount = 2;
 
     for (si = 0; si < trackedCarCount; si++) {
-        /* copy game_vec1 -> game_vec3 for this player */
+        /* copy game_camera_pos -> game_camera2_pos for this car */
         {
-            struct VECTOR *src = &state.game_vec1[si];
-            struct VECTOR *dst = (&state.game_vec3) + si;
+            struct VECTOR *src = &state.game_camera_pos[si];
+            struct VECTOR *dst = &state.game_camera2_pos[si];
             dst->x = src->x;
             dst->y = src->y;
             dst->z = src->z;
@@ -698,7 +698,7 @@ update_follow_camera_vectors(void) {
         /* height adjustment */
         {
             int target_y = carPosY + GAMEMECH_FOLLOW_CAMERA_TARGET_HEIGHT_OFFSET;
-            struct VECTOR *vec1 = &state.game_vec1[si];
+            struct VECTOR *vec1 = &state.game_camera_pos[si];
 
             cameraYOffset = vec1->y - target_y;
             if (cameraYOffset != 0) {
@@ -713,7 +713,7 @@ update_follow_camera_vectors(void) {
 
         /* compute angle to target */
         {
-            struct VECTOR *vec1 = &state.game_vec1[si];
+            struct VECTOR *vec1 = &state.game_camera_pos[si];
             targetAngle = polarAngle(cameraTarget[2] - vec1->z, cameraTarget[0] - vec1->x);
 
             di = polarRadius2D(carPosZ - vec1->z, carPosX - vec1->x);
@@ -722,7 +722,7 @@ update_follow_camera_vectors(void) {
         /* move camera toward target if distance exceeds the follow threshold */
         if (di > GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD) {
             int move = di - GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD;
-            struct VECTOR *vec1 = &state.game_vec1[si];
+            struct VECTOR *vec1 = &state.game_camera_pos[si];
             if (framespersec == 20) {
                 if (move > GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20)
                     move = GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20;
@@ -962,8 +962,8 @@ setup_car_shapes(int command) {
         arrayIndex = (int)(char)screen_display_toggle_flag;
         if (wheel_slip_direction[arrayIndex] == state.playerstate.car_changing_gear) {
             screenSlot = arrayIndex * 2;
-            if (car_position_z_array[screenSlot / 2] == state.playerstate.car_knob_x
-                && car_position_y_array[screenSlot / 2] == state.playerstate.car_knob_y) {
+            if (car_position_z_array[screenSlot / 2] == state.playerstate.car_gearknob_cur_x
+                && car_position_y_array[screenSlot / 2] == state.playerstate.car_gearknob_cur_y) {
                 if (state.playerstate.car_fpsmul2 == 0)
                     goto do_steeringwheel;
                 if (wheel_slip_direction[arrayIndex] != 0)
@@ -977,8 +977,8 @@ setup_car_shapes(int command) {
         shape2d_draw_rle_copy_clipped_at(whlshapes[4], 0, 0); /* gbox */
 
         {
-            int kx = state.playerstate.car_knob_x;
-            int ky = state.playerstate.car_knob_y;
+            int kx = state.playerstate.car_gearknob_cur_x;
+            int ky = state.playerstate.car_gearknob_cur_y;
             arrayIndex = (int)(char)screen_display_toggle_flag * 2;
             car_position_z_array[arrayIndex / 2] = kx;
             car_position_y_array[arrayIndex / 2] = ky;
@@ -1916,7 +1916,7 @@ loop_game(int command, int context_value, int frame_value) {
             followOpponentFlag = false;
             game_replay_mode = 0;
             cameramode = 0;
-            state.game_3F6autoLoadEvalFlag = 0;
+            state.game_crash_eval_type = 0;
             state.game_frame_in_sec = 0;
             screen_shake_intensity = 0;
             loop_game(2, 3, 0);

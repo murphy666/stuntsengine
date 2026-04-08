@@ -771,58 +771,48 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
         transshapenumvertscopy = SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT;
     }
 
-    goto label_init_vertex_visibility_scan;
-
-label_init_vertex_visibility_scan:
     rect_clip_mask = RECT_CLIP_FULL_MASK;
     all_vertices_behind_near_plane = true;
     has_near_plane_vertex = false;
-    i = 0;
-    goto label_vertex_scan_loop;
 
-label_vertex_scan_increment:
-    i++;
-label_vertex_scan_loop:
-    if (transshapenumvertscopy > i)
-        goto label_transform_and_project_vertex;
-    if ((all_vertices_behind_near_plane
-         || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
-        && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
-        return -1;
+    for (i = 0; i < transshapenumvertscopy; i++) {
+        polyvertpointptrtab[i] = &cached_projected_points[i];
+        scratch_vector_a = transshapeverts[i];
+        if (select_rect_scale_preview != 0) {
+            scratch_vector_a.x /= 2;
+            scratch_vector_a.y /= 2;
+            scratch_vector_a.z /= 2;
+        }
+        mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
+        scratch_vector_b.x += shape_position_view.x;
+        scratch_vector_b.y += shape_position_view.y;
+        scratch_vector_b.z += shape_position_view.z;
+        cached_view_vertices[i] = scratch_vector_b;
+        if (scratch_vector_b.z < NEAR_PLANE_Z) {
+            vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
+            has_near_plane_vertex = true;
+            continue;
+        }
+        all_vertices_behind_near_plane = false;
+        vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_VISIBLE;
+        vector_to_point(&scratch_vector_b, polyvertpointptrtab[i]);
+        if (rect_clip_mask != 0) {
+            unsigned char rect_mask = rect_compare_point(polyvertpointptrtab[i]);
+            rect_clip_mask &= rect_mask;
+        }
+        if (rect_clip_mask == 0)
+            break; /* all clip bits cleared: proceed to primitive processing early */
     }
-    goto label_begin_primitive_processing;
 
-label_transform_and_project_vertex:
-    polyvertpointptrtab[i] = &cached_projected_points[i];
-    scratch_vector_a = transshapeverts[i];
-    if (select_rect_scale_preview != 0) {
-        scratch_vector_a.x /= 2;
-        scratch_vector_a.y /= 2;
-        scratch_vector_a.z /= 2;
+    if (i >= transshapenumvertscopy) {
+        /* Normal completion: apply visibility cull */
+        if ((all_vertices_behind_near_plane
+             || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
+            && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
+            return -1;
+        }
     }
-    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
-    scratch_vector_b.x += shape_position_view.x;
-    scratch_vector_b.y += shape_position_view.y;
-    scratch_vector_b.z += shape_position_view.z;
-    cached_view_vertices[i] = scratch_vector_b;
-    if (scratch_vector_b.z < NEAR_PLANE_Z) {
-        vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-        has_near_plane_vertex = true;
-        goto label_vertex_scan_increment;
-    }
-    all_vertices_behind_near_plane = false;
-    vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_VISIBLE;
-    vector_to_point(&scratch_vector_b, polyvertpointptrtab[i]);
-    if (rect_clip_mask != 0) {
-        unsigned char rect_mask = rect_compare_point(polyvertpointptrtab[i]);
-        rect_clip_mask &= rect_mask;
-    }
-    if (rect_clip_mask != 0) {
-        goto label_vertex_scan_increment;
-    }
-    goto label_begin_primitive_processing;
 
-label_begin_primitive_processing:
     transshapeprimitives = (unsigned char *)transformed_shape->shapeptr->shape3d_primitives;
 
 label_primitive_loop_next:

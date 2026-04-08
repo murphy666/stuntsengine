@@ -640,7 +640,7 @@ after_terrain:
     }
 
     if (tileElement == 0) {
-        goto code_bto_blank;
+        goto process_terrain;
     }
 
     /** @brief Handling.
@@ -817,7 +817,7 @@ compute_elem_crds:
 
     /* Dispatch on physical model (0..74 = 74) */
     if (physModel > BTO_PHYS_MODEL_MAX)
-        goto code_bto_blank;
+        goto process_terrain;
 
     switch (physModel) {
 
@@ -837,9 +837,9 @@ compute_elem_crds:
     case_1_road:
     case BTO_PHYSMODEL_ROAD: /* code_bto_road */
         if (absElemX < BTO_ROAD_HALF_WIDTH) {
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_SHARP_CORNER: /* code_bto_sCorner: sharp corner */
     {
@@ -848,9 +848,9 @@ compute_elem_crds:
         turnRadius = polarRadius2D(pz_adj, px_adj);
         if (turnRadius > BTO_TURN_SMALL_INNER) {
             if (turnRadius < BTO_TURN_SMALL_OUTER)
-                goto set_pavement;
+                { current_surf_type = surfaceType; break; }
         }
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_LARGE_CORNER: /* code_bto_lCorner: large corner */
@@ -860,9 +860,9 @@ compute_elem_crds:
         turnRadius = polarRadius2D(pz_adj, px_adj);
         if (turnRadius > BTO_TURN_LARGE_INNER) {
             if (turnRadius < BTO_TURN_LARGE_OUTER)
-                goto set_pavement;
+                { current_surf_type = surfaceType; break; }
         }
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_CHICANE_RL: /* code_bto_chicaneRL */
@@ -873,7 +873,16 @@ compute_elem_crds:
             elemPos.z = -elemPos.z;
             elemPos.x = -elemPos.x;
         }
-        goto do_lCorner;
+        {
+            int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
+            int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
+            turnRadius = polarRadius2D(pz_adj, px_adj);
+            if (turnRadius > BTO_TURN_LARGE_INNER) {
+                if (turnRadius < BTO_TURN_LARGE_OUTER)
+                    { current_surf_type = surfaceType; break; }
+            }
+            break;
+        }
     }
 
     case BTO_PHYSMODEL_CHICANE_LR: /* code_bto_chicaneLR */
@@ -885,38 +894,64 @@ compute_elem_crds:
                 elemPos.z = -elemPos.z;
                 elemPos.x = -elemPos.x;
             }
-            goto do_lCorner;
+            {
+                int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
+                int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
+                turnRadius = polarRadius2D(pz_adj, px_adj);
+                if (turnRadius > BTO_TURN_LARGE_INNER) {
+                    if (turnRadius < BTO_TURN_LARGE_OUTER)
+                        { current_surf_type = surfaceType; break; }
+                }
+                break;
+            }
         }
 
     case BTO_PHYSMODEL_SHARP_SPLIT_A: /* code_bto_sSplitA: sharp split A */
         if (absElemX < BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
-        /* fall through to sCorner */
-        goto do_sCorner;
+            { current_surf_type = surfaceType; break; }
+        {
+            int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
+            int px_adj = elemPos.x + BTO_TURN_OFFSET_SMALL;
+            turnRadius = polarRadius2D(pz_adj, px_adj);
+            if (turnRadius > BTO_TURN_SMALL_INNER) {
+                if (turnRadius < BTO_TURN_SMALL_OUTER)
+                    { current_surf_type = surfaceType; break; }
+            }
+            break;
+        }
 
     case BTO_PHYSMODEL_SHARP_SPLIT_B: /* code_bto_sSplitB: sharp split B */
         if (absElemX < BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
             int px_adj = BTO_TURN_OFFSET_SMALL - elemPos.x;
             turnRadius = polarRadius2D(pz_adj, px_adj);
             if (turnRadius > BTO_TURN_SMALL_INNER) {
                 if (turnRadius < BTO_TURN_SMALL_OUTER)
-                    goto set_pavement;
+                    { current_surf_type = surfaceType; break; }
             }
-            goto code_bto_blank;
+            break;
         }
 
     case BTO_PHYSMODEL_LARGE_SPLIT_A: /* code_bto_lSplitA: large split A */
         if (elemPos.x >= BTO_TURN_SMALL_INNER && elemPos.x <= BTO_TURN_SMALL_OUTER) {
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         }
-        goto do_lCorner;
+        {
+            int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
+            int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
+            turnRadius = polarRadius2D(pz_adj, px_adj);
+            if (turnRadius > BTO_TURN_LARGE_INNER) {
+                if (turnRadius < BTO_TURN_LARGE_OUTER)
+                    { current_surf_type = surfaceType; break; }
+            }
+            break;
+        }
 
     case BTO_PHYSMODEL_LARGE_SPLIT_B: /* code_bto_lSplitB: large split B */
         if (elemPos.x >= -BTO_TURN_SMALL_OUTER && elemPos.x <= -BTO_TURN_SMALL_INNER) {
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         }
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
@@ -924,9 +959,9 @@ compute_elem_crds:
             turnRadius = polarRadius2D(pz_adj, px_adj);
             if (turnRadius > BTO_TURN_LARGE_INNER) {
                 if (turnRadius < BTO_TURN_LARGE_OUTER)
-                    goto set_pavement;
+                    { current_surf_type = surfaceType; break; }
             }
-            goto code_bto_blank;
+            break;
         }
 
     case BTO_PHYSMODEL_HIGHWAY_ENTRANCE: /* code_bto_highEntrance: highway entrance */
@@ -962,13 +997,13 @@ compute_elem_crds:
 
         /* Check if position is between inner and outer bounds */
         if (highwayLateralDistance > highwayInnerBoundX && highwayLateralDistance < tempValue22) {
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         }
 
         if (elemPos.z < 0)
-            goto code_bto_blank;
+            break;
         if (highwayLateralDistance > BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
 
         planindex = BTO_PLAN_ROAD;
         goto highEntrance_wallCheck;
@@ -976,9 +1011,9 @@ compute_elem_crds:
 
     case BTO_PHYSMODEL_HIGHWAY: /* code_bto_highway */
         if (absElemX > BTO_HIGHWAY_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
         if (absElemX > BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
 
         planindex = BTO_PLAN_ROAD;
         if (nextElemPos.x <= BTO_NEG_ROAD_HALF_WIDTH)
@@ -994,32 +1029,32 @@ compute_elem_crds:
         /* z < 334 */
         if (nextElemPos.x >= 0) {
             wallindex = BTO_WALLIDX_HIGHWAY_LEFT;
-            goto code_bto_blank;
+            break;
         }
         wallindex = BTO_WALLIDX_HIGHWAY_RIGHT;
-        goto code_bto_blank;
+        break;
 
     highEntr_checkRight:
         if (nextElemPos.x < BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
         wallindex = BTO_WALLIDX_HIGHWAY_EXIT;
-        goto code_bto_blank;
+        break;
 
     highway_wallBC:
         wallindex = BTO_WALLIDX_HIGHWAY_CENTER;
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_CROSSROAD: /* code_bto_crossroad */
         if (absElemX < BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
+            { current_surf_type = surfaceType; break; }
         if (absElemZ < BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
-        goto code_bto_blank;
+            { current_surf_type = surfaceType; break; }
+        break;
 
     case BTO_PHYSMODEL_UNUSED_13: /* blank */
     case BTO_PHYSMODEL_UNUSED_14: /* blank */
     case BTO_PHYSMODEL_UNUSED_15: /* blank */
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_RAMP: /* code_bto_ramp */
         if (elemPos.z > 0) {
@@ -1043,46 +1078,46 @@ compute_elem_crds:
             planindex = BTO_PLAN_RAMP;
             current_surf_type = surfaceType;
             if (wallindex != BTO_WALL_NONE)
-                goto code_bto_blank;
+                break;
 
             if (elemPos.z < 0)
-                goto code_bto_blank;
+                break;
             if (absElemX < BTO_ROAD_HALF_WIDTH)
-                goto code_bto_blank;
+                break;
 
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             elRdWallRelated = BTO_ELRD_WALL_SHORT;
             if (elemPos.x < 0) {
                 wallindex = BTO_WALLIDX_SIDE_LEFT;
-                goto code_bto_blank;
+                break;
             }
             wallindex = BTO_WALLIDX_SIDE_RIGHT;
-            goto code_bto_blank;
+            break;
         }
 
         /* absNextX >= road half-width */
         if (!track_object_render_enabled)
-            goto code_bto_blank;
+            break;
         if (absElemX > BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
 
         planindex = BTO_PLAN_RAMP;
         if (wallindex != BTO_WALL_NONE)
-            goto code_bto_blank;
+            break;
 
         wallOrientationOffset = BTO_WALL_ORIENT_OFFSET;
         if (elemPos.x < 0) {
             wallindex = BTO_WALLIDX_SIDE_LEFT;
-            goto code_bto_blank;
+            break;
         }
         wallindex = BTO_WALLIDX_SIDE_RIGHT;
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_ELEVATED_ROAD: /* code_bto_elevRoad */
     case BTO_PHYSMODEL_ELEVATED_SPAN: /* code_bto_elevRoad (elevated span) */
         if (world_pos->y - terrainHeight <= BTO_ELEVATED_MIN_CLEARANCE) {
-            goto code_bto_blank;
+            break;
         }
         track_object_render_enabled = false;
         goto solidRoad_entry;
@@ -1103,36 +1138,36 @@ compute_elem_crds:
                 }
             }
             if (absElemX < BTO_ROAD_HALF_WIDTH)
-                goto code_bto_blank;
+                break;
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             if (elemPos.x < 0) {
                 wallindex = BTO_WALLIDX_SIDE_LEFT;
-                goto code_bto_blank;
+                break;
             }
             wallindex = BTO_WALLIDX_SIDE_RIGHT;
-            goto code_bto_blank;
+            break;
         }
 
         /* absNextX > road half-width */
         if (!track_object_render_enabled)
-            goto code_bto_blank;
+            break;
         if (absElemX > BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
 
         planindex = BTO_PLAN_SOLID_ROAD;
         wallHeight = BTO_WALL_HEIGHT_RAIL;
         wallOrientationOffset = BTO_WALL_ORIENT_OFFSET;
         if (nextElemPos.x >= 0) {
             wallindex = BTO_WALLIDX_SIDE_RIGHT;
-            goto code_bto_blank;
+            break;
         }
         wallindex = BTO_WALLIDX_SIDE_LEFT;
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_ELEVATED_CORNER: /* code_bto_elevCorner */
         if (world_pos->y - terrainHeight <= BTO_ELEVATED_MIN_CLEARANCE) {
-            goto code_bto_blank;
+            break;
         }
         {
             int currentPzAdj = elemPos.z + BTO_TURN_OFFSET_LARGE;
@@ -1140,9 +1175,9 @@ compute_elem_crds:
             int currentTurnRadius = polarRadius2D(currentPxAdj, currentPzAdj)
                                     - BTO_TURN_RADIUS_BASE_LARGE;
             if (currentTurnRadius <= BTO_ELEVCORNER_RADIUS_MIN)
-                goto code_bto_blank;
+                break;
             if (currentTurnRadius >= BTO_ELEVCORNER_RADIUS_MAX)
-                goto code_bto_blank;
+                break;
 
             current_surf_type = surfaceType;
             planindex = BTO_PLAN_SOLID_ROAD;
@@ -1150,7 +1185,7 @@ compute_elem_crds:
 
             if (currentTurnRadius >= BTO_ELEVCORNER_WALL_FREE_MIN
                 && currentTurnRadius <= BTO_ELEVCORNER_WALL_FREE_MAX) {
-                goto code_bto_blank;
+                break;
             }
 
             /* Compute wall index from polar angle */
@@ -1171,7 +1206,7 @@ compute_elem_crds:
                 else {
                     wallindex = angle + BTO_WALLIDX_ELEVCORNER_OUTER;
                 }
-                goto code_bto_blank;
+                break;
             }
         }
 
@@ -1181,8 +1216,8 @@ compute_elem_crds:
             goto solidRoad_entry;
         }
         if (absElemZ <= BTO_ROAD_HALF_WIDTH)
-            goto set_pavement;
-        goto code_bto_blank;
+            { current_surf_type = surfaceType; break; }
+        break;
 
     case BTO_PHYSMODEL_BANK_ENTRANCE_B: /* code_bto_bankEntranceB */
         bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_B;
@@ -1197,7 +1232,7 @@ compute_elem_crds:
 
     bankEntrance_common:
         if (absElemX > BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
 
         if (bankEntrySegmentIndex == 0) {
             if (nextElemPos.x <= BTO_NEG_ROAD_HALF_WIDTH) {
@@ -1221,11 +1256,11 @@ compute_elem_crds:
 
         if (elemPos.z < BTO_BANK_ENTRY_Z_MIN) {
             planindex = bankEntryPlanBase;
-            goto code_bto_blank;
+            break;
         }
         if (elemPos.z >= BTO_BANK_ENTRY_Z_SEG_4) {
             planindex = bankEntryPlanBase + 9;
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_1) {
@@ -1260,21 +1295,21 @@ compute_elem_crds:
         if (tempValue22 > 0) {
             planindex++;
         }
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_BANK_ROAD: /* code_bto_bankRoad */
         if (absElemX > BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
         current_surf_type = surfaceType;
         planindex = BTO_PLAN_BANK_ROAD;
         if (nextElemPos.x < BTO_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_WALL_HEIGHT_RAIL;
         elRdWallRelated = BTO_ELRD_WALL_SHORT;
         wallOrientationOffset = BTO_WALL_ORIENT_OFFSET;
         wallindex = BTO_WALLIDX_SIDE_RIGHT;
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_BANK_CORNER: /* code_bto_bankCorner */
     {
@@ -1282,9 +1317,9 @@ compute_elem_crds:
         int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
         turnRadius = polarRadius2D(px_adj, pz_adj) - BTO_TURN_RADIUS_BASE_LARGE;
         if (turnRadius <= BTO_BANK_CORNER_RADIUS_MIN)
-            goto code_bto_blank;
+            break;
         if (turnRadius >= BTO_BANK_CORNER_RADIUS_MAX)
-            goto code_bto_blank;
+            break;
 
         {
             int angle = polarAngle(px_adj, pz_adj);
@@ -1301,7 +1336,7 @@ compute_elem_crds:
             current_surf_type = surfaceType;
 
             if (turnRadius <= BTO_BANK_CORNER_WALL_MIN)
-                goto code_bto_blank;
+                break;
 
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             elRdWallRelated = BTO_ELRD_WALL_SHORT;
@@ -1310,7 +1345,7 @@ compute_elem_crds:
         }
     }
         track_object_render_enabled = false;
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_LOOP: /* code_bto_loop */
     {
@@ -1358,9 +1393,9 @@ compute_elem_crds:
             di = si;
 
             if (loopSurface_XBounds0[di] > effectiveX)
-                goto code_bto_blank;
+                break;
             if (loopSurface_XBounds1[di] + BTO_LOOP_X_WIDTH < effectiveX)
-                goto code_bto_blank;
+                break;
 
             if (loopSurface_XBounds1[di] < effectiveX) {
                 if (loopSurface_XBounds0[di] + BTO_LOOP_X_WIDTH > effectiveX) {
@@ -1378,15 +1413,15 @@ compute_elem_crds:
             }
 
             if (tempValue3C >= effectiveX)
-                goto code_bto_blank;
+                break;
             if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
-                goto code_bto_blank;
+                break;
 
         loopSurface_setplan:
             planindex = loopPlanBase + si;
             current_surf_type = surfaceType;
             track_object_render_enabled = false;
-            goto code_bto_blank;
+            break;
         }
 
         /** @brief Top.
@@ -1455,10 +1490,10 @@ compute_elem_crds:
         }
 
         if (effectiveX < loopBaseInnerBoundX)
-            goto code_bto_blank;
+            break;
         if (effectiveX <= tempValue22)
-            goto set_pavement;
-        goto code_bto_blank;
+            { current_surf_type = surfaceType; break; }
+        break;
 
     case BTO_PHYSMODEL_TUNNEL: /* code_bto_tunnel */
     {
@@ -1468,10 +1503,10 @@ compute_elem_crds:
         if (posY >= BTO_TUNNEL_INTERIOR_Y || nextY >= BTO_TUNNEL_INTERIOR_Y) {
             /* Above tunnel */
             if (absElemX >= BTO_TUNNEL_WALL_MAX_X)
-                goto code_bto_blank;
+                break;
             current_surf_type = surfaceType;
             planindex = BTO_PLAN_TUNNEL_TOP;
-            goto code_bto_blank;
+            break;
         }
 
         /* Inside tunnel */
@@ -1484,47 +1519,47 @@ compute_elem_crds:
             wallHeight = BTO_TUNNEL_INTERIOR_Y;
             if (nextElemPos.z <= BTO_TUNNEL_FRONT_WALL_Z) {
                 wallindex = BTO_WALLIDX_TUNNEL_FRONT;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.z >= BTO_TURN_OFFSET_SMALL) {
                 wallindex = BTO_WALLIDX_TUNNEL_REAR;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.x <= BTO_TUNNEL_WALL_MIN_X) {
                 wallindex = BTO_WALLIDX_TUNNEL_RIGHT_INNER;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.x >= BTO_TUNNEL_WALL_MAX_X) {
                 wallindex = BTO_WALLIDX_TUNNEL_RIGHT_OUTER;
-                goto code_bto_blank;
+                break;
             }
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.x > BTO_NEG_ROAD_HALF_WIDTH)
-            goto code_bto_blank;
+            break;
         if (elemPos.x < BTO_TUNNEL_WALL_MIN_NEG_X)
-            goto code_bto_blank;
+            break;
 
         /* Left wall zone */
         wallHeight = BTO_TUNNEL_INTERIOR_Y;
         if (nextElemPos.z <= BTO_TUNNEL_FRONT_WALL_Z) {
             wallindex = BTO_WALLIDX_TUNNEL_FRONT;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_TURN_OFFSET_SMALL) {
             wallindex = BTO_WALLIDX_TUNNEL_REAR;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_NEG_ROAD_HALF_WIDTH) {
             wallindex = BTO_WALLIDX_TUNNEL_LEFT_INNER;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_TUNNEL_WALL_MIN_NEG_X) {
             wallindex = BTO_WALLIDX_TUNNEL_LEFT_OUTER;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_PIPE_ENTRANCE: /* code_bto_pipeEntrance */
@@ -1535,23 +1570,23 @@ compute_elem_crds:
             wallHeight = BTO_HALFPIPE_UPPER_Y;
             if (nextElemPos.x > 0) {
                 wallindex = BTO_WALLIDX_PIPE_ENTR_RIGHT;
-                goto code_bto_blank;
+                break;
             }
             wallindex = BTO_WALLIDX_PIPE_ENTR_LEFT;
-            goto code_bto_blank;
+            break;
         }
 
         if (absElemX >= BTO_PIPE_ENTR_SIDE_MIN_X)
-            goto code_bto_blank;
+            break;
 
         if (world_pos->y - terrainHeight >= BTO_PIPE_ENTR_MAX_Y)
-            goto code_bto_blank;
+            break;
 
         current_surf_type = surfaceType;
 
         if (absElemX < BTO_PIPE_NEAR_CENTER_X) {
             planindex = BTO_PLAN_PIPE_ENTR_CENTER;
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.x < BTO_PIPE_TRI_CENTER_LEFT) {
@@ -1587,9 +1622,9 @@ compute_elem_crds:
         }
         if (tempValue22 < 0) {
             planindex++;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
     }
     }
 
@@ -1608,17 +1643,17 @@ compute_elem_crds:
             wallHeight = BTO_HALFPIPE_UPPER_Y;
             if (nextElemPos.x > 0) {
                 wallindex = BTO_WALLIDX_PIPE_RIGHT;
-                goto code_bto_blank;
+                break;
             }
             wallindex = BTO_WALLIDX_PIPE_LEFT;
-            goto code_bto_blank;
+            break;
         }
 
         if (absElemX >= BTO_PIPE_ENTR_SIDE_MAX_X)
-            goto code_bto_blank;
+            break;
 
         if (world_pos->y - terrainHeight >= BTO_HALFPIPE_MAX_Y)
-            goto code_bto_blank;
+            break;
 
         if (absElemX < BTO_HALFPIPE_SURF_LIMIT_X) {
             current_surf_type = surfaceType;
@@ -1638,23 +1673,23 @@ compute_elem_crds:
             planindex = BTO_PLAN_HALFPIPE_FLOOR;
             if (nextElemPos.z < BTO_HALFPIPE_FLOOR_FRONT_Z) {
                 wallindex = BTO_WALLIDX_HALFPIPE_FRONT;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.z >= BTO_HALFPIPE_FLOOR_REAR_Z) {
                 wallindex = BTO_WALLIDX_HALFPIPE_REAR;
-                goto code_bto_blank;
+                break;
             }
-            goto code_bto_blank;
+            break;
         }
 
         /* Height > 88 and below center? */
         if (world_pos->y - terrainHeight > BTO_HALFPIPE_LOWER_Y && pipeUpperSectionFlag == 0) {
             if (elemPos.x < 0) {
                 planindex = BTO_PLAN_PIPE_LOWER_LEFT;
-                goto code_bto_blank;
+                break;
             }
             planindex = BTO_PLAN_PIPE_LOWER_RIGHT;
-            goto code_bto_blank;
+            break;
         }
 
         /* Pipe section selection */
@@ -1665,7 +1700,7 @@ compute_elem_crds:
             else {
                 planindex = BTO_PLAN_PIPE_BOTTOM_CENTER;
             }
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.x < BTO_PIPE_TRI_CENTER_LEFT) {
@@ -1675,7 +1710,7 @@ compute_elem_crds:
             else {
                 planindex = BTO_PLAN_PIPE_BOTTOM_LEFT_OUTER;
             }
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.x < 0) {
@@ -1685,7 +1720,7 @@ compute_elem_crds:
             else {
                 planindex = BTO_PLAN_PIPE_BOTTOM_LEFT_INNER;
             }
-            goto code_bto_blank;
+            break;
         }
 
         if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
@@ -1695,7 +1730,7 @@ compute_elem_crds:
             else {
                 planindex = BTO_PLAN_PIPE_BOTTOM_RIGHT_OUTER;
             }
-            goto code_bto_blank;
+            break;
         }
 
         if (pipeUpperSectionFlag != 0) {
@@ -1704,7 +1739,7 @@ compute_elem_crds:
         else {
             planindex = BTO_PLAN_PIPE_BOTTOM_RIGHT_INNER;
         }
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_CORKSCREW_UD_LH: /* code_bto_corkUdLH: cork u/d A */
@@ -1728,12 +1763,12 @@ compute_elem_crds:
             if (world_pos->y - terrainHeight < BTO_LOOP_Z_CLAMP_MARGIN) {
                 if (corkLateralCoord > 0) {
                     if (corkLateralCoord >= BTO_TURN_SMALL_OUTER)
-                        goto code_bto_blank;
+                        break;
                     if (corkLateralCoord <= BTO_TURN_SMALL_INNER)
-                        goto code_bto_blank;
+                        break;
                     current_surf_type = surfaceType;
                     planindex = tempValue22;
-                    goto code_bto_blank;
+                    break;
                 }
             }
         }
@@ -1753,7 +1788,7 @@ compute_elem_crds:
                     current_surf_type = surfaceType;
                     planindex = tempValue22 + BTO_CORK_EXIT_PLAN_OFFSET;
                     track_object_render_enabled = false;
-                    goto code_bto_blank;
+                    break;
                 }
             }
         }
@@ -1761,9 +1796,9 @@ compute_elem_crds:
         /* Main cork spiral region */
         turnRadius = polarRadius2D(elemPos.z, corkLateralCoord);
         if (turnRadius <= BTO_CORK_RADIUS_MIN)
-            goto code_bto_blank;
+            break;
         if (turnRadius >= BTO_CORK_RADIUS_MAX)
-            goto code_bto_blank;
+            break;
 
         {
             int angle = polarAngle(elemPos.z, corkLateralCoord);
@@ -1781,14 +1816,14 @@ compute_elem_crds:
             if (turnRadius - BTO_CORK_RADIUS_MID > BTO_CORK_INNER_WALL_DELTA) {
                 ax = corkInnerWallBase;
                 wallindex = ax + si;
-                goto code_bto_blank;
+                break;
             }
             if (turnRadius - BTO_CORK_RADIUS_MID < BTO_CORK_OUTER_WALL_DELTA) {
                 ax = corkOuterWallBase;
                 wallindex = ax + si;
-                goto code_bto_blank;
+                break;
             }
-            goto code_bto_blank;
+            break;
         }
 
     case BTO_PHYSMODEL_SLALOM: /* code_bto_slalom */
@@ -1802,61 +1837,61 @@ compute_elem_crds:
             wallHeight = BTO_WALL_HEIGHT_RAIL;
             if (nextElemPos.z <= BTO_SLALOM_BLOCK1_MIN_Z) {
                 wallindex = BTO_WALLIDX_SLALOM_B1_NZ;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.z > BTO_SLALOM_BLOCK1_MAX_Z) {
                 wallindex = BTO_WALLIDX_SLALOM_B1_PZ;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.x < BTO_SLALOM_BLOCK1_MIN_X) {
                 wallindex = BTO_WALLIDX_SLALOM_B1_NX;
-                goto code_bto_blank;
+                break;
             }
             if (nextElemPos.x > BTO_SLALOM_BLOCK1_MAX_X) {
                 wallindex = BTO_WALLIDX_SLALOM_B1_PX;
-                goto code_bto_blank;
+                break;
             }
-            goto code_bto_blank;
+            break;
         }
 
         /* Second slalom block test: x in [-97, -23], z in (241, 271) */
         if (elemPos.x > BTO_SLALOM_BLOCK2_MAX_X)
-            goto code_bto_blank;
+            break;
         if (elemPos.x < BTO_SLALOM_BLOCK2_MIN_X)
-            goto code_bto_blank;
+            break;
         if (elemPos.z >= BTO_SLALOM_BLOCK2_MAX_Z)
-            goto code_bto_blank;
+            break;
         if (elemPos.z <= BTO_SLALOM_BLOCK2_MIN_Z)
-            goto code_bto_blank;
+            break;
 
         wallHeight = BTO_WALL_HEIGHT_RAIL;
         if (nextElemPos.z > BTO_SLALOM_BLOCK2_MAX_Z) {
             wallindex = BTO_WALLIDX_SLALOM_B2_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z < (short)BTO_SLALOM_BLOCK2_MIN_Z) {
             wallindex = BTO_WALLIDX_SLALOM_B2_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x > BTO_SLALOM_BLOCK2_MAX_X) {
             wallindex = BTO_WALLIDX_SLALOM_B2_PX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x < BTO_SLALOM_BLOCK2_MIN_X) {
             wallindex = BTO_WALLIDX_SLALOM_B2_NX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_CORKSCREW_LR: /* code_bto_corkLr: cork left/right */
     {
         int corkUpperSectionFlag;
 
         if (absElemX >= BTO_CORKLR_MAX_X)
-            goto code_bto_blank;
+            break;
 
         if (world_pos->y - terrainHeight >= BTO_HALFPIPE_MAX_Y)
-            goto code_bto_blank;
+            break;
 
         current_surf_type = surfaceType;
 
@@ -1935,15 +1970,15 @@ compute_elem_crds:
     corkLr_noPlan:
 
         if (planindex != 0)
-            goto code_bto_blank;
+            break;
 
         if (absElemZ >= BTO_TURN_OFFSET_SMALL)
-            goto code_bto_blank;
+            break;
 
         wallindex = BTO_CORKLR_WALL_INDEX;
         corkFlag = true;
         wallHeight = BTO_CORKLR_WALL_HEIGHT;
-        goto code_bto_blank;
+        break;
     }
 
     case BTO_PHYSMODEL_UNUSED_36: /* blank */
@@ -1974,195 +2009,168 @@ compute_elem_crds:
     case BTO_PHYSMODEL_UNUSED_61: /* blank */
     case BTO_PHYSMODEL_UNUSED_62: /* blank */
     case BTO_PHYSMODEL_UNUSED_63: /* blank (empty) */
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_BARN: /* code_bto_barn */
         if (absElemX > BTO_BUILDING_BARN_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_BARN_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_BARN_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_BARN_WALL_NZ) {
             wallindex = BTO_WALLIDX_BARN_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_BARN_HALF_SIZE) {
             wallindex = BTO_WALLIDX_BARN_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_BARN_HALF_SIZE) {
             wallindex = BTO_WALLIDX_BARN_PX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_BARN_WALL_NZ) {
             wallindex = BTO_WALLIDX_BARN_NX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_GAS_STATION: /* code_bto_gasStation */
         if (elemPos.x < BTO_BUILDING_GAS_MIN_X)
-            goto code_bto_blank;
+            break;
         if (elemPos.x > BTO_BUILDING_GAS_MAX_X)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_GAS_HALF_Z)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_GAS_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_GAS_NZ) {
             wallindex = BTO_WALLIDX_GAS_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_GAS_HALF_Z) {
             wallindex = BTO_WALLIDX_GAS_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_GAS_MIN_X) {
             wallindex = BTO_WALLIDX_GAS_NX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_GAS_MAX_X) {
             wallindex = BTO_WALLIDX_GAS_PX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_JOES_DINER: /* code_bto_joes */
         if (absElemX > BTO_BUILDING_JOES_HALF_X)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_JOES_HALF_Z)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_JOES_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_JOES_NZ) {
             wallindex = BTO_WALLIDX_JOES_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_JOES_HALF_Z) {
             wallindex = BTO_WALLIDX_JOES_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_JOES_NX) {
             wallindex = BTO_WALLIDX_JOES_NX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_JOES_HALF_X) {
             wallindex = BTO_WALLIDX_JOES_PX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_OFFICE: /* code_bto_office */
         if (absElemX > BTO_BUILDING_OFFICE_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_OFFICE_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_OFFICE_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_OFFICE_NZ) {
             wallindex = BTO_WALLIDX_OFFICE_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_OFFICE_HALF_SIZE) {
             wallindex = BTO_WALLIDX_OFFICE_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_OFFICE_NZ) {
             wallindex = BTO_WALLIDX_OFFICE_NX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_OFFICE_HALF_SIZE) {
             wallindex = BTO_WALLIDX_OFFICE_PX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_WINDMILL: /* code_bto_windmill */
         if (absElemX > BTO_BUILDING_WINDMILL_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_WINDMILL_HALF_SIZE)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_WINDMILL_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_WINDMILL_NZ) {
             wallindex = BTO_WALLIDX_WINDMILL_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_WINDMILL_HALF_SIZE) {
             wallindex = BTO_WALLIDX_WINDMILL_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_WINDMILL_NZ) {
             wallindex = BTO_WALLIDX_WINDMILL_NX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_WINDMILL_HALF_SIZE) {
             wallindex = BTO_WALLIDX_WINDMILL_PX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_SHIP: /* code_bto_ship */
         if (elemPos.x < BTO_BUILDING_SHIP_MIN_X)
-            goto code_bto_blank;
+            break;
         if (elemPos.x > BTO_BUILDING_SHIP_MAX_X)
-            goto code_bto_blank;
+            break;
         if (absElemZ > BTO_BUILDING_SHIP_HALF_Z)
-            goto code_bto_blank;
+            break;
         wallHeight = BTO_BUILDING_SHIP_HEIGHT;
         if (nextElemPos.z <= BTO_BUILDING_SHIP_NZ) {
             wallindex = BTO_WALLIDX_SHIP_NZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.z >= BTO_BUILDING_SHIP_HALF_Z) {
             wallindex = BTO_WALLIDX_SHIP_PZ;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x <= BTO_BUILDING_SHIP_MIN_X) {
             wallindex = BTO_WALLIDX_SHIP_NX;
-            goto code_bto_blank;
+            break;
         }
         if (nextElemPos.x >= BTO_BUILDING_SHIP_MAX_X) {
             wallindex = BTO_WALLIDX_SHIP_PX;
-            goto code_bto_blank;
+            break;
         }
-        goto code_bto_blank;
+        break;
 
     case BTO_PHYSMODEL_PINE_TREE:    /* pine - blank */
     case BTO_PHYSMODEL_CACTUS:       /* cactus - blank */
     case BTO_PHYSMODEL_TENNIS_COURT: /* tennis - blank */
     case BTO_PHYSMODEL_PALM_TREE:    /* palm - blank */
     case BTO_PHYSMODEL_EXTRA:        /* extra */
-        goto code_bto_blank;
+        break;
 
     default:
-        goto code_bto_blank;
+        break;
     } /* end of main switch */
 
-    /* ---- Inline targets for goto ---- */
-set_pavement:
-    current_surf_type = surfaceType;
-    goto code_bto_blank;
-
-do_sCorner: {
-    int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
-    int px_adj = elemPos.x + BTO_TURN_OFFSET_SMALL;
-    turnRadius = polarRadius2D(pz_adj, px_adj);
-    if (turnRadius > BTO_TURN_SMALL_INNER) {
-        if (turnRadius < BTO_TURN_SMALL_OUTER)
-            goto set_pavement;
-    }
-    goto code_bto_blank;
-}
-
-do_lCorner: {
-    int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
-    int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
-    turnRadius = polarRadius2D(pz_adj, px_adj);
-    if (turnRadius > BTO_TURN_LARGE_INNER) {
-        if (turnRadius < BTO_TURN_LARGE_OUTER)
-            goto set_pavement;
-    }
-    goto code_bto_blank;
-}
-
-code_bto_blank:
+process_terrain:
     /* ===== Hill slope parsing ===== */
     if ((unsigned char)terrainTile < BTO_TERRAIN_HILL_MIN)
         goto exit_func;

@@ -254,15 +254,15 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
             carState->car_current_gear++;
             carState->car_changing_gear = true;
             carState->car_fpsmul2 = (framespersec >> 1) + framespersec;
-            carState->car_knob_x2 = simdData->knob_points[(int)carState->car_current_gear].px;
-            carState->car_knob_y2 = simdData->knob_points[(int)carState->car_current_gear].py;
+            carState->car_gearknob_target_x = simdData->knob_points[(int)carState->car_current_gear].px;
+            carState->car_gearknob_target_y = simdData->knob_points[(int)carState->car_current_gear].py;
         }
         else if (want_downshift && carState->car_current_gear > 1) {
             carState->car_current_gear--;
             carState->car_changing_gear = true;
             carState->car_fpsmul2 = (framespersec >> 1) + framespersec;
-            carState->car_knob_x2 = simdData->knob_points[(int)carState->car_current_gear].px;
-            carState->car_knob_y2 = simdData->knob_points[(int)carState->car_current_gear].py;
+            carState->car_gearknob_target_x = simdData->knob_points[(int)carState->car_current_gear].px;
+            carState->car_gearknob_target_y = simdData->knob_points[(int)carState->car_current_gear].py;
         }
     }
 
@@ -271,38 +271,38 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 	 * Animate the gear-stick knob one step toward its target position.
 	 * ================================================================ */
     if (carState->car_changing_gear) {
-        if (carState->car_knob_x != carState->car_knob_x2) {
+        if (carState->car_gearknob_cur_x != carState->car_gearknob_target_x) {
             /* x not yet at target – first bring y to neutral, then slide x. */
-            if (carState->car_knob_y != simdData->knob_points[0].py) {
+            if (carState->car_gearknob_cur_y != simdData->knob_points[0].py) {
                 /* Move y toward neutral. */
-                deltaValue = simdData->knob_points[0].py - carState->car_knob_y;
+                deltaValue = simdData->knob_points[0].py - carState->car_gearknob_cur_y;
                 if (abs(deltaValue) <= gearShiftStep) {
-                    carState->car_knob_y = simdData->knob_points[0].py;
+                    carState->car_gearknob_cur_y = simdData->knob_points[0].py;
                 }
                 else if (deltaValue > 0) {
-                    carState->car_knob_y += gearShiftStep;
+                    carState->car_gearknob_cur_y += gearShiftStep;
                 }
                 else {
-                    carState->car_knob_y -= gearShiftStep;
+                    carState->car_gearknob_cur_y -= gearShiftStep;
                 }
             }
             else {
                 /* y is at neutral: slide x toward x2. */
-                deltaValue = carState->car_knob_x2 - carState->car_knob_x;
+                deltaValue = carState->car_gearknob_target_x - carState->car_gearknob_cur_x;
                 if (abs(deltaValue) <= gearShiftStep) {
-                    carState->car_knob_x = carState->car_knob_x2;
+                    carState->car_gearknob_cur_x = carState->car_gearknob_target_x;
                 }
                 else if (deltaValue > 0) {
-                    carState->car_knob_x += gearShiftStep;
+                    carState->car_gearknob_cur_x += gearShiftStep;
                 }
                 else {
-                    carState->car_knob_x -= gearShiftStep;
+                    carState->car_gearknob_cur_x -= gearShiftStep;
                 }
             }
         }
         else {
             /* x is at target: move y toward y2. */
-            deltaValue = carState->car_knob_y2 - carState->car_knob_y;
+            deltaValue = carState->car_gearknob_target_y - carState->car_gearknob_cur_y;
             if (deltaValue == 0) {
                 /* Arrived: commit gear ratio. */
                 carState->car_changing_gear = false;
@@ -310,13 +310,13 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                 carState->car_gearratioshr8 = carState->car_gearratio >> 8;
             }
             else if (abs(deltaValue) <= gearShiftStep) {
-                carState->car_knob_y = carState->car_knob_y2;
+                carState->car_gearknob_cur_y = carState->car_gearknob_target_y;
             }
             else if (deltaValue > 0) {
-                carState->car_knob_y += gearShiftStep;
+                carState->car_gearknob_cur_y += gearShiftStep;
             }
             else {
-                carState->car_knob_y -= gearShiftStep;
+                carState->car_gearknob_cur_y -= gearShiftStep;
             }
         }
     }
@@ -671,9 +671,9 @@ update_player_car_state(char carInputFlags) {
         carInputFlags = 2;
         if (state.playerstate.car_speed2 == 0) {
             state.playerstate.car_position_initialized = 0;
-            if (state.playerstate.car_speed == 0 && state.playerstate.car_rc1[0] == 0
-                && state.playerstate.car_rc1[1] == 0 && state.playerstate.car_rc1[2] == 0
-                && state.playerstate.car_rc1[3] == 0)
+            if (state.playerstate.car_speed == 0 && state.playerstate.car_wheel_susp_ext[0] == 0
+                && state.playerstate.car_wheel_susp_ext[1] == 0 && state.playerstate.car_wheel_susp_ext[2] == 0
+                && state.playerstate.car_wheel_susp_ext[3] == 0)
                 return;
         }
     }
@@ -1003,7 +1003,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
     int cosval;
 
     if (carstate->car_sumSurfAllWheels == 0) {
-        carstate->car_40MfrontWhlAngle = 0;
+        carstate->car_front_wheel_angle = 0;
         carstate->car_slidingFlag = false;
         return;
     }
@@ -1024,7 +1024,7 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
         carstate->car_speed = carstate->car_speed2;
     }
 
-    steeringSum = carstate->car_steeringAngle + carstate->car_36MwhlAngle;
+    steeringSum = carstate->car_steeringAngle + carstate->car_body_slip_angle;
     steeringAdjusted = steeringSum;
 
     speedshr8 = carstate->car_speed >> 8;
@@ -1102,10 +1102,10 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
         }
 
         if (carstate->car_angle_z == 0 && carstate->car_crashBmpFlag != 1) {
-            carstate->car_40MfrontWhlAngle = (short)steeringAdjusted;
+            carstate->car_front_wheel_angle = (short)steeringAdjusted;
         }
         else {
-            carstate->car_40MfrontWhlAngle = 0;
+            carstate->car_front_wheel_angle = 0;
         }
 
         if (carstate->car_rotate.z != 0) {
@@ -1130,8 +1130,8 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
 
                 tile = track_elem_map[terrainrows[(unsigned char)tileZ] + tileX];
                 if (tile >= 52 && tile <= 55) {
-                    carstate->car_40MfrontWhlAngle
-                        = (short)(carstate->car_40MfrontWhlAngle + (carstate->car_rotate.z / 5));
+                    carstate->car_front_wheel_angle
+                        = (short)(carstate->car_front_wheel_angle + (carstate->car_rotate.z / 5));
                 }
             }
         }
@@ -1147,31 +1147,31 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
                 carstate->car_angle_z = (short)(carstate->car_angle_z + delta);
                 carstate->car_angle_z = (short)(carstate->car_angle_z / 2);
                 if (carstate->car_angle_z == 0) {
-                    cosval = cos_fast(carstate->car_36MwhlAngle);
+                    cosval = cos_fast(carstate->car_body_slip_angle);
                     carstate->car_speed2 = (unsigned short)multiply_and_scale(cosval,
                                                                               carstate->car_speed2);
-                    cosval = cos_fast(carstate->car_36MwhlAngle);
+                    cosval = cos_fast(carstate->car_body_slip_angle);
                     if (cosval < 0) {
                         carstate->car_speed2 = 0;
                     }
-                    carstate->car_36MwhlAngle = 0;
+                    carstate->car_body_slip_angle = 0;
                 }
             }
         }
     }
     else {
-        carstate->car_40MfrontWhlAngle = (short)(carstate->car_steeringAngle << 2);
+        carstate->car_front_wheel_angle = (short)(carstate->car_steeringAngle << 2);
         if (carstate->car_angle_z != 0) {
             carstate->car_angle_z = (short)((carstate->car_angle_z * 15) >> 4);
         }
     }
 
-    if (carstate->car_36MwhlAngle != 0 && carstate->car_angle_z == 0) {
-        carstate->car_36MwhlAngle = (short)((carstate->car_36MwhlAngle * 15) >> 4);
+    if (carstate->car_body_slip_angle != 0 && carstate->car_angle_z == 0) {
+        carstate->car_body_slip_angle = (short)((carstate->car_body_slip_angle * 15) >> 4);
     }
 
     if (carstate->car_angle_z != 0) {
-        carstate->car_36MwhlAngle = (short)(carstate->car_36MwhlAngle - carstate->car_angle_z);
+        carstate->car_body_slip_angle = (short)(carstate->car_body_slip_angle - carstate->car_angle_z);
     }
 
     if (carstate->car_slidingFlag) {
@@ -1221,7 +1221,7 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
     int initial_vertical_velocity;
     short *obstacle_vertical_velocity;
 
-    obstacle_vertical_velocity = (short *)state.game_obstacle_metadata;
+    obstacle_vertical_velocity = state.game_debris_vy;
 
     if (arg0 < 2) {
         angle_base = arg2;
@@ -1258,9 +1258,9 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
         state.game_obstacle_status[si] = (char)arg0;
         state.game_obstacle_shape[si] = (char)((used & 3) + shape_base_index);
 
-        state.game_longs1[si] = 0;
-        state.game_longs2[si] = 0;
-        state.game_longs3[si] = 0;
+        state.game_debris_dx[si] = 0;
+        state.game_debris_dy[si] = 0;
+        state.game_debris_dz[si] = 0;
 
         state.game_obstacle_rotx[si] = (short)(get_kevinrandom() * 4);
         state.game_obstacle_roty[si] = (short)(get_kevinrandom() * 4);
@@ -1287,7 +1287,7 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
 void
 update_world_debris_particles(void) {
     bool has_active_particles = false;
-    short *obstacle_vertical_velocity = (short *)state.game_obstacle_metadata;
+    short *obstacle_vertical_velocity = state.game_debris_vy;
     int si;
     struct MATRIX *rot;
     struct VECTOR invec;
@@ -1305,14 +1305,14 @@ update_world_debris_particles(void) {
         invec.z = state.game_obstacle_active[si];
         mat_mul_vector(&invec, rot, &outvec);
 
-        state.game_longs1[si] += outvec.x;
-        state.game_longs3[si] += outvec.z;
+        state.game_debris_dx[si] += outvec.x;
+        state.game_debris_dz[si] += outvec.z;
 
         obstacle_vertical_velocity[si] -= 19;
-        state.game_longs2[si] += obstacle_vertical_velocity[si];
+        state.game_debris_dy[si] += obstacle_vertical_velocity[si];
         if (framespersec == 10) {
             obstacle_vertical_velocity[si] -= 19;
-            state.game_longs2[si] += obstacle_vertical_velocity[si];
+            state.game_debris_dy[si] += obstacle_vertical_velocity[si];
         }
         else if (framespersec >= 30) {
             /* At 30fps there are 1.5× more ticks per second than 20fps.
@@ -1320,7 +1320,7 @@ update_world_debris_particles(void) {
                skip the extra step — 30 ticks × 19 > 20 ticks × 19. */
         }
 
-        worldY = state.game_longs2[si] + state.playerstate.car_posWorld1.ly;
+        worldY = state.game_debris_dy[si] + state.playerstate.car_posWorld1.ly;
         if (worldY >= 0) {
             has_active_particles = true;
             state.game_obstacle_rotx[si] = (short)(state.game_obstacle_rotx[si] + 16);
@@ -1378,7 +1378,7 @@ update_opponent_car_state(void) {
     }
 
     /* Determine if opponent is in steering-limited mode */
-    if (state.opponentstate.car_36MwhlAngle != 0 || state.game_inputmode == 2) {
+    if (state.opponentstate.car_body_slip_angle != 0 || state.game_inputmode == 2) {
         chaseFlag = true;
     }
     else {
@@ -1624,13 +1624,13 @@ do_physics:
         if (state.opponentstate.car_crashBmpFlag != 0) {
             accelCmd = 2; /* brake */
         }
-        else if (state.opponentstate.car_36MwhlAngle != 0) {
+        else if (state.opponentstate.car_body_slip_angle != 0) {
             /* Decelerating from collision bounce */
             {
                 unsigned short decel = (unsigned short)steerStep << 9;
                 if (decel >= state.opponentstate.car_speed2) {
                     state.opponentstate.car_speed2 = 0;
-                    state.opponentstate.car_36MwhlAngle = 0;
+                    state.opponentstate.car_body_slip_angle = 0;
                 }
                 else {
                     state.opponentstate.car_speed2 -= decel;
@@ -1751,21 +1751,21 @@ car_car_speed_adjust_collision(struct CARSTATE *oState, struct CARSTATE *pState)
         oState->car_speed2 = (uint16_t)((uint16_t)oState->car_speed2 - (uint16_t)speedReduce);
 
     /* Set oState wheel angle */
-    oState->car_36MwhlAngle = (int16_t)(pAngle - oAngle);
-    if (oState->car_36MwhlAngle >= STATECAR_ANGLE_HALF) {
-        oState->car_36MwhlAngle = (int16_t)(oState->car_36MwhlAngle - STATECAR_ANGLE_FULL);
+    oState->car_body_slip_angle = (int16_t)(pAngle - oAngle);
+    if (oState->car_body_slip_angle >= STATECAR_ANGLE_HALF) {
+        oState->car_body_slip_angle = (int16_t)(oState->car_body_slip_angle - STATECAR_ANGLE_FULL);
     }
-    if (oState->car_36MwhlAngle <= STATECAR_ANGLE_SIGN_WRAP_NEG) {
-        oState->car_36MwhlAngle = (int16_t)(oState->car_36MwhlAngle + STATECAR_ANGLE_FULL);
+    if (oState->car_body_slip_angle <= STATECAR_ANGLE_SIGN_WRAP_NEG) {
+        oState->car_body_slip_angle = (int16_t)(oState->car_body_slip_angle + STATECAR_ANGLE_FULL);
     }
 
     /* Set pState wheel angle */
-    pState->car_36MwhlAngle = (int16_t)(oAngle - pAngle);
-    if (pState->car_36MwhlAngle >= STATECAR_ANGLE_HALF) {
-        pState->car_36MwhlAngle = (int16_t)(pState->car_36MwhlAngle - STATECAR_ANGLE_FULL);
+    pState->car_body_slip_angle = (int16_t)(oAngle - pAngle);
+    if (pState->car_body_slip_angle >= STATECAR_ANGLE_HALF) {
+        pState->car_body_slip_angle = (int16_t)(pState->car_body_slip_angle - STATECAR_ANGLE_FULL);
     }
-    if (pState->car_36MwhlAngle <= STATECAR_ANGLE_SIGN_WRAP_NEG) {
-        pState->car_36MwhlAngle = (int16_t)(pState->car_36MwhlAngle + STATECAR_ANGLE_FULL);
+    if (pState->car_body_slip_angle <= STATECAR_ANGLE_SIGN_WRAP_NEG) {
+        pState->car_body_slip_angle = (int16_t)(pState->car_body_slip_angle + STATECAR_ANGLE_FULL);
     }
 
     /* Copy speed2 to speed */
@@ -1789,41 +1789,41 @@ short
 carState_update_wheel_suspension(struct CARSTATE *pState, short suspension_delta,
                                  short wheelIndex) {
 
-    short old_rc2 = pState->car_rc2[wheelIndex];
+    short old_rc2 = pState->car_wheel_susp_compress[wheelIndex];
     short delta = 0;
 
     /* Decay rc5 toward 0 */
-    if (pState->car_rc5[wheelIndex] != 0) {
-        if (pState->car_rc5[wheelIndex] < 0) {
-            pState->car_rc5[wheelIndex] += 4;
-            if (pState->car_rc5[wheelIndex] > 0)
-                pState->car_rc5[wheelIndex] = 0;
+    if (pState->car_wheel_susp_target[wheelIndex] != 0) {
+        if (pState->car_wheel_susp_target[wheelIndex] < 0) {
+            pState->car_wheel_susp_target[wheelIndex] += 4;
+            if (pState->car_wheel_susp_target[wheelIndex] > 0)
+                pState->car_wheel_susp_target[wheelIndex] = 0;
         }
         else {
-            pState->car_rc5[wheelIndex] -= 4;
-            if (pState->car_rc5[wheelIndex] < 0)
-                pState->car_rc5[wheelIndex] = 0;
+            pState->car_wheel_susp_target[wheelIndex] -= 4;
+            if (pState->car_wheel_susp_target[wheelIndex] < 0)
+                pState->car_wheel_susp_target[wheelIndex] = 0;
         }
     }
 
     /* If suspension_delta < 0 and rc2 is large enough, clamp suspension_delta to 0 */
     if (suspension_delta < 0) {
-        if (pState->car_rc2[wheelIndex] > -suspension_delta)
+        if (pState->car_wheel_susp_compress[wheelIndex] > -suspension_delta)
             suspension_delta = 0;
     }
 
     if (suspension_delta == 0) {
         /* No force: decay rc2 toward rc5 */
-        if (pState->car_rc2[wheelIndex] > pState->car_rc5[wheelIndex]) {
-            pState->car_rc2[wheelIndex] -= 128;
-            if (pState->car_rc2[wheelIndex] < pState->car_rc5[wheelIndex])
-                pState->car_rc2[wheelIndex] = pState->car_rc5[wheelIndex];
-            delta = old_rc2 - pState->car_rc2[wheelIndex];
+        if (pState->car_wheel_susp_compress[wheelIndex] > pState->car_wheel_susp_target[wheelIndex]) {
+            pState->car_wheel_susp_compress[wheelIndex] -= 128;
+            if (pState->car_wheel_susp_compress[wheelIndex] < pState->car_wheel_susp_target[wheelIndex])
+                pState->car_wheel_susp_compress[wheelIndex] = pState->car_wheel_susp_target[wheelIndex];
+            delta = old_rc2 - pState->car_wheel_susp_compress[wheelIndex];
         }
-        else if (pState->car_rc2[wheelIndex] < pState->car_rc5[wheelIndex]) {
-            pState->car_rc2[wheelIndex] += 128;
-            if (pState->car_rc2[wheelIndex] > pState->car_rc5[wheelIndex])
-                pState->car_rc2[wheelIndex] = pState->car_rc5[wheelIndex];
+        else if (pState->car_wheel_susp_compress[wheelIndex] < pState->car_wheel_susp_target[wheelIndex]) {
+            pState->car_wheel_susp_compress[wheelIndex] += 128;
+            if (pState->car_wheel_susp_compress[wheelIndex] > pState->car_wheel_susp_target[wheelIndex])
+                pState->car_wheel_susp_compress[wheelIndex] = pState->car_wheel_susp_target[wheelIndex];
             /* delta stays 0 */
         }
         /* else rc2 == rc5: no change, delta stays 0 */
@@ -1831,27 +1831,27 @@ carState_update_wheel_suspension(struct CARSTATE *pState, short suspension_delta
     else if (suspension_delta > 0) {
         /* Compression: increment rc2, cap increment at 192, clamp at 384 */
         if (suspension_delta > 192)
-            pState->car_rc2[wheelIndex] += 192;
+            pState->car_wheel_susp_compress[wheelIndex] += 192;
         else
-            pState->car_rc2[wheelIndex] += suspension_delta;
-        if (pState->car_rc2[wheelIndex] > 384)
-            pState->car_rc2[wheelIndex] = 384;
-        pState->car_rc4[wheelIndex] = 0;
+            pState->car_wheel_susp_compress[wheelIndex] += suspension_delta;
+        if (pState->car_wheel_susp_compress[wheelIndex] > 384)
+            pState->car_wheel_susp_compress[wheelIndex] = 384;
+        pState->car_wheel_susp_damp[wheelIndex] = 0;
         /* delta stays 0 */
     }
     else {
         /* Extension (suspension_delta < 0): damped if too large */
-        if (pState->car_rc2[wheelIndex] + suspension_delta <= (short)65248) {
+        if (pState->car_wheel_susp_compress[wheelIndex] + suspension_delta <= (short)65248) {
             /* Large extension: apply damped force (3/4) */
-            pState->car_rc2[wheelIndex] += (suspension_delta * 3) >> 2;
-            if (pState->car_rc2[wheelIndex] < (short)65152)
-                pState->car_rc2[wheelIndex] = (short)65152;
+            pState->car_wheel_susp_compress[wheelIndex] += (suspension_delta * 3) >> 2;
+            if (pState->car_wheel_susp_compress[wheelIndex] < (short)65152)
+                pState->car_wheel_susp_compress[wheelIndex] = (short)65152;
         }
         else {
             /* Small extension: apply full force */
-            pState->car_rc2[wheelIndex] += suspension_delta;
+            pState->car_wheel_susp_compress[wheelIndex] += suspension_delta;
         }
-        delta = old_rc2 - pState->car_rc2[wheelIndex] + suspension_delta;
+        delta = old_rc2 - pState->car_wheel_susp_compress[wheelIndex] + suspension_delta;
     }
 
     return old_rc2 + delta;
@@ -2140,7 +2140,8 @@ audio_sync_car_audio(void) {
         if (sprite_boundary_marker != is_in_replay) {
             audio_on_replay_mode_changed();
         }
-        goto end_func;
+        sprite_boundary_marker = is_in_replay;
+        return;
     }
 
     /* Normal (non-replay) path: compute shifted positions */
@@ -2187,12 +2188,12 @@ audio_sync_car_audio(void) {
         break;
     case 1: {
         short idx = (signed char)followOpponentFlag;
-        cameraPos1X = state.game_vec1[idx].x;
-        cameraPos1Y = state.game_vec1[idx].y;
-        cameraPos1Z = state.game_vec1[idx].z;
-        cameraPos2X = (&state.game_vec3)[idx].x;
-        cameraPos2Y = (&state.game_vec3)[idx].y;
-        cameraPos2Z = (&state.game_vec3)[idx].z;
+        cameraPos1X = state.game_camera_pos[idx].x;
+        cameraPos1Y = state.game_camera_pos[idx].y;
+        cameraPos1Z = state.game_camera_pos[idx].z;
+        cameraPos2X = state.game_camera2_pos[idx].x;
+        cameraPos2Y = state.game_camera2_pos[idx].y;
+        cameraPos2Z = state.game_camera2_pos[idx].z;
         break;
     }
     case 3: {
@@ -2340,7 +2341,6 @@ audio_sync_car_audio(void) {
     if (menu_selection_buffer == 40)
         menu_selection_buffer = 0;
 
-end_func:
     sprite_boundary_marker = is_in_replay;
 }
 
@@ -2718,7 +2718,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
     /* ====== Section 2: Steering and speed setup ====== */
     if (playerState->car_sumSurfAllWheels != 0) {
-        pState_f40_sar2 = playerState->car_40MfrontWhlAngle >> 2;
+        pState_f40_sar2 = playerState->car_front_wheel_angle >> 2;
     }
     else {
         pState_f40_sar2 = 0;
@@ -2789,7 +2789,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
     for (wheelIndex = 0; wheelIndex < 4; wheelIndex++, wheelPos2Ptr++, wheelPos1Ptr++) {
         vec_1C6 = playerSimd->wheel_coords[wheelIndex];
-        vec_1C6.y = -(playerState->car_rc2[wheelIndex] + STATECAR_WHEEL_BASE_HEIGHT);
+        vec_1C6.y = -(playerState->car_wheel_susp_compress[wheelIndex] + STATECAR_WHEEL_BASE_HEIGHT);
         if (wheelYAdjust < 0)
             vec_1C6.y -= wheelYAdjust;
 
@@ -2810,9 +2810,9 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
         if (speed2ScaledStep != 0) {
             vec_movement_local.z = speed2ScaledStep;
             if (pState_f40_sar2 != 0 && wheelIndex < 2)
-                pState_f36Mminf40sar2 = playerState->car_36MwhlAngle - pState_f40_sar2;
+                pState_f36Mminf40sar2 = playerState->car_body_slip_angle - pState_f40_sar2;
             else
-                pState_f36Mminf40sar2 = playerState->car_36MwhlAngle;
+                pState_f36Mminf40sar2 = playerState->car_body_slip_angle;
 
             wheelSteerData[wheelIndex] = pState_f36Mminf40sar2;
             plane_apply_rotation_matrix();
@@ -2827,7 +2827,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
         bool wallHit;
 
         if (integrationPass == STATECAR_MAX_INTEGRATION_PASSES) {
-            playerState->car_36MwhlAngle = STATECAR_ANGLE_HALF;
+            playerState->car_body_slip_angle = STATECAR_ANGLE_HALF;
             update_crash_state(1, isOpponentCar);
             break;
         }
@@ -2951,7 +2951,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                             steerKickAngle = -si << 1;
                         else
                             steerKickAngle = si << 1;
-                        playerState->car_36MwhlAngle = steerKickAngle;
+                        playerState->car_body_slip_angle = steerKickAngle;
                         update_crash_state(1, isOpponentCar);
                     }
 
@@ -2998,13 +2998,13 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     }
                     else {
                         /* Standard terrain following (gravity pull) */
-                        playerState->car_rc1[wheelIndex]
+                        playerState->car_wheel_susp_ext[wheelIndex]
                             += get_wheel_rating_coefficients(wheelIndex);
-                        wheelPos2Ptr->ly -= playerState->car_rc1[wheelIndex];
+                        wheelPos2Ptr->ly -= playerState->car_wheel_susp_ext[wheelIndex];
                         if (framespersec == STATECAR_FPS_10) {
-                            playerState->car_rc1[wheelIndex]
+                            playerState->car_wheel_susp_ext[wheelIndex]
                                 += get_wheel_rating_coefficients(wheelIndex);
-                            wheelPos2Ptr->ly -= playerState->car_rc1[wheelIndex];
+                            wheelPos2Ptr->ly -= playerState->car_wheel_susp_ext[wheelIndex];
                         }
 
                         vec_1C6.y = wheelPos2Ptr->ly >> 6;
@@ -3112,7 +3112,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         vec_17C.z = (vec_1C.z - vec_FC.z) << 6;
 
                         wallRelativeAngle = polarRadius3D(&vec_17C);
-                        remainingSpeed = playerState->car_rc1[wheelIndex] + speed2ScaledStep;
+                        remainingSpeed = playerState->car_wheel_susp_ext[wheelIndex] + speed2ScaledStep;
                         consumedSpeed = remainingSpeed - wallRelativeAngle;
                         prevPosLocal.x = ((wheelPos2Ptr->lx - wheelPos1Ptr->lx) * consumedSpeed)
                                          / remainingSpeed;
@@ -3160,12 +3160,12 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
             /* RC1 / suspension limit checks */
             if (doRc1Check) {
-                if (playerState->car_rc1[wheelIndex] > STATECAR_SUSPENSION_EXT_WARN) {
+                if (playerState->car_wheel_susp_ext[wheelIndex] > STATECAR_SUSPENSION_EXT_WARN) {
                     playerState->car_position_initialized |= 32;
                 }
-                if (playerState->car_rc1[wheelIndex] > STATECAR_SUSPENSION_EXT_CRASH)
+                if (playerState->car_wheel_susp_ext[wheelIndex] > STATECAR_SUSPENSION_EXT_CRASH)
                     update_crash_state(1, isOpponentCar);
-                playerState->car_rc1[wheelIndex] = 0;
+                playerState->car_wheel_susp_ext[wheelIndex] = 0;
             }
         } /* end per-wheel loop */
 
@@ -3409,7 +3409,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         (short *)playerSimd->collide_points, (short *)playerWorldPoints,
                         (short *)roadside_pole_collision_box, (short *)vec_18EoStateWorldCrds)
                     != 0) {
-                    playerState->car_36MwhlAngle -= 512;
+                    playerState->car_body_slip_angle -= 512;
                     update_crash_state(1, isOpponentCar);
                     return; /* crash with pole/sign */
                 }
@@ -3602,8 +3602,8 @@ update_crash_state(int crash_type, int isOpponentCar) {
         state.game_oEndFrame = state.game_frame;
 
     /* Latch the first crash type into the evaluation flag (player only). */
-    if (state.game_3F6autoLoadEvalFlag == 0 && isOpponentCar == 0)
-        state.game_3F6autoLoadEvalFlag = crash_type;
+    if (state.game_crash_eval_type == 0 && isOpponentCar == 0)
+        state.game_crash_eval_type = crash_type;
 
     /** @brief Screen.
  * @param replay_mode_state_flag Parameter value.
