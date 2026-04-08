@@ -1069,10 +1069,10 @@ done:
  /*--------------------------------------------------------------*/
 void
 draw_track_preview(void) {
-    int cell_index, unused_row_temp;
+    int cell_index;
     int object_index;
-    unsigned char unused_marker, terrain_id;
-    unsigned char row, unused_col_temp;
+    unsigned char terrain_id;
+    unsigned char row;
     int pitch_angle, horizon_y;
     unsigned char col, track_elem;
     int projected_horizon_y = 0, corner_idx;
@@ -1081,16 +1081,11 @@ draw_track_preview(void) {
     int element_world_z;
     struct POINT2D projected_point;
     struct VECTOR object_pos;
-    int radius_xz, unused_tmp;
+    int radius_xz;
     struct MATRIX *matptr;
     unsigned char *elem_map_ptr;
     unsigned char *terr_map_ptr;
-    int i, si;
-
-    (void)unused_col_temp;
-    (void)unused_marker;
-    (void)unused_tmp;
-    (void)i;
+    int si;
 
     if (track_terrain_map == 0) {
         return;
@@ -1172,7 +1167,6 @@ draw_track_preview(void) {
     transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
 
     /* Iterate track grid (matches original draw_track_preview ASM in seg003.asm) */
-    (void)unused_row_temp; /* unused_row_temp not used in loop; row index via row directly */
     for (row = 0; row < RENDER_TRACK_GRID_SIZE; row++) {
         for (col = 0; col < RENDER_TRACK_GRID_SIZE;) {
             /*
@@ -1647,9 +1641,6 @@ setup_intro(void) {
     short target_x = RENDER_INTRO_CAMERA_CENTER, target_y = RENDER_INTRO_CAMERA_Y_CRUISE,
           target_z = RENDER_INTRO_CAMERA_CENTER;
     char *titleres;
-    int i;
-
-    (void)i;
 
     intro_interrupted = 0;
 
@@ -2061,10 +2052,8 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
  /*--------------------------------------------------------------*/
 void
 render_present_ingame_view(struct RECTANGLE *frame_rect) {
-    int si, di;
+    int si;
     struct RECTANGLE *rp;
-
-    (void)di;
 
     if (video_flag5_is0 != 0)
         return;

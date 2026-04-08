@@ -2453,14 +2453,11 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     int hillHeightOffset; /* hill height offset */
     int elementOrientation;
     struct VECTOR *dependencyTable;
-    int unusedTemp14;
     unsigned char multiTileFlags;
     unsigned char terrainByte;
     int physModel;
     int di; /* point count */
     int si; /* loop index */
-
-    (void)unusedTemp14;
 
     /* Look up tile element at (col, row) */
     tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row] + tile_col));

@@ -1296,24 +1296,12 @@ loop_game(int command, int context_value, int frame_value) {
     int screenIndex, screenValue;
     unsigned char ctrlModifierActive;
     char savedGameconfigSnapshot[26]; /* saved gameconfig for replay load compare */
-    int unused24, unused22;
     unsigned char buttonIndex;
     char saveDialogState;
-    int unused18;
     int inputCode;
     unsigned short dialogFlags[16]; /* show_dialog indexes as flags[button*2], so allocate pairs */
     int savedSkyId;
     char dialogChoice;
-    int unused12, unused10, unusedE, unusedC, unusedA;
-
-    (void)unused24;
-    (void)unused22;
-    (void)unused18;
-    (void)unused12;
-    (void)unused10;
-    (void)unusedE;
-    (void)unusedC;
-    (void)unusedA;
 
     if (command == 0) {
         /* locate replay bar shapes */

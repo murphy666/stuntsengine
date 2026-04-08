@@ -625,7 +625,7 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
     unsigned char rect_clip_mask, primitive_render_type;
     struct VECTOR cached_view_vertices[VERTEX_CACHE_COUNT];
     unsigned primitive_flags, primitive_file_type, primitive_accept_count, polygon_vertex_counter,
-        current_vertex_index, previous_vertex_index, unused_primitive_counter, projected_radius;
+        current_vertex_index, previous_vertex_index, projected_radius;
     int polygon_vertex_x, polygon_vertex_y;
     struct POINT2D *polyinfo_point_write_ptr;
     long depth_sum = 0;
@@ -657,7 +657,6 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
     unsigned char transprimitivepaintjob;
     struct POINT2D *polyvertpointptrtab[VERTEX_FLAG_COUNT];
 
-    (void)unused_primitive_counter;
     if (transformed_shape == 0 || transformed_shape->shapeptr == 0) {
         return 1;
     }

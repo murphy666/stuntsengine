@@ -933,10 +933,8 @@ load_tracks_menu_shapes(void) {
     /* Far pointers */
     void *sdtedit_shapes;
     void *tedit_res;
-    void *shape_ptr;
     void *snam_ptr;
     void *mnam_ptr;
-    void *tnam_ptr;
     void *terrain_template_ptr;
     struct SHAPE2D *shape;
     struct SPRITE *wndsprite_base;
@@ -952,7 +950,6 @@ load_tracks_menu_shapes(void) {
     unsigned char redraw_scrollbars;       /* redraw scrollbars flag */
     unsigned char redraw_cursor;           /* redraw cursor flag */
     unsigned char redraw_window_base;      /* redraw stable window snapshot flag */
-    unsigned char blit_state;              /* blit flag */
     unsigned char keep_running;            /* keep running flag */
     unsigned char current_category;        /* current category (0=terrain, 1-10=elements) */
     unsigned char needs_validation;        /* validate track flag */
@@ -979,14 +976,13 @@ load_tracks_menu_shapes(void) {
     unsigned char last_scroll_y;           /* last scroll Y */
     unsigned char temp_col;                /* temp picker col */
     unsigned char temp_row;                /* temp picker row */
-    unsigned char temp_pbox_value;         /* temp pbox value */
     unsigned char mouse_track_value;       /* mouse track result */
     unsigned char mouse_hit_index;         /* mouse hit index */
     unsigned char cursor_mode_for_blink;   /* cursor blink state */
     unsigned char dialog_result;           /* dialog result */
 
     /* Working variables */
-    unsigned short last_mouse_x, last_mouse_y, unused_u16;
+    unsigned short last_mouse_x, last_mouse_y;
     unsigned short cursor_blink_toggle;    /* cursor blink toggle */
     unsigned short blink_timer;            /* timer accumulator */
     unsigned short input_code;             /* input code */
@@ -1010,15 +1006,6 @@ load_tracks_menu_shapes(void) {
     unsigned char *elem_map;
     unsigned char *terr_map;
     unsigned char multiflag;
-
-    (void)shape_ptr;
-    (void)tnam_ptr;
-    (void)blit_state;
-    (void)validation_result;
-    (void)temp_pbox_value;
-    (void)unused_u16;
-    (void)cursor_draw_height;
-    (void)cursor_draw_width;
 
     /*========================================
 	 * SECTION 1: Load shape resources
@@ -1056,7 +1043,7 @@ load_tracks_menu_shapes(void) {
     pboxshape = (unsigned char *)locate_shape_alt(tedit_res, "pbox");
     snam_ptr = locate_shape_alt(tedit_res, "snam");
     mnam_ptr = locate_shape_alt(tedit_res, "mnam");
-    tnam_ptr = locate_shape_alt(tedit_res, "tnam");
+    locate_shape_alt(tedit_res, "tnam");
 
     /* Initialize dirty flag arrays */
     track_modified = 0;
@@ -1095,7 +1082,6 @@ load_tracks_menu_shapes(void) {
     redraw_scrollbars = 1;
     redraw_cursor = 1;
     redraw_window_base = 1;
-    blit_state = TRACK_U8_INVALID;
     keep_running = 1;
     current_category = 1;
     needs_validation = 1;
