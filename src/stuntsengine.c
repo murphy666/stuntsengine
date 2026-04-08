@@ -59,7 +59,7 @@ static unsigned char audio_mt32_config[48]
     = { 244, 1,  16, 39, 40, 35, 0, 0, 74,  48, 0, 0, 79,  48, 0, 0, 84,  48, 0, 0, 89,  48, 0, 0,
         94,  48, 0,  0,  99, 48, 0, 0, 104, 48, 0, 0, 109, 48, 0, 0, 114, 48, 0, 0, 119, 48, 0, 0 };
 static int dashbmp_y_copy = 0;
-static char followOpponentFlag_copy = 0;
+static bool followOpponentFlag_copy = false;
 static short fps_times_thirty = 0;
 static unsigned char g_kevinrandom_seed[] = { 0, 0, 0, 0, 0, 0 };
 static bool game_input_keyboard_state = false;
@@ -1819,7 +1819,7 @@ setup_player_cars(void) {
         wndsprite = sprite_make_wnd(STN_SCREEN_WIDTH, STN_SCREEN_HEIGHT, STN_SCREEN_DEPTH);
     }
 
-    followOpponentFlag = 0;
+    followOpponentFlag = false;
     is_in_replay_copy = -1;
     return 0;
 }
@@ -2030,7 +2030,7 @@ run_game(void) {
                 else {
                     replaybar_enabled = true;
                 }
-                if (!dashb_toggle || followOpponentFlag != 0) {
+                if (!dashb_toggle || followOpponentFlag) {
                     if (game_replay_mode == 2) {
                         if (replaybar_enabled) {
                             dashbmp_y_copy = STN_DASH_REPLAYBAR_Y;

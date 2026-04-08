@@ -536,7 +536,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         base_ts_flags = 0;
     }
 
-    if (followOpponentFlag == 0) {
+    if (!followOpponentFlag) {
         car_pos.x = state.playerstate.car_posWorld1.lx >> 6;
         car_pos.y = state.playerstate.car_posWorld1.ly >> 6;
         car_pos.z = state.playerstate.car_posWorld1.lz >> 6;
@@ -705,7 +705,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     tile_row_bias = -((camera_pos.z >> 10) - FRAME_TILE_MAX_INDEX);
     player_tile_col = state.playerstate.car_posWorld1.lx >> 16;
     player_tile_row = FRAME_TILE_MAX_INDEX - (state.playerstate.car_posWorld1.lz >> 16);
-    if (followOpponentFlag == 0) {
+    if (!followOpponentFlag) {
         focus_tile_col = player_tile_col;
         focus_tile_row = player_tile_row;
     }
@@ -836,7 +836,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
     player_contact_col = -1;
     player_sort_bias = 0;
-    if (cameramode != 0 || followOpponentFlag != 0) {
+    if (cameramode != 0 || followOpponentFlag) {
 
         if (state.playerstate.car_crashBmpFlag != 2) {
 
@@ -889,7 +889,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     opponent_sort_bias = 0;
     if (gameconfig.game_opponenttype != 0) {
 
-        if (cameramode != 0 || followOpponentFlag == 0) {
+        if (cameramode != 0 || !followOpponentFlag) {
             if (state.opponentstate.car_crashBmpFlag != 2) {
                 rot_mat_ptr = mat_rot_zxy(-state.opponentstate.car_rotate.z,
                                           -state.opponentstate.car_rotate.y,
@@ -940,7 +940,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 							 * small front bias in the normal chase-camera case,
 							 * while preserving the original value for the other
 							 * camera modes. */
-                            opponent_sort_bias = (cameramode == 0 && followOpponentFlag == 0)
+                            opponent_sort_bias = (cameramode == 0 && !followOpponentFlag)
                                                      ? -FRAME_SORT_BIAS_OVERLAY
                                                      : FRAME_SORT_BIAS;
                         }
@@ -1690,7 +1690,7 @@ exit_tile_loop:
     sprite_set_1_size(0, FRAME_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
     if (cameramode == 0) {
 
-        if (followOpponentFlag != 0) {
+        if (followOpponentFlag) {
             follow_state_ptr = &state.opponentstate;
             si = state.game_oEndFrame;
         }

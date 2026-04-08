@@ -4508,7 +4508,7 @@ sprite_draw_text_opaque(char *text, int x, int y) {
     unsigned short default_charwidth
         = *(unsigned short *)(fontdef + SHAPE2D_FONTDEF_DEFAULT_WIDTH_OFFSET);
     unsigned short *char_table = (unsigned short *)(fontdef + SHAPE2D_FONTDEF_CHAR_TABLE_OFFSET);
-    int has_width_byte = (proportional == 2) || (proportional == 1 && prop1_width == 0);
+    bool has_width_byte = (proportional == 2) || (proportional == 1 && prop1_width == 0);
     if (font_height == 0) {
         font_height = fontdef_line_height;
         if (font_height == 0)

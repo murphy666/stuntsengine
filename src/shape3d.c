@@ -588,7 +588,9 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
     struct VECTOR scratch_vector_c;
     uint32_t direction_cull_mask_primary;
     uint32_t paint_cull_mask;
-    unsigned accepted_primitive_count, all_vertices_behind_near_plane, has_near_plane_vertex;
+    unsigned accepted_primitive_count;
+    bool all_vertices_behind_near_plane;
+    bool has_near_plane_vertex;
     unsigned char rect_clip_mask, primitive_render_type;
     struct VECTOR cached_view_vertices[VERTEX_CACHE_COUNT];
     unsigned primitive_flags, primitive_file_type, primitive_accept_count, polygon_vertex_counter,

@@ -1451,7 +1451,7 @@ draw_ingame_text(void) {
         goto draw_text_at_B6;
     }
 
-    if (followOpponentFlag != 0)
+    if (followOpponentFlag)
         goto done_text;
     if (cameramode != 0)
         goto done_text;

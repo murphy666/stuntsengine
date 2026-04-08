@@ -204,7 +204,7 @@ handle_ingame_kb_shortcuts(int command) {
 
     if (ax == 116) { /* 't' */
         if (gameconfig.game_opponenttype != 0) {
-            followOpponentFlag ^= 1;
+            followOpponentFlag = !followOpponentFlag;
         }
         return 1;
     }
@@ -1837,7 +1837,7 @@ loop_game(int command, int context_value, int frame_value) {
         setup_drive:
             dashb_toggle = true;
             show_penalty_counter = 0;
-            followOpponentFlag = 0;
+            followOpponentFlag = false;
             game_replay_mode = 0;
             cameramode = 0;
             state.game_3F6autoLoadEvalFlag = 0;
@@ -1976,7 +1976,7 @@ loop_game(int command, int context_value, int frame_value) {
                 do_mrl_textres();
                 break;
             case 4:
-                followOpponentFlag ^= 1;
+                followOpponentFlag = !followOpponentFlag;
                 break;
             }
             goto after_dialog;

@@ -173,7 +173,7 @@ extern int elRdWallRelated;
 extern unsigned short elapsed_time1;
 extern int elem_xCenter;
 extern int elem_zCenter;
-extern char followOpponentFlag;
+extern bool followOpponentFlag;
 extern struct RECTANGLE frame_dirty_rects[];
 extern unsigned short framespersec;
 extern unsigned short framespersec2;
