@@ -815,484 +815,457 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
 
     transshapeprimitives = (unsigned char *)transformed_shape->shapeptr->shape3d_primitives;
 
-label_primitive_loop_next:
-    transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]]
-                        + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
-    primitive_flags = transshapeprimitives[1];
-    primitive_accept_count = 0;
-    if ((primitive_cull_table[0] & direction_cull_mask_primary) != 0) {
-        goto label_decode_primitive_header;
-    }
-    reject_prim_culltable++;
-    goto label_finish_current_primitive;
+    while (1) {
+        /* ---- Per-primitive setup ---- */
+        transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]]
+                            + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
+        primitive_flags = transshapeprimitives[1];
+        primitive_accept_count = 0;
 
-label_decode_primitive_header:
-    primitive_file_type = transshapeprimitives[0];
-    transshapenumvertscopy = primidxcounttab[primitive_file_type];
-    primitive_render_type = primtypetab[primitive_file_type];
-
-    transshapepolyinfo = s_polyinfo_base + polyinfoptrnext;
-    polyinfoptrs[polyinfonumpolys] = (int *)transshapepolyinfo;
-
-    transprimitivepaintjob = transshapeprimitives[PRIMITIVE_RECORD_HEADER_BYTES
-                                                 + transshapematerial];
-    transshapeprimitives += PRIMITIVE_RECORD_HEADER_BYTES + transshapenumpaints;
-
-    rect_clip_mask = RECT_CLIP_FULL_MASK;
-    all_vertices_behind_near_plane = true;
-    has_near_plane_vertex = false;
-    transshapeprimindexptr = transshapeprimitives;
-    polygon_vertex_counter = 0;
-    goto label_polygon_vertex_loop;
-
-label_polygon_vertex_visible:
-    all_vertices_behind_near_plane = false;
-label_polygon_vertex_rect_clip_test:
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(polyvertpointptrtab[polygon_vertex_counter]);
-    }
-label_polygon_vertex_advance:
-    polygon_vertex_counter++;
-label_polygon_vertex_loop:
-    if (polygon_vertex_counter >= transshapenumvertscopy)
-        goto label_dispatch_primitive_render_path;
-
-    temp = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-    polyvertpointptrtab[polygon_vertex_counter] = &cached_projected_points[temp];
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_UNCACHED) {
-        goto label_project_uncached_vertex;
-    }
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_VISIBLE) {
-        goto label_polygon_vertex_visible;
-    }
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_BEHIND_NEAR) {
-        has_near_plane_vertex = true;
-        goto label_polygon_vertex_advance;
-    }
-    goto label_polygon_vertex_advance;
-
-label_project_uncached_vertex:
-    scratch_vector_a = transshapeverts[temp];
-    if (select_rect_scale_preview != 0) {
-        scratch_vector_a.x /= 2;
-        scratch_vector_a.y /= 2;
-        scratch_vector_a.z /= 2;
-    }
-    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
-    scratch_vector_b.x += shape_position_view.x;
-    scratch_vector_b.y += shape_position_view.y;
-    scratch_vector_b.z += shape_position_view.z;
-    cached_view_vertices[temp] = scratch_vector_b;
-
-    if (scratch_vector_b.z >= NEAR_PLANE_Z) {
-        all_vertices_behind_near_plane = false;
-        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_VISIBLE;
-        vector_to_point(&scratch_vector_b, polyvertpointptrtab[polygon_vertex_counter]);
-        goto label_polygon_vertex_rect_clip_test;
-    }
-    vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-    has_near_plane_vertex = true;
-    goto label_polygon_vertex_advance;
-
-label_dispatch_primitive_render_path:
-    if (all_vertices_behind_near_plane) {
-        reject_prim_all_behind++;
-        goto label_finish_current_primitive;
-    }
-    if (rect_clip_mask != 0 && !has_near_plane_vertex) {
-        reject_prim_rect_stage1++;
-        goto label_finish_current_primitive;
-    }
-    if (primitive_render_type == PRIMITIVE_TYPE_POLYGON)
-        goto _primtype_poly;
-    if (primitive_render_type == PRIMITIVE_TYPE_LINE)
-        goto _primtype_line;
-    if (primitive_render_type == PRIMITIVE_TYPE_SPHERE)
-        goto _primtype_sphere;
-    if (primitive_render_type == PRIMITIVE_TYPE_WHEEL)
-        goto _primtype_wheel;
-    if (primitive_render_type == PRIMITIVE_TYPE_PIXEL)
-        goto label_handle_unsupported_primitive_type5;
-    goto label_finish_current_primitive;
-
-_primtype_poly:
-    polyinfo_point_write_ptr = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapeprimindexptr = transshapeprimitives;
-
-    depth_sum = 0;
-    rect_clip_mask = RECT_CLIP_FULL_MASK;
-
-    if (has_near_plane_vertex)
-        goto label_clip_polygon_against_near_plane;
-    i = 0;
-    goto label_copy_polygon_vertex_loop;
-label_copy_polygon_vertex_advance:
-    i++;
-label_copy_polygon_vertex_loop:
-    if (transshapenumvertscopy <= i)
-        goto label_prepare_primitive_submission;
-    current_vertex_index = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-    depth_sum += cached_view_vertices[current_vertex_index].z;
-    poly_point_slot_ptr = &polyvertpointptrtab[i];
-    *polyinfo_point_write_ptr = **poly_point_slot_ptr;
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(*poly_point_slot_ptr);
-    }
-    polyinfo_point_write_ptr++;
-    goto label_copy_polygon_vertex_advance;
-
-label_clip_polygon_against_near_plane:
-    polygon_vertex_counter = 0;
-    previous_vertex_index = transshapeprimitives[transshapenumvertscopy - 1];
-    i = 0;
-    goto label_clip_edge_loop;
-
-label_clip_edge_step_start:
-    if (vertex_depth_flags[previous_vertex_index] != 0)
-        goto label_clip_edge_advance_indices;
-
-    vector_lerp_at_z(&cached_view_vertices[previous_vertex_index],
-                     &cached_view_vertices[current_vertex_index], &scratch_vector_a, NEAR_PLANE_Z);
-    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
-
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(&clipped_intersection_point);
-    }
-
-    *polyinfo_point_write_ptr = clipped_intersection_point;
-
-label_clip_emit_vertex_advance:
-    polyinfo_point_write_ptr++;
-    polygon_vertex_counter++;
-
-label_clip_edge_advance_indices:
-    previous_vertex_index = current_vertex_index;
-    i++;
-label_clip_edge_loop:
-    if (transshapenumvertscopy <= i)
-        goto label_finalize_polygon_vertex_count;
-    current_vertex_index = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-
-    depth_sum += cached_view_vertices[current_vertex_index].z;
-
-    if (vertex_depth_flags[current_vertex_index] != 0)
-        goto label_clip_edge_step_start;
-
-    if (vertex_depth_flags[previous_vertex_index] == 0)
-        goto label_clip_emit_current_vertex;
-
-    vector_lerp_at_z(&cached_view_vertices[current_vertex_index],
-                     &cached_view_vertices[previous_vertex_index], &scratch_vector_a, NEAR_PLANE_Z);
-    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
-
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(&clipped_intersection_point);
-    }
-
-    *polyinfo_point_write_ptr = clipped_intersection_point;
-    polyinfo_point_write_ptr++;
-    polygon_vertex_counter++;
-
-label_clip_emit_current_vertex:
-    *polyinfo_point_write_ptr = *polyvertpointptrtab[i];
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(polyvertpointptrtab[i]);
-    }
-    goto label_clip_emit_vertex_advance;
-
-label_finalize_polygon_vertex_count:
-    transshapenumvertscopy = (unsigned char)polygon_vertex_counter;
-
-label_prepare_primitive_submission:
-    if (transshapenumvertscopy == 0) {
-        reject_prim_numverts_zero++;
-        goto label_finish_current_primitive;
-    }
-    if (rect_clip_mask != 0) {
-        reject_prim_rect_stage2++;
-        goto label_finish_current_primitive;
-    }
-    if ((primitive_flags & PRIMITIVE_FLAG_SKIP_WINDING_CULL) != 0)
-        goto label_mark_primitive_accepted;
-    if ((paint_cull_mask & *paint_cull_table) != 0)
-        goto label_mark_primitive_accepted;
-
-    if ((transshapeflags & TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED) == 0) {
-        if (is_positive_winding_2d(
-                (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE))
-            == 0) {
-            reject_prim_winding++;
-            goto label_optional_rect_update_begin;
+        if ((primitive_cull_table[0] & direction_cull_mask_primary) == 0) {
+            /* Culled by direction table: skip to finish */
+            reject_prim_culltable++;
         }
-    }
+        else {
+            /* ---- Decode primitive header ---- */
+            primitive_file_type   = transshapeprimitives[0];
+            transshapenumvertscopy = primidxcounttab[primitive_file_type];
+            primitive_render_type  = primtypetab[primitive_file_type];
 
-label_mark_primitive_accepted:
-    primitive_accept_count++;
+            transshapepolyinfo = s_polyinfo_base + polyinfoptrnext;
+            polyinfoptrs[polyinfonumpolys] = (int *)transshapepolyinfo;
 
-label_optional_rect_update_begin:
-    if (primitive_accept_count == 0)
-        goto label_finish_current_primitive;
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0)
-        goto label_finish_current_primitive;
+            transprimitivepaintjob = transshapeprimitives[PRIMITIVE_RECORD_HEADER_BYTES
+                                                         + transshapematerial];
+            transshapeprimitives += PRIMITIVE_RECORD_HEADER_BYTES + transshapenumpaints;
 
-    polygon_points_ptr = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    polygon_vertex_counter = 0;
-    goto label_rect_update_loop_check;
+            rect_clip_mask = RECT_CLIP_FULL_MASK;
+            all_vertices_behind_near_plane = true;
+            has_near_plane_vertex = false;
+            transshapeprimindexptr = transshapeprimitives;
 
-label_rect_update_vertex_loop:
-    polygon_vertex_x = polygon_points_ptr->px;
-    polygon_vertex_y = polygon_points_ptr->py;
-    polygon_points_ptr++;
+            /* ---- Project each primitive vertex ---- */
+            for (polygon_vertex_counter = 0;
+                 polygon_vertex_counter < transshapenumvertscopy;
+                 polygon_vertex_counter++) {
 
-    if (polygon_vertex_x < transshaperectptr->left) {
-        transshaperectptr->left = polygon_vertex_x;
-    }
-    if (transshaperectptr->right < polygon_vertex_x + 1) {
-        transshaperectptr->right = polygon_vertex_x + 1;
-    }
-    if (transshaperectptr->top > polygon_vertex_y) {
-        transshaperectptr->top = polygon_vertex_y;
-    }
-    if (transshaperectptr->bottom < polygon_vertex_y + 1) {
-        transshaperectptr->bottom = polygon_vertex_y + 1;
-    }
+                temp = transshapeprimindexptr[0];
+                transshapeprimindexptr++;
+                polyvertpointptrtab[polygon_vertex_counter] = &cached_projected_points[temp];
 
-    polygon_vertex_counter++;
+                if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_UNCACHED) {
+                    /* Project and cache this vertex */
+                    scratch_vector_a = transshapeverts[temp];
+                    if (select_rect_scale_preview != 0) {
+                        scratch_vector_a.x /= 2;
+                        scratch_vector_a.y /= 2;
+                        scratch_vector_a.z /= 2;
+                    }
+                    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
+                    scratch_vector_b.x += shape_position_view.x;
+                    scratch_vector_b.y += shape_position_view.y;
+                    scratch_vector_b.z += shape_position_view.z;
+                    cached_view_vertices[temp] = scratch_vector_b;
 
-label_rect_update_loop_check:
-    if (polygon_vertex_counter < transshapenumvertscopy)
-        goto label_rect_update_vertex_loop;
+                    if (scratch_vector_b.z >= NEAR_PLANE_Z) {
+                        all_vertices_behind_near_plane = false;
+                        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_VISIBLE;
+                        vector_to_point(&scratch_vector_b,
+                                        polyvertpointptrtab[polygon_vertex_counter]);
+                        if (rect_clip_mask != 0) {
+                            rect_clip_mask &= rect_compare_point(
+                                polyvertpointptrtab[polygon_vertex_counter]);
+                        }
+                    }
+                    else {
+                        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
+                        has_near_plane_vertex = true;
+                    }
+                }
+                else if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_VISIBLE) {
+                    all_vertices_behind_near_plane = false;
+                    if (rect_clip_mask != 0) {
+                        rect_clip_mask &= rect_compare_point(
+                            polyvertpointptrtab[polygon_vertex_counter]);
+                    }
+                }
+                else {
+                    /* VERTEX_DEPTH_FLAG_BEHIND_NEAR */
+                    has_near_plane_vertex = true;
+                }
+            }
 
-label_finish_current_primitive:
-    transshapeprimitives = transshapeprimptr;
-    primitive_cull_table++;
-    paint_cull_table++;
-    if (primitive_accept_count != 0)
-        goto label_store_polyinfo_entry;
-    if ((primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0)
-        goto label_primitive_loop_exit_or_continue;
-label_skip_hidden_primitive_chain:
-    if ((transshapeprimitives[1] & PRIMITIVE_FLAG_CHAIN_UNSORTED) == 0)
-        goto label_primitive_loop_exit_or_continue;
-    transshapeprimitives += primidxcounttab[transshapeprimitives[0]] + transshapenumpaints
-                            + PRIMITIVE_RECORD_HEADER_BYTES;
-    primitive_cull_table++;
-    paint_cull_table++;
-    goto label_skip_hidden_primitive_chain;
+            /* ---- Dispatch by render type (do{}while(0) for break-to-finish) ---- */
+            do {
+                if (all_vertices_behind_near_plane) {
+                    reject_prim_all_behind++;
+                    break;
+                }
+                if (rect_clip_mask != 0 && !has_near_plane_vertex) {
+                    reject_prim_rect_stage1++;
+                    break;
+                }
 
-_primtype_line:
-    temp0 = transshapeprimitives[0];
-    temp1 = transshapeprimitives[1];
-    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] == 2) {
-        goto label_finish_current_primitive;
-    }
-    if (vertex_depth_flags[temp0] == 0) {
-        goto label_prepare_line_or_sphere_clip;
-    }
-    vector_lerp_at_z(&cached_view_vertices[temp1], &cached_view_vertices[temp0], &scratch_vector_a,
-                     NEAR_PLANE_Z);
-    temp = temp0;
-    goto label_store_line_clip_point;
+                switch (primitive_render_type) {
 
-label_prepare_line_or_sphere_clip:
-    if (vertex_depth_flags[temp1] == 0)
-        goto label_emit_line_primitive;
-    vector_lerp_at_z(&cached_view_vertices[temp0], &cached_view_vertices[temp1], &scratch_vector_a,
-                     NEAR_PLANE_Z);
-    temp = temp1;
+                /* ---- Polygon ---- */
+                case PRIMITIVE_TYPE_POLYGON: {
+                    polyinfo_point_write_ptr = (struct POINT2D *)(transshapepolyinfo
+                                                                  + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapeprimindexptr = transshapeprimitives;
+                    depth_sum = 0;
+                    rect_clip_mask = RECT_CLIP_FULL_MASK;
 
-label_store_line_clip_point:
-    vector_to_point(&scratch_vector_a, &cached_projected_points[temp]);
+                    if (has_near_plane_vertex) {
+                        /* Near-plane clip */
+                        unsigned clip_vert_count = 0;
+                        unsigned clip_i;
+                        previous_vertex_index = transshapeprimitives[transshapenumvertscopy - 1];
+                        for (clip_i = 0; clip_i < transshapenumvertscopy; clip_i++) {
+                            current_vertex_index = transshapeprimindexptr[0];
+                            transshapeprimindexptr++;
+                            depth_sum += cached_view_vertices[current_vertex_index].z;
 
-label_emit_line_primitive:
-    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
-    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
+                            if (vertex_depth_flags[current_vertex_index] != 0) {
+                                /* current is behind near plane */
+                                if (vertex_depth_flags[previous_vertex_index] == 0) {
+                                    /* previous was visible: emit clip point */
+                                    vector_lerp_at_z(
+                                        &cached_view_vertices[previous_vertex_index],
+                                        &cached_view_vertices[current_vertex_index],
+                                        &scratch_vector_a, NEAR_PLANE_Z);
+                                    vector_to_point(&scratch_vector_a,
+                                                    &clipped_intersection_point);
+                                    if (rect_clip_mask != 0)
+                                        rect_clip_mask &= rect_compare_point(
+                                            &clipped_intersection_point);
+                                    *polyinfo_point_write_ptr = clipped_intersection_point;
+                                    polyinfo_point_write_ptr++;
+                                    clip_vert_count++;
+                                }
+                            }
+                            else {
+                                /* current is visible */
+                                if (vertex_depth_flags[previous_vertex_index] != 0) {
+                                    /* previous was behind: emit clip entry point */
+                                    vector_lerp_at_z(
+                                        &cached_view_vertices[current_vertex_index],
+                                        &cached_view_vertices[previous_vertex_index],
+                                        &scratch_vector_a, NEAR_PLANE_Z);
+                                    vector_to_point(&scratch_vector_a,
+                                                    &clipped_intersection_point);
+                                    if (rect_clip_mask != 0)
+                                        rect_clip_mask &= rect_compare_point(
+                                            &clipped_intersection_point);
+                                    *polyinfo_point_write_ptr = clipped_intersection_point;
+                                    polyinfo_point_write_ptr++;
+                                    clip_vert_count++;
+                                }
+                                /* emit the visible vertex itself */
+                                *polyinfo_point_write_ptr = *polyvertpointptrtab[clip_i];
+                                if (rect_clip_mask != 0)
+                                    rect_clip_mask &= rect_compare_point(polyvertpointptrtab[clip_i]);
+                                polyinfo_point_write_ptr++;
+                                clip_vert_count++;
+                            }
+                            previous_vertex_index = current_vertex_index;
+                        }
+                        transshapenumvertscopy = (unsigned char)clip_vert_count;
+                    }
+                    else {
+                        /* No near-plane clipping: copy vertices directly */
+                        unsigned copy_i;
+                        for (copy_i = 0; copy_i < transshapenumvertscopy; copy_i++) {
+                            current_vertex_index = transshapeprimindexptr[0];
+                            transshapeprimindexptr++;
+                            depth_sum += cached_view_vertices[current_vertex_index].z;
+                            poly_point_slot_ptr = &polyvertpointptrtab[copy_i];
+                            *polyinfo_point_write_ptr = **poly_point_slot_ptr;
+                            if (rect_clip_mask != 0)
+                                rect_clip_mask &= rect_compare_point(*poly_point_slot_ptr);
+                            polyinfo_point_write_ptr++;
+                        }
+                    }
 
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0)
-        goto label_emit_line_polyinfo_basic;
-    rect_adjust_from_point(polyvertpointptrtab[0], transshaperectptr);
-    rect_adjust_from_point(polyvertpointptrtab[1], transshaperectptr);
+                    /* Validate vertex count */
+                    if (transshapenumvertscopy == 0) {
+                        reject_prim_numverts_zero++;
+                        break;
+                    }
+                    if (rect_clip_mask != 0) {
+                        reject_prim_rect_stage2++;
+                        break;
+                    }
 
-label_emit_line_polyinfo_basic:
-    transshapenumvertscopy = 2;
+                    /* Winding cull */
+                    if ((primitive_flags & PRIMITIVE_FLAG_SKIP_WINDING_CULL) == 0
+                        && (paint_cull_mask & *paint_cull_table) == 0) {
+                        if ((transshapeflags & TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED) == 0) {
+                            if (is_positive_winding_2d((struct POINT2D *)(transshapepolyinfo
+                                                        + POLYINFO_ENTRY_HEADER_SIZE)) == 0) {
+                                reject_prim_winding++;
+                                break; /* winding rejected: skip rect update */
+                            }
+                        }
+                    }
+                    primitive_accept_count++;
 
-label_emit_line_done:
-    primitive_accept_count++;
-    goto label_finish_current_primitive;
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        unsigned rect_vi;
+                        polygon_points_ptr = (struct POINT2D *)(transshapepolyinfo
+                                                                + POLYINFO_ENTRY_HEADER_SIZE);
+                        for (rect_vi = 0; rect_vi < transshapenumvertscopy; rect_vi++) {
+                            polygon_vertex_x = polygon_points_ptr->px;
+                            polygon_vertex_y = polygon_points_ptr->py;
+                            polygon_points_ptr++;
+                            if (polygon_vertex_x < transshaperectptr->left)
+                                transshaperectptr->left = polygon_vertex_x;
+                            if (transshaperectptr->right < polygon_vertex_x + 1)
+                                transshaperectptr->right = polygon_vertex_x + 1;
+                            if (transshaperectptr->top > polygon_vertex_y)
+                                transshaperectptr->top = polygon_vertex_y;
+                            if (transshaperectptr->bottom < polygon_vertex_y + 1)
+                                transshaperectptr->bottom = polygon_vertex_y + 1;
+                        }
+                    }
+                    break;
+                } /* PRIMITIVE_TYPE_POLYGON */
 
-_primtype_wheel:
-    if (has_near_plane_vertex)
-        goto label_finish_current_primitive;
+                /* ---- Line ---- */
+                case PRIMITIVE_TYPE_LINE: {
+                    temp0 = transshapeprimitives[0];
+                    temp1 = transshapeprimitives[1];
+                    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] == 2)
+                        break; /* both behind near plane */
 
-    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
-    transshapepolyinfopts[2] = *polyvertpointptrtab[2];
-    transshapepolyinfopts[3] = *polyvertpointptrtab[3];
+                    if (vertex_depth_flags[temp0] != 0) {
+                        /* temp0 behind near: clip temp0 edge toward temp1 */
+                        vector_lerp_at_z(&cached_view_vertices[temp1],
+                                         &cached_view_vertices[temp0], &scratch_vector_a,
+                                         NEAR_PLANE_Z);
+                        vector_to_point(&scratch_vector_a, &cached_projected_points[temp0]);
+                    }
+                    else if (vertex_depth_flags[temp1] != 0) {
+                        /* temp1 behind near: clip temp1 edge toward temp0 */
+                        vector_lerp_at_z(&cached_view_vertices[temp0],
+                                         &cached_view_vertices[temp1], &scratch_vector_a,
+                                         NEAR_PLANE_Z);
+                        vector_to_point(&scratch_vector_a, &cached_projected_points[temp1]);
+                    }
 
-    /* Viewport bounds check for wheel control points.
-       On DOS (16-bit int), extreme projections wrapped naturally.
-       On 32-bit, they stay large and blow up polarRadius2D → huge wheel.
-       Reject the wheel if any control point is far outside the screen. */
-    {
-        int _whi;
-        for (_whi = 0; _whi < 4; _whi++) {
-            int _wax = transshapepolyinfopts[_whi].px;
-            int _way = transshapepolyinfopts[_whi].py;
-            if (_wax < 0)
-                _wax = -_wax;
-            if (_way < 0)
-                _way = -_way;
-            if (_wax > WHEEL_VERTEX_CONTROL_ABS_MAX || _way > WHEEL_VERTEX_CONTROL_ABS_MAX)
-                goto label_finish_current_primitive;
+                    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
+                    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo
+                                                               + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
+
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_adjust_from_point(polyvertpointptrtab[0], transshaperectptr);
+                        rect_adjust_from_point(polyvertpointptrtab[1], transshaperectptr);
+                    }
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+                } /* PRIMITIVE_TYPE_LINE */
+
+                /* ---- Wheel ---- */
+                case PRIMITIVE_TYPE_WHEEL: {
+                    if (has_near_plane_vertex)
+                        break;
+
+                    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo
+                                                               + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
+                    transshapepolyinfopts[2] = *polyvertpointptrtab[2];
+                    transshapepolyinfopts[3] = *polyvertpointptrtab[3];
+
+                    /* Viewport bounds check for wheel control points.
+                       On DOS (16-bit int), extreme projections wrapped naturally.
+                       On 32-bit, they stay large and blow up polarRadius2D.
+                       Reject if any control point is far outside the screen. */
+                    {
+                        int _whi;
+                        bool wheel_out_of_bounds = false;
+                        for (_whi = 0; _whi < 4; _whi++) {
+                            int _wax = transshapepolyinfopts[_whi].px;
+                            int _way = transshapepolyinfopts[_whi].py;
+                            if (_wax < 0) _wax = -_wax;
+                            if (_way < 0) _way = -_way;
+                            if (_wax > WHEEL_VERTEX_CONTROL_ABS_MAX
+                                || _way > WHEEL_VERTEX_CONTROL_ABS_MAX) {
+                                wheel_out_of_bounds = true;
+                                break;
+                            }
+                        }
+                        if (wheel_out_of_bounds)
+                            break;
+                    }
+
+                    if (is_positive_winding_2d(transshapepolyinfopts) == 0) {
+                        transshapepolyinfopts[0] = *polyvertpointptrtab[3];
+                        transshapepolyinfopts[1] = *polyvertpointptrtab[4];
+                        transshapepolyinfopts[2] = *polyvertpointptrtab[5];
+                        transshapepolyinfopts[3] = *polyvertpointptrtab[0];
+                        depth_sum = cached_view_vertices[transshapeprimitives[3]].z << 2;
+                    }
+                    else {
+                        depth_sum = cached_view_vertices[transshapeprimitives[0]].z << 2;
+                    }
+
+                    /* Compute wheel radius */
+                    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo
+                                                               + POLYINFO_ENTRY_HEADER_SIZE);
+                    temp = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[1].px,
+                                        transshapepolyinfopts[0].py - transshapepolyinfopts[1].py);
+                    temp1 = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[2].px,
+                                         transshapepolyinfopts[0].py - transshapepolyinfopts[2].py);
+                    if (temp1 > temp)
+                        temp = temp1;
+
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_expand_point.px = transshapepolyinfopts[0].px - (int)temp - 1;
+                        rect_expand_point.py = transshapepolyinfopts[0].py - (int)temp - 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[0].px + (int)temp + 1;
+                        rect_expand_point.py = transshapepolyinfopts[0].py + (int)temp + 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[3].px - (int)temp - 1;
+                        rect_expand_point.py = transshapepolyinfopts[3].py - (int)temp - 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[3].px + (int)temp + 1;
+                        rect_expand_point.py = transshapepolyinfopts[3].py + (int)temp + 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                    }
+                    transshapenumvertscopy = 4;
+                    primitive_accept_count = 1;
+                    break;
+                } /* PRIMITIVE_TYPE_WHEEL */
+
+                /* ---- Sphere ---- */
+                case PRIMITIVE_TYPE_SPHERE: {
+                    temp0 = transshapeprimitives[0];
+                    temp1 = transshapeprimitives[1];
+                    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
+                    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] != 0)
+                        break; /* at least one vertex is behind near plane */
+
+                    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo
+                                                               + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    scratch_vector_b = cached_view_vertices[temp0];
+                    scratch_vector_c = cached_view_vertices[temp1];
+                    scratch_vector_a.x = scratch_vector_b.x - scratch_vector_c.x;
+                    scratch_vector_a.y = scratch_vector_b.y - scratch_vector_c.y;
+                    scratch_vector_a.z = scratch_vector_b.z - scratch_vector_c.z;
+                    projected_radius = project_radius_by_depth(polarRadius3D(&scratch_vector_a),
+                                                               scratch_vector_b.z);
+                    transshapepolyinfopts[1].px = projected_radius;
+
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_expand_point.py = polyvertpointptrtab[0]->py - (int)projected_radius;
+                        rect_expand_point.px = polyvertpointptrtab[0]->px - (int)projected_radius;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.py = polyvertpointptrtab[0]->py + (int)projected_radius;
+                        rect_expand_point.px = polyvertpointptrtab[0]->px + (int)projected_radius;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                    }
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+                } /* PRIMITIVE_TYPE_SPHERE */
+
+                /* ---- Pixel (unsupported) ---- */
+                case PRIMITIVE_TYPE_PIXEL:
+                    fatal_error("unhandled primitive type 5");
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+
+                default:
+                    break;
+
+                } /* switch (primitive_render_type) */
+
+            } while (0); /* end per-primitive processing */
+
+        } /* end if (cull_table passed) */
+
+        /* ---- Finish current primitive ---- */
+        transshapeprimitives = transshapeprimptr;
+        primitive_cull_table++;
+        paint_cull_table++;
+
+        if (primitive_accept_count != 0) {
+            /* Store this primitive into the polyinfo buffer */
+            accepted_primitive_count++;
+            transshapepolyinfo[3] = transshapenumvertscopy;
+            transshapepolyinfo[POLYINFO_LINE_PRIMITIVE_TYPE_OFFSET] = primitive_render_type;
+            if (transprimitivepaintjob == BACKLIGHTS_PAINT_ID) {
+                transshapepolyinfo[2] = backlights_paint_override;
+            }
+            else {
+                transshapepolyinfo[2] = transprimitivepaintjob;
+            }
+
+            if (transshapenumvertscopy == 1) {
+                temp0 = (unsigned)depth_sum;
+            }
+            else if (transshapenumvertscopy == 2) {
+                temp0 = (unsigned)(depth_sum >> 1);
+            }
+            else if (transshapenumvertscopy == 4) {
+                temp0 = (unsigned)(depth_sum >> 2);
+            }
+            else if (transshapenumvertscopy == 8) {
+                temp0 = (unsigned)(depth_sum >> 3);
+            }
+            else {
+                temp0 = (unsigned)(depth_sum / transshapenumvertscopy);
+            }
+
+            if (temp0 > POLY_DEPTH_MAX_SIGNED)
+                temp0 = POLY_DEPTH_MAX_SIGNED;
+
+            if (has_near_plane_vertex) {
+                if ((short)temp0 < NEAR_PLANE_Z)
+                    temp0 = NEAR_PLANE_Z;
+            }
+            else if ((short)temp0 < 0) {
+                /* Depth is negative and no near-plane vertex: discard */
+                accepted_primitive_count--;
+            }
+
+            if (accepted_primitive_count != 0) {
+            ((unsigned short *)transshapepolyinfo)[0] = (unsigned short)temp0;
+
+            if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0
+                || (primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
+                temp = 0;
+            }
+            else {
+                temp = 1;
+            }
+
+            polygon_op_error_code = polyinfo_insert_sorted_by_depth(temp0, temp);
+            if (polygon_op_error_code != 0)
+                return 1;
+            } /* end if (accepted_primitive_count != 0) inner depth check */
         }
-    }
-
-    if (is_positive_winding_2d(transshapepolyinfopts) != 0)
-        goto label_emit_sphere_depth_seed;
-
-    transshapepolyinfopts[0] = *polyvertpointptrtab[3];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[4];
-    transshapepolyinfopts[2] = *polyvertpointptrtab[5];
-    transshapepolyinfopts[3] = *polyvertpointptrtab[0];
-
-    depth_sum = cached_view_vertices[transshapeprimitives[3]].z << 2;
-    goto label_emit_sphere_radius_compute;
-
-label_emit_sphere_depth_seed:
-    depth_sum = cached_view_vertices[transshapeprimitives[0]].z << 2;
-
-label_emit_sphere_radius_compute:
-    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    temp = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[1].px,
-                         transshapepolyinfopts[0].py - transshapepolyinfopts[1].py);
-    temp1 = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[2].px,
-                          transshapepolyinfopts[0].py - transshapepolyinfopts[2].py);
-
-    if (temp1 > temp)
-        temp = temp1;
-
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0)
-        goto label_emit_sphere_polyinfo;
-
-    rect_expand_point.px = transshapepolyinfopts[0].px - (int)temp - 1;
-    rect_expand_point.py = transshapepolyinfopts[0].py - (int)temp - 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-
-    rect_expand_point.px = transshapepolyinfopts[0].px + (int)temp + 1;
-    rect_expand_point.py = transshapepolyinfopts[0].py + (int)temp + 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-
-    rect_expand_point.px = transshapepolyinfopts[3].px - (int)temp - 1;
-    rect_expand_point.py = transshapepolyinfopts[3].py - (int)temp - 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-
-    rect_expand_point.px = transshapepolyinfopts[3].px + (int)temp + 1;
-    rect_expand_point.py = transshapepolyinfopts[3].py + (int)temp + 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-
-label_emit_sphere_polyinfo:
-    transshapenumvertscopy = 4;
-    primitive_accept_count = 1;
-    goto label_finish_current_primitive;
-
-_primtype_sphere:
-    temp0 = transshapeprimitives[0];
-    temp1 = transshapeprimitives[1];
-    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
-    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] != 0)
-        goto label_finish_current_primitive;
-
-    transshapepolyinfopts = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    scratch_vector_b = cached_view_vertices[temp0];
-    scratch_vector_c = cached_view_vertices[temp1];
-
-    scratch_vector_a.x = scratch_vector_b.x - scratch_vector_c.x;
-    scratch_vector_a.y = scratch_vector_b.y - scratch_vector_c.y;
-    scratch_vector_a.z = scratch_vector_b.z - scratch_vector_c.z;
-    projected_radius = project_radius_by_depth(polarRadius3D(&scratch_vector_a),
-                                               scratch_vector_b.z);
-    transshapepolyinfopts[1].px = projected_radius;
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0)
-        goto label_emit_line_polyinfo_basic;
-
-    rect_expand_point.py = polyvertpointptrtab[0]->py - (int)projected_radius;
-    rect_expand_point.px = polyvertpointptrtab[0]->px - (int)projected_radius;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-
-    rect_expand_point.py = polyvertpointptrtab[0]->py + (int)projected_radius;
-    rect_expand_point.px = polyvertpointptrtab[0]->px + (int)projected_radius;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-    goto label_emit_line_polyinfo_basic;
-
-label_handle_unsupported_primitive_type5:
-    fatal_error("unhandled primitive type 5");
-    goto label_emit_line_done;
-
-label_store_polyinfo_entry:
-    accepted_primitive_count++;
-    transshapepolyinfo[3] = transshapenumvertscopy;
-    transshapepolyinfo[POLYINFO_LINE_PRIMITIVE_TYPE_OFFSET] = primitive_render_type;
-    if (transprimitivepaintjob == BACKLIGHTS_PAINT_ID) {
-        transshapepolyinfo[2] = backlights_paint_override;
-    }
-    else {
-        transshapepolyinfo[2] = transprimitivepaintjob;
-    }
-
-    if (transshapenumvertscopy == 1) {
-        temp0 = (unsigned)depth_sum;
-    }
-    else if (transshapenumvertscopy == 2) {
-        temp0 = (unsigned)(depth_sum >> 1);
-    }
-    else if (transshapenumvertscopy == 4) {
-        temp0 = (unsigned)(depth_sum >> 2);
-    }
-    else if (transshapenumvertscopy == 8) {
-        temp0 = (unsigned)(depth_sum >> 3);
-    }
-    else {
-        temp0 = (unsigned)(depth_sum / transshapenumvertscopy);
-    }
-
-    if (temp0 > POLY_DEPTH_MAX_SIGNED) {
-        temp0 = POLY_DEPTH_MAX_SIGNED;
-    }
-
-    if (has_near_plane_vertex) {
-        if ((short)temp0 < NEAR_PLANE_Z) {
-            temp0 = NEAR_PLANE_Z;
+        else if ((primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) == 0) {
+            /* Hidden primitive with chain flag: skip linked hidden primitives */
+            while ((transshapeprimitives[1] & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
+                transshapeprimitives += primidxcounttab[transshapeprimitives[0]]
+                                        + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
+                primitive_cull_table++;
+                paint_cull_table++;
+            }
         }
-    }
-    else if ((short)temp0 < 0) {
-        goto label_finish_current_primitive;
-    }
 
-    ((unsigned short *)transshapepolyinfo)[0] = (unsigned short)temp0;
+        if (transshapeprimitives[0] == 0)
+            break;
+    } /* while (1) primitive loop */
 
-    if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0
-        || (primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
-        temp = 0;
-    }
-    else {
-        temp = 1;
-    }
-
-    polygon_op_error_code = polyinfo_insert_sorted_by_depth(temp0, temp);
-    if (polygon_op_error_code != 0) {
-        return 1;
-    }
-
-label_primitive_loop_exit_or_continue:
-    if (transshapeprimitives[0] != 0)
-        goto label_primitive_loop_next;
     if (accepted_primitive_count != 0)
         return 0;
     return -1;
@@ -2690,58 +2663,55 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
     unsigned long value;
     unsigned long temp;
 
-    if (mode == 1) {
-        goto preRender_helper2;
-    }
-    count = regsi[10];
-    if (count > 0) {
-        ofs = edge_state_start_row_from_count(regsi, count);
-        for (i = 0; i < count; i++) {
-            int idx = ofs + i;
-            if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+    if (mode != 1) {
+        count = regsi[10];
+        if (count > 0) {
+            ofs = edge_state_start_row_from_count(regsi, count);
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                }
+            }
+        }
+
+        count = regsi[12];
+        if (count > 0) {
+            ofs = edge_state_start_row_from_count(regsi, count);
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                }
+            }
+        }
+
+        count = regsi[11];
+        if (count > 0) {
+            ofs = regsi[5] + 1;
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                }
+            }
+        }
+
+        count = regsi[13];
+        if (count > 0) {
+            ofs = regsi[5] + 1;
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                }
             }
         }
     }
-
-    count = regsi[12];
-    if (count > 0) {
-        ofs = edge_state_start_row_from_count(regsi, count);
-        for (i = 0; i < count; i++) {
-            int idx = ofs + i;
-            if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
-            }
-        }
-    }
-
-    count = regsi[11];
-    if (count > 0) {
-        ofs = regsi[5] + 1;
-        for (i = 0; i < count; i++) {
-            int idx = ofs + i;
-            if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
-            }
-        }
-    }
-
-    count = regsi[13];
-    if (count > 0) {
-        ofs = regsi[5] + 1;
-        for (i = 0; i < count; i++) {
-            int idx = ofs + i;
-            if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
-            }
-        }
-    }
-
-preRender_helper2:
 
     count = regsi[7];
     if (count <= 0)
@@ -2937,10 +2907,7 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
     } while (0)
 
     count = regsi[7];
-    if (count <= 0) {
-        goto done_clip;
-    }
-
+    if (count > 0) {
     ofs = regsi[3];
     mode = regsi[9];
 
@@ -2999,7 +2966,6 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
                 }
             }
         }
-        goto done_clip;
     }
     else if (mode == SHAPE3D_EDGE_MODE_STEEP_RIGHT) {
         unsigned long temp = (unsigned int)regsi[2];
@@ -3059,46 +3025,47 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
                 }
             }
         }
-        goto done_clip;
     }
+    else {
+        accum = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) | (unsigned int)regsi[2];
 
-    accum = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) | (unsigned int)regsi[2];
-
-    for (i = 0; i < count; i++) {
-        switch (mode) {
-        case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
-            x = regsi[1] - i;
-            break;
-        case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
-            x = regsi[1] + i;
-            break;
-        case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
-            x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-            accum -= (unsigned int)regsi[6];
-            break;
-        case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
-            x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-            accum += (unsigned int)regsi[6];
-            break;
-        case SHAPE3D_EDGE_MODE_VERTICAL:
-        default:
-            x = regsi[1];
-            break;
-        }
-
-        if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-            if (x < (int)scanline_bounds[ofs + i]) {
-                scanline_bounds[ofs + i] = (int16_t)x;
+        for (i = 0; i < count; i++) {
+            switch (mode) {
+            case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
+                x = regsi[1] - i;
+                break;
+            case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
+                x = regsi[1] + i;
+                break;
+            case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
+                x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
+                accum -= (unsigned int)regsi[6];
+                break;
+            case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
+                x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
+                accum += (unsigned int)regsi[6];
+                break;
+            case SHAPE3D_EDGE_MODE_VERTICAL:
+            default:
+                x = regsi[1];
+                break;
             }
-            if (x > (int)scanline_bounds[SCANLINE_HEIGHT + ofs + i]) {
-                scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (int16_t)x;
+
+            if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
+                if (x < (int)scanline_bounds[ofs + i]) {
+                    scanline_bounds[ofs + i] = (int16_t)x;
+                }
+                if (x > (int)scanline_bounds[SCANLINE_HEIGHT + ofs + i]) {
+                    scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (int16_t)x;
+                }
             }
         }
-    }
+    } /* end else generic path */
+    } /* end if (count > 0) */
 
 #undef UPDATE_MIN_MAX
 
-done_clip:
+
     if (apply_border_clip != 0) {
         count = regsi[10];
         if (count > 0) {
