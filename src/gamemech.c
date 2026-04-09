@@ -220,9 +220,7 @@ void loop_game(int command, int context_value, int frame_value);
  */
 int
 handle_ingame_kb_shortcuts(int command) {
-    int ax = command;
-
-    if (UI_IS_CANCEL(ax)) {
+    if (UI_IS_CANCEL(command)) {
         if (game_replay_mode == 0) {
             update_crash_state(0, GAMEMECH_CRASH_TYPE_FREEZE);
         }
@@ -230,7 +228,7 @@ handle_ingame_kb_shortcuts(int command) {
         return 1;
     }
 
-    if (ax == 67 || ax == 99) { /* 'C' or 'c' */
+    if (command == 67 || command == 99) { /* 'C' or 'c' */
         if (game_replay_mode == 1) {
             /* exit replay, go live */
             game_replay_mode = 0;
@@ -242,47 +240,47 @@ handle_ingame_kb_shortcuts(int command) {
         return 1;
     }
 
-    if (ax == 68 || ax == 100) { /* 'D' or 'd' */
+    if (command == 68 || command == 100) { /* 'D' or 'd' */
         dashb_toggle = !dashb_toggle;
         return 1;
     }
 
-    if (ax == 72 || ax == 104) { /* 'H' or 'h' */
+    if (command == 72 || command == 104) { /* 'H' or 'h' */
         HKeyFlag[0] ^= 1;
         return 1;
     }
 
-    if (ax == 77 || ax == 109) { /* 'M' or 'm' */
+    if (command == 77 || command == 109) { /* 'M' or 'm' */
         do_mou_restext();
         mouse_minmax_position((char)mouse_motion_state_flag);
         return 1;
     }
 
-    if (ax == 82 || ax == 114) { /* 'R' or 'r' */
+    if (command == 82 || command == 114) { /* 'R' or 'r' */
         replaybar_toggle = !replaybar_toggle;
         return 1;
     }
 
-    if (ax == 116) { /* 't' */
+    if (command == 116) { /* 't' */
         if (gameconfig.game_opponenttype != 0) {
             followOpponentFlag = !followOpponentFlag;
         }
         return 1;
     }
 
-    if (ax == GAMEMECH_KEY_F1) {
+    if (command == GAMEMECH_KEY_F1) {
         cameramode = 0;
         return 1;
     }
-    if (ax == GAMEMECH_KEY_F2) {
+    if (command == GAMEMECH_KEY_F2) {
         cameramode = 1;
         return 1;
     }
-    if (ax == GAMEMECH_KEY_F3) {
+    if (command == GAMEMECH_KEY_F3) {
         cameramode = 2;
         return 1;
     }
-    if (ax == GAMEMECH_KEY_F4) {
+    if (command == GAMEMECH_KEY_F4) {
         cameramode = 3;
         return 1;
     }
@@ -1824,7 +1822,7 @@ loop_game(int command, int context_value, int frame_value) {
                     UI_DIALOG_CONFIRM, 0, textres, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS,
                     dialogarg2, (unsigned short *)dialogFlags, 0);
             }
-            dialogChoice -= 1; /* ASM: sub ax, 1 — button 0 is "Return to Replay" (dismiss) */
+            dialogChoice -= 1; /* ASM: sub command, 1 — button 0 is "Return to Replay" (dismiss) */
 
             switch (dialogChoice) {
             case 0: /* retire */
