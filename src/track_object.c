@@ -498,14 +498,12 @@ bto_trackobj_roty(unsigned char elem) {
 void
 build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     short *currentWallPtrUnused;
-    int tempValue3C;
     int wallOrientationOffset;
     char terrainTile = 0;
     int absElemX;
     int absElemZ;
     struct VECTOR elemPos;
     int physModel;
-    int tempValue22;
     char tileRow;
     int highwayInnerBoundX;
     int highwayLateralDistance;
@@ -565,12 +563,12 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     di = (int)(signed char)tileCol;
     elem_xCenter = trackcenterpos2[di];
 
-    tempValue3C = (int)(signed char)tileRow * 2;
-    elem_zCenter = terraincenterpos[tempValue3C / 2];
+    int tileRowDoubled = (int)(signed char)tileRow * 2;
+    elem_zCenter = terraincenterpos[tileRowDoubled / 2];
 
     /* Look up terrain tile */
     {
-        int rowOffset = trackrows[tempValue3C / 2];
+        int rowOffset = trackrows[tileRowDoubled / 2];
         terrainTile = track_terrain_map[rowOffset + di];
     }
 
@@ -595,10 +593,10 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 sinVal = sin_fast((unsigned short)si);
                 di = multiply_and_scale(pzElem, sinVal);
                 cosVal = cos_fast((unsigned short)si);
-                tempValue22 = multiply_and_scale(pxElem, cosVal) + di;
+                int coastRotatedX = multiply_and_scale(pxElem, cosVal) + di;
+                if (coastRotatedX < 0)
+                    current_surf_type = SURF_WATER;
             }
-            if (tempValue22 < 0)
-                current_surf_type = SURF_WATER;
         } else if (terrVal == BTO_TERRAIN_HILL_RAISED) {
             terrainHeight = hillHeightConsts[BTO_HILL_HEIGHT_INDEX];
         }
@@ -620,9 +618,8 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
         /* Normal tile: adjust centers using multi-tile flags */
         unsigned char te = (unsigned char)tileElement;
         unsigned char mtf = (unsigned char)bto_trackobj_multi(te);
-        tempValue3C = (int)mtf;
         if (mtf != 0) {
-            if (tempValue3C & 1) {
+            if ((int)mtf & 1) {
                 int rowIdx = (int)(signed char)tileRow;
                 elem_zCenter = terrainpos[rowIdx];
             }
@@ -908,10 +905,10 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             long range = (long)(highEntrXOutBounds1[si] - highEntrXOutBounds0[si]);
             ax = (int)((dividend * range) / divisor) + highEntrXOutBounds0[si];
         }
-        tempValue22 = ax;
+        int highwayOuterBoundX = ax;
 
         /* Check if position is between inner and outer bounds */
-        if (highwayLateralDistance > highwayInnerBoundX && highwayLateralDistance < tempValue22) {
+        if (highwayLateralDistance > highwayInnerBoundX && highwayLateralDistance < highwayOuterBoundX) {
             { current_surf_type = surfaceType; break; }
         }
 
@@ -1112,7 +1109,6 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 int angle = polarAngle(currentPxAdj, currentPzAdj);
                 angle &= BTO_POLAR_ANGLE_MASK_LOW; /* sub ah,ah equivalent */
                 angle = angle * BTO_POLAR_ANGLE_STEP_MULT;
-                tempValue22 = angle;
                 angle = angle >> 8;
                 angle = -(angle - BTO_POLAR_ANGLE_STEP_BASE);
 
@@ -1225,10 +1221,10 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
         {
             short cosVal = cos_fast((unsigned short)si);
             int result = multiply_and_scale(elemPos.x, cosVal);
-            tempValue22 = result + di;
-        }
-        if (tempValue22 > 0) {
-            planindex++;
+            int bankEntrSideCheck = result + di;
+            if (bankEntrSideCheck > 0) {
+                planindex++;
+            }
         }
         break;
 
@@ -1260,7 +1256,6 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             int wallStep;
             angle &= BTO_POLAR_ANGLE_MASK_LOW;
             angle = angle * BTO_POLAR_ANGLE_STEP_MULT;
-            tempValue22 = angle;
             angle = angle >> 8;
             wallStep = -(angle - BTO_POLAR_ANGLE_STEP_BASE); /* reversed for wall index */
 
@@ -1343,17 +1338,18 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 }
 
                 /* Interpolate */
+                int loopXInterpOffset, loopInterpolatedX;
                 {
                     long divisor = (long)(loopSurface_ZBounds1[di] - loopSurface_ZBounds0[di]);
                     long dividend = (long)(loopSurface_ZBounds0[di] - loopSurfaceClampedZ);
                     long range = (long)(loopSurface_XBounds0[di] - loopSurface_XBounds1[di]);
-                    tempValue22 = (int)((dividend * range) / divisor);
-                    tempValue3C = loopSurface_XBounds0[di] + tempValue22;
+                    loopXInterpOffset = (int)((dividend * range) / divisor);
+                    loopInterpolatedX = loopSurface_XBounds0[di] + loopXInterpOffset;
                 }
 
-                if (tempValue3C >= effectiveX)
+                if (loopInterpolatedX >= effectiveX)
                     break;
-                if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
+                if (loopInterpolatedX + BTO_LOOP_X_WIDTH <= effectiveX)
                     break;
 
                 planindex = loopPlanBase + si;
@@ -1389,17 +1385,18 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 { do_loop_base = 1; break; }
 
             /* Interpolate for right-side up */
+            int loopXInterpOffset2, loopInterpolatedX2;
             {
                 long divisor = (long)(loopSurface_ZBounds1[di] - loopSurface_ZBounds0[di]);
                 long dividend = (long)(loopSurface_ZBounds0[di] - loopSurfaceClampedZ);
                 long range = (long)(loopSurface_XBounds0[di] - loopSurface_XBounds1[di]);
-                tempValue22 = (int)((dividend * range) / divisor);
-                tempValue3C = loopSurface_XBounds0[di] + tempValue22;
+                loopXInterpOffset2 = (int)((dividend * range) / divisor);
+                loopInterpolatedX2 = loopSurface_XBounds0[di] + loopXInterpOffset2;
             }
 
-            if (tempValue3C >= effectiveX)
+            if (loopInterpolatedX2 >= effectiveX)
                 { do_loop_base = 1; break; }
-            if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
+            if (loopInterpolatedX2 + BTO_LOOP_X_WIDTH <= effectiveX)
                 { do_loop_base = 1; break; }
 
             planindex = loopPlanBase + si;
@@ -1422,14 +1419,15 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             }
 
             /* Interpolate outer X bound */
+            int loopBaseOuterX;
             {
                 long divisor = (long)(loopBase_ZBounds1[si] - loopBase_ZBounds0[si]);
                 long dividend = (long)(effectiveZ - loopBase_ZBounds0[si]);
                 long rangeOut = (long)(loopBase_OutXBounds1[si] - loopBase_OutXBounds0[si]);
-                tempValue22 = (int)((dividend * rangeOut) / divisor) + loopBase_OutXBounds0[si];
+                loopBaseOuterX = (int)((dividend * rangeOut) / divisor) + loopBase_OutXBounds0[si];
             }
 
-            if (effectiveX >= loopBaseInnerBoundX && effectiveX <= tempValue22) {
+            if (effectiveX >= loopBaseInnerBoundX && effectiveX <= loopBaseOuterX) {
                 current_surf_type = surfaceType;
             }
         }
@@ -1550,13 +1548,14 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
         {
         short sinVal = sin_fast((unsigned short)si);
         di = multiply_and_scale(elemPos.z, sinVal);
+        int pipeEntrSideCheck;
         {
             int cx = elemPos.x - pipeTriangleCenterX;
             short cosVal = cos_fast((unsigned short)si);
             int result = multiply_and_scale(cx, cosVal);
-            tempValue22 = result + di;
+            pipeEntrSideCheck = result + di;
         }
-        if (tempValue22 < 0) {
+        if (pipeEntrSideCheck < 0) {
             planindex++;
             break;
         }
@@ -1567,7 +1566,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     case BTO_PHYSMODEL_PIPE: /* code_bto_pipe */
     case BTO_PHYSMODEL_HALFPIPE: /* code_bto_halfPipe */
     {
-        tempValue22 = (physModel == BTO_PHYSMODEL_HALFPIPE) ? 1 : 0;
+        int isHalfpipe = (physModel == BTO_PHYSMODEL_HALFPIPE) ? 1 : 0;
         int absNextX = bto_abs_int(nextElemPos.x);
         int pipeUpperSectionFlag;
 
@@ -1600,7 +1599,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
         }
 
         /* Half-pipe special floor case */
-        if (tempValue22 != 0 && pipeUpperSectionFlag == 0 && absElemX <= BTO_HALFPIPE_FLOOR_MAX_X
+        if (isHalfpipe != 0 && pipeUpperSectionFlag == 0 && absElemX <= BTO_HALFPIPE_FLOOR_MAX_X
             && absElemZ <= BTO_HALFPIPE_FLOOR_MAX_Z) {
             planindex = BTO_PLAN_HALFPIPE_FLOOR;
             if (nextElemPos.z < BTO_HALFPIPE_FLOOR_FRONT_Z) {
@@ -1676,14 +1675,16 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
 
     case BTO_PHYSMODEL_CORKSCREW_UD_LH: /* code_bto_corkUdLH: cork u/d A */
     case BTO_PHYSMODEL_CORKSCREW_UD_RH: /* code_bto_corkUdRH: cork u/d B */
+    {
+        int corkUDPlanBase;
         if (physModel == BTO_PHYSMODEL_CORKSCREW_UD_LH) {
             corkLateralCoord = -elemPos.x;
-            tempValue22 = BTO_CORK_PLAN_UD_LH;
+            corkUDPlanBase = BTO_CORK_PLAN_UD_LH;
             corkInnerWallBase = BTO_CORK_WALL_BASE_INNER_LH;
             corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_LH;
         } else {
             corkLateralCoord = elemPos.x;
-            tempValue22 = BTO_CORK_PLAN_UD_RH;
+            corkUDPlanBase = BTO_CORK_PLAN_UD_RH;
             corkInnerWallBase = 0;
             corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_RH;
         }
@@ -1698,7 +1699,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                     if (corkLateralCoord <= BTO_TURN_SMALL_INNER)
                         break;
                     current_surf_type = surfaceType;
-                    planindex = tempValue22;
+                    planindex = corkUDPlanBase;
                     break;
                 }
             }
@@ -1717,7 +1718,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                         ax = corkOuterWallBase;
                     wallindex = ax + BTO_CORK_EXIT_WALL_OFFSET;
                     current_surf_type = surfaceType;
-                    planindex = tempValue22 + BTO_CORK_EXIT_PLAN_OFFSET;
+                    planindex = corkUDPlanBase + BTO_CORK_EXIT_PLAN_OFFSET;
                     track_object_render_enabled = false;
                     break;
                 }
@@ -1737,7 +1738,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             angle &= BTO_ORIENT_MASK; /* and ah, 3 */
             si = (angle * BTO_CORK_SEGMENT_COUNT) >> BTO_WORLD_TO_TILE_SHIFT;
 
-            planindex = tempValue22 + si + 1;
+            planindex = corkUDPlanBase + si + 1;
             current_surf_type = surfaceType;
             track_object_render_enabled = false;
 
@@ -1756,6 +1757,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             }
             break;
         }
+    } /* end corkscrew UD case */
 
     case BTO_PHYSMODEL_SLALOM: /* code_bto_slalom */
         if (absElemX < BTO_ROAD_HALF_WIDTH) {
@@ -1833,28 +1835,28 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             corkUpperSectionFlag = 0;
         }
 
-        tempValue22 = 0;
+        int corkLRBucketIdx = 0;
 
         if (world_pos->y - terrainHeight > BTO_HALFPIPE_LOWER_Y && corkUpperSectionFlag == 0) {
-            tempValue22 = (elemPos.x < 0) ? 3 : 9;
+            corkLRBucketIdx = (elemPos.x < 0) ? 3 : 9;
         } else if (absElemX < BTO_PIPE_NEAR_CENTER_X) {
             if (corkUpperSectionFlag != 0) {
-                tempValue22 = 6;
+                corkLRBucketIdx = 6;
             }
         } else if (elemPos.x < BTO_PIPE_TRI_CENTER_LEFT) {
-            tempValue22 = (corkUpperSectionFlag != 0) ? 4 : 2;
+            corkLRBucketIdx = (corkUpperSectionFlag != 0) ? 4 : 2;
         } else if (elemPos.x < 0) {
-            tempValue22 = (corkUpperSectionFlag != 0) ? 5 : 1;
+            corkLRBucketIdx = (corkUpperSectionFlag != 0) ? 5 : 1;
         } else if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
-            tempValue22 = (corkUpperSectionFlag != 0) ? 8 : BTO_CORKLR_BUCKET_RIGHT_OUTER;
+            corkLRBucketIdx = (corkUpperSectionFlag != 0) ? 8 : BTO_CORKLR_BUCKET_RIGHT_OUTER;
         } else {
-            tempValue22 = (corkUpperSectionFlag != 0) ? 7 : BTO_CORKLR_BUCKET_RIGHT_INNER;
+            corkLRBucketIdx = (corkUpperSectionFlag != 0) ? 7 : BTO_CORKLR_BUCKET_RIGHT_INNER;
         }
 
-        if (tempValue22 != 0) {
-            di = tempValue22;
+        if (corkLRBucketIdx != 0) {
+            di = corkLRBucketIdx;
             if (corkLR_negZBound[di] < elemPos.z && corkLR_posZBound[di] > elemPos.z) {
-                planindex = tempValue22 + BTO_CORKLR_PLAN_BASE;
+                planindex = corkLRBucketIdx + BTO_CORKLR_PLAN_BASE;
             }
         }
 
@@ -2147,10 +2149,10 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 {
                     short cosVal = cos_fast((unsigned short)BTO_HILL_COAST_ANGLE);
                     int result = multiply_and_scale(elemPos.x, cosVal);
-                    tempValue22 = result + di;
-                }
-                if (tempValue22 < 0) {
-                    planindex = 4;
+                    int hillRotatedX = result + di;
+                    if (hillRotatedX < 0) {
+                        planindex = 4;
+                    }
                 }
             }
             break;
@@ -2167,11 +2169,11 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 {
                     short cosVal = cos_fast((unsigned short)BTO_HILL_COAST_ANGLE);
                     int result = multiply_and_scale(elemPos.x, cosVal);
-                    tempValue22 = result + di;
-                }
-                if (tempValue22 > 0) {
-                    planindex = 5;
-                    break;
+                    int hillRotatedX = result + di;
+                    if (hillRotatedX > 0) {
+                        planindex = 5;
+                        break;
+                    }
                 }
                 terrainHeight = BTO_HILL_HEIGHT;
             }
