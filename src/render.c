@@ -426,7 +426,7 @@ void
 transformed_shape_add_for_sort(int z_adjust, int sort_key) {
     struct VECTOR shapepos;
     struct VECTOR transformedpos;
-    int si, di;
+    int shapeIdx;
 
     /* Copy pos from curtransshape_ptr */
     shapepos.x = curtransshape_ptr->pos.x;
@@ -435,11 +435,10 @@ transformed_shape_add_for_sort(int z_adjust, int sort_key) {
 
     mat_mul_vector(&shapepos, &mat_temp, &transformedpos);
 
-    si = (int)(unsigned char)transformedshape_counter;
-    di = si;
-    transformedshape_zarray[di] = transformedpos.z + z_adjust;
-    transformedshape_arg2array[si] = (char)sort_key;
-    transformedshape_indices[di] = si;
+    shapeIdx = (int)(unsigned char)transformedshape_counter;
+    transformedshape_zarray[shapeIdx] = transformedpos.z + z_adjust;
+    transformedshape_arg2array[shapeIdx] = (char)sort_key;
+    transformedshape_indices[shapeIdx] = shapeIdx;
     transformedshape_counter++;
 
     curtransshape_ptr++;
@@ -475,21 +474,22 @@ init_rect_arrays(void) {
  /*--------------------------------------------------------------*/
 struct RECTANGLE *
 do_sinking(int frame_count, int base_y, int sink_height) {
-    int di, si;
+    int maxFrames, sinkDelta;
+    int bottomY;
 
-    di = framespersec * RENDER_SINKING_MAX_DURATION_SECONDS;
-    if (frame_count > di)
-        frame_count = di;
+    maxFrames = framespersec * RENDER_SINKING_MAX_DURATION_SECONDS;
+    if (frame_count > maxFrames)
+        frame_count = maxFrames;
 
-    si = (int)((long)sink_height * (long)frame_count
+    sinkDelta = (int)((long)sink_height * (long)frame_count
                / ((long)framespersec * RENDER_SINKING_MAX_DURATION_SECONDS));
 
     rect_ingame_text.left = RENDER_SCREEN_LEFT;
     rect_ingame_text.right = RENDER_SCREEN_WIDTH;
-    di = base_y + sink_height;
-    rect_ingame_text.top = di - si;
-    rect_ingame_text.bottom = di;
-    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, di - si, di);
+    bottomY = base_y + sink_height;
+    rect_ingame_text.top = bottomY - sinkDelta;
+    rect_ingame_text.bottom = bottomY;
+    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, bottomY - sinkDelta, bottomY);
     sprite_clear_sprite1_color(skybox_wat_color);
 
     return DO_SINKING_RECT_PTR;
@@ -501,7 +501,7 @@ do_sinking(int frame_count, int base_y, int sink_height) {
  /*--------------------------------------------------------------*/
 void
 load_skybox(unsigned char skybox_index) {
-    short si;
+    short heightTemp;
     static const char *const skybox_names[] = { "desert", "tropical", "alpine", "city", "country" };
     unsigned char skybox_idx;
 
@@ -534,24 +534,24 @@ load_skybox(unsigned char skybox_index) {
         skybox_ptr4 = ((struct SHAPE2D *)skyboxes[3])->s2d_height;
 
         /* skybox_current = min of all ptrs */
-        si = skybox_ptr1;
-        if (si > skybox_ptr2)
-            si = skybox_ptr2;
-        if (si > skybox_ptr3)
-            si = skybox_ptr3;
-        if (si > skybox_ptr4)
-            si = skybox_ptr4;
-        skybox_current = si;
+        heightTemp = skybox_ptr1;
+        if (heightTemp > skybox_ptr2)
+            heightTemp = skybox_ptr2;
+        if (heightTemp > skybox_ptr3)
+            heightTemp = skybox_ptr3;
+        if (heightTemp > skybox_ptr4)
+            heightTemp = skybox_ptr4;
+        skybox_current = heightTemp;
 
         /* memory_pointer_boundary_max = max of all ptrs */
-        si = skybox_ptr1;
-        if (si < skybox_ptr2)
-            si = skybox_ptr2;
-        if (si < skybox_ptr3)
-            si = skybox_ptr3;
-        if (si < skybox_ptr4)
-            si = skybox_ptr4;
-        memory_pointer_boundary_max = si;
+        heightTemp = skybox_ptr1;
+        if (heightTemp < skybox_ptr2)
+            heightTemp = skybox_ptr2;
+        if (heightTemp < skybox_ptr3)
+            heightTemp = skybox_ptr3;
+        if (heightTemp < skybox_ptr4)
+            heightTemp = skybox_ptr4;
+        memory_pointer_boundary_max = heightTemp;
     }
 
     /* Set colors from safe material color storage */
@@ -572,32 +572,34 @@ load_skybox(unsigned char skybox_index) {
  /*--------------------------------------------------------------*/
 void
 draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
-    int si, di;
+    int skyHeight;
+    int angOffset;
+    int groundTop, groundHeight;
     int blit_top, blit_bottom;
 
     if (timertestflag2 == 4) {
-        si = skyheight - rectptr->top;
+        skyHeight = skyheight - rectptr->top;
     }
     else {
-        si = skyheight - rectptr->top - skybox_current;
+        skyHeight = skyheight - rectptr->top - skybox_current;
     }
 
     /* Clamp to rect height */
-    if (rectptr->bottom - rectptr->top < si) {
-        si = rectptr->bottom - rectptr->top;
+    if (rectptr->bottom - rectptr->top < skyHeight) {
+        skyHeight = rectptr->bottom - rectptr->top;
     }
 
     /* Draw sky portion */
-    if (si > 0) {
-        sprite_set_1_size(rectptr->left, rectptr->right, rectptr->top, rectptr->top + si);
+    if (skyHeight > 0) {
+        sprite_set_1_size(rectptr->left, rectptr->right, rectptr->top, rectptr->top + skyHeight);
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
     if (timertestflag2 != 4) {
         /* Draw skybox images */
-        si = angY + RENDER_ANGLE_HALF_TURN;
-        si &= RENDER_ANGLE_MASK;
-        si -= RENDER_ANGLE_FULL_TURN;
+        angOffset = angY + RENDER_ANGLE_HALF_TURN;
+        angOffset &= RENDER_ANGLE_MASK;
+        angOffset -= RENDER_ANGLE_FULL_TURN;
 
         if (rectptr->top < skyheight
             && skyheight - memory_pointer_boundary_max <= rectptr->bottom) {
@@ -614,15 +616,15 @@ draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
                 sprite_set_1_size(rectptr->left, rectptr->right, blit_top, blit_bottom);
                 sprite_clear_sprite1_color(skybox_sky_color);
 
-                sprite_putimage_copy_at(skyboxes[0], si, skyheight - skybox_ptr1);
-                sprite_putimage_copy_at(skyboxes[1], si + RENDER_SCREEN_WIDTH,
+                sprite_putimage_copy_at(skyboxes[0], angOffset, skyheight - skybox_ptr1);
+                sprite_putimage_copy_at(skyboxes[1], angOffset + RENDER_SCREEN_WIDTH,
                                         skyheight - skybox_ptr2);
-                sprite_putimage_copy_at(skyboxes[2], si + RENDER_ANGLE_HALF_TURN,
+                sprite_putimage_copy_at(skyboxes[2], angOffset + RENDER_ANGLE_HALF_TURN,
                                         skyheight - skybox_ptr3);
                 sprite_putimage_copy_at(skyboxes[3],
-                                        si + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH),
+                                        angOffset + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH),
                                         skyheight - skybox_ptr4);
-                sprite_putimage_copy_at(skyboxes[0], si + RENDER_ANGLE_FULL_TURN,
+                sprite_putimage_copy_at(skyboxes[0], angOffset + RENDER_ANGLE_FULL_TURN,
                                         skyheight - skybox_ptr1);
             }
         }
@@ -630,14 +632,14 @@ draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
 
     /* Draw ground portion below skybox */
     if (rectptr->top >= skyheight) {
-        di = rectptr->top;
+        groundTop = rectptr->top;
     }
     else {
-        di = skyheight;
+        groundTop = skyheight;
     }
-    si = rectptr->bottom - di;
-    if (si > 0) {
-        sprite_set_1_size(rectptr->left, rectptr->right, di, di + si);
+    groundHeight = rectptr->bottom - groundTop;
+    if (groundHeight > 0) {
+        sprite_set_1_size(rectptr->left, rectptr->right, groundTop, groundTop + groundHeight);
         sprite_clear_sprite1_color(skybox_grd_color);
     }
 }
@@ -671,7 +673,10 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
     struct RECTANGLE slice_rect;
     int horizon_y_delta;
     struct VECTOR horizon_vec_a_cam, horizon_vec_b_cam;
-    int di, si;
+    int intersectDelta;
+    int di;
+    int stripIdx;
+    int fillHeight;
 
 
     dirty_rect_count = 0;
@@ -765,10 +770,10 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
 
         if (draw_line_related(wrap_x0, wrap_y0, wrap_x1, wrap_y1, line_intersections) == 0) {
             /* edge x is line_intersections[1], y0 is [3], y1 is [5] */
-            di = line_intersections[3] - line_intersections[5];
-            if (di < 0)
-                di = -di;
-            if (di < RENDER_WRAP_DELTA_MAX) {
+            intersectDelta = line_intersections[3] - line_intersections[5];
+            if (intersectDelta < 0)
+                intersectDelta = -intersectDelta;
+            if (intersectDelta < RENDER_WRAP_DELTA_MAX) {
                 if (line_intersections[1] == 0) {
                     horizon_y_left = line_intersections[3];
                     horizon_y_delta = line_intersections[5] - horizon_y_left;
@@ -876,8 +881,8 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
             }
 
             /* Fill sky area above skybox */
-            for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-                rect_sort_indices[si] = 1;
+            for (stripIdx = 0; stripIdx < RENDER_RECT_ARRAY_COUNT; stripIdx++) {
+                rect_sort_indices[stripIdx] = 1;
             }
             rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
 
@@ -926,12 +931,12 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
     if (di > RENDER_MAX_STRIP_COUNT)
         di = RENDER_MAX_STRIP_COUNT;
 
-    for (si = 0; si < di; si++) {
+    for (stripIdx = 0; stripIdx < di; stripIdx++) {
         slice_rect.left = strip_left;
-        slice_rect.right = ((RENDER_SCREEN_WIDTH * si + RENDER_SCREEN_WIDTH) / di)
+        slice_rect.right = ((RENDER_SCREEN_WIDTH * stripIdx + RENDER_SCREEN_WIDTH) / di)
                            & video_flag3_isFFFF;
         if (slice_rect.left != slice_rect.right) {
-            sky_height = horizon_y_delta * si / di + horizon_y_left;
+            sky_height = horizon_y_delta * stripIdx / di + horizon_y_left;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
             strip_left = slice_rect.right;
         }
@@ -1000,8 +1005,8 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
         }
 
         /* Multi-rect tracking path */
-        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-            rect_sort_indices[si] = 1;
+        for (stripIdx = 0; stripIdx < RENDER_RECT_ARRAY_COUNT; stripIdx++) {
+            rect_sort_indices[stripIdx] = 1;
         }
 
         if (timertestflag2 == 4) {
@@ -1039,18 +1044,18 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
 
     /* sky_dir_sign != 1: Simple ground/sky fill */
 
-    si = sky_height - clip_rect->top;
-    if (clip_rect->bottom - clip_rect->top < si) {
-        si = clip_rect->bottom - clip_rect->top;
+    fillHeight = sky_height - clip_rect->top;
+    if (clip_rect->bottom - clip_rect->top < fillHeight) {
+        fillHeight = clip_rect->bottom - clip_rect->top;
     }
-    if (si > 0) {
+    if (fillHeight > 0) {
         sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
-                          clip_rect->top + si);
+                          clip_rect->top + fillHeight);
         sprite_clear_sprite1_color(skybox_grd_color);
     }
-    si = clip_rect->bottom - sky_height;
-    if (si > 0) {
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, sky_height, sky_height + si);
+    fillHeight = clip_rect->bottom - sky_height;
+    if (fillHeight > 0) {
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, sky_height, sky_height + fillHeight);
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
@@ -1079,7 +1084,7 @@ draw_track_preview(void) {
     struct MATRIX *matptr;
     unsigned char *elem_map_ptr;
     unsigned char *terr_map_ptr;
-    int si;
+    short trackX;
 
     if (track_terrain_map == 0) {
         return;
@@ -1343,13 +1348,13 @@ draw_track_preview(void) {
  */
                     /* X position (column axis) */
                     if (trkobj_multi(tobj) & 2) {
-                        si = trackpos2[col + 1];
+                        trackX = trackpos2[col + 1];
                     }
                     else {
-                        si = trackcenterpos2[(int)col];
+                        trackX = trackcenterpos2[(int)col];
                     }
 
-                    object_pos.x = (si - angle_sine_table_start) >> 1;
+                    object_pos.x = (trackX - angle_sine_table_start) >> 1;
                     object_pos.y = (di - angle_sine_table_offset) >> 1; /* elevated on hills */
                     object_pos.z = (short)((uint16_t)element_world_z
                                            - (uint16_t)(unsigned short)angle_sine_table_stride)
@@ -1403,7 +1408,6 @@ draw_track_preview(void) {
  /*--------------------------------------------------------------*/
 struct RECTANGLE *
 draw_ingame_text(void) {
-    int si;
 
     rect_ingame_text = rect_invalid;
 
@@ -1426,8 +1430,7 @@ draw_ingame_text(void) {
     if (game_replay_mode != 0) {
         if (game_replay_mode == 2) {
             unsigned int frame_mod;
-            si = state.game_frame;
-            frame_mod = (unsigned)si % framespersec;
+            frame_mod = (unsigned)state.game_frame % framespersec;
             if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) > (int)frame_mod) {
                 copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
                 {
@@ -1547,7 +1550,7 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
     struct POINT2D point;
     char *cracshape;
     char *cinfshape;
-    int si, count;
+    int segIdx, count;
     int cx;
 
     cracshape = locate_shape_alt(gameresptr, (char *)aCrak);
@@ -1565,12 +1568,12 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
 
     rect_ingame_text = rect_invalid;
 
-    for (si = 0; si < segment_count; si++) {
+    for (segIdx = 0; segIdx < segment_count; segIdx++) {
         short *crk = (short *)cracshape;
-        x1 = crk[si * 4 + 0];
-        y1 = crk[si * 4 + 1];
-        x2 = crk[si * 4 + 2];
-        y2 = crk[si * 4 + 3];
+        x1 = crk[segIdx * 4 + 0];
+        y1 = crk[segIdx * 4 + 1];
+        x2 = crk[segIdx * 4 + 2];
+        y2 = crk[segIdx * 4 + 3];
 
         /* Scale to screen size */
         y1 = (int)((long)y1 * (long)crack_y_scale / 200L);
@@ -1909,7 +1912,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
     struct RECTANGLE dirty_rect;
     struct TRANSFORMEDSHAPE3D intro_shape;
     struct RECTANGLE rendered_rect;
-    int si, di;
+    int starIdx, insertIdx;
 
     rendered_rect = rect_invalid;
 
@@ -1968,8 +1971,8 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
     /* Rect tracking: clear old points */
     if (timertestflag_copy) {
         if (*star_count != 0) {
-            for (si = 0; si < *star_count; si++) {
-                screen_point = star_screen_points[si];
+            for (starIdx = 0; starIdx < *star_count; starIdx++) {
+                screen_point = star_screen_points[starIdx];
                 putpixel_single_clipped(0, screen_point.py, screen_point.px);
             }
         }
@@ -1994,9 +1997,9 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
                       intro_cliprect.bottom);
 
     /* Render stars */
-    di = 0;
-    for (si = 0; si < RENDER_STAR_COUNT; si++) {
-        int starofs = si * 3;
+    insertIdx = 0;
+    for (starIdx = 0; starIdx < RENDER_STAR_COUNT; starIdx++) {
+        int starofs = starIdx * 3;
         star_offset_vec.x = star_positions[starofs + 0] - camera_x;
         star_offset_vec.y = star_positions[starofs + 1] - camera_y;
         star_offset_vec.z = star_positions[starofs + 2] - camera_z;
@@ -2008,8 +2011,8 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
             putpixel_single_clipped(intro_colorvalue, screen_point.py, screen_point.px);
 
             if (timertestflag_copy) {
-                star_screen_points[di] = screen_point;
-                di++;
+                star_screen_points[insertIdx] = screen_point;
+                insertIdx++;
                 rect_adjust_from_point(&screen_point, &dirty_rect);
             }
 
@@ -2021,7 +2024,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
     }
 
     if (timertestflag_copy) {
-        *star_count = di;
+        *star_count = insertIdx;
     }
 
     get_a_poly_info();
@@ -2039,7 +2042,7 @@ intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_
  /*--------------------------------------------------------------*/
 void
 render_present_ingame_view(struct RECTANGLE *frame_rect) {
-    int si;
+    int rectIdx;
     struct RECTANGLE *rp;
 
     if (video_flag5_is0)
@@ -2058,8 +2061,8 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
         sprite_putimage(wndsprite->sprite_bitmapptr);
     } else {
         /* Full rect-tracking path */
-        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-            rect_sort_indices[si] = 3;
+        for (rectIdx = 0; rectIdx < RENDER_RECT_ARRAY_COUNT; rectIdx++) {
+            rect_sort_indices[rectIdx] = 3;
         }
 
         if (timertestflag2 == 4) {
@@ -2095,8 +2098,8 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
                                    dirty_rect_indices);
             mouse_draw_opaque_check();
 
-            for (si = 0; si < (int)(signed char)dirty_rect_count; si++) {
-                int idx = dirty_rect_indices[si];
+            for (rectIdx = 0; rectIdx < (int)(signed char)dirty_rect_count; rectIdx++) {
+                int idx = dirty_rect_indices[rectIdx];
                 rp = &dirty_rect_array[idx];
                 sprite_set_1_size(rp->left, rp->right, rp->top, rp->bottom);
                 sprite_putimage(wndsprite->sprite_bitmapptr);
@@ -2112,8 +2115,8 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
         collision_detection_state = sprite_transformation_angle;
 
         /* Copy rect_buffer_front to rect_buffer_back */
-        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-            rect_buffer_back[si] = rect_buffer_front[si];
+        for (rectIdx = 0; rectIdx < RENDER_RECT_ARRAY_COUNT; rectIdx++) {
+            rect_buffer_back[rectIdx] = rect_buffer_front[rectIdx];
         }
     }
 }
