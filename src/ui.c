@@ -1285,8 +1285,8 @@ do_joy_restext(void) {
 
     if ((short)dialog_result <= 0) {
         joystick_assigned_flags = false;
-        goto cleanup;
     }
+    else {
 
     /* Clear assigned flags */
     for (i = 0; i < 9; i++) {
@@ -1384,7 +1384,8 @@ do_joy_restext(void) {
         ui_dialog_info_restext(textres_ptr);
     }
 
-cleanup:
+    } /* end else: dialog was accepted */
+
     kb_check();
     mouse_motion_state_flag = false;
     audio_enable_flag2();
@@ -2005,7 +2006,7 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
     font_set_colors(dialog_fnt_colour, dialog_text_color);
     sprite_draw_text_opaque(pathbuf, list_x, filename_row_y);
 
-file_search_loop:
+    while (1) {
     mouse_draw_transparent_check();
     file_count = 0;
 
@@ -2021,9 +2022,9 @@ file_search_loop:
 
         if (si == UI_KEY_ESCAPE) { /* ESC pressed */
             dialog_accept = 0;
-            goto cleanup;
+            break;
         }
-        goto file_search_loop;
+        continue; /* no files found — re-enter path and search again */
     }
 
     /* Parse first file found into file list */
@@ -2289,8 +2290,10 @@ file_search_loop:
         defaultName[8] = '\0';
         dialog_accept = 1;
     }
+    break; /* files found and selection made — exit search loop */
 
-cleanup:
+    } /* end while(1) file search loop */
+
     ui_window_pop_modal();
     g_is_busy = saved_busy_flag;
 

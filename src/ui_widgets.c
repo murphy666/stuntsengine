@@ -89,44 +89,45 @@ ui_button_menu_run(UIButtonMenu *menu) {
         }
 
         /* ----- per-frame callback ----- */
+        key_code = 0;
         if (menu->frame_cb) {
             unsigned short cb_key = menu->frame_cb(selected, delta, menu->frame_cb_ctx);
             if (cb_key != 0) {
                 key_code = cb_key;
-                goto handle_key;
-            }
-        }
-
-        /* ----- idle timeout ----- */
-        if (menu->idle_timeout != 0) {
-            local_idle += delta;
-            idle_counter += delta;
-            if (idle_expired != 0 || local_idle >= menu->idle_timeout) {
-                idle_expired++;
-                selected = menu->default_sel;
-                return UI_SEL_TIMEOUT;
-            }
-        }
-
-        /* ----- input polling ----- */
-        key_code = input_checking(delta);
-
-        /* ----- mouse hit test ----- */
-        hit = mouse_multi_hittest((short)menu->count, menu->x1, menu->x2, menu->y1, menu->y2);
-        if (hit >= 0 && hit < (short)menu->count) {
-            if (kbormouse) {
-                selected = (unsigned char)hit;
-            }
-            if (kbormouse && UI_IS_CONFIRM(key_code)) {
-                return selected;
             }
         }
 
         if (key_code == 0) {
-            continue;
+            /* ----- idle timeout ----- */
+            if (menu->idle_timeout != 0) {
+                local_idle += delta;
+                idle_counter += delta;
+                if (idle_expired != 0 || local_idle >= menu->idle_timeout) {
+                    idle_expired++;
+                    selected = menu->default_sel;
+                    return UI_SEL_TIMEOUT;
+                }
+            }
+
+            /* ----- input polling ----- */
+            key_code = input_checking(delta);
+
+            /* ----- mouse hit test ----- */
+            hit = mouse_multi_hittest((short)menu->count, menu->x1, menu->x2, menu->y1, menu->y2);
+            if (hit >= 0 && hit < (short)menu->count) {
+                if (kbormouse) {
+                    selected = (unsigned char)hit;
+                }
+                if (kbormouse && UI_IS_CONFIRM(key_code)) {
+                    return selected;
+                }
+            }
+
+            if (key_code == 0) {
+                continue;
+            }
         }
 
-    handle_key:
         /* ----- confirm ----- */
         if (UI_IS_CONFIRM(key_code)) {
             return selected;

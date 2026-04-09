@@ -535,7 +535,8 @@ run_option_menu_(void) {
                 show_waiting();
                 file_load_replay(replay_file_path_buffer, (const char *)aDefault_1);
                 should_repeat = true;
-                goto exit_loop;
+                unload_resource(miscptr);
+                return should_repeat;
             }
             break;
         }
@@ -552,7 +553,6 @@ run_option_menu_(void) {
         }
     }
 
-exit_loop:
     unload_resource(miscptr);
     return should_repeat;
 }
@@ -598,22 +598,20 @@ run_tracks_menu(unsigned short unused) {
     UIButtonMenu btnmenu;
     struct trackmenu_ctx cb_ctx;
 
-    if (unused == 0) {
+    int need_track_setup = (unused != 0);
+
+    while (1) {
         check_input();
-        goto rebuild_ui;
-    }
+        if (need_track_setup) {
+            show_waiting();
+            waitflag = MENU_WAITFLAG_TRACK_SETUP;
+            track_setup();
+            load_tracks_menu_shapes();
+        }
+        need_track_setup = 0;
 
-reload_setup:
-    check_input();
-    show_waiting();
-    waitflag = MENU_WAITFLAG_TRACK_SETUP;
-    track_setup();
-    load_tracks_menu_shapes();
-
-rebuild_ui:
-
-    show_waiting();
-    waitflag = MENU_WAITFLAG_TRACK_PREVIEW;
+        show_waiting();
+        waitflag = MENU_WAITFLAG_TRACK_PREVIEW;
 
     // Build preview window and render current track snapshot.
     wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);
@@ -720,8 +718,7 @@ rebuild_ui:
             if (chosen != 0) {
                 file_read_fatal(g_path_buf, track_elem_map);
                 sprite_free_wnd(wndsprite);
-                check_input();
-                goto rebuild_ui;
+                break; /* rebuild view with new track */
             }
             /* Re-enter the button loop with selection reset */
             cb_ctx.blit_mode = MENU_BLIT_MODE_PARTIAL;
@@ -731,9 +728,12 @@ rebuild_ui:
 
         if (selection == MENU_TRACK_BTN_RELOAD) {
             sprite_free_wnd(wndsprite);
-            goto reload_setup;
+            need_track_setup = 1;
+            break; /* reload track setup */
         }
     }
+
+    } /* end outer while(1): rebuild or reload track view */
 }
 
 /** @brief Draw a multi-line opponent description from a ']'-delimited string.
