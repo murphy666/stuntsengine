@@ -2354,8 +2354,8 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     unsigned char multiTileFlags;
     unsigned char terrainByte;
     int physModel;
-    int di; /* point count */
-    int si; /* loop index */
+    int pointCount; /* point count */
+    int ptIdx; /* loop index */
 
     /* Look up tile element at (col, row) */
     tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row] + tile_col));
@@ -2426,45 +2426,45 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
         }
     }
     /* Dispatch on physicalModel to get point count and table pointer */
-    di = 0;
+    pointCount = 0;
     dependencyTable = 0;
 
     physModel = bto_trackobj_phys(tileElement);
 
     switch (physModel) {
     case 11:
-        di = 1;
+        pointCount = 1;
         dependencyTable = (struct VECTOR *)phys_model_0B_points;
         break;
     case 18:
-        di = 8;
+        pointCount = 8;
         dependencyTable = (struct VECTOR *)phys_model_0x12_points;
         break;
     case 32:
-        di = 2;
+        pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x20_points;
         break;
     case 33:
-        di = 2;
+        pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x21_points;
         break;
     case 34:
-        di = 4;
+        pointCount = 4;
         dependencyTable = (struct VECTOR *)phys_model_0x22_points;
         break;
     case 35:
-        di = 2;
+        pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x23_points;
         break;
     default:
         if (physModel >= 71 && physModel <= 74) {
-            di = 1;
+            pointCount = 1;
             dependencyTable = (struct VECTOR *)phys_model_0B_points;
         }
         break;
     }
 
-    if (di == 0)
+    if (pointCount == 0)
         return 0;
 
     /* Get terrain type and hill height */
@@ -2480,36 +2480,36 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     elementOrientation = bto_trackobj_roty(tileElement);
 
     /* Output rotated points */
-    for (si = 0; si < di; si++) {
+    for (ptIdx = 0; ptIdx < pointCount; ptIdx++) {
         switch (elementOrientation) {
         case BTO_ORIENT_0:
             /* No rotation: (x, y, z) → (x + tileCenterX, y + hh, z + tileCenterZ) */
-            out_points[si].x = dependencyTable[si].x + tileCenterX;
-            out_points[si].y = dependencyTable[si].y + hillHeightOffset;
-            out_points[si].z = dependencyTable[si].z + tileCenterZ;
+            out_points[ptIdx].x = dependencyTable[ptIdx].x + tileCenterX;
+            out_points[ptIdx].y = dependencyTable[ptIdx].y + hillHeightOffset;
+            out_points[ptIdx].z = dependencyTable[ptIdx].z + tileCenterZ;
             break;
         case BTO_ORIENT_90:
             /* 90° CW: (x,y,z) → (z + tileCenterX, y + hh, -x + tileCenterZ) */
-            out_points[si].x = dependencyTable[si].z + tileCenterX;
-            out_points[si].y = dependencyTable[si].y + hillHeightOffset;
-            out_points[si].z = -dependencyTable[si].x + tileCenterZ;
+            out_points[ptIdx].x = dependencyTable[ptIdx].z + tileCenterX;
+            out_points[ptIdx].y = dependencyTable[ptIdx].y + hillHeightOffset;
+            out_points[ptIdx].z = -dependencyTable[ptIdx].x + tileCenterZ;
             break;
         case BTO_ORIENT_180:
             /* 180°: (x,y,z) → (-x + tileCenterX, y + hh, -z + tileCenterZ) */
-            out_points[si].x = -dependencyTable[si].x + tileCenterX;
-            out_points[si].y = dependencyTable[si].y + hillHeightOffset;
-            out_points[si].z = -dependencyTable[si].z + tileCenterZ;
+            out_points[ptIdx].x = -dependencyTable[ptIdx].x + tileCenterX;
+            out_points[ptIdx].y = dependencyTable[ptIdx].y + hillHeightOffset;
+            out_points[ptIdx].z = -dependencyTable[ptIdx].z + tileCenterZ;
             break;
         case BTO_ORIENT_270:
             /* 270° CW: (x,y,z) → (-z + tileCenterX, y + hh, x + tileCenterZ) */
-            out_points[si].x = -dependencyTable[si].z + tileCenterX;
-            out_points[si].y = dependencyTable[si].y + hillHeightOffset;
-            out_points[si].z = dependencyTable[si].x + tileCenterZ;
+            out_points[ptIdx].x = -dependencyTable[ptIdx].z + tileCenterX;
+            out_points[ptIdx].y = dependencyTable[ptIdx].y + hillHeightOffset;
+            out_points[ptIdx].z = dependencyTable[ptIdx].x + tileCenterZ;
             break;
         }
     }
 
-    return di;
+    return pointCount;
 }
 
 /*

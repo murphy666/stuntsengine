@@ -2391,8 +2391,8 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
     short bestPenalty;
     char playerTileCol;
     short nextWaypoint;
-    short di;
-    short si;
+    short pathPenalty;
+    short waypointIdx;
     short i;
     unsigned char tileElem;
     state_trackobject_raw trkObj;
@@ -2420,24 +2420,24 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
     /* Initialize */
     bestPenalty = 0;
     stackDepth = 0;
-    di = 0;
-    si = 0;
+    pathPenalty = 0;
+    waypointIdx = 0;
     for (i = 0; i < track_pieces_counter; i++)
         visited[i] = 0;
 
-    si = *extVar2ptr;
+    waypointIdx = *extVar2ptr;
 
     while (1) {
         /* Follow path: look up next piece */
-        nextWaypoint = track_waypoint_next[si];
+        nextWaypoint = track_waypoint_next[waypointIdx];
 
         /* Check if already visited */
         if (visited[nextWaypoint] != 0) {
             /* Backtrack */
             if (stackDepth > 0) {
                 stackDepth--;
-                si = pathStack[stackDepth];
-                di = penaltyStack[stackDepth];
+                waypointIdx = pathStack[stackDepth];
+                pathPenalty = penaltyStack[stackDepth];
                 continue;
             }
             /* Stack empty */
@@ -2488,8 +2488,8 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
     if ((tileCol == playerTileCol || tileColMax == playerTileCol)
         && (tileRow == playerTileRow || tileRowMax == playerTileRow)) {
         /* Player is on this tile */
-        if (track_waypoint_alt[si] != -1)
-            nextWaypoint = si;
+        if (track_waypoint_alt[waypointIdx] != -1)
+            nextWaypoint = waypointIdx;
 
         /* Update game start positions */
         state.game_startcol = (signed char)tileCol;
@@ -2497,36 +2497,36 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
         state.game_startrow = (signed char)tileRow;
         state.game_startrow2 = (signed char)tileRowMax;
 
-        if (di <= 0) {
+        if (pathPenalty <= 0) {
             /* Player found on track with no penalty */
             *extVar2ptr = nextWaypoint;
-            *extVar1Eptr = di;
+            *extVar1Eptr = pathPenalty;
             return 1;
         }
         /* Check if this is the best penalty path */
-        if (bestPenalty == 0 || bestPenalty > di) {
+        if (bestPenalty == 0 || bestPenalty > pathPenalty) {
             bestWaypointIndex = nextWaypoint;
-            bestPenalty = di;
+            bestPenalty = pathPenalty;
         }
     }
 
     /* Process path branching */
-    branchWaypoint = track_waypoint_alt[si];
+    branchWaypoint = track_waypoint_alt[waypointIdx];
     if (branchWaypoint != -1) {
-        penaltyStack[stackDepth] = di;
+        penaltyStack[stackDepth] = pathPenalty;
         pathStack[stackDepth] = branchWaypoint;
         stackDepth++;
     }
 
     /* Advance along path */
     if (nextWaypoint == 0) {
-        di = -1;
+        pathPenalty = -1;
     }
-    else if (di != -1) {
-        di++;
+    else if (pathPenalty != -1) {
+        pathPenalty++;
     }
 
-    si = nextWaypoint;
+    waypointIdx = nextWaypoint;
     } /* while(1) */
 }
 
