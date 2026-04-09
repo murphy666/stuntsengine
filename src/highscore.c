@@ -260,18 +260,18 @@ highscore_write_b(void) {
 /** @brief Enter hiscore.
  * @param score Parameter `score`.
  * @param textres_ptr Parameter `textres_ptr`.
- * @param arg6 Parameter `arg6`.
+ * @param raceResultFlag Parameter `raceResultFlag`.
  * @return Function result.
  */
 // Insert a new highscore entry and prompt for player name
 /** @brief Enter hiscore.
  * @param score Parameter `score`.
  * @param textres_ptr Parameter `textres_ptr`.
- * @param arg6 Parameter `arg6`.
+ * @param raceResultFlag Parameter `raceResultFlag`.
  * @return Function result.
  */
 unsigned short
-enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
+enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultFlag) {
     unsigned char entry[HIGHSCORE_ENTRY_SIZE];
     unsigned short insertion = 0;
     unsigned short i;
@@ -318,7 +318,7 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6) {
     }
     snprintf((char *)(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET), HIGHSCORE_ENTRY_DETAIL_CAPACITY,
              "%s", gnam_string);
-    entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = arg6;
+    entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = raceResultFlag;
 
     if (gameconfig.game_opponenttype != 0) {
         snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET),

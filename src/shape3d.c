@@ -1480,11 +1480,11 @@ set_byte_4032C(unsigned short val) {
 
 /** @brief Update projection center offsets on X/Y axes. */
 void
-set_projection_offsets(unsigned short arg0, unsigned short arg2) {
-    projectiondata4 = arg0;
-    projectiondata5 = projectiondata3 + arg0;
-    projectiondata7 = arg2;
-    projectiondata8 = projectiondata6 + arg2;
+set_projection_offsets(unsigned short xOffset, unsigned short yOffset) {
+    projectiondata4 = xOffset;
+    projectiondata5 = projectiondata3 + xOffset;
+    projectiondata7 = yOffset;
+    projectiondata8 = projectiondata6 + yOffset;
 }
 
 /** @brief Store a 32-bit signed value into a raw byte buffer. */
