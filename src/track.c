@@ -615,7 +615,7 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
     int buffer_row_ofs;         /* row * 12 for buffer index */
     int buffer_index;           /* cell index in buffer */
     int map_row_twice;          /* row offset calculation */
-    int si, di;                 /* temp values for coords */
+    int colIdx, colOfs;                 /* col index and col offset as ints */
     int terrIdx, elemIdx;
     int map_row, map_col;
     unsigned char terrVal, elemVal;
@@ -641,22 +641,22 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
         /* Iterate through 12 columns */
         for (col = 0; col < TRACK_MAP_VISIBLE_COLS; col++) {
             /* Calculate indices */
-            si = (int)col;
-            di = (int)col_offset;
+            colIdx = (int)col;
+            colOfs = (int)col_offset;
             map_row_twice = ((int)row + (int)row_offset) * 2;
             map_row = (int)row + (int)row_offset;
             map_col = (int)col + (int)col_offset;
 
             /* Get element from track_elem_map */
-            elemIdx = track_row_ofs_safe(map_row_twice / 2) + si + di;
+            elemIdx = track_row_ofs_safe(map_row_twice / 2) + colIdx + colOfs;
             element_type = track_elem_map[elemIdx];
 
             /* Get terrain from track_terrain_map */
-            terrIdx = terrain_row_ofs_safe(map_row_twice / 2) + si + di;
+            terrIdx = terrain_row_ofs_safe(map_row_twice / 2) + colIdx + colOfs;
             terrain_type = track_terrain_map[terrIdx];
 
             /* Calculate buffer position */
-            buffer_index = buffer_row_ofs + si;
+            buffer_index = buffer_row_ofs + colIdx;
 
             /** @brief Markers.
  * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
@@ -690,24 +690,24 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
 
                     /* Terrain at current cell and one cell below. */
                     screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
-                    terrVal = terrain_at_safe((int)row + (int)row_offset, si + (int)col_offset);
+                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_row + 1 < TRACK_SIZE) {
                         screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
                                   + TRACK_TILE_PIXELS;
                         terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
-                                                  si + (int)col_offset);
+                                                  colIdx + (int)col_offset);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     }
 
                     /* Source element is current row, previous column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + si + (int)col_offset
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + colIdx + (int)col_offset
                               - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
                         screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                        screenX = si * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
+                        screenX = colIdx * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,
@@ -731,25 +731,25 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
 
                     /* Terrain at current cell and one cell to the right. */
                     screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
-                    terrVal = terrain_at_safe((int)row + (int)row_offset, si + (int)col_offset);
+                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_col + 1 < TRACK_SIZE) {
-                        screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
+                        screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
                                   + TRACK_TILE_PIXELS;
                         terrVal = terrain_at_safe((int)row + (int)row_offset,
-                                                  si + (int)col_offset + 1);
+                                                  colIdx + (int)col_offset + 1);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     }
 
                     /* Source element is previous row, same column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + colIdx
                               + (int)col_offset;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
                         screenY = (int)row * TRACK_TILE_PIXELS
                                   - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
-                        screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                        screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,
@@ -773,18 +773,18 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
 
                     /* Only terrain at current corner cell. */
                     screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = si * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
-                    terrVal = terrain_at_safe((int)row + (int)row_offset, si + (int)col_offset);
+                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
 
                     /* Source element is previous row, previous column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + si
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset - 1) + colIdx
                               + (int)col_offset - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
                         screenY = (int)row * TRACK_TILE_PIXELS
                                   - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
-                        screenX = si * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
+                        screenX = colIdx * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,

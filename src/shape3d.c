@@ -1789,16 +1789,17 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
  */
 void
 build_wheel_ring_vertices(int *input_data, int *output_data) {
-    int si, di;
+    int x1;
+    int halfDeltaY2;
     int half_delta_x1, half_delta_y1, neg_delta_x1, neg_delta_y1;
     int i;
 
-    si = input_data[0]; /* x1 */
+    x1 = input_data[0]; /* x1 */
 
     /* Store deltas at output indices 0,1,8,9 */
-    output_data[0] = input_data[2] - si;            /* delta_x1 = x2 - x1 */
+    output_data[0] = input_data[2] - x1;            /* delta_x1 = x2 - x1 */
     output_data[1] = input_data[3] - input_data[1]; /* delta_y1 = y2 - y1 */
-    output_data[8] = input_data[4] - si;            /* delta_x2 = x3 - x1 */
+    output_data[8] = input_data[4] - x1;            /* delta_x2 = x3 - x1 */
     output_data[9] = input_data[5] - input_data[1]; /* delta_y2 = y3 - y1 */
 
     /* Calculate scaled coordinates */
@@ -1809,8 +1810,8 @@ build_wheel_ring_vertices(int *input_data, int *output_data) {
     /* output_data[2,3] at WHEEL_SCALE_INNER_Q15 scale with half delta */
     output_data[2] = multiply_and_scale(output_data[0] + (output_data[8] >> 1),
                                         WHEEL_SCALE_INNER_Q15);
-    di = output_data[9] >> 1;
-    output_data[3] = multiply_and_scale(output_data[1] + di, WHEEL_SCALE_INNER_Q15);
+    halfDeltaY2 = output_data[9] >> 1;
+    output_data[3] = multiply_and_scale(output_data[1] + halfDeltaY2, WHEEL_SCALE_INNER_Q15);
 
     /* output_data[6,7] at WHEEL_SCALE_INNER_Q15 scale with half base */
     half_delta_x1 = output_data[0] >> 1;
@@ -1827,7 +1828,7 @@ build_wheel_ring_vertices(int *input_data, int *output_data) {
     /* output_data[14,15] at WHEEL_SCALE_INNER_Q15 scale */
     output_data[14] = multiply_and_scale(neg_delta_x1 + (output_data[8] >> 1),
                                          WHEEL_SCALE_INNER_Q15);
-    output_data[15] = multiply_and_scale(neg_delta_y1 + di, WHEEL_SCALE_INNER_Q15);
+    output_data[15] = multiply_and_scale(neg_delta_y1 + halfDeltaY2, WHEEL_SCALE_INNER_Q15);
 
     /* output_data[10,11] at WHEEL_SCALE_INNER_Q15 scale */
     output_data[10] = multiply_and_scale(output_data[8] - half_delta_x1, WHEEL_SCALE_INNER_Q15);
@@ -1836,10 +1837,9 @@ build_wheel_ring_vertices(int *input_data, int *output_data) {
     /* Now fill remaining entries 16-31 by offsetting with base coords */
     for (i = 0; i < 8; i++) {
         int idx = i * 2;
-        di = input_data[0]; /* x base */
-        output_data[16 + idx] = di - output_data[idx];
+        output_data[16 + idx] = x1 - output_data[idx];
         output_data[16 + idx + 1] = input_data[1] - output_data[idx + 1];
-        output_data[idx] += di;
+        output_data[idx] += x1;
         output_data[idx + 1] += input_data[1];
     }
 }

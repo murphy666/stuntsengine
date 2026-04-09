@@ -2543,7 +2543,7 @@ load_opponent_data(void) {
     short branchNode;  /* branch target node */
 
     int si;
-    int di;
+    int visitIdx; /* inner loop index for visited-node duplicate check */
 
     /* Build "oppN" filename from opponent type */
     char oppname[5] = "opp1";
@@ -2630,8 +2630,8 @@ load_opponent_data(void) {
         else {
             /* Check if this tile was already visited in current path */
             if (nodeCount > 0) {
-                for (di = 0; di < nodeCount; di++) {
-                    if (pathNodes[di] == si) {
+                for (visitIdx = 0; visitIdx < nodeCount; visitIdx++) {
+                    if (pathNodes[visitIdx] == si) {
                         nextNode = 0;
                         isEndNode = 1;
                         break;
@@ -2686,8 +2686,8 @@ load_opponent_data(void) {
                 bestCostHigh = (short)(unsigned short)((unsigned long)runningCost >> 16);
 
                 /* Copy path to track_waypoint_order */
-                for (di = 0; di < nodeCount; di++) {
-                    ((short *)track_waypoint_order)[di] = pathNodes[di];
+                for (visitIdx = 0; visitIdx < nodeCount; visitIdx++) {
+                    ((short *)track_waypoint_order)[visitIdx] = pathNodes[visitIdx];
                 }
                 /* Write terminator pair */
                 ((short *)track_waypoint_order)[nodeCount] = 0;
