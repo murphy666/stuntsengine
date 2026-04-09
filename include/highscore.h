@@ -25,7 +25,7 @@
 
 struct RECTANGLE;
 
-unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned char arg6);
+unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultFlag);
 unsigned short highscore_write_b(void);
 unsigned short end_hiscore(void);
 struct RECTANGLE *hiscore_draw_text(char *str, int x, int y, int colour, int shadowColour);

@@ -47,11 +47,11 @@ void update_player_car_state(char);
 void update_opponent_car_state(void);
 int car_car_speed_adjust_collision(struct CARSTATE *, struct CARSTATE *);
 short carState_update_wheel_suspension(struct CARSTATE *, short, short);
-short detect_penalty(short *extVar2ptr, short *extVar1Eptr);
+short detect_penalty(short *waypointIdxPtr, short *penaltyOutPtr);
 short car_car_detect_collision(short *pCollPoints, short *pWorldCrds, short *oCollPoints,
                                short *oWorldCrds);
 void upd_statef20_from_steer_input(unsigned char steeringInput);
-void state_spawn_debris_particles(int arg0, int arg2, int arg4);
+void state_spawn_debris_particles(int debrisType, int scatterAngle, int baseSpeed);
 void update_world_debris_particles(void);
 void update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag);
 void update_follow_camera_vectors(void);
