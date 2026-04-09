@@ -1060,13 +1060,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].material = 0;
                         render_result = shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
-                            // exit entire tile loop (ASM: jmp loc_1B03C)
-                            goto exit_tile_loop;
+                            break; /* clipped: exit fence border for-loop */
                         }
                     }
                 }
             }
         }
+        if (render_result > 0) break; /* clipped: exit tile loop */
 
         // terrain type 6: a flat piece of land at an elevated level
         if (terr_map_value != 6) {
@@ -1107,11 +1107,11 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].material = 0;
                         render_result = shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
-                            // exit entire tile loop (ASM: jmp loc_1B03C)
-                            goto exit_tile_loop;
+                            break; /* clipped: exit terrain multi-tile for-loop */
                         }
                     }
                 }
+                if (render_result > 0) break; /* clipped: exit tile loop */
 
                 terr_map_value = 0;
             }
@@ -1217,9 +1217,10 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     currenttransshape[0].material = 0;
                     render_result = shape3d_render_transformed(&currenttransshape[0]);
                     if (render_result > 0)
-                        goto exit_tile_loop; // exit entire tile loop (ASM: jmp loc_1B03C)
+                        break; /* clipped: exit hill multi-tile for-loop */
                 }
             }
+            if (render_result > 0) break; /* clipped: exit tile loop */
 
             if (trkobj_overlay(trk_object_entry) != 0) {
                 trk_object_ptr = trkobj_entry_legacy_scene_index(trkobj_overlay(trk_object_entry));
@@ -1618,8 +1619,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 render_result = shape3d_render_transformed(&currenttransshape[di]); // DI??
                 if (render_result > 0) {
-                    // exit entire tile loop (ASM: jmp loc_1B03C)
-                    goto exit_tile_loop;
+                    break; /* clipped: exit shape render for-loop */
                 }
 
                 if (render_result == 0) {
@@ -1636,8 +1636,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
             }
         }
+        if (render_result > 0) break; /* clipped: exit tile loop */
     }
-exit_tile_loop:
 
     skybox_result = render_skybox_layer(view_index, clip_rect, sky_dir_sign, &view_rot_mat,
                                         view_roll, view_yaw, camera_pos.y);
