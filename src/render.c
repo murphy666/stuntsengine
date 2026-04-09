@@ -510,7 +510,7 @@ load_skybox(unsigned char skybox_index) {
     }
     else {
         if (mouse_button_state_vector && texture_page_index == skybox_index) {
-            goto set_colors_only;
+            return;
         }
         unload_skybox();
         skybox_idx = skybox_index;
@@ -560,7 +560,6 @@ load_skybox(unsigned char skybox_index) {
     skybox_wat_color = (short)render_get_material_color(RENDER_COLOR_INDEX_WATER);
     meter_needle_color = dialog_fnt_colour;
 
-set_colors_only:
     return;
 }
 
@@ -594,46 +593,41 @@ draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
-    if (timertestflag2 == 4) {
-        goto draw_ground;
+    if (timertestflag2 != 4) {
+        /* Draw skybox images */
+        si = angY + RENDER_ANGLE_HALF_TURN;
+        si &= RENDER_ANGLE_MASK;
+        si -= RENDER_ANGLE_FULL_TURN;
+
+        if (rectptr->top < skyheight
+            && skyheight - memory_pointer_boundary_max <= rectptr->bottom) {
+            blit_top = rectptr->top;
+            if (blit_top < skyheight - memory_pointer_boundary_max) {
+                blit_top = skyheight - memory_pointer_boundary_max;
+            }
+            blit_bottom = rectptr->bottom;
+            if (blit_bottom > skyheight) {
+                blit_bottom = skyheight;
+            }
+
+            if (blit_top < blit_bottom) {
+                sprite_set_1_size(rectptr->left, rectptr->right, blit_top, blit_bottom);
+                sprite_clear_sprite1_color(skybox_sky_color);
+
+                sprite_putimage_copy_at(skyboxes[0], si, skyheight - skybox_ptr1);
+                sprite_putimage_copy_at(skyboxes[1], si + RENDER_SCREEN_WIDTH,
+                                        skyheight - skybox_ptr2);
+                sprite_putimage_copy_at(skyboxes[2], si + RENDER_ANGLE_HALF_TURN,
+                                        skyheight - skybox_ptr3);
+                sprite_putimage_copy_at(skyboxes[3],
+                                        si + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH),
+                                        skyheight - skybox_ptr4);
+                sprite_putimage_copy_at(skyboxes[0], si + RENDER_ANGLE_FULL_TURN,
+                                        skyheight - skybox_ptr1);
+            }
+        }
     }
 
-    /* Draw skybox images */
-    si = angY + RENDER_ANGLE_HALF_TURN;
-    si &= RENDER_ANGLE_MASK;
-    si -= RENDER_ANGLE_FULL_TURN;
-
-    if (rectptr->top >= skyheight) {
-        goto draw_ground;
-    }
-    if (skyheight - memory_pointer_boundary_max > rectptr->bottom) {
-        goto draw_ground;
-    }
-
-    blit_top = rectptr->top;
-    if (blit_top < skyheight - memory_pointer_boundary_max) {
-        blit_top = skyheight - memory_pointer_boundary_max;
-    }
-    blit_bottom = rectptr->bottom;
-    if (blit_bottom > skyheight) {
-        blit_bottom = skyheight;
-    }
-
-    if (blit_top >= blit_bottom) {
-        goto draw_ground;
-    }
-
-    sprite_set_1_size(rectptr->left, rectptr->right, blit_top, blit_bottom);
-    sprite_clear_sprite1_color(skybox_sky_color);
-
-    sprite_putimage_copy_at(skyboxes[0], si, skyheight - skybox_ptr1);
-    sprite_putimage_copy_at(skyboxes[1], si + RENDER_SCREEN_WIDTH, skyheight - skybox_ptr2);
-    sprite_putimage_copy_at(skyboxes[2], si + RENDER_ANGLE_HALF_TURN, skyheight - skybox_ptr3);
-    sprite_putimage_copy_at(skyboxes[3], si + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH),
-                            skyheight - skybox_ptr4);
-    sprite_putimage_copy_at(skyboxes[0], si + RENDER_ANGLE_FULL_TURN, skyheight - skybox_ptr1);
-
-draw_ground:
     /* Draw ground portion below skybox */
     if (rectptr->top >= skyheight) {
         di = rectptr->top;
@@ -685,8 +679,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
 
     sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
 
-    if (view_roll == 0)
-        goto no_horizon;
+    if (view_roll != 0) {
 
     /* Compute upper vector */
     horizon_vec.x = (short)(RENDER_HORIZON_VECTOR_X * sky_dir_sign);
@@ -701,49 +694,49 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
     mat_mul_vector(&horizon_vec2, camera_matrix, &horizon_vec_b_cam);
 
     if (horizon_vec_a_cam.z < 0 || horizon_vec_b_cam.z < 0) {
-        di = skybox_sky_color;
-    fill_and_return:
         sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
                           clip_rect->bottom);
-        sprite_clear_sprite1_color(di);
-        goto done;
+        sprite_clear_sprite1_color(skybox_sky_color);
+        return skybox_drawn;
     }
 
     vector_to_point(&horizon_vec_a_cam, &horizon_point_a);
     vector_to_point(&horizon_vec_b_cam, &horizon_point_b);
 
-    if (horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD
-        && horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD
-        && horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD
-        && horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD) {
-        goto no_horizon;
-    }
+    if (!(horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD
+          && horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD
+          && horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD
+          && horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD)) {
 
     /* Check if both points are off-screen right */
     if (horizon_point_a.px > RENDER_SCREEN_WIDTH && horizon_point_b.px > RENDER_SCREEN_WIDTH) {
-        if (horizon_point_a.py < horizon_point_b.py)
-            goto fill_sky;
-        goto fill_grd;
+        int fill_color = (horizon_point_a.py < horizon_point_b.py) ? skybox_sky_color : skybox_grd_color;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
+        sprite_clear_sprite1_color(fill_color);
+        return skybox_drawn;
     }
     /* Check if both points are off-screen left */
     if (horizon_point_a.px < 0 && horizon_point_b.px < 0) {
-        if (horizon_point_a.py <= horizon_point_b.py)
-            goto fill_grd;
-        goto fill_sky;
+        int fill_color = (horizon_point_a.py <= horizon_point_b.py) ? skybox_grd_color : skybox_sky_color;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
+        sprite_clear_sprite1_color(fill_color);
+        return skybox_drawn;
     }
 
     /* Check if both below bottom */
     if (clip_rect->bottom < horizon_point_a.py && clip_rect->bottom < horizon_point_b.py) {
-        if (horizon_point_a.px <= horizon_point_b.px)
-            goto fill_grd;
-        goto fill_sky;
+        int fill_color = (horizon_point_a.px <= horizon_point_b.px) ? skybox_grd_color : skybox_sky_color;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
+        sprite_clear_sprite1_color(fill_color);
+        return skybox_drawn;
     }
 
     /* Check if both above top */
     if (clip_rect->top > horizon_point_a.py && clip_rect->top > horizon_point_b.py) {
-        if (horizon_point_a.px >= horizon_point_b.px)
-            goto fill_grd;
-        goto fill_sky;
+        int fill_color = (horizon_point_a.px >= horizon_point_b.px) ? skybox_grd_color : skybox_sky_color;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
+        sprite_clear_sprite1_color(fill_color);
+        return skybox_drawn;
     }
 
     has_wraparound = false;
@@ -790,96 +783,142 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
         }
     }
 
-    if (!has_wraparound)
-        goto no_wraparound;
+    if (!has_wraparound) {
+        /* Render tilted skybox using vertical strips with interpolated horizon height.
+         * horizon_point_a and horizon_point_b define the horizon line endpoints.
+         * Interpolate the horizon Y across the screen width and render the skybox
+        * image in each strip via draw_skybox_rect_slice. */
+        {
+            int strip_left, strip_right, strip_count, strip_idx;
+            int left_y, right_y, py_delta;
 
+            /* Determine horizon height at the left and right screen edges.
+/** @brief Points.
+ * @param px Parameter `px`.
+ * @return Function result.
+ */
+            if (horizon_point_a.px != horizon_point_b.px) {
+                left_y = horizon_point_a.py
+                         + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                                 * (0 - horizon_point_a.px))
+                               / (horizon_point_b.px - horizon_point_a.px);
+                right_y = horizon_point_a.py
+                          + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                                  * (RENDER_SCREEN_WIDTH - horizon_point_a.px))
+                                / (horizon_point_b.px - horizon_point_a.px);
+            }
+            else {
+                left_y = (horizon_point_a.py + horizon_point_b.py) / 2;
+                right_y = left_y;
+            }
+
+            horizon_y_left = left_y;
+            horizon_y_delta = right_y - left_y;
+
+            py_delta = (horizon_y_delta < 0) ? -horizon_y_delta : horizon_y_delta;
+            strip_count = py_delta + 1;
+            if (strip_count > RENDER_MAX_STRIP_COUNT)
+                strip_count = RENDER_MAX_STRIP_COUNT;
+
+            strip_left = RENDER_SCREEN_LEFT;
+            slice_rect.top = clip_rect->top;
+            slice_rect.bottom = clip_rect->bottom;
+            for (strip_idx = 0; strip_idx < strip_count; strip_idx++) {
+                strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH) / strip_count)
+                              & video_flag3_isFFFF;
+                if (strip_left != strip_right) {
+                    slice_rect.left = strip_left;
+                    slice_rect.right = strip_right;
+                    sky_height = horizon_y_delta * strip_idx / strip_count + horizon_y_left;
+                    draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
+                    strip_left = strip_right;
+                }
+            }
+        }
+        return (skybox_drawn = true);
+    }
 
     /* Has wrap-around */
-    if (!timertestflag_copy)
-        goto simple_skybox;
+    if (!timertestflag_copy) {
+        slice_rect.top = clip_rect->top;
+        slice_rect.bottom = clip_rect->bottom;
+    } else {
+        /* Full rect tracking path */
+        slice_rect.left = 0;
+        rect_skybox.left = 0;
+        slice_rect.right = 320;
+        rect_skybox.right = 320;
 
-    /* Full rect tracking path */
-    slice_rect.left = 0;
-    rect_skybox.left = 0;
-    slice_rect.right = 320;
-    rect_skybox.right = 320;
-
-    if (race_condition_state_flag != 0) {
-        rect_skybox.top = clip_rect->top;
-        rect_skybox.bottom = clip_rect->bottom;
-        goto setup_rect_done;
-    }
-
-    /* Compute sky top */
-    {
-        int tmp;
-        tmp = horizon_y_left + horizon_y_delta;
-        if (tmp > horizon_y_left)
-            tmp = horizon_y_left;
-        tmp -= memory_pointer_boundary_max;
-        rect_skybox.top = tmp;
-        if (clip_rect->top > tmp) {
+        if (race_condition_state_flag != 0) {
             rect_skybox.top = clip_rect->top;
+            rect_skybox.bottom = clip_rect->bottom;
+        } else {
+            /* Compute sky top */
+            {
+                int tmp;
+                tmp = horizon_y_left + horizon_y_delta;
+                if (tmp > horizon_y_left)
+                    tmp = horizon_y_left;
+                tmp -= memory_pointer_boundary_max;
+                rect_skybox.top = tmp;
+                if (clip_rect->top > tmp) {
+                    rect_skybox.top = clip_rect->top;
+                }
+            }
+
+            /* Compute sky bottom */
+            {
+                int tmp;
+                tmp = horizon_y_left + horizon_y_delta;
+                if (tmp < horizon_y_left)
+                    tmp = horizon_y_left;
+                rect_skybox.bottom = tmp;
+            }
+
+            /* Fill sky area above skybox */
+            for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
+                rect_sort_indices[si] = 1;
+            }
+            rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
+
+            slice_rect.top = RENDER_SCREEN_TOP;
+            slice_rect.bottom = rect_skybox.top;
+
+            if (rect_intersect(&slice_rect, clip_rect) == 0) {
+                dirty_rect_count = 0;
+                rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
+                                   frame_dirty_rects, &slice_rect, &dirty_rect_count, dirty_rect_array);
+                for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
+                    sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
+                                      dirty_rect_array[di].top, dirty_rect_array[di].bottom);
+                    sprite_clear_sprite1_color(skybox_sky_color);
+                }
+            }
+
+            /* Fill ground area below skybox */
+            slice_rect.top = rect_skybox.bottom;
+            slice_rect.bottom = RENDER_SCREEN_HEIGHT;
+            if (rect_intersect(&slice_rect, clip_rect) == 0) {
+                dirty_rect_count = 0;
+                rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
+                                   frame_dirty_rects, &slice_rect, &dirty_rect_count, dirty_rect_array);
+                for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
+                    sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
+                                      dirty_rect_array[di].top, dirty_rect_array[di].bottom);
+                    sprite_clear_sprite1_color(skybox_grd_color);
+                }
+            }
         }
+
+        slice_rect.top = rect_skybox.top;
+        slice_rect.bottom = rect_skybox.bottom;
     }
 
-    /* Compute sky bottom */
-    {
-        int tmp;
-        tmp = horizon_y_left + horizon_y_delta;
-        if (tmp < horizon_y_left)
-            tmp = horizon_y_left;
-        rect_skybox.bottom = tmp;
-    }
-
-    /* Fill sky area above skybox */
-    for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-        rect_sort_indices[si] = 1;
-    }
-    rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
-
-    slice_rect.top = RENDER_SCREEN_TOP;
-    slice_rect.bottom = rect_skybox.top;
-
-    if (rect_intersect(&slice_rect, clip_rect) == 0) {
-        dirty_rect_count = 0;
-        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
-                           frame_dirty_rects, &slice_rect, &dirty_rect_count, dirty_rect_array);
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                              dirty_rect_array[di].top, dirty_rect_array[di].bottom);
-            sprite_clear_sprite1_color(skybox_sky_color);
-        }
-    }
-
-    /* Fill ground area below skybox */
-    slice_rect.top = rect_skybox.bottom;
-    slice_rect.bottom = RENDER_SCREEN_HEIGHT;
-    if (rect_intersect(&slice_rect, clip_rect) == 0) {
-        dirty_rect_count = 0;
-        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
-                           frame_dirty_rects, &slice_rect, &dirty_rect_count, dirty_rect_array);
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                              dirty_rect_array[di].top, dirty_rect_array[di].bottom);
-            sprite_clear_sprite1_color(skybox_grd_color);
-        }
-    }
-
-setup_rect_done:
-    slice_rect.top = rect_skybox.top;
-    slice_rect.bottom = rect_skybox.bottom;
-    goto setup_skybox_strip;
-
-simple_skybox:
-    slice_rect.top = clip_rect->top;
-    slice_rect.bottom = clip_rect->bottom;
-
-setup_skybox_strip:
+    /* setup_skybox_strip: */
     slice_rect.left = RENDER_SCREEN_LEFT;
     slice_rect.right = RENDER_SCREEN_WIDTH;
     if (rect_intersect(&slice_rect, clip_rect) != 0)
-        goto done;
+        return skybox_drawn;
 
     /* Render skybox strips */
     strip_left = RENDER_SCREEN_LEFT;
@@ -897,73 +936,9 @@ setup_skybox_strip:
             strip_left = slice_rect.right;
         }
     }
-    goto done;
-
-no_wraparound:
-
-
-    /* Render tilted skybox using vertical strips with interpolated horizon height.
-     * horizon_point_a and horizon_point_b define the horizon line endpoints.
-     * Interpolate the horizon Y across the screen width and render the skybox
-    * image in each strip via draw_skybox_rect_slice. */
-    {
-        int strip_left, strip_right, strip_count, strip_idx;
-        int left_y, right_y, py_delta;
-
-        /* Determine horizon height at the left and right screen edges.
-/** @brief Points.
- * @param px Parameter `px`.
- * @return Function result.
- */
-        if (horizon_point_a.px != horizon_point_b.px) {
-            left_y = horizon_point_a.py
-                     + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
-                             * (0 - horizon_point_a.px))
-                           / (horizon_point_b.px - horizon_point_a.px);
-            right_y = horizon_point_a.py
-                      + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
-                              * (RENDER_SCREEN_WIDTH - horizon_point_a.px))
-                            / (horizon_point_b.px - horizon_point_a.px);
-        }
-        else {
-            left_y = (horizon_point_a.py + horizon_point_b.py) / 2;
-            right_y = left_y;
-        }
-
-        horizon_y_left = left_y;
-        horizon_y_delta = right_y - left_y;
-
-        py_delta = (horizon_y_delta < 0) ? -horizon_y_delta : horizon_y_delta;
-        strip_count = py_delta + 1;
-        if (strip_count > RENDER_MAX_STRIP_COUNT)
-            strip_count = RENDER_MAX_STRIP_COUNT;
-
-        strip_left = RENDER_SCREEN_LEFT;
-        slice_rect.top = clip_rect->top;
-        slice_rect.bottom = clip_rect->bottom;
-        for (strip_idx = 0; strip_idx < strip_count; strip_idx++) {
-            strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH) / strip_count)
-                          & video_flag3_isFFFF;
-            if (strip_left != strip_right) {
-                slice_rect.left = strip_left;
-                slice_rect.right = strip_right;
-                sky_height = horizon_y_delta * strip_idx / strip_count + horizon_y_left;
-                draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-                strip_left = strip_right;
-            }
-        }
-    }
-    return (skybox_drawn = true);
-
-fill_sky:
-    di = skybox_sky_color;
-    goto fill_and_return;
-
-fill_grd:
-    di = skybox_grd_color;
-    goto fill_and_return;
-
-no_horizon:
+    return skybox_drawn;
+    } /* end if (!both_invalid) */
+    } /* end if (view_roll != 0) */
 
     /* No horizon visible - simple sky/ground split */
     horizon_vec.x = 0;
@@ -975,13 +950,13 @@ no_horizon:
         /* Looking down = all sky */
         sprite_clear_sprite1_color(skybox_sky_color);
         if (!timertestflag_copy)
-            goto done;
+            return skybox_drawn;
         skybox_drawn = true;
         rect_skybox.left = RENDER_SCREEN_LEFT;
         rect_skybox.right = RENDER_SCREEN_WIDTH;
         rect_skybox.top = clip_rect->top;
         rect_skybox.bottom = clip_rect->bottom;
-        goto done;
+        return skybox_drawn;
     }
 
     /* Have a horizon point */
@@ -1001,7 +976,7 @@ no_horizon:
             slice_rect.top = clip_rect->top;
             slice_rect.bottom = clip_rect->bottom;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-            goto done;
+            return skybox_drawn;
         }
 
         if (timertestflag2 == 4) {
@@ -1021,7 +996,7 @@ no_horizon:
             slice_rect.top = clip_rect->top;
             slice_rect.bottom = clip_rect->bottom;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-            goto done;
+            return skybox_drawn;
         }
 
         /* Multi-rect tracking path */
@@ -1059,7 +1034,7 @@ no_horizon:
         for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
             draw_skybox_rect_slice(&dirty_rect_array[di], view_yaw, sky_height);
         }
-        goto done;
+        return skybox_drawn;
     }
 
     /* sky_dir_sign != 1: Simple ground/sky fill */
@@ -1080,7 +1055,6 @@ no_horizon:
     }
 
     skybox_drawn = true;
-done:
     return skybox_drawn;
 }
 
@@ -1441,23 +1415,40 @@ draw_ingame_text(void) {
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aDm2));
-        goto draw_text_at_B6;
-    }
-
-    if (game_replay_mode != 0)
-        goto replay_check;
-
-    if (state.game_inputmode == 0) {
-        /* "Fasten Your Seatbelt" */
-        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPre));
-    draw_text_at_B6:
-        /* Common path: draw text at computed X, specified Y */
         {
             int x = font_get_centered_x(resID_byte1);
             struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
-        goto done_text;
+        return &rect_ingame_text;
+    }
+
+    if (game_replay_mode != 0) {
+        if (game_replay_mode == 2) {
+            unsigned int frame_mod;
+            si = state.game_frame;
+            frame_mod = (unsigned)si % framespersec;
+            if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) > (int)frame_mod) {
+                copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
+                {
+                    int x = 312 - (int)strlen(resID_byte1) * 8;
+                    struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 15, dialog_fnt_colour, 0);
+                    rect_union(r, &rect_ingame_text, &rect_ingame_text);
+                }
+            }
+        }
+        return &rect_ingame_text;
+    }
+
+    if (state.game_inputmode == 0) {
+        /* "Fasten Your Seatbelt" */
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPre));
+        {
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
+            rect_union(r, &rect_ingame_text, &rect_ingame_text);
+        }
+        return &rect_ingame_text;
     }
 
     if (!passed_security) {
@@ -1468,15 +1459,20 @@ draw_ingame_text(void) {
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe2));
-        goto draw_text_at_B6;
+        {
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
+            rect_union(r, &rect_ingame_text, &rect_ingame_text);
+        }
+        return &rect_ingame_text;
     }
 
     if (followOpponentFlag)
-        goto done_text;
+        return &rect_ingame_text;
     if (cameramode != 0)
-        goto done_text;
+        return &rect_ingame_text;
     if (state.playerstate.car_crashBmpFlag != 0)
-        goto done_text;
+        return &rect_ingame_text;
 
     /* Direction arrows / messages */
     switch ((signed char)state.game_collision_type) {
@@ -1523,36 +1519,16 @@ draw_ingame_text(void) {
     }
 
     /* Penalty display */
-    if (show_penalty_counter == 0)
-        goto done_text;
-    copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPen));
-    format_frame_as_string(resID_byte1 + strlen(resID_byte1), penalty_time, 0);
-    {
-        int x = font_get_centered_x(resID_byte1);
-        struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 102, dialog_fnt_colour, 0);
-        rect_union(r, &rect_ingame_text, &rect_ingame_text);
-    }
-    goto done_text;
-
-replay_check:
-    if (game_replay_mode != 2)
-        goto done_text;
-    {
-        unsigned int frame_mod;
-        si = state.game_frame;
-        frame_mod = (unsigned)si % framespersec;
-        if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) <= (int)frame_mod)
-            goto done_text;
-
-        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
+    if (show_penalty_counter != 0) {
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPen));
+        format_frame_as_string(resID_byte1 + strlen(resID_byte1), penalty_time, 0);
         {
-            int x = 312 - (int)strlen(resID_byte1) * 8;
-            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 15, dialog_fnt_colour, 0);
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 102, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
     }
 
-done_text:
     return &rect_ingame_text;
 }
 
@@ -2075,68 +2051,60 @@ render_present_ingame_view(struct RECTANGLE *frame_rect) {
         /* Page flip mode */
         mouse_draw_opaque_check();
         sprite_putimage(wndsprite->sprite_bitmapptr);
-        goto finish;
-    }
-
-    if (!timertestflag_copy) {
+    } else if (!timertestflag_copy) {
         /* No rect tracking: blit full provided rect */
         sprite_set_1_size(frame_rect->left, frame_rect->right, frame_rect->top, frame_rect->bottom);
-        goto blit_full;
-    }
-
-    /* Full rect-tracking path */
-    for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-        rect_sort_indices[si] = 3;
-    }
-
-    if (timertestflag2 == 4) {
-        collision_detection_state = sprite_transformation_angle;
-    }
-
-    /* Check if rect at index 5 changed */
-    if (collision_detection_state == sprite_transformation_angle
-         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].left
-             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].left
-         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].right
-             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].right
-         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].top
-             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].top
-         && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].bottom
-             == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].bottom) {
-         rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
-    }
-
-    dirty_rect_count = 0;
-    rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_front,
-                       rect_buffer_back, frame_rect, &dirty_rect_count, dirty_rect_array);
-
-    if (dirty_rect_count == 0) {
-        /* No dirty rects: use full screen */
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, frame_rect->top,
-                          frame_rect->bottom);
-        goto blit_full;
-    }
-
-    /* Sort and blit dirty rects */
-    rect_array_sort_by_top((int)(signed char)dirty_rect_count, dirty_rect_array,
-                           dirty_rect_indices);
-    mouse_draw_opaque_check();
-
-    for (si = 0; si < (int)(signed char)dirty_rect_count; si++) {
-        int idx = dirty_rect_indices[si];
-        rp = &dirty_rect_array[idx];
-        sprite_set_1_size(rp->left, rp->right, rp->top, rp->bottom);
+        mouse_draw_opaque_check();
         sprite_putimage(wndsprite->sprite_bitmapptr);
+    } else {
+        /* Full rect-tracking path */
+        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
+            rect_sort_indices[si] = 3;
+        }
+
+        if (timertestflag2 == 4) {
+            collision_detection_state = sprite_transformation_angle;
+        }
+
+        /* Check if rect at index 5 changed */
+        if (collision_detection_state == sprite_transformation_angle
+             && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].left
+                 == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].left
+             && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].right
+                    == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].right
+             && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].top
+                    == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].top
+             && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].bottom
+                    == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].bottom) {
+             rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
+        }
+
+        dirty_rect_count = 0;
+        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_front,
+                           rect_buffer_back, frame_rect, &dirty_rect_count, dirty_rect_array);
+
+        if (dirty_rect_count == 0) {
+            /* No dirty rects: use full screen */
+            sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, frame_rect->top,
+                              frame_rect->bottom);
+            mouse_draw_opaque_check();
+            sprite_putimage(wndsprite->sprite_bitmapptr);
+        } else {
+            /* Sort and blit dirty rects */
+            rect_array_sort_by_top((int)(signed char)dirty_rect_count, dirty_rect_array,
+                                   dirty_rect_indices);
+            mouse_draw_opaque_check();
+
+            for (si = 0; si < (int)(signed char)dirty_rect_count; si++) {
+                int idx = dirty_rect_indices[si];
+                rp = &dirty_rect_array[idx];
+                sprite_set_1_size(rp->left, rp->right, rp->top, rp->bottom);
+                sprite_putimage(wndsprite->sprite_bitmapptr);
+            }
+        }
     }
-    goto done;
 
-blit_full:
-    mouse_draw_opaque_check();
-    sprite_putimage(wndsprite->sprite_bitmapptr);
-
-done:
-    /* Cleanup */
-finish:
+    /* Common cleanup */
     mouse_draw_transparent_check();
     video_refresh();
 

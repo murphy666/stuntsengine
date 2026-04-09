@@ -1401,14 +1401,12 @@ update_opponent_car_state(void) {
 
     state.opponentstate.car_position_initialized = 1;
 
-    /* If crashed, handle braking */
+    /* If crashed, skip steering and go straight to physics */
     if (state.opponentstate.car_crashBmpFlag != 0) {
-        if (state.opponentstate.car_speed2 != 0) {
-            goto do_physics;
+        if (state.opponentstate.car_speed2 == 0) {
+            state.opponentstate.car_position_initialized = 0;
         }
-        state.opponentstate.car_position_initialized = 0;
-        goto do_physics;
-    }
+    } else {
 
     /* Copy current waypoint */
     vec_3C = state.opponentstate.car_waypoint_target;
@@ -1426,7 +1424,7 @@ update_opponent_car_state(void) {
 
     /* Advance waypoint if close enough */
     if (si < 200) {
-    advance_waypoint: {
+    {
         short trackval;
         short idx = state.opponentstate.car_waypoint_seq_index;
         short ce = (short)(unsigned char)state.opponentstate.car_track_waypoint_index;
@@ -1445,113 +1443,102 @@ update_opponent_car_state(void) {
     }
     }
 
-    /* Compute steering target */
+    while (true) {
+    /* Compute steering target: determine midpoint to aim at */
     if (state.game_inputmode == 2) {
         /* Autopilot mode - follow waypoints directly */
         midpoint = state.opponentstate.car_waypoint_target;
-    compute_target:
-        delta = midpoint;
-        delta.x -= oppPosX;
-        if (midpoint.y == -1) {
-            delta.y = 0;
+    } else {
+        /* Normal mode: steer toward player */
+        delta.x = plrPosX - oppPosX;
+        delta.y = plrPosY - oppPosY;
+        delta.z = plrPosZ - oppPosZ;
+
+        mat_mul_vector(&delta, matptr, &rotDelta);
+
+        /* If player is out of follow range, steer toward waypoint directly */
+        {
+            short absX = rotDelta.x < 0 ? -rotDelta.x : rotDelta.x;
+            if (rotDelta.y > STATECAR_AI_PLAYER_BEHIND_Y
+                || absX > STATECAR_AI_LATERAL_MAX
+                || rotDelta.z > STATECAR_AI_DEPTH_MAX
+                || rotDelta.z < STATECAR_AI_DEPTH_MIN) {
+                midpoint = state.opponentstate.car_waypoint_target;
+            } else {
+                /* Steer toward waypoint, adjusted for player proximity */
+                delta.x = plrPosX - state.opponentstate.car_waypoint_target.x;
+                if (state.opponentstate.car_waypoint_target.y != -1) {
+                    delta.y = plrPosY - state.opponentstate.car_waypoint_target.y;
+                }
+                else {
+                    delta.y = 0;
+                }
+                delta.z = plrPosZ - state.opponentstate.car_waypoint_target.z;
+
+                mat_mul_vector(&delta, matptr, &localDelta);
+
+                if (localDelta.x < 0) {
+                    /* Player is to the left of waypoint -> opponent takes right-side path */
+                    midpoint.x = (short)(((long)state.opponentstate.car_waypoint_right.x
+                                          + (long)state.opponentstate.car_waypoint_target.x)
+                                         >> 1);
+                    if (state.opponentstate.car_waypoint_target.y != -1) {
+                        midpoint.y = (short)(((long)state.opponentstate.car_waypoint_right.y
+                                              + (long)state.opponentstate.car_waypoint_target.y)
+                                             >> 1);
+                    }
+                    else {
+                        midpoint.y = -1;
+                    }
+                    midpoint.z = (short)(((long)state.opponentstate.car_waypoint_right.z
+                                          + (long)state.opponentstate.car_waypoint_target.z)
+                                         >> 1);
+
+                    /* If player is behind and not crashed, set field_45E=2 */
+                    if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
+                        if (state.playerstate.car_crashBmpFlag == 0) {
+                            state.game_flyover_check = 2;
+                        }
+                    }
+                }
+                else {
+                    /* Player is to the right -> opponent takes left-side path */
+                    midpoint.x = (short)(((long)state.opponentstate.car_waypoint_left.x
+                                          + (long)state.opponentstate.car_waypoint_target.x)
+                                         >> 1);
+                    if (state.opponentstate.car_waypoint_target.y != -1) {
+                        midpoint.y = (short)(((long)state.opponentstate.car_waypoint_left.y
+                                              + (long)state.opponentstate.car_waypoint_target.y)
+                                             >> 1);
+                    }
+                    else {
+                        midpoint.y = -1;
+                    }
+                    midpoint.z = (short)(((long)state.opponentstate.car_waypoint_left.z
+                                          + (long)state.opponentstate.car_waypoint_target.z)
+                                         >> 1);
+
+                    if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
+                        if (state.playerstate.car_crashBmpFlag == 0) {
+                            state.game_flyover_check = 1;
+                        }
+                    }
+                }
+            }
         }
-        else {
-            delta.y -= oppPosY;
-        }
-        delta.z -= oppPosZ;
-        goto compute_angle;
     }
 
-    /* Normal mode: steer toward player */
-    delta.x = plrPosX - oppPosX;
-    delta.y = plrPosY - oppPosY;
-    delta.z = plrPosZ - oppPosZ;
-
-    mat_mul_vector(&delta, matptr, &rotDelta);
-
-    /* If player is behind, follow waypoints */
-    if (rotDelta.y > STATECAR_AI_PLAYER_BEHIND_Y) {
-        goto use_waypoint;
-    }
-
-    /* Check lateral distance */
-    {
-        short absX = rotDelta.x < 0 ? -rotDelta.x : rotDelta.x;
-        if (absX > STATECAR_AI_LATERAL_MAX)
-            goto use_waypoint;
-    }
-    if (rotDelta.z > STATECAR_AI_DEPTH_MAX)
-        goto use_waypoint;
-    if (rotDelta.z < STATECAR_AI_DEPTH_MIN)
-        goto use_waypoint;
-
-    /* Steer toward waypoint, adjusted for player proximity */
-    delta.x = plrPosX - state.opponentstate.car_waypoint_target.x;
-    if (state.opponentstate.car_waypoint_target.y != -1) {
-        delta.y = plrPosY - state.opponentstate.car_waypoint_target.y;
-    }
-    else {
+    /* Steer toward computed midpoint */
+    delta = midpoint;
+    delta.x -= oppPosX;
+    if (midpoint.y == -1) {
         delta.y = 0;
     }
-    delta.z = plrPosZ - state.opponentstate.car_waypoint_target.z;
-
-    mat_mul_vector(&delta, matptr, &localDelta);
-
-    if (localDelta.x < 0) {
-        /* Player is to the left of waypoint -> opponent takes right-side path (car_vec_unk5) */
-        midpoint.x = (short)(((long)state.opponentstate.car_waypoint_right.x
-                              + (long)state.opponentstate.car_waypoint_target.x)
-                             >> 1);
-        if (state.opponentstate.car_waypoint_target.y != -1) {
-            midpoint.y = (short)(((long)state.opponentstate.car_waypoint_right.y
-                                  + (long)state.opponentstate.car_waypoint_target.y)
-                                 >> 1);
-        }
-        else {
-            midpoint.y = -1;
-        }
-        midpoint.z = (short)(((long)state.opponentstate.car_waypoint_right.z
-                              + (long)state.opponentstate.car_waypoint_target.z)
-                             >> 1);
-
-        /* If player is behind and not crashed, set field_45E=2 */
-        if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
-            if (state.playerstate.car_crashBmpFlag == 0) {
-                state.game_flyover_check = 2;
-            }
-        }
-        goto compute_target;
-    }
     else {
-        /* Player is to the right -> opponent takes left-side path (car_vec_unk4) */
-        midpoint.x = (short)(((long)state.opponentstate.car_waypoint_left.x
-                              + (long)state.opponentstate.car_waypoint_target.x)
-                             >> 1);
-        if (state.opponentstate.car_waypoint_target.y != -1) {
-            midpoint.y = (short)(((long)state.opponentstate.car_waypoint_left.y
-                                  + (long)state.opponentstate.car_waypoint_target.y)
-                                 >> 1);
-        }
-        else {
-            midpoint.y = -1;
-        }
-        midpoint.z = (short)(((long)state.opponentstate.car_waypoint_left.z
-                              + (long)state.opponentstate.car_waypoint_target.z)
-                             >> 1);
-
-        if (rotDelta.z > STATECAR_AI_CHASE_DEPTH_TRIGGER) {
-            if (state.playerstate.car_crashBmpFlag == 0) {
-                state.game_flyover_check = 1;
-            }
-        }
-        goto compute_target;
+        delta.y -= oppPosY;
     }
+    delta.z -= oppPosZ;
 
-use_waypoint:
-    midpoint = state.opponentstate.car_waypoint_target;
-    goto compute_target;
-
-compute_angle:
     /* Transform delta into local coords */
     mat_mul_vector(&delta, matptr, &vec_3C);
     targetAngle = polarAngle(vec_3C.x, vec_3C.z);
@@ -1583,17 +1570,53 @@ compute_angle:
     if (targetAngle > STATECAR_AI_STEER_TARGET_MAX) {
         if (!chaseFlag) {
             chaseFlag = true;
-            goto advance_waypoint;
+            {
+                short trackval;
+                short idx = state.opponentstate.car_waypoint_seq_index;
+                short ce = (short)(unsigned char)state.opponentstate.car_track_waypoint_index;
+                state.opponentstate.car_track_waypoint_index++;
+                trackval = opponent_route_path_index(idx);
+                if (track_waypoint_lookup(trackval, &state.opponentstate.car_waypoint_target, ce,
+                                          (short *)&state.game_track_lookup_temp)
+                    != 0) {
+                    state.opponentstate.car_waypoint_seq_index++;
+                    if (((short *)track_waypoint_order)[state.opponentstate.car_waypoint_seq_index] == 0) {
+                        state.opponentstate.car_impact_state_counter++;
+                        state.opponentstate.car_waypoint_seq_index = 0;
+                    }
+                    state.opponentstate.car_track_waypoint_index = 0;
+                }
+            }
+            continue;
         }
         targetAngle = STATECAR_AI_STEER_TARGET_MAX;
     }
     else if (targetAngle < STATECAR_AI_STEER_TARGET_MIN) {
         if (!chaseFlag) {
             chaseFlag = true;
-            goto advance_waypoint;
+            {
+                short trackval;
+                short idx = state.opponentstate.car_waypoint_seq_index;
+                short ce = (short)(unsigned char)state.opponentstate.car_track_waypoint_index;
+                state.opponentstate.car_track_waypoint_index++;
+                trackval = opponent_route_path_index(idx);
+                if (track_waypoint_lookup(trackval, &state.opponentstate.car_waypoint_target, ce,
+                                          (short *)&state.game_track_lookup_temp)
+                    != 0) {
+                    state.opponentstate.car_waypoint_seq_index++;
+                    if (((short *)track_waypoint_order)[state.opponentstate.car_waypoint_seq_index] == 0) {
+                        state.opponentstate.car_impact_state_counter++;
+                        state.opponentstate.car_waypoint_seq_index = 0;
+                    }
+                    state.opponentstate.car_track_waypoint_index = 0;
+                }
+            }
+            continue;
         }
         targetAngle = STATECAR_AI_STEER_TARGET_MIN;
     }
+    break;
+    } /* while (true): at most two iterations, retry once if angle out of bounds */
 
     /* Zero steering if no front-wheel surface contact */
     if (state.opponentstate.car_sumSurfFrontWheels == 0) {
@@ -1616,8 +1639,8 @@ compute_angle:
             state.opponentstate.car_steeringAngle = targetAngle;
         }
     }
+    } /* end if (!crashed) */
 
-do_physics:
     /* Determine acceleration command */
     accelCmd = 0;
     if (state.opponentstate.car_sumSurfRearWheels != 0) {
@@ -1969,40 +1992,36 @@ track_waypoint_lookup(short path_index, struct VECTOR *waypoint_out, short lane_
     }
 
     /* Read waypoint data based on connStatus */
-    if (td18connStatus != 0) {
-        if (opponentFlag) {
-            /* Use si_opp1 as data base pointer */
+    if (td18connStatus != 0 && !opponentFlag) {
+        /* reversed order: skip normal path */
+        dataBase = (short *)state_seg_ptr16(0, toInfo.camera_data_ofs);
+        dataPtr = (short *)((char *)dataBase + (unsigned char)cameraDataIndex * 6);
+        /* First waypoint = data[index+6..11], second = data[index+0..5] */
+        wp1_x = dataPtr[3];
+        wp1_y = dataPtr[4];
+        wp1_z = dataPtr[5];
+        wp2_x = dataPtr[0];
+        wp2_y = dataPtr[1];
+        wp2_z = dataPtr[2];
+    } else {
+        if (td18connStatus != 0) {
+            /* opponentFlag is true: use si_opp1 as data base pointer */
             dataBase = (short *)state_seg_ptr16(0, (unsigned short)toInfo.opp1
                                                        | ((unsigned short)toInfo.opp2 << 8));
         }
         else {
-            /* Use si_cameraDataOffset, read in reversed order */
             dataBase = (short *)state_seg_ptr16(0, toInfo.camera_data_ofs);
-            dataPtr = (short *)((char *)dataBase + (unsigned char)cameraDataIndex * 6);
-            /* First waypoint = data[index+6..11], second = data[index+0..5] */
-            wp1_x = dataPtr[3];
-            wp1_y = dataPtr[4];
-            wp1_z = dataPtr[5];
-            wp2_x = dataPtr[0];
-            wp2_y = dataPtr[1];
-            wp2_z = dataPtr[2];
-            goto after_data_read;
         }
-    }
-    else {
-        dataBase = (short *)state_seg_ptr16(0, toInfo.camera_data_ofs);
-    }
 
-    /* Normal order: first waypoint = data[index], second = data[index+6] */
-    dataPtr = (short *)((char *)dataBase + (unsigned char)cameraDataIndex * 6);
-    wp1_x = dataPtr[0];
-    wp1_y = dataPtr[1];
-    wp1_z = dataPtr[2];
-    wp2_x = dataPtr[3];
-    wp2_y = dataPtr[4];
-    wp2_z = dataPtr[5];
-
-after_data_read:
+        /* Normal order: first waypoint = data[index], second = data[index+6] */
+        dataPtr = (short *)((char *)dataBase + (unsigned char)cameraDataIndex * 6);
+        wp1_x = dataPtr[0];
+        wp1_y = dataPtr[1];
+        wp1_z = dataPtr[2];
+        wp2_x = dataPtr[3];
+        wp2_y = dataPtr[4];
+        wp2_z = dataPtr[5];
+    }
     /* Apply rotation based on si_arrowOrient */
     switch (toInfo.arrow_orient) {
     case 256: /* 90 degrees CW */
@@ -2408,33 +2427,33 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
 
     si = *extVar2ptr;
 
-loop_start:
-    /* Follow path: look up next piece */
-    nextWaypoint = track_waypoint_next[si];
+    while (1) {
+        /* Follow path: look up next piece */
+        nextWaypoint = track_waypoint_next[si];
 
-    /* Check if already visited */
-    if (visited[nextWaypoint] != 0) {
-        /* Backtrack */
-        if (stackDepth > 0) {
-            stackDepth--;
-            si = pathStack[stackDepth];
-            di = penaltyStack[stackDepth];
-            goto loop_start;
-        }
-        /* Stack empty */
-        if (bestPenalty != 0) {
-            *extVar2ptr = bestWaypointIndex;
-            *extVar1Eptr = bestPenalty;
+        /* Check if already visited */
+        if (visited[nextWaypoint] != 0) {
+            /* Backtrack */
+            if (stackDepth > 0) {
+                stackDepth--;
+                si = pathStack[stackDepth];
+                di = penaltyStack[stackDepth];
+                continue;
+            }
+            /* Stack empty */
+            if (bestPenalty != 0) {
+                *extVar2ptr = bestWaypointIndex;
+                *extVar1Eptr = bestPenalty;
+                return 1;
+            }
+            /* No penalty found, set start to current */
+            state.game_startcol = (signed char)playerTileCol;
+            state.game_startcol2 = (signed char)playerTileCol;
+            state.game_startrow = (signed char)playerTileRow;
+            state.game_startrow2 = (signed char)playerTileRow;
+            *extVar1Eptr = -2;
             return 1;
         }
-        /* No penalty found, set start to current */
-        state.game_startcol = (signed char)playerTileCol;
-        state.game_startcol2 = (signed char)playerTileCol;
-        state.game_startrow = (signed char)playerTileRow;
-        state.game_startrow2 = (signed char)playerTileRow;
-        *extVar1Eptr = -2;
-        return 1;
-    }
 
     /* Mark as visited */
     visited[nextWaypoint] = 1;
@@ -2508,7 +2527,7 @@ loop_start:
     }
 
     si = nextWaypoint;
-    goto loop_start;
+    } /* while(1) */
 }
 
 /* ---- car_car_coll_detect_maybe ---- */

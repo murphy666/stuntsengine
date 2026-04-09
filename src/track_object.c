@@ -550,15 +550,16 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     tileRow = (char)(world_pos->z >> BTO_WORLD_TO_TILE_SHIFT);
     physModel = -1;
 
+    do {  /* single exit to finalization (replaces goto exit_func) */
     /* Bounds check: col must be 0..29, row must be 0..29 */
     if (tileCol < 0)
-        goto exit_func;
+        break;
     if (tileCol > BTO_TRACK_LAST_INDEX)
-        goto exit_func;
+        break;
     if (tileRow < 0)
-        goto exit_func;
+        break;
     if (tileRow > BTO_TRACK_LAST_INDEX)
-        goto exit_func;
+        break;
 
     /* Set element center from lookup tables */
     di = (int)(signed char)tileCol;
@@ -576,61 +577,33 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     if (terrainTile != 0) {
         unsigned int terrVal = (unsigned char)terrainTile;
         if (terrVal == BTO_TERRAIN_WATER) {
-            goto check_coast_done; /* jump to loc_1E2FB = set water */
-        }
-        if (terrVal == BTO_TERRAIN_COAST_A) {
-            si = BTO_COAST_ANGLE_A;
-            goto do_coast_calc;
-        }
-        if (terrVal == BTO_TERRAIN_COAST_B) {
-            si = BTO_COAST_ANGLE_B;
-            goto do_coast_calc;
-        }
-        if (terrVal == BTO_TERRAIN_COAST_C) {
-            si = BTO_COAST_ANGLE_C;
-            goto do_coast_calc;
-        }
-        if (terrVal == BTO_TERRAIN_COAST_D) {
-            si = BTO_COAST_ANGLE_D;
-            goto do_coast_calc;
-        }
-        if (terrVal == BTO_TERRAIN_HILL_RAISED) {
-            /* code_addHillHeight */
+            current_surf_type = SURF_WATER;
+        } else if (terrVal >= BTO_TERRAIN_COAST_A && terrVal <= BTO_TERRAIN_COAST_D) {
+            /* coast boundary check: rotate position by coast angle; if behind boundary, set water */
+            switch (terrVal) {
+            case BTO_TERRAIN_COAST_A: si = BTO_COAST_ANGLE_A; break;
+            case BTO_TERRAIN_COAST_B: si = BTO_COAST_ANGLE_B; break;
+            case BTO_TERRAIN_COAST_C: si = BTO_COAST_ANGLE_C; break;
+            default:                  si = BTO_COAST_ANGLE_D; break;
+            }
+            {
+                int pxElem = world_pos->x - elem_xCenter;
+                int pzElem = world_pos->z - elem_zCenter;
+                short sinVal, cosVal;
+                elemPos.x = pxElem;
+                elemPos.z = pzElem;
+                sinVal = sin_fast((unsigned short)si);
+                di = multiply_and_scale(pzElem, sinVal);
+                cosVal = cos_fast((unsigned short)si);
+                tempValue22 = multiply_and_scale(pxElem, cosVal) + di;
+            }
+            if (tempValue22 < 0)
+                current_surf_type = SURF_WATER;
+        } else if (terrVal == BTO_TERRAIN_HILL_RAISED) {
             terrainHeight = hillHeightConsts[BTO_HILL_HEIGHT_INDEX];
         }
-        /* fall through to loc_1E276 */
-        goto after_terrain;
     }
-    goto after_terrain;
 
-do_coast_calc: {
-    /* loc_1E2AF */
-    int pxElem, pzElem;
-    pxElem = world_pos->x - elem_xCenter;
-    pzElem = world_pos->z - elem_zCenter;
-    elemPos.x = pxElem;
-    elemPos.z = pzElem;
-
-    {
-        short sinVal, cosVal;
-        int result;
-        sinVal = sin_fast((unsigned short)si);
-        di = multiply_and_scale(pzElem, sinVal);
-        cosVal = cos_fast((unsigned short)si);
-        result = multiply_and_scale(pxElem, cosVal);
-        tempValue22 = result + di;
-    }
-    if (tempValue22 < 0) {
-        goto check_coast_done;
-    }
-    goto after_terrain;
-}
-
-check_coast_done:
-    current_surf_type = SURF_WATER;
-    goto after_terrain;
-
-after_terrain:
     /* loc_1E276: look up element tile */
     {
         int rowIdx = (int)(signed char)tileRow;
@@ -640,115 +613,61 @@ after_terrain:
     }
 
     if (tileElement == 0) {
-        goto process_terrain;
-    }
-
-    /** @brief Handling.
- * @param BTO_MARKER_CORNER Parameter `BTO_MARKER_CORNER`.
- * @return Function result.
- */
-    /* Filler tile handling (253, 254, 255) */
+        /* skip element processing, go straight to terrain */
+    } else {
+    /* Tile center adjustment for multi-tile and marker tile elements */
     if ((unsigned char)tileElement < BTO_MARKER_CORNER) {
-        goto normal_tile;
-    }
-
-    /* loc_1E30D */
-    {
+        /* Normal tile: adjust centers using multi-tile flags */
+        unsigned char te = (unsigned char)tileElement;
+        unsigned char mtf = (unsigned char)bto_trackobj_multi(te);
+        tempValue3C = (int)mtf;
+        if (mtf != 0) {
+            if (tempValue3C & 1) {
+                int rowIdx = (int)(signed char)tileRow;
+                elem_zCenter = terrainpos[rowIdx];
+            }
+            if (mtf & 2) {
+                int colIdx = (int)(signed char)tileCol;
+                elem_xCenter = trackpos2[colIdx + 1];
+            }
+        }
+    } else {
+        /* Marker tile (253=CORNER, 254=VERTICAL, 255=HORIZONTAL): look up the actual tile */
         unsigned int tev = (unsigned char)tileElement;
+        int rowIdx = (int)(signed char)tileRow;
+        int colIdx = (int)(signed char)tileCol;
 
         if (tev == BTO_MARKER_CORNER) {
             /* Look at tile to the left (col-1) in the row above (row+1) */
-            int rowIdx = (int)(signed char)tileRow;
-            int colIdx = (int)(signed char)tileCol;
             int bx = terrainrows[rowIdx + 1];
             tileElement = track_elem_map[bx + colIdx - 1];
-
             {
-                unsigned char te = (unsigned char)tileElement;
-                unsigned char multiFlag = bto_trackobj_multi(te);
-                if (multiFlag & 1) {
-                    elem_zCenter = terrainpos[rowIdx + 1];
-                }
-                if (multiFlag & 2) {
-                    elem_xCenter = trackpos2[colIdx];
-                }
+                unsigned char multiFlag = bto_trackobj_multi((unsigned char)tileElement);
+                if (multiFlag & 1) elem_zCenter = terrainpos[rowIdx + 1];
+                if (multiFlag & 2) elem_xCenter = trackpos2[colIdx];
             }
-
-            goto compute_elem_crds;
-        }
-
-        if (tev == BTO_MARKER_VERTICAL) {
+        } else if (tev == BTO_MARKER_VERTICAL) {
             /* Look at tile at (col, row+1) */
-            int rowIdx = (int)(signed char)tileRow;
-            int colIdx = (int)(signed char)tileCol;
             int bx = terrainrows[rowIdx + 1];
             tileElement = track_elem_map[bx + colIdx];
-
             {
-                unsigned char te = (unsigned char)tileElement;
-                unsigned char multiFlag = bto_trackobj_multi(te);
-                if (multiFlag & 1) {
-                    elem_zCenter = terrainpos[rowIdx + 1];
-                }
-                if (multiFlag & 2) {
-                    elem_xCenter = trackpos2[colIdx + 1];
-                }
+                unsigned char multiFlag = bto_trackobj_multi((unsigned char)tileElement);
+                if (multiFlag & 1) elem_zCenter = terrainpos[rowIdx + 1];
+                if (multiFlag & 2) elem_xCenter = trackpos2[colIdx + 1];
             }
-
-            goto compute_elem_crds;
-        }
-
-        if (tev == BTO_MARKER_HORIZONTAL) {
+        } else if (tev == BTO_MARKER_HORIZONTAL) {
             /* Look at tile at (col-1, row) */
-            int rowIdx = (int)(signed char)tileRow;
-            int colIdx = (int)(signed char)tileCol;
             int bx = terrainrows[rowIdx];
             tileElement = track_elem_map[bx + colIdx - 1];
-
             {
-                unsigned char te = (unsigned char)tileElement;
-                unsigned char multiFlag = bto_trackobj_multi(te);
-                if (multiFlag & 1) {
-                    elem_zCenter = terrainpos[rowIdx];
-                }
-                if (multiFlag & 2) {
-                    elem_xCenter = trackpos2[colIdx];
-                }
+                unsigned char multiFlag = bto_trackobj_multi((unsigned char)tileElement);
+                if (multiFlag & 1) elem_zCenter = terrainpos[rowIdx];
+                if (multiFlag & 2) elem_xCenter = trackpos2[colIdx];
             }
-
-            goto compute_elem_crds;
         }
-
-        goto compute_elem_crds;
+        /* else: unknown marker type — no center adjustment */
     }
 
-normal_tile:
-    /* loc_1E40C */
-    {
-        unsigned char te = (unsigned char)tileElement;
-        char mtf = (char)bto_trackobj_multi(te);
-        tempValue3C = (int)(unsigned char)mtf;
-        if (mtf == 0)
-            goto compute_elem_crds;
-
-        if (tempValue3C & 1) {
-            int rowIdx = (int)(signed char)tileRow;
-            elem_zCenter = terrainpos[rowIdx];
-        }
-    }
-
-    {
-        unsigned char te = (unsigned char)tileElement;
-        unsigned char multiFlag = bto_trackobj_multi(te);
-        if (multiFlag & 2) {
-            int colIdx = (int)(signed char)tileCol;
-            elem_xCenter = trackpos2[colIdx + 1];
-            goto compute_elem_crds;
-        }
-    }
-    goto compute_elem_crds;
-
-compute_elem_crds:
     /* loc_1E464: compute element-relative coordinates */
     elemPos.x = world_pos->x - elem_xCenter;
     elemPos.z = world_pos->z - elem_zCenter;
@@ -816,9 +735,7 @@ compute_elem_crds:
     absElemZ = bto_abs_int(elemPos.z);
 
     /* Dispatch on physical model (0..74 = 74) */
-    if (physModel > BTO_PHYS_MODEL_MAX)
-        goto process_terrain;
-
+    if (physModel <= BTO_PHYS_MODEL_MAX) {
     switch (physModel) {
 
     case BTO_PHYSMODEL_START_FINISH: /* code_bto_sfLine: start/finish line */
@@ -826,15 +743,13 @@ compute_elem_crds:
             if (elemPos.x > 0) {
                 if (elemPos.z < BTO_STARTFINISH_Z_SPLIT_1) {
                     planindex = BTO_PLAN_HIGHWAY_RIGHT;
-                    goto case_1_road;
-                }
-                if (elemPos.z < BTO_STARTFINISH_Z_SPLIT_2) {
+                } else if (elemPos.z < BTO_STARTFINISH_Z_SPLIT_2) {
                     planindex = BTO_PLAN_HIGHWAY_LEFT;
                 }
             }
         }
-        goto case_1_road;
-    case_1_road:
+        /* fall through to ROAD check */
+        /* fall through */
     case BTO_PHYSMODEL_ROAD: /* code_bto_road */
         if (absElemX < BTO_ROAD_HALF_WIDTH) {
             { current_surf_type = surfaceType; break; }
@@ -1006,7 +921,22 @@ compute_elem_crds:
             break;
 
         planindex = BTO_PLAN_ROAD;
-        goto highEntrance_wallCheck;
+        if (elemPos.z >= BTO_HIGHWAY_SPLIT_Z) {
+            if (nextElemPos.x > BTO_NEG_ROAD_HALF_WIDTH) {
+                if (nextElemPos.x >= BTO_ROAD_HALF_WIDTH) {
+                    wallindex = BTO_WALLIDX_HIGHWAY_EXIT;
+                }
+            } else {
+                wallindex = BTO_WALLIDX_HIGHWAY_CENTER;
+            }
+        } else {
+            if (nextElemPos.x >= 0) {
+                wallindex = BTO_WALLIDX_HIGHWAY_LEFT;
+            } else {
+                wallindex = BTO_WALLIDX_HIGHWAY_RIGHT;
+            }
+        }
+        break;
     }
 
     case BTO_PHYSMODEL_HIGHWAY: /* code_bto_highway */
@@ -1016,32 +946,22 @@ compute_elem_crds:
             { current_surf_type = surfaceType; break; }
 
         planindex = BTO_PLAN_ROAD;
-        if (nextElemPos.x <= BTO_NEG_ROAD_HALF_WIDTH)
-            goto highway_wallBC;
-
-    highEntrance_wallCheck:
-        if (elemPos.z >= BTO_HIGHWAY_SPLIT_Z) {
-            if (nextElemPos.x > BTO_NEG_ROAD_HALF_WIDTH) {
-                goto highEntr_checkRight;
+        if (nextElemPos.x <= BTO_NEG_ROAD_HALF_WIDTH) {
+            wallindex = BTO_WALLIDX_HIGHWAY_CENTER;
+        } else {
+            /* z >= split: nextElemPos.x already > NEG_ROAD_HALF_WIDTH here */
+            if (elemPos.z >= BTO_HIGHWAY_SPLIT_Z) {
+                if (nextElemPos.x >= BTO_ROAD_HALF_WIDTH) {
+                    wallindex = BTO_WALLIDX_HIGHWAY_EXIT;
+                }
+            } else {
+                if (nextElemPos.x >= 0) {
+                    wallindex = BTO_WALLIDX_HIGHWAY_LEFT;
+                } else {
+                    wallindex = BTO_WALLIDX_HIGHWAY_RIGHT;
+                }
             }
-            goto highway_wallBC;
         }
-        /* z < 334 */
-        if (nextElemPos.x >= 0) {
-            wallindex = BTO_WALLIDX_HIGHWAY_LEFT;
-            break;
-        }
-        wallindex = BTO_WALLIDX_HIGHWAY_RIGHT;
-        break;
-
-    highEntr_checkRight:
-        if (nextElemPos.x < BTO_ROAD_HALF_WIDTH)
-            break;
-        wallindex = BTO_WALLIDX_HIGHWAY_EXIT;
-        break;
-
-    highway_wallBC:
-        wallindex = BTO_WALLIDX_HIGHWAY_CENTER;
         break;
 
     case BTO_PHYSMODEL_CROSSROAD: /* code_bto_crossroad */
@@ -1057,21 +977,21 @@ compute_elem_crds:
         break;
 
     case BTO_PHYSMODEL_RAMP: /* code_bto_ramp */
-        if (elemPos.z > 0) {
-            track_object_render_enabled = false;
-        }
-        else {
-            if (nextElemPos.z >= 0) {
-                wallindex = BTO_WALLIDX_RAMP_REAR;
+    case BTO_PHYSMODEL_SOLID_RAMP: /* code_bto_solidRamp */
+        if (physModel == BTO_PHYSMODEL_RAMP) {
+            if (elemPos.z > 0) {
+                track_object_render_enabled = false;
+            } else {
+                if (nextElemPos.z >= 0) {
+                    wallindex = BTO_WALLIDX_RAMP_REAR;
+                }
+            }
+        } else {
+            if (nextElemPos.z >= BTO_RAMP_FRONT_WALL_Z) {
+                wallindex = BTO_WALLIDX_RAMP_FRONT;
             }
         }
-        goto ramp_common;
-
-    case BTO_PHYSMODEL_SOLID_RAMP: /* code_bto_solidRamp */
-        if (nextElemPos.z >= BTO_RAMP_FRONT_WALL_Z) {
-            wallindex = BTO_WALLIDX_RAMP_FRONT;
-        }
-    ramp_common: {
+        {
         int absNextX = bto_abs_int(nextElemPos.x);
 
         if (absNextX < BTO_ROAD_HALF_WIDTH) {
@@ -1112,7 +1032,7 @@ compute_elem_crds:
         }
         wallindex = BTO_WALLIDX_SIDE_RIGHT;
         break;
-    }
+        }
 
     case BTO_PHYSMODEL_ELEVATED_ROAD: /* code_bto_elevRoad */
     case BTO_PHYSMODEL_ELEVATED_SPAN: /* code_bto_elevRoad (elevated span) */
@@ -1120,10 +1040,9 @@ compute_elem_crds:
             break;
         }
         track_object_render_enabled = false;
-        goto solidRoad_entry;
-
+        /* fall through */
     case BTO_PHYSMODEL_SOLID_ROAD: /* code_bto_solidRoad */
-    solidRoad_entry: {
+    {
         int absNextX = bto_abs_int(nextElemPos.x);
 
         if (absNextX <= BTO_ROAD_HALF_WIDTH) {
@@ -1212,25 +1131,49 @@ compute_elem_crds:
 
     case BTO_PHYSMODEL_OVERPASS: /* code_bto_overpass */
         if (world_pos->y - terrainHeight > BTO_ELEVATED_MIN_CLEARANCE) {
+            int absNextX = bto_abs_int(nextElemPos.x);
             track_object_render_enabled = false;
-            goto solidRoad_entry;
+            if (absNextX <= BTO_ROAD_HALF_WIDTH) {
+                planindex = BTO_PLAN_SOLID_ROAD;
+                current_surf_type = surfaceType;
+                if (track_object_render_enabled) {
+                    if (nextElemPos.z >= BTO_RAMP_FRONT_WALL_Z) {
+                        wallindex = BTO_WALLIDX_RAMP_FRONT;
+                    }
+                    else if (nextElemPos.z <= BTO_SOLIDROAD_REAR_WALL_Z) {
+                        wallindex = BTO_WALLIDX_SOLIDROAD_BACK;
+                    }
+                }
+                if (absElemX < BTO_ROAD_HALF_WIDTH) break;
+                wallHeight = BTO_WALL_HEIGHT_RAIL;
+                if (elemPos.x < 0) { wallindex = BTO_WALLIDX_SIDE_LEFT; break; }
+                wallindex = BTO_WALLIDX_SIDE_RIGHT;
+            } else {
+                if (!track_object_render_enabled) break;
+                if (absElemX > BTO_ROAD_HALF_WIDTH) break;
+                planindex = BTO_PLAN_SOLID_ROAD;
+                wallHeight = BTO_WALL_HEIGHT_RAIL;
+                wallOrientationOffset = BTO_WALL_ORIENT_OFFSET;
+                if (nextElemPos.x >= 0) { wallindex = BTO_WALLIDX_SIDE_RIGHT; break; }
+                wallindex = BTO_WALLIDX_SIDE_LEFT;
+            }
+            break;
         }
         if (absElemZ <= BTO_ROAD_HALF_WIDTH)
             { current_surf_type = surfaceType; break; }
         break;
 
     case BTO_PHYSMODEL_BANK_ENTRANCE_B: /* code_bto_bankEntranceB */
-        bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_B;
-        bankEntrySegmentIndex = BTO_PLAN_ROAD;
-        si = BTO_BANK_ENTRY_ANGLE_B;
-        goto bankEntrance_common;
-
     case BTO_PHYSMODEL_BANK_ENTRANCE_A: /* code_bto_bankEntranceA */
-        bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_A;
-        bankEntrySegmentIndex = 0;
-        si = BTO_BANK_ENTRY_ANGLE_A;
-
-    bankEntrance_common:
+        if (physModel == BTO_PHYSMODEL_BANK_ENTRANCE_B) {
+            bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_B;
+            bankEntrySegmentIndex = BTO_PLAN_ROAD;
+            si = BTO_BANK_ENTRY_ANGLE_B;
+        } else {
+            bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_A;
+            bankEntrySegmentIndex = 0;
+            si = BTO_BANK_ENTRY_ANGLE_A;
+        }
         if (absElemX > BTO_ROAD_HALF_WIDTH)
             break;
 
@@ -1266,24 +1209,16 @@ compute_elem_crds:
         if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_1) {
             planindex = bankEntryPlanBase + 1;
             bankEntrySegmentIndex = 0;
-            goto bankEntrance_triCalc;
-        }
-        if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_2) {
+        } else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_2) {
             planindex = bankEntryPlanBase + 3;
             bankEntrySegmentIndex = BTO_PLAN_ROAD;
-            goto bankEntrance_triCalc;
-        }
-        if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_3) {
+        } else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_3) {
             planindex = bankEntryPlanBase + 5;
             bankEntrySegmentIndex = 2;
-            goto bankEntrance_triCalc;
-        }
-        if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_4) {
+        } else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_4) {
             planindex = bankEntryPlanBase + 7;
             bankEntrySegmentIndex = 3;
         }
-
-    bankEntrance_triCalc: {
         int zAdj = elemPos.z - bkRdEntr_triang_zAdjust[bankEntrySegmentIndex];
         short sinVal = sin_fast((unsigned short)si);
         di = multiply_and_scale(zAdj, sinVal);
@@ -1296,7 +1231,6 @@ compute_elem_crds:
             planindex++;
         }
         break;
-    }
 
     case BTO_PHYSMODEL_BANK_ROAD: /* code_bto_bankRoad */
         if (absElemX > BTO_ROAD_HALF_WIDTH)
@@ -1349,6 +1283,7 @@ compute_elem_crds:
 
     case BTO_PHYSMODEL_LOOP: /* code_bto_loop */
     {
+        int do_loop_base = 0;
         int effX, effZ;
 
         if (elemPos.z < 0) {
@@ -1364,46 +1299,96 @@ compute_elem_crds:
         effectiveX = effX;
         effectiveZ = effZ;
 
-        /* Clamp effZ to loopSurface_maxZ */
-        {
-            int maxZ = loopSurface_maxZ;
-            int clampedZ;
-            if (effectiveZ > maxZ - BTO_PLAN_ROAD) {
-                if (effectiveZ > maxZ + BTO_LOOP_Z_CLAMP_MARGIN) {
-                    goto code_bto_loopBase;
+        do {
+            /* Clamp effZ to loopSurface_maxZ */
+            {
+                int maxZ = loopSurface_maxZ;
+                int clampedZ;
+                if (effectiveZ > maxZ - BTO_PLAN_ROAD) {
+                    if (effectiveZ > maxZ + BTO_LOOP_Z_CLAMP_MARGIN) {
+                        do_loop_base = 1; break;
+                    }
+                    clampedZ = maxZ - BTO_PLAN_ROAD;
                 }
-                clampedZ = maxZ - BTO_PLAN_ROAD;
+                else {
+                    clampedZ = effectiveZ;
+                }
+                loopSurfaceClampedZ = clampedZ;
             }
-            else {
-                clampedZ = effectiveZ;
+
+            /* Find Z slice */
+            si = 0;
+            while (loopSurface_ZBounds1[si] < loopSurfaceClampedZ) {
+                si++;
             }
-            loopSurfaceClampedZ = clampedZ;
-        }
 
-        /* Find Z slice */
-        si = 0;
-        while (loopSurface_ZBounds1[si] < loopSurfaceClampedZ) {
-            si++;
-        }
+            /* Check if player is above or below */
+            if (world_pos->y - terrainHeight > BTO_LOOP_UPSIDE_Y) {
+                /* Upside-down: invert slice index */
+                si = BTO_LOOP_UPSIDE_INDEX_MAX - si;
+                di = si;
 
-        /* Check if player is above or below */
-        if (world_pos->y - terrainHeight > BTO_LOOP_UPSIDE_Y) {
-            /* Upside-down: invert slice index */
-            si = BTO_LOOP_UPSIDE_INDEX_MAX - si;
+                if (loopSurface_XBounds0[di] > effectiveX)
+                    break;
+                if (loopSurface_XBounds1[di] + BTO_LOOP_X_WIDTH < effectiveX)
+                    break;
+
+                if (loopSurface_XBounds1[di] < effectiveX) {
+                    if (loopSurface_XBounds0[di] + BTO_LOOP_X_WIDTH > effectiveX) {
+                        planindex = loopPlanBase + si;
+                        current_surf_type = surfaceType;
+                        track_object_render_enabled = false;
+                        break;
+                    }
+                }
+
+                /* Interpolate */
+                {
+                    long divisor = (long)(loopSurface_ZBounds1[di] - loopSurface_ZBounds0[di]);
+                    long dividend = (long)(loopSurface_ZBounds0[di] - loopSurfaceClampedZ);
+                    long range = (long)(loopSurface_XBounds0[di] - loopSurface_XBounds1[di]);
+                    tempValue22 = (int)((dividend * range) / divisor);
+                    tempValue3C = loopSurface_XBounds0[di] + tempValue22;
+                }
+
+                if (tempValue3C >= effectiveX)
+                    break;
+                if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
+                    break;
+
+                planindex = loopPlanBase + si;
+                current_surf_type = surfaceType;
+                track_object_render_enabled = false;
+                break;
+            }
+
+            /* Below the top (right-side up) */
+            if (si > 1) {
+                if (world_pos->y - terrainHeight < BTO_LOOP_Z_CLAMP_MARGIN) {
+                    do_loop_base = 1; break;
+                }
+            }
+
             di = si;
-
             if (loopSurface_XBounds0[di] > effectiveX)
-                break;
+                { do_loop_base = 1; break; }
             if (loopSurface_XBounds1[di] + BTO_LOOP_X_WIDTH < effectiveX)
-                break;
+                { do_loop_base = 1; break; }
 
             if (loopSurface_XBounds1[di] < effectiveX) {
                 if (loopSurface_XBounds0[di] + BTO_LOOP_X_WIDTH > effectiveX) {
-                    goto loopSurface_setplan;
+                    planindex = loopPlanBase + si;
+                    current_surf_type = surfaceType;
+                    track_object_render_enabled = false;
+                    break;
                 }
             }
 
-            /* Interpolate */
+            /* Check if bounds are same (no interpolation needed) */
+            if (loopSurface_XBounds0[di] == loopSurface_XBounds1[di])
+                { do_loop_base = 1; break; }
+
+            /* Interpolate for right-side up */
             {
                 long divisor = (long)(loopSurface_ZBounds1[di] - loopSurface_ZBounds0[di]);
                 long dividend = (long)(loopSurface_ZBounds0[di] - loopSurfaceClampedZ);
@@ -1413,87 +1398,43 @@ compute_elem_crds:
             }
 
             if (tempValue3C >= effectiveX)
-                break;
+                { do_loop_base = 1; break; }
             if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
-                break;
+                { do_loop_base = 1; break; }
 
-        loopSurface_setplan:
             planindex = loopPlanBase + si;
             current_surf_type = surfaceType;
             track_object_render_enabled = false;
-            break;
-        }
+        } while (0);
 
-        /** @brief Top.
- * @param si Parameter `si`.
- * @return Function result.
- */
-        /* Below the top (right-side up) */
-        if (si > 1) {
-            if (world_pos->y - terrainHeight < BTO_LOOP_Z_CLAMP_MARGIN) {
-                goto code_bto_loopBase;
+        if (do_loop_base) {
+            si = 0;
+            while (loopBase_ZBounds1[si] < effectiveZ) {
+                si++;
+            }
+
+            /* Interpolate inner X bound */
+            {
+                long divisor = (long)(loopBase_ZBounds1[si] - loopBase_ZBounds0[si]);
+                long dividend = (long)(effectiveZ - loopBase_ZBounds0[si]);
+                long rangeInn = (long)(loopBase_InnXBounds1[si] - loopBae_InnXBounds0[si]);
+                loopBaseInnerBoundX = (int)((dividend * rangeInn) / divisor) + loopBae_InnXBounds0[si];
+            }
+
+            /* Interpolate outer X bound */
+            {
+                long divisor = (long)(loopBase_ZBounds1[si] - loopBase_ZBounds0[si]);
+                long dividend = (long)(effectiveZ - loopBase_ZBounds0[si]);
+                long rangeOut = (long)(loopBase_OutXBounds1[si] - loopBase_OutXBounds0[si]);
+                tempValue22 = (int)((dividend * rangeOut) / divisor) + loopBase_OutXBounds0[si];
+            }
+
+            if (effectiveX >= loopBaseInnerBoundX && effectiveX <= tempValue22) {
+                current_surf_type = surfaceType;
             }
         }
-
-        di = si;
-        if (loopSurface_XBounds0[di] > effectiveX)
-            goto code_bto_loopBase;
-        if (loopSurface_XBounds1[di] + BTO_LOOP_X_WIDTH < effectiveX)
-            goto code_bto_loopBase;
-
-        if (loopSurface_XBounds1[di] < effectiveX) {
-            if (loopSurface_XBounds0[di] + BTO_LOOP_X_WIDTH > effectiveX) {
-                goto loopSurface_setplan;
-            }
-        }
-
-        /* Check if bounds are same (no interpolation needed) */
-        if (loopSurface_XBounds0[di] == loopSurface_XBounds1[di])
-            goto code_bto_loopBase;
-
-        /* Interpolate for right-side up */
-        {
-            long divisor = (long)(loopSurface_ZBounds1[di] - loopSurface_ZBounds0[di]);
-            long dividend = (long)(loopSurface_ZBounds0[di] - loopSurfaceClampedZ);
-            long range = (long)(loopSurface_XBounds0[di] - loopSurface_XBounds1[di]);
-            tempValue22 = (int)((dividend * range) / divisor);
-            tempValue3C = loopSurface_XBounds0[di] + tempValue22;
-        }
-
-        if (tempValue3C >= effectiveX)
-            goto code_bto_loopBase;
-        if (tempValue3C + BTO_LOOP_X_WIDTH <= effectiveX)
-            goto code_bto_loopBase;
-        goto loopSurface_setplan;
-    }
-
-    code_bto_loopBase:
-        si = 0;
-        while (loopBase_ZBounds1[si] < effectiveZ) {
-            si++;
-        }
-
-        /* Interpolate inner X bound */
-        {
-            long divisor = (long)(loopBase_ZBounds1[si] - loopBase_ZBounds0[si]);
-            long dividend = (long)(effectiveZ - loopBase_ZBounds0[si]);
-            long rangeInn = (long)(loopBase_InnXBounds1[si] - loopBae_InnXBounds0[si]);
-            loopBaseInnerBoundX = (int)((dividend * rangeInn) / divisor) + loopBae_InnXBounds0[si];
-        }
-
-        /* Interpolate outer X bound */
-        {
-            long divisor = (long)(loopBase_ZBounds1[si] - loopBase_ZBounds0[si]);
-            long dividend = (long)(effectiveZ - loopBase_ZBounds0[si]);
-            long rangeOut = (long)(loopBase_OutXBounds1[si] - loopBase_OutXBounds0[si]);
-            tempValue22 = (int)((dividend * rangeOut) / divisor) + loopBase_OutXBounds0[si];
-        }
-
-        if (effectiveX < loopBaseInnerBoundX)
-            break;
-        if (effectiveX <= tempValue22)
-            { current_surf_type = surfaceType; break; }
         break;
+    }
 
     case BTO_PHYSMODEL_TUNNEL: /* code_bto_tunnel */
     {
@@ -1593,25 +1534,20 @@ compute_elem_crds:
             planindex = BTO_PLAN_PIPE_ENTR_LEFT_OUTER;
             pipeTriangleCenterX = BTO_PIPE_TRI_LEFT_OUTER_X;
             si = BTO_PIPE_TRI_LEFT_OUTER_ANGLE;
-            goto pipeEntrance_triCalc;
-        }
-        if (elemPos.x < 0) {
+        } else if (elemPos.x < 0) {
             planindex = BTO_PLAN_PIPE_ENTR_LEFT_INNER;
             pipeTriangleCenterX = BTO_PIPE_TRI_LEFT_INNER_X;
             si = BTO_PIPE_TRI_LEFT_INNER_ANGLE;
-            goto pipeEntrance_triCalc;
-        }
-        if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
+        } else if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
             planindex = BTO_PLAN_PIPE_ENTR_RIGHT_OUTER;
             pipeTriangleCenterX = BTO_PIPE_TRI_RIGHT_OUTER_X;
             si = BTO_PIPE_TRI_RIGHT_OUTER_ANGLE;
-            goto pipeEntrance_triCalc;
+        } else {
+            planindex = BTO_PLAN_PIPE_ENTR_RIGHT_INNER;
+            pipeTriangleCenterX = BTO_PIPE_TRI_RIGHT_INNER_X;
+            si = BTO_PIPE_TRI_RIGHT_INNER_ANGLE;
         }
-        planindex = BTO_PLAN_PIPE_ENTR_RIGHT_INNER;
-        pipeTriangleCenterX = BTO_PIPE_TRI_RIGHT_INNER_X;
-        si = BTO_PIPE_TRI_RIGHT_INNER_ANGLE;
-
-    pipeEntrance_triCalc: {
+        {
         short sinVal = sin_fast((unsigned short)si);
         di = multiply_and_scale(elemPos.z, sinVal);
         {
@@ -1629,13 +1565,9 @@ compute_elem_crds:
     }
 
     case BTO_PHYSMODEL_PIPE: /* code_bto_pipe */
-        tempValue22 = 0;
-        goto pipe_common;
-
     case BTO_PHYSMODEL_HALFPIPE: /* code_bto_halfPipe */
-        tempValue22 = 1;
-
-    pipe_common: {
+    {
+        tempValue22 = (physModel == BTO_PHYSMODEL_HALFPIPE) ? 1 : 0;
         int absNextX = bto_abs_int(nextElemPos.x);
         int pipeUpperSectionFlag;
 
@@ -1743,19 +1675,18 @@ compute_elem_crds:
     }
 
     case BTO_PHYSMODEL_CORKSCREW_UD_LH: /* code_bto_corkUdLH: cork u/d A */
-        corkLateralCoord = -elemPos.x;
-        tempValue22 = BTO_CORK_PLAN_UD_LH;
-        corkInnerWallBase = BTO_CORK_WALL_BASE_INNER_LH;
-        corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_LH;
-        goto corkUd_common;
-
     case BTO_PHYSMODEL_CORKSCREW_UD_RH: /* code_bto_corkUdRH: cork u/d B */
-        corkLateralCoord = elemPos.x;
-        tempValue22 = BTO_CORK_PLAN_UD_RH;
-        corkInnerWallBase = 0;
-        corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_RH;
-
-    corkUd_common:
+        if (physModel == BTO_PHYSMODEL_CORKSCREW_UD_LH) {
+            corkLateralCoord = -elemPos.x;
+            tempValue22 = BTO_CORK_PLAN_UD_LH;
+            corkInnerWallBase = BTO_CORK_WALL_BASE_INNER_LH;
+            corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_LH;
+        } else {
+            corkLateralCoord = elemPos.x;
+            tempValue22 = BTO_CORK_PLAN_UD_RH;
+            corkInnerWallBase = 0;
+            corkOuterWallBase = BTO_CORK_WALL_BASE_OUTER_RH;
+        }
         corkFlag = true;
 
         /* Cork descending entry ramp check */
@@ -1905,69 +1836,27 @@ compute_elem_crds:
         tempValue22 = 0;
 
         if (world_pos->y - terrainHeight > BTO_HALFPIPE_LOWER_Y && corkUpperSectionFlag == 0) {
-            if (elemPos.x < 0) {
-                tempValue22 = 3;
-            }
-            else {
-                tempValue22 = 9;
-            }
-            goto corkLr_planCheck;
-        }
-
-        if (absElemX < BTO_PIPE_NEAR_CENTER_X) {
+            tempValue22 = (elemPos.x < 0) ? 3 : 9;
+        } else if (absElemX < BTO_PIPE_NEAR_CENTER_X) {
             if (corkUpperSectionFlag != 0) {
                 tempValue22 = 6;
             }
-            goto corkLr_planCheck;
+        } else if (elemPos.x < BTO_PIPE_TRI_CENTER_LEFT) {
+            tempValue22 = (corkUpperSectionFlag != 0) ? 4 : 2;
+        } else if (elemPos.x < 0) {
+            tempValue22 = (corkUpperSectionFlag != 0) ? 5 : 1;
+        } else if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
+            tempValue22 = (corkUpperSectionFlag != 0) ? 8 : BTO_CORKLR_BUCKET_RIGHT_OUTER;
+        } else {
+            tempValue22 = (corkUpperSectionFlag != 0) ? 7 : BTO_CORKLR_BUCKET_RIGHT_INNER;
         }
 
-        if (elemPos.x < BTO_PIPE_TRI_CENTER_LEFT) {
-            if (corkUpperSectionFlag != 0) {
-                tempValue22 = 4;
-            }
-            else {
-                tempValue22 = 2;
-            }
-            goto corkLr_planCheck;
-        }
-
-        if (elemPos.x < 0) {
-            if (corkUpperSectionFlag != 0) {
-                tempValue22 = 5;
-            }
-            else {
-                tempValue22 = 1;
-            }
-            goto corkLr_planCheck;
-        }
-
-        if (elemPos.x > BTO_HALFPIPE_FLOOR_MAX_X) {
-            if (corkUpperSectionFlag != 0) {
-                tempValue22 = 8;
-            }
-            else {
-                tempValue22 = BTO_CORKLR_BUCKET_RIGHT_OUTER;
-            }
-            goto corkLr_planCheck;
-        }
-
-        if (corkUpperSectionFlag != 0) {
-            tempValue22 = 7;
-        }
-        else {
-            tempValue22 = BTO_CORKLR_BUCKET_RIGHT_INNER;
-        }
-
-    corkLr_planCheck:
         if (tempValue22 != 0) {
             di = tempValue22;
-            if (corkLR_negZBound[di] >= elemPos.z)
-                goto corkLr_noPlan;
-            if (corkLR_posZBound[di] <= elemPos.z)
-                goto corkLr_noPlan;
-            planindex = tempValue22 + BTO_CORKLR_PLAN_BASE;
+            if (corkLR_negZBound[di] < elemPos.z && corkLR_posZBound[di] > elemPos.z) {
+                planindex = tempValue22 + BTO_CORKLR_PLAN_BASE;
+            }
         }
-    corkLr_noPlan:
 
         if (planindex != 0)
             break;
@@ -2169,11 +2058,12 @@ compute_elem_crds:
     default:
         break;
     } /* end of main switch */
+    } /* end if physModel <= MAX */
+    } /* end if tileElement != 0 */
 
-process_terrain:
     /* ===== Hill slope parsing ===== */
     if ((unsigned char)terrainTile < BTO_TERRAIN_HILL_MIN)
-        goto exit_func;
+        break;
 
     /* Recalculate element coords relative to standard tile center */
     {
@@ -2186,9 +2076,9 @@ process_terrain:
     /* Hill slope orientation dispatch (terrain types 7..18) */
     {
         unsigned int terrIdx = (unsigned char)terrainTile - BTO_TERRAIN_HILL_MIN;
-        if (terrIdx >= BTO_SLOPE_ORIENT_TABLE_COUNT)
-            goto after_hillOrient;
-
+        if (terrIdx >= BTO_SLOPE_ORIENT_TABLE_COUNT) {
+            /* no orientation adjustment */
+        } else {
         /* off_1F87E jump table: 12 entries, pattern: 0,1,2,3 repeated 3 times */
         switch (terrIdx) {
         case 0: /* loc_1F82A */
@@ -2224,15 +2114,15 @@ process_terrain:
             }
             break;
         }
+        } /* end if terrIdx < count */
     }
 
-after_hillOrient:
-    /* Hill terrain type handling */
+    /* Hill terrain type handling (was after_hillOrient:) */
     {
         unsigned int terrVal = (unsigned char)terrainTile;
 
         if (terrVal < BTO_TERRAIN_HILL_MIN)
-            goto exit_func;
+            break;
 
         if (terrVal <= BTO_TERRAIN_HILL_MAX) {
             /** @brief Slope.
@@ -2243,11 +2133,11 @@ after_hillOrient:
             if (planindex == 0) {
                 planindex = BTO_SLOPE_PLAN_DEFAULT;
             }
-            goto exit_func;
+            break;
         }
 
         if (terrVal < BTO_HILL_TERRAIN_MIN_CONCAVE)
-            goto exit_func;
+            break;
 
         if (terrVal <= BTO_HILL_TERRAIN_MAX_CONCAVE) {
             /* Terrain 11..14: concave hill (coast-like test) */
@@ -2263,11 +2153,11 @@ after_hillOrient:
                     planindex = 4;
                 }
             }
-            goto exit_func;
+            break;
         }
 
         if (terrVal < BTO_HILL_TERRAIN_MIN_CONVEX)
-            goto exit_func;
+            break;
 
         if (terrVal <= BTO_HILL_TERRAIN_MAX_CONVEX) {
             /* Terrain 15..18: convex hill */
@@ -2281,17 +2171,17 @@ after_hillOrient:
                 }
                 if (tempValue22 > 0) {
                     planindex = 5;
-                    goto exit_func;
+                    break;
                 }
                 terrainHeight = BTO_HILL_HEIGHT;
             }
-            goto exit_func;
+            break;
         }
         /* terrVal > 18 */
-        goto exit_func;
+        break;
     }
+    } while (0);
 
-exit_func:
     /* ===== Finalize planindex with orientation offset ===== */
     {
         if (planindex > 0) {
@@ -2488,62 +2378,53 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
             tileElement
                 = *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col - 1));
             multiTileFlags = bto_trackobj_multi(tileElement);
-            /* Check multiTileFlag bit 0 → update z center */
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row + 1];
             }
-            /* Check multiTileFlag bit 1 → update x center */
             if (multiTileFlags & 2) {
                 tileCenterX = trackpos2[tile_col];
-                goto done_filler;
             }
-            goto done_filler;
+            break;
 
         case BTO_MARKER_VERTICAL:
             /* Filler: look up tile at (col, row-1) using trackrows[row-1] */
             tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col));
             multiTileFlags = bto_trackobj_multi(tileElement);
-            /* Check multiTileFlag bit 0 → update z center */
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row + 1];
             }
-            goto check_bit1;
+            if (multiTileFlags & 2) {
+                tileCenterX = trackpos2[tile_col + 1];
+            }
+            break;
 
         case BTO_MARKER_HORIZONTAL:
             /* Filler: look up tile at (col-1, row) */
             tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row] + tile_col - 1));
             multiTileFlags = bto_trackobj_multi(tileElement);
-            /* Check multiTileFlag bit 0 → update z center */
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row];
             }
-            /** @brief Center.
- * @param multiTileFlags Parameter `multiTileFlags`.
- * @return Function result.
- */
-            /* Check multiTileFlag bit 1 → update x center (same path as 253) */
             if (multiTileFlags & 2) {
                 tileCenterX = trackpos2[tile_col];
             }
-            goto done_filler;
+            break;
+
+        default:
+            break;
         }
-        goto done_filler;
-    }
-    else {
+    } else {
         /* Normal element: check multi-tile flags */
         multiTileFlags = bto_trackobj_multi(tileElement);
-        if (multiTileFlags == 0)
-            goto done_filler;
-        if (multiTileFlags & 1) {
-            tileCenterZ = trackpos[tile_row];
-        }
-    check_bit1:
-        if (multiTileFlags & 2) {
-            tileCenterX = trackpos2[tile_col + 1];
+        if (multiTileFlags != 0) {
+            if (multiTileFlags & 1) {
+                tileCenterZ = trackpos[tile_row];
+            }
+            if (multiTileFlags & 2) {
+                tileCenterX = trackpos2[tile_col + 1];
+            }
         }
     }
-
-done_filler:
     /* Dispatch on physicalModel to get point count and table pointer */
     di = 0;
     dependencyTable = 0;

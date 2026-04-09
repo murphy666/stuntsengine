@@ -1524,7 +1524,7 @@ load_tracks_menu_shapes(void) {
                                    cursor_screen_y);
         }
 
-    poll_loop:
+    do {
         if (blink_timer > TRACK_CURSOR_BLINK_THRESHOLD) {
             mouse_draw_opaque_check();
             track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
@@ -1716,10 +1716,8 @@ load_tracks_menu_shapes(void) {
             input_code = 1;
         }
 
-        if (input_code == 0) {
-            /* No input - keep polling and blink cursor */
-            goto poll_loop;
-        }
+        } while (input_code == 0);
+        /* No input - keep polling and blink cursor; input received: continue below */
 
         /* Delay handling for key repeat */
         if (anim_index != 0) {
@@ -1812,13 +1810,35 @@ load_tracks_menu_shapes(void) {
 		 /*--------------------------------------------------------------*/
         if (input_code == 99 || input_code == 67) {
             /* 'C' or 'c' - Check track */
-            goto check_track;
+            si = track_setup();
+            track_consume_dialog_click();
+            ui_dialog_show_restext(
+                UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "eok"), /* Error/OK messages */
+                TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
+
+            if (si > 1) {
+                picker_mode = 0;
+                if (track_pieces_counter == 0) {
+                    cursor_col = sprite_render_state;
+                    cursor_row = game_security_flag;
+                }
+                else {
+                    cursor_col = ((unsigned char *)path_col)[0];
+                    cursor_row = ((unsigned char *)path_row)[0];
+                    anim_saved_element = selected_element;
+                    elem_map = (unsigned char *)track_elem_map;
+                    selected_element = elem_map[trackrows[cursor_row] + cursor_col];
+                    anim_index = 1;
+                    redraw_cursor = true;
+                }
+            }
+            check_input();
+            continue;
         }
 
         if (input_code <= 99) {
             if (input_code == 13) {
-                /* Enter - Place tile or select from picker */
-                goto place_tile;
+                /* Enter - Place tile or select from picker: handled below */
             }
             if (input_code == 32) {
                 /* Space - Toggle picker mode */
@@ -1842,23 +1862,163 @@ load_tracks_menu_shapes(void) {
         /* Extended keys */
         if (input_code == 19200) {
             /* Left arrow */
-            goto move_cursor_left;
+            if (picker_mode != 0 && picker_row == 6) {
+                /* Category row - previous category */
+                if (current_category > 1)
+                    current_category--;
+            }
+            else if (picker_mode) {
+                if (cursor_col > 0) {
+                    last_place_col = TRACK_U8_INVALID;
+                    cursor_col--;
+                }
+                if (picker_row > 5) {
+                    picker_col = 0;
+                }
+                else {
+                    /* Adjust picker position */
+                    do {
+                        unsigned char pbox_val
+                            = pboxshape[picker_row * TRACK_PICKER_COLS
+                                        + current_category * TRACK_PAGE_STRIDE + picker_col];
+                        if (pbox_val == TRACK_MARKER_HORIZONTAL) {
+                            picker_col--;
+                        }
+                        else if (pbox_val == TRACK_MARKER_VERTICAL) {
+                            picker_row--;
+                        }
+                        else {
+                            break;
+                        }
+                    } while (1);
+                }
+            }
+            else {
+                if (cursor_col > 0) {
+                    last_place_col = TRACK_U8_INVALID;
+                    cursor_col--;
+                }
+            }
+            continue;
         }
         if (input_code == 18176) {
             /* Home */
-            goto move_cursor_home;
+            if (picker_mode != 0) {
+                picker_row = 0;
+            }
+            else {
+                if (cursor_row == map_scroll_y && cursor_col == map_scroll_x) {
+                    map_scroll_x = 0;
+                    map_scroll_y = 0;
+                }
+                cursor_row = map_scroll_y;
+                cursor_col = map_scroll_x;
+            }
+            continue;
         }
         if (input_code == 18432) {
             /* Up arrow */
-            goto move_cursor_up;
+            if (picker_mode) {
+                if (cursor_row > 0) {
+                    last_place_col = TRACK_U8_INVALID;
+                    cursor_row--;
+                }
+                if (picker_mode && picker_row < 6) {
+                    /* Adjust picker position */
+                    do {
+                        unsigned char pbox_val
+                            = pboxshape[picker_row * TRACK_PICKER_COLS
+                                        + current_category * TRACK_PAGE_STRIDE + picker_col];
+                        if (pbox_val == TRACK_MARKER_HORIZONTAL) {
+                            picker_col--;
+                        }
+                        else if (pbox_val == TRACK_MARKER_VERTICAL) {
+                            picker_row--;
+                        }
+                        else {
+                            break;
+                        }
+                    } while (1);
+                }
+            }
+            else {
+                if (cursor_row > 0) {
+                    last_place_col = TRACK_U8_INVALID;
+                    cursor_row--;
+                }
+            }
+            continue;
         }
         if (input_code == 19712) {
             /* Right arrow */
-            goto move_cursor_right;
+            if (picker_mode != 0 && picker_row == 6) {
+                /* Category row - next category */
+                if (current_category < 10)
+                    current_category++;
+            }
+            else {
+                unsigned char step = 1;
+
+                if (picker_mode && picker_row > 5) {
+                    step = 3;
+                }
+                else if (picker_mode && picker_row <= 5) {
+                    /* Check for wide elements in picker */
+                    do {
+                        unsigned char pbox_val
+                            = pboxshape[picker_row * TRACK_PICKER_COLS
+                                        + current_category * TRACK_PAGE_STRIDE + picker_col + step];
+                        if (pbox_val >= TRACK_MARKER_VERTICAL) {
+                            if (pbox_val == TRACK_MARKER_HORIZONTAL) {
+                                step++;
+                            }
+                            else if (pbox_val == TRACK_MARKER_VERTICAL) {
+                                picker_row--;
+                            }
+                        }
+                        else {
+                            break;
+                        }
+                    } while ((int)cursor_col + step < track_wall_flags[picker_mode]);
+                }
+
+                if ((int)cursor_col + step < track_wall_flags[picker_mode]) {
+                    last_place_col = TRACK_U8_INVALID;
+                    cursor_col += step;
+                }
+            }
+            continue;
         }
         if (input_code == 20480) {
             /* Down arrow */
-            goto move_cursor_down;
+            {
+                unsigned char limit = picker_mode ? collision_response_code[picker_mode]
+                                                  : collision_response_code[0];
+                if (picker_mode) {
+                    if (cursor_row < limit) {
+                        last_place_col = TRACK_U8_INVALID;
+                        cursor_row++;
+                    }
+                    if (picker_mode && picker_row < 6) {
+                        unsigned char pbox_val
+                            = pboxshape[picker_row * TRACK_PICKER_COLS
+                                        + current_category * TRACK_PAGE_STRIDE + picker_col];
+                        if (pbox_val == TRACK_MARKER_HORIZONTAL) {
+                            picker_col--;
+                        }
+                        else if (pbox_val == TRACK_MARKER_VERTICAL) {
+                            picker_row++;
+                        }
+                    }
+                }
+                else {
+                    if (cursor_row < limit) {
+                        last_place_col = TRACK_U8_INVALID;
+                        cursor_row++;
+                    }
+                }
+            }
+            continue;
         }
         if (input_code == 20992) {
             /* Insert - Toggle picker mode */
@@ -1888,41 +2048,11 @@ load_tracks_menu_shapes(void) {
         }
 
         /* If no handler matched, continue loop */
-        continue;
-
-        /*----------------------------------------
-		 * Track validation check (C key)
-		 /*--------------------------------------------------------------*/
-    check_track:
-        si = track_setup();
-        track_consume_dialog_click();
-        ui_dialog_show_restext(
-            UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "eok"), /* Error/OK messages */
-            TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-
-        if (si > 1) {
-            picker_mode = 0;
-            if (track_pieces_counter == 0) {
-                cursor_col = sprite_render_state;
-                cursor_row = game_security_flag;
-            }
-            else {
-                cursor_col = ((unsigned char *)path_col)[0];
-                cursor_row = ((unsigned char *)path_row)[0];
-                anim_saved_element = selected_element;
-                elem_map = (unsigned char *)track_elem_map;
-                selected_element = elem_map[trackrows[cursor_row] + cursor_col];
-                anim_index = 1;
-                redraw_cursor = true;
-            }
+        if (input_code != 13) {
+            continue;
         }
-        check_input();
-        continue;
 
-        /*----------------------------------------
-		 * Enter key handler - Place tile or select element
-		 /*--------------------------------------------------------------*/
-    place_tile:
+        /* Enter key handler - Place tile or select element */
         if (picker_mode != 0) {
             /* Picker mode - select element */
             if (picker_row < TRACK_PICKER_ROWS) {
@@ -2031,11 +2161,8 @@ load_tracks_menu_shapes(void) {
                         dialog_result = ui_dialog_show_restext(
                             UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "chl"),
                             TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-                        if (dialog_result == 0) {
-                            goto loc_done_load;
-                        }
                     }
-
+                    if (!track_modified || dialog_result != 0) {
                     si = 1;
                     g_is_busy = true;
                     redraw_map = true;
@@ -2067,6 +2194,7 @@ load_tracks_menu_shapes(void) {
                         track_modified = false;
                         redraw_map = true;
                     }
+                    }
                 }
                 else {
                     /* picker_row==8, picker_col!=0: CLEAR/NEW track (right-side button) */
@@ -2090,7 +2218,6 @@ load_tracks_menu_shapes(void) {
                         track_modified = true;
                     }
                 }
-            loc_done_load:;
             }
             else {
                 /** @brief Exit.
@@ -2150,13 +2277,12 @@ load_tracks_menu_shapes(void) {
                         dialog_result = ui_dialog_show_restext(
                             UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "chx"),
                             TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
-                        if (dialog_result == 0 || dialog_result == TRACK_U8_INVALID) {
-                            goto loc_done_exit;
-                        }
                     }
-                    keep_running = false;
+                    if (!track_modified
+                        || (dialog_result != 0 && dialog_result != TRACK_U8_INVALID)) {
+                        keep_running = false;
+                    }
                 }
-            loc_done_exit:;
             }
             check_input();
             continue;
@@ -2242,175 +2368,6 @@ load_tracks_menu_shapes(void) {
             }
         }
         check_input();
-        continue;
-
-        /*----------------------------------------
-		 * Home key - Jump to top-left
-		 /*--------------------------------------------------------------*/
-    move_cursor_home:
-        if (picker_mode != 0) {
-            picker_row = 0;
-        }
-        else {
-            if (cursor_row == map_scroll_y && cursor_col == map_scroll_x) {
-                map_scroll_x = 0;
-                map_scroll_y = 0;
-            }
-            cursor_row = map_scroll_y;
-            cursor_col = map_scroll_x;
-        }
-        continue;
-
-        /*----------------------------------------
-		 * Up arrow
-		 /*--------------------------------------------------------------*/
-    move_cursor_up:
-        if (picker_mode) {
-            if (cursor_row > 0) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_row--;
-            }
-            if (picker_mode && picker_row < 6) {
-                /* Adjust picker position */
-                do {
-                    unsigned char pbox_val
-                        = pboxshape[picker_row * TRACK_PICKER_COLS
-                                    + current_category * TRACK_PAGE_STRIDE + picker_col];
-                    if (pbox_val == TRACK_MARKER_HORIZONTAL) {
-                        picker_col--;
-                    }
-                    else if (pbox_val == TRACK_MARKER_VERTICAL) {
-                        picker_row--;
-                    }
-                    else {
-                        break;
-                    }
-                } while (1);
-            }
-        }
-        else {
-            if (cursor_row > 0) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_row--;
-            }
-        }
-        continue;
-
-        /*----------------------------------------
-		 * Down arrow
-		 /*--------------------------------------------------------------*/
-    move_cursor_down: {
-        unsigned char limit = picker_mode ? collision_response_code[picker_mode]
-                                          : collision_response_code[0];
-        if (picker_mode) {
-            if (cursor_row < limit) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_row++;
-            }
-            if (picker_mode && picker_row < 6) {
-                unsigned char pbox_val
-                    = pboxshape[picker_row * TRACK_PICKER_COLS
-                                + current_category * TRACK_PAGE_STRIDE + picker_col];
-                if (pbox_val == TRACK_MARKER_HORIZONTAL) {
-                    picker_col--;
-                }
-                else if (pbox_val == TRACK_MARKER_VERTICAL) {
-                    picker_row++;
-                }
-            }
-        }
-        else {
-            if (cursor_row < limit) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_row++;
-            }
-        }
-    }
-        continue;
-
-        /*----------------------------------------
-		 * Left arrow
-		 /*--------------------------------------------------------------*/
-    move_cursor_left:
-        if (picker_mode != 0 && picker_row == 6) {
-            /* Category row - previous category */
-            if (current_category > 1)
-                current_category--;
-        }
-        else if (picker_mode) {
-            if (cursor_col > 0) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_col--;
-            }
-            if (picker_row > 5) {
-                picker_col = 0;
-            }
-            else {
-                /* Adjust picker position */
-                do {
-                    unsigned char pbox_val
-                        = pboxshape[picker_row * TRACK_PICKER_COLS
-                                    + current_category * TRACK_PAGE_STRIDE + picker_col];
-                    if (pbox_val == TRACK_MARKER_HORIZONTAL) {
-                        picker_col--;
-                    }
-                    else if (pbox_val == TRACK_MARKER_VERTICAL) {
-                        picker_row--;
-                    }
-                    else {
-                        break;
-                    }
-                } while (1);
-            }
-        }
-        else {
-            if (cursor_col > 0) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_col--;
-            }
-        }
-        continue;
-
-        /*----------------------------------------
-		 * Right arrow
-		 /*--------------------------------------------------------------*/
-    move_cursor_right:
-        if (picker_mode != 0 && picker_row == 6) {
-            /* Category row - next category */
-            if (current_category < 10)
-                current_category++;
-        }
-        else {
-            unsigned char step = 1;
-
-            if (picker_mode && picker_row > 5) {
-                step = 3;
-            }
-            else if (picker_mode && picker_row <= 5) {
-                /* Check for wide elements in picker */
-                do {
-                    unsigned char pbox_val
-                        = pboxshape[picker_row * TRACK_PICKER_COLS
-                                    + current_category * TRACK_PAGE_STRIDE + picker_col + step];
-                    if (pbox_val >= TRACK_MARKER_VERTICAL) {
-                        if (pbox_val == TRACK_MARKER_HORIZONTAL) {
-                            step++;
-                        }
-                        else if (pbox_val == TRACK_MARKER_VERTICAL) {
-                            picker_row--;
-                        }
-                    }
-                    else {
-                        break;
-                    }
-                } while ((int)cursor_col + step < track_wall_flags[picker_mode]);
-            }
-
-            if ((int)cursor_col + step < track_wall_flags[picker_mode]) {
-                last_place_col = TRACK_U8_INVALID;
-                cursor_col += step;
-            }
-        }
         continue;
     }
 
@@ -2512,6 +2469,20 @@ trkobject_multitile_flag(unsigned char elem) {
     return trkobject_raw_entry(elem)[11];
 }
 
+static signed char track_setup_error_return(
+    unsigned char trackErrorCode, unsigned char trkColIndex,
+    unsigned char trkRowIndex, struct TCOMP_ENTRY *tcompArr)
+{
+    if (trkColIndex == TRACK_U8_INVALID) trkColIndex = 0;
+    else if (trkColIndex == TRACK_SIZE) trkColIndex = TRACK_LAST_INDEX;
+    if (trkRowIndex == TRACK_U8_INVALID) trkRowIndex = 0;
+    else if (trkRowIndex == TRACK_SIZE) trkRowIndex = TRACK_LAST_INDEX;
+    sprite_render_state = trkColIndex;
+    game_security_flag = trkRowIndex;
+    mmgr_release((char *)tcompArr);
+    return (signed char)trackErrorCode;
+}
+
 /** @brief Track setup.
  * @return Function result.
  */
@@ -2582,6 +2553,7 @@ track_setup(void) {
     sfCount = 0;
     sfPassCount = 0;
     track_pieces_counter = 0;
+    trackErrorCode = 0;
 
     /* Clear tile_obstacle_map */
     for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
@@ -2590,47 +2562,53 @@ track_setup(void) {
 
     /* ===== PHASE 3: West-to-East terrain connectivity ===== */
     trkRowIndex = 0;
-    while ((signed char)trkRowIndex < TRACK_SIZE) {
+    while (trackErrorCode == 0 && (signed char)trkRowIndex < TRACK_SIZE) {
         prevConnCode = TRACK_CONN_CODE_SENTINEL;
         trkColIndex = 0;
-        while ((signed char)trkColIndex < TRACK_SIZE) {
+        while (trackErrorCode == 0 && (signed char)trkColIndex < TRACK_SIZE) {
             tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
                                          + (signed char)trkColIndex];
             if (terrConnDataEtoW[(unsigned char)tileTerr] != prevConnCode
                 && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
-                goto error_dispatch;
+            } else {
+                prevConnCode = terrConnDataWtoE[(unsigned char)tileTerr];
+                trkColIndex++;
             }
-            prevConnCode = terrConnDataWtoE[(unsigned char)tileTerr];
-            trkColIndex++;
         }
-        trkRowIndex++;
+        if (trackErrorCode == 0) trkRowIndex++;
+    }
+    if (trackErrorCode != 0) {
+        return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
     }
 
     /* ===== PHASE 4: North-to-South terrain connectivity ===== */
     trkColIndex = 0;
-    while ((signed char)trkColIndex < TRACK_SIZE) {
+    while (trackErrorCode == 0 && (signed char)trkColIndex < TRACK_SIZE) {
         prevConnCode = TRACK_CONN_CODE_SENTINEL;
         trkRowIndex = 0;
-        while ((signed char)trkRowIndex < TRACK_SIZE) {
+        while (trackErrorCode == 0 && (signed char)trkRowIndex < TRACK_SIZE) {
             tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
                                          + (signed char)trkColIndex];
             if (terrConnDataNtoS[(unsigned char)tileTerr] != prevConnCode
                 && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
-                goto error_dispatch;
+            } else {
+                prevConnCode = terrConnDataStoN[(unsigned char)tileTerr];
+                trkRowIndex++;
             }
-            prevConnCode = terrConnDataStoN[(unsigned char)tileTerr];
-            trkRowIndex++;
         }
-        trkColIndex++;
+        if (trackErrorCode == 0) trkColIndex++;
+    }
+    if (trackErrorCode != 0) {
+        return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
     }
 
     /* ===== PHASE 5: Scan for start/finish ===== */
     trkRowIndex = 0;
-    while ((signed char)trkRowIndex < TRACK_SIZE) {
+    while (trackErrorCode == 0 && (signed char)trkRowIndex < TRACK_SIZE) {
         trkColIndex = 0;
-        while ((signed char)trkColIndex < TRACK_SIZE) {
+        while (trackErrorCode == 0 && (signed char)trkColIndex < TRACK_SIZE) {
             tileElem
                 = track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
 
@@ -2646,63 +2624,70 @@ track_setup(void) {
             }
 
             /* Check for start/finish tile elements */
-            switch ((unsigned int)tileElem) {
-            case 1:
-            case 134:
-            case 147:
-                track_angle = 0;
-                goto found_sf;
+            /* Check for start/finish tile elements */
+            {
+                unsigned char is_sf = 0;
+                switch ((unsigned int)tileElem) {
+                case 1:
+                case 134:
+                case 147:
+                    track_angle = 0;
+                    is_sf = 1;
+                    break;
 
-            case 135:
-            case 148:
-            case 179:
-                track_angle = 512;
-                goto found_sf;
+                case 135:
+                case 148:
+                case 179:
+                    track_angle = 512;
+                    is_sf = 1;
+                    break;
 
-            case 136:
-            case 149:
-            case 180:
-                track_angle = 256;
-                goto found_sf;
+                case 136:
+                case 149:
+                case 180:
+                    track_angle = 256;
+                    is_sf = 1;
+                    break;
 
-            case 137:
-            case 150:
-            case 181:
-                track_angle = 768;
-                goto found_sf;
+                case 137:
+                case 150:
+                case 181:
+                    track_angle = 768;
+                    is_sf = 1;
+                    break;
 
-            default:
-                goto not_sf;
-
-            found_sf:
-                if (sfCount != 0) {
-                    trackErrorCode = 3; /* many_sf */
-                    goto error_dispatch;
+                default:
+                    break;
                 }
-                startcol2 = trkColIndex;
-                startrow2 = trkRowIndex;
+                if (is_sf) {
+                    if (sfCount != 0) {
+                        trackErrorCode = 3; /* many_sf */
+                    } else {
+                        startcol2 = trkColIndex;
+                        startrow2 = trkRowIndex;
 
-                tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
-                                             + (signed char)trkColIndex];
-                if (tileTerr == 6) {
-                    hillFlag = 1;
+                        tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
+                                                     + (signed char)trkColIndex];
+                        if (tileTerr == 6) {
+                            hillFlag = 1;
+                        }
+                        else {
+                            hillFlag = 0;
+                        }
+                        sfCount++;
+                    }
                 }
-                else {
-                    hillFlag = 0;
-                }
-                sfCount++;
-
-            not_sf:;
             }
 
-            trkColIndex++;
+            if (trackErrorCode == 0) trkColIndex++;
         }
-        trkRowIndex++;
+        if (trackErrorCode == 0) trkRowIndex++;
     }
-
-    if (sfCount == 0) {
+    if (trackErrorCode == 0 && sfCount == 0) {
         trackErrorCode = 1; /* no_sf */
-        goto error_dispatch;
+    }
+    if (trackErrorCode != 0) {
+        return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
     }
 
     /* ===== PHASE 6: Initialize tracking arrays ===== */
@@ -2727,53 +2712,14 @@ track_setup(void) {
     prevPieceIdx = -1;
 
     /* ===== PHASE 7: Main loop ===== */
-main_loop:
+    while (1) {
+    int need_backtrack;
     matchCount = 0;
-
-    /* Bounds check */
-    if ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0
+    need_backtrack = ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0
         || (signed char)trkColIndex > TRACK_LAST_INDEX
-        || (signed char)trkRowIndex > TRACK_LAST_INDEX) {
-        goto out_of_bounds;
-    }
-    goto process_tile;
-
-out_of_bounds:
-    /* Try backtracking */
-    if (tcompDepth == 0) {
-        goto track_complete;
-    }
-
-    tcompDepth--;
-    tcompEntry = &tcompArr[tcompDepth];
-
-    trkColIndex = tcompEntry->tc_col;
-    trkRowIndex = tcompEntry->tc_row;
-    tileElem = tcompEntry->tc_tileElem;
-    subTOIBlock = tcompEntry->tc_subBlock;
-    MconnStatus = tcompEntry->tc_connStatus;
-    prevConnCode = tcompEntry->tc_prevCode;
-    prevPieceIdx = tcompEntry->tc_prevIdx;
-    distCount = tcompEntry->tc_distCount;
-    MprevColIndex = tcompEntry->tc_prevCol;
-    MprevRowIndex = tcompEntry->tc_prevRow;
-    MprevTileElem = tcompEntry->tc_prevElem;
-    prevSubBlock = tcompEntry->tc_prevSub;
-    MprevConnStatus = tcompEntry->tc_prevConn;
-    matchCount = 1;
-
-check_match:
-    if (matchCount == 0) {
-        goto main_loop;
-    }
-    if (sfPassCount > 1) {
-        trackErrorCode = 10; /* long_jump */
-        goto error_dispatch;
-    }
-    goto process_piece;
-
+        || (signed char)trkRowIndex > TRACK_LAST_INDEX);
+    if (!need_backtrack) {
     /* --- Process tile --- */
-process_tile:
     tempColExt = (signed char)trkColIndex;
     tempRowIdx2 = (signed char)trkRowIndex * 2;
 
@@ -2822,7 +2768,7 @@ process_tile:
             default:
                 break;
             }
-            goto reread_tile;
+            break;
 
         case TRACK_MARKER_VERTICAL:
             /* N side filler - adjust row only */
@@ -2843,7 +2789,7 @@ process_tile:
             default:
                 break;
             }
-            goto reread_tile;
+            break;
 
         case TRACK_MARKER_HORIZONTAL:
             /* W side filler - adjust col only */
@@ -2864,49 +2810,42 @@ process_tile:
             default:
                 break;
             }
-            goto reread_tile;
+            break;
 
         default:
-            goto reread_tile;
+            break;
         }
-
-    reread_tile:
         tileElem = track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
-        goto after_entry_point;
     }
-
-    /* Non-filler: compute entry point from trackDirection */
-    switch (trackDirection) {
-    case 0:
-        tileEntryPoint = 2;
-        break;
-    case 256:
-        tileEntryPoint = 4;
-        break;
-    case 512:
-        tileEntryPoint = 1;
-        break;
-    case 768:
-        tileEntryPoint = 3;
-        break;
-    default:
-        break;
+    else {
+        /* Non-filler: compute entry point from trackDirection */
+        switch (trackDirection) {
+        case 0:
+            tileEntryPoint = 2;
+            break;
+        case 256:
+            tileEntryPoint = 4;
+            break;
+        case 512:
+            tileEntryPoint = 1;
+            break;
+        case 768:
+            tileEntryPoint = 3;
+            break;
+        default:
+            break;
+        }
     }
-
-after_entry_point:
     /* Validate: if sfPassCount==0 and entryPoint==0 -> int_err */
     if (sfPassCount == 0 && tileEntryPoint == 0) {
         trackErrorCode = 2; /* int_err */
-        goto error_dispatch;
+        break; /* exit while(1) */
     }
 
     /* ===== Search TRKOBJINFO blocks for matching entry/exit point ===== */
     matchCount = 0;
     ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-    if (ptrTOInfo == (unsigned char *)0) {
-        goto all_blocks_done;
-    }
-
+    if (ptrTOInfo != (unsigned char *)0) {
     for (si = 0; trkobjinfo_block(ptrTOInfo, 0)->si_noOfBlocks > (unsigned char)si; si++) {
         connCheckFlag = -1; /* unmatched */
         ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)si);
@@ -2919,7 +2858,7 @@ after_entry_point:
             }
             else {
                 trackErrorCode = 4; /* elem_mism */
-                goto error_dispatch;
+                break; /* exit for-si */
             }
         }
         else {
@@ -2934,16 +2873,13 @@ after_entry_point:
                 }
                 else {
                     trackErrorCode = 4; /* elem_mism */
-                    goto error_dispatch;
+                    break; /* exit for-si */
                 }
             }
             /* else connCheckFlag stays -1 */
         }
 
-        if (connCheckFlag < 0) {
-            goto next_block;
-        }
-
+        if (connCheckFlag >= 0) {
         /* Check if we've already visited this tile */
         if (visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex] != 0) {
             /* Already visited: scan existing pieces for a loop */
@@ -2960,7 +2896,7 @@ after_entry_point:
                 /* Check connStatus match */
                 if (connStatusArr[di] != (unsigned char)connCheckFlag) {
                     trackErrorCode = 5; /* wrong_way */
-                    goto error_dispatch;
+                    break; /* exit for-di */
                 }
                 /* Match found - link it */
                 connCheckFlag = -1; /* mark as already linked */
@@ -2978,9 +2914,9 @@ after_entry_point:
                 }
                 /* DON'T break - continue scanning for wrong_way errors */
             }
+            if (trackErrorCode != 0) break; /* exit for-si on wrong_way */
         }
-
-    next_block:
+        } /* end connCheckFlag >= 0 */
         if (connCheckFlag < 0) {
             continue; /* already linked or unmatched, skip to next block */
         }
@@ -2995,7 +2931,7 @@ after_entry_point:
             /* Additional match: push to tcomp backtrack stack */
             if (tcompDepth >= TRACK_SETUP_DEPTH_MAX) {
                 trackErrorCode = 8; /* many_path */
-                goto error_dispatch;
+                break; /* exit for-si */
             }
 
             tcompEntry = &tcompArr[tcompDepth];
@@ -3016,86 +2952,80 @@ after_entry_point:
         }
         matchCount++;
     }
+    } /* if (ptrTOInfo != NULL) */
+    if (trackErrorCode != 0) break; /* exit while(1) on for-si error */
 
-all_blocks_done:
-    /* All blocks checked */
-    if (matchCount != 0) {
-        goto check_match;
+    if (matchCount == 0) {
+        /* No match found */
+        if (prevConnCode != 1) {
+            need_backtrack = 1; /* backtrack */
+        } else if (sfPassCount >= 2) {
+            need_backtrack = 1;
+        } else {
+            if (distCount < 2) {
+                trackErrorCode = 9; /* no_runway */
+                break; /* exit while(1) */
+            }
+            /* Extend runway */
+            distCount++;
+            sfPassCount++;
+            switch (trackDirection) {
+            case 0: /* North */
+                trkColIndex = MprevColIndex;
+                trkRowIndex = MprevRowIndex - sfPassCount - 1;
+                continue;
+            case 512: /* South */
+                trkColIndex = MprevColIndex;
+                trkRowIndex = MprevRowIndex + sfPassCount + 1;
+                continue;
+            case 256: /* East */
+                trkRowIndex = MprevRowIndex;
+                trkColIndex = MprevColIndex + sfPassCount + 1;
+                continue;
+            case 768: /* West */
+                trkRowIndex = MprevRowIndex;
+                trkColIndex = MprevColIndex - sfPassCount - 1;
+                continue;
+            default:
+                continue;
+            }
+        }
+    }
+    } /* end if (!need_backtrack) */
+
+    /* Try backtracking */
+    if (need_backtrack) {
+        if (tcompDepth == 0) {
+            break; /* track_complete */
+        }
+        tcompDepth--;
+        tcompEntry = &tcompArr[tcompDepth];
+        trkColIndex = tcompEntry->tc_col;
+        trkRowIndex = tcompEntry->tc_row;
+        tileElem = tcompEntry->tc_tileElem;
+        subTOIBlock = tcompEntry->tc_subBlock;
+        MconnStatus = tcompEntry->tc_connStatus;
+        prevConnCode = tcompEntry->tc_prevCode;
+        prevPieceIdx = tcompEntry->tc_prevIdx;
+        distCount = tcompEntry->tc_distCount;
+        MprevColIndex = tcompEntry->tc_prevCol;
+        MprevRowIndex = tcompEntry->tc_prevRow;
+        MprevTileElem = tcompEntry->tc_prevElem;
+        prevSubBlock = tcompEntry->tc_prevSub;
+        MprevConnStatus = tcompEntry->tc_prevConn;
+        matchCount = 1;
     }
 
-    /* No match found */
-    if (prevConnCode != 1) {
-        goto out_of_bounds; /* backtrack */
+    /* check_match: */
+    if (matchCount == 0) {
+        continue; /* goto main_loop */
+    }
+    if (sfPassCount > 1) {
+        trackErrorCode = 10; /* long_jump */
+        break; /* exit while(1) */
     }
 
-    /* prevConnCode==1: runway extension logic */
-    if (sfPassCount >= 2) {
-        goto out_of_bounds;
-    }
-    if (distCount < 2) {
-        trackErrorCode = 9; /* no_runway */
-        goto error_dispatch;
-    }
-
-    /* Extend runway */
-    distCount++;
-    sfPassCount++;
-
-    switch (trackDirection) {
-    case 0: /* North */
-        trkColIndex = MprevColIndex;
-        trkRowIndex = MprevRowIndex - sfPassCount - 1;
-        goto main_loop;
-
-    case 512: /* South */
-        trkColIndex = MprevColIndex;
-        trkRowIndex = MprevRowIndex + sfPassCount + 1;
-        goto main_loop;
-
-    case 256: /* East */
-        trkRowIndex = MprevRowIndex;
-        trkColIndex = MprevColIndex + sfPassCount + 1;
-        goto main_loop;
-
-    case 768: /* West */
-        trkRowIndex = MprevRowIndex;
-        trkColIndex = MprevColIndex - sfPassCount - 1;
-        goto main_loop;
-
-    default:
-        goto main_loop;
-    }
-
-    /* ===== PHASE 8: Track complete ===== */
-track_complete:
-    if (!loopFoundFlag) {
-        trackErrorCode = 7; /* no_path */
-        goto error_dispatch;
-    }
-
-    /* Set error position variables */
-    sprite_render_state = startcol2;
-    game_security_flag = startrow2;
-
-    /* Compute checkpoint limit = min(track_pieces_counter / 3, 64) */
-    si = track_pieces_counter / 3;
-    if (si > 64) {
-        si = 64;
-    }
-    game_exit_request_flag = (unsigned char)si;
-
-    /* Clear subTOIBlockArr for checkpoint phase */
-    for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-        subTOIBlockArr[si] = 0;
-    }
-
-    /* Init checkpoint loop */
-    di = 0; /* checkpoint counter */
-    si = 0; /* iteration index */
-    goto checkpoint_loop_entry;
-
-    /* ===== PHASE 9: Process piece ===== */
-process_piece:
+    /* ===== PHASE 9: Process piece (inline in main loop) ===== */
     sfPassCount = 0;
 
     /* Mark tile as visited */
@@ -3139,160 +3069,149 @@ process_piece:
     if (opp3Val == 0) {
         /* opp3 == 0: increment distCount, skip checkpoint data */
         distCount++;
-        goto after_checkpoint;
+    } else {
+        if (opp3Val != TRACK_U8_INVALID
+            && distCount > 3
+            && lap_checkpoint_counter < TRACK_CHECKPOINT_LIMIT_MAX) {
+            /* ---- Checkpoint data recording ---- */
+            {
+                struct TRKOBJINFO_RAW *currTOI;
+                struct TRKOBJINFO_RAW *prevTOI;
+                short *camSrc;
+                short altCamOfs;
+
+                /* Re-get ptrTOInfo/ptrCurrTOInfo for current tile */
+                ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
+                currTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
+                opp3Val = currTOI->si_opp3;
+
+                /* Get ptrTOInfo/ptrCurrTOInfo for PREVIOUS tile */
+                ptrTOInfo = trkobject_info_ptr((unsigned char)MprevTileElem);
+                prevTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)prevSubBlock);
+
+                /* Get camera data pointer */
+                if (MprevConnStatus != 0) {
+                    /* Check alternate camera data at offset +10 (si_opp1+si_opp2 as word) */
+                    altCamOfs = *(short *)(&prevTOI->si_opp1);
+                    if (altCamOfs != 0) {
+                        cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCamOfs);
+                    }
+                    else {
+                        cameraOfs = trkobjinfo_camera_ptr(prevTOI);
+                    }
+                }
+                else {
+                    cameraOfs = trkobjinfo_camera_ptr(prevTOI);
+                }
+
+                /* Compute camera data entry address */
+                if (MprevConnStatus != 0) {
+                    /* Reversed: cameraBase + arrowType * 12 + 12 */
+                    camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 12);
+                }
+                else {
+                    /* Normal: cameraBase + arrowType * 12 + 6 */
+                    camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 6);
+                }
+
+                /* Copy 3 words of camera data */
+                checkX = camSrc[0];
+                checkY = camSrc[1];
+                checkZ = camSrc[2];
+
+                /* Apply opp3 direction lookup */
+                if (MconnStatus != 0) {
+                    opp3Val = animation_frame_transition_table[(signed char)opp3Val];
+                }
+                else {
+                    opp3Val = animation_state_advance_table[(signed char)opp3Val];
+                }
+
+                /* Get arrowOrient -> trackDirection */
+                trackDirection = prevTOI->si_arrowOrient;
+
+                /* Rotate camera data based on trackDirection */
+                if (trackDirection == 768) {
+                    /* Rotate 270 deg: swap X<->Z, negate new X */
+                    tempSwap = checkX;
+                    checkX = -checkZ;
+                    checkZ = tempSwap;
+                }
+                else if (trackDirection == 512) {
+                    /* Rotate 180 deg: negate both X and Z */
+                    checkZ = -checkZ;
+                    checkX = -checkX;
+                }
+                else if (trackDirection == 256) {
+                    /* Rotate 90 deg: swap X<->Z, negate new Z */
+                    tempSwap = checkX;
+                    checkX = checkZ;
+                    checkZ = -tempSwap;
+                }
+
+                /* Store direction in td08 */
+                if (MprevConnStatus != 0) {
+                    /* Reverse direction: XOR high byte with 2 */
+                    obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection ^ 512;
+                }
+                else {
+                    obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection;
+                }
+
+                /* Store opp3 in obstacle_scene_index */
+                obstacle_scene_index[(signed char)lap_checkpoint_counter] = opp3Val;
+
+                /* Get terrain for prev tile, add hill height if terrain==6 */
+                if (track_terrain_map[terrainrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
+                    == 6) {
+                    checkY += TRACK_HILL_HEIGHT_OFFSET; /* hill height = 450 */
+                }
+
+                /* Store checkpoint Y in obstacle_world_pos[checkpointIdx*3 + 1] */
+                {
+                    int chkIdx6 = (signed char)lap_checkpoint_counter * 3;
+
+                    obstacle_world_pos[chkIdx6 + 1] = checkY;
+
+                    /* Compute Z position */
+                    if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 1) {
+                        /* Multi-tile (flag bit 0): use trackpos */
+                        checkZ += trackpos[(signed char)MprevRowIndex];
+                    }
+                    else {
+                        /* Single-tile: use trackcenterpos */
+                        checkZ += trackcenterpos[(signed char)MprevRowIndex];
+                    }
+                    obstacle_world_pos[chkIdx6 + 2] = checkZ;
+
+                    /* Compute X position */
+                    if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 2) {
+                        /* Multi-tile (flag bit 1): use trackpos2+1 */
+                        checkX += trackpos2[(signed char)MprevColIndex + 1];
+                    }
+                    else {
+                        /* Single-tile: use trackcenterpos2 */
+                        checkX += trackcenterpos2[(signed char)MprevColIndex];
+                    }
+                    obstacle_world_pos[chkIdx6] = checkX;
+                }
+
+                /* Mark tile in tile_obstacle_map */
+                tile_obstacle_map[trackrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
+                    = lap_checkpoint_counter;
+
+                lap_checkpoint_counter++; /* checkpoint counter++ */
+            }
+        }
+        /* reset_dist: */
+        distCount = 0;
     }
 
-    if (opp3Val == TRACK_U8_INVALID) {
-        goto reset_dist;
-    }
-
-    if (distCount <= 3) {
-        goto reset_dist;
-    }
-
-    if (lap_checkpoint_counter >= TRACK_CHECKPOINT_LIMIT_MAX) {
-        goto reset_dist;
-    }
-
-    /* ---- Checkpoint data recording ---- */
-    {
-        struct TRKOBJINFO_RAW *currTOI;
-        struct TRKOBJINFO_RAW *prevTOI;
-        short *camSrc;
-        short altCamOfs;
-
-        /* Re-get ptrTOInfo/ptrCurrTOInfo for current tile */
-        ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-        currTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
-        opp3Val = currTOI->si_opp3;
-
-        /* Get ptrTOInfo/ptrCurrTOInfo for PREVIOUS tile */
-        ptrTOInfo = trkobject_info_ptr((unsigned char)MprevTileElem);
-        prevTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)prevSubBlock);
-
-        /* Get camera data pointer */
-        if (MprevConnStatus != 0) {
-            /* Check alternate camera data at offset +10 (si_opp1+si_opp2 as word) */
-            altCamOfs = *(short *)(&prevTOI->si_opp1);
-            if (altCamOfs != 0) {
-                cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCamOfs);
-            }
-            else {
-                cameraOfs = trkobjinfo_camera_ptr(prevTOI);
-            }
-        }
-        else {
-            cameraOfs = trkobjinfo_camera_ptr(prevTOI);
-        }
-
-        /* Compute camera data entry address */
-        if (MprevConnStatus != 0) {
-            /* Reversed: cameraBase + arrowType * 12 + 12 */
-            camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 12);
-        }
-        else {
-            /* Normal: cameraBase + arrowType * 12 + 6 */
-            camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 6);
-        }
-
-        /* Copy 3 words of camera data */
-        checkX = camSrc[0];
-        checkY = camSrc[1];
-        checkZ = camSrc[2];
-
-        /* Apply opp3 direction lookup */
-        if (MconnStatus != 0) {
-            opp3Val = animation_frame_transition_table[(signed char)opp3Val];
-        }
-        else {
-            opp3Val = animation_state_advance_table[(signed char)opp3Val];
-        }
-
-        /* Get arrowOrient -> trackDirection */
-        trackDirection = prevTOI->si_arrowOrient;
-
-        /* Rotate camera data based on trackDirection */
-        if (trackDirection == 768) {
-            /* Rotate 270 deg: swap X<->Z, negate new X */
-            tempSwap = checkX;
-            checkX = -checkZ;
-            checkZ = tempSwap;
-        }
-        else if (trackDirection == 512) {
-            /* Rotate 180 deg: negate both X and Z */
-            checkZ = -checkZ;
-            checkX = -checkX;
-        }
-        else if (trackDirection == 256) {
-            /* Rotate 90 deg: swap X<->Z, negate new Z */
-            tempSwap = checkX;
-            checkX = checkZ;
-            checkZ = -tempSwap;
-        }
-
-        /* Store direction in td08 */
-        if (MprevConnStatus != 0) {
-            /* Reverse direction: XOR high byte with 2 */
-            obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection ^ 512;
-        }
-        else {
-            obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection;
-        }
-
-        /* Store opp3 in obstacle_scene_index */
-        obstacle_scene_index[(signed char)lap_checkpoint_counter] = opp3Val;
-
-        /* Get terrain for prev tile, add hill height if terrain==6 */
-        if (track_terrain_map[terrainrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
-            == 6) {
-            checkY += TRACK_HILL_HEIGHT_OFFSET; /* hill height = 450 */
-        }
-
-        /* Store checkpoint Y in obstacle_world_pos[checkpointIdx*3 + 1] */
-        {
-            int chkIdx6 = (signed char)lap_checkpoint_counter * 3;
-
-            obstacle_world_pos[chkIdx6 + 1] = checkY;
-
-            /* Compute Z position */
-            if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 1) {
-                /* Multi-tile (flag bit 0): use trackpos */
-                checkZ += trackpos[(signed char)MprevRowIndex];
-            }
-            else {
-                /* Single-tile: use trackcenterpos */
-                checkZ += trackcenterpos[(signed char)MprevRowIndex];
-            }
-            obstacle_world_pos[chkIdx6 + 2] = checkZ;
-
-            /* Compute X position */
-            if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 2) {
-                /* Multi-tile (flag bit 1): use trackpos2+1 */
-                checkX += trackpos2[(signed char)MprevColIndex + 1];
-            }
-            else {
-                /* Single-tile: use trackcenterpos2 */
-                checkX += trackcenterpos2[(signed char)MprevColIndex];
-            }
-            obstacle_world_pos[chkIdx6] = checkX;
-        }
-
-        /* Mark tile in tile_obstacle_map */
-        tile_obstacle_map[trackrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
-            = lap_checkpoint_counter;
-
-        lap_checkpoint_counter++; /* checkpoint counter++ */
-    }
-
-reset_dist:
-    distCount = 0;
-
-after_checkpoint:
-    /* Increment track_pieces_counter */
+    /* after_checkpoint: */
     track_pieces_counter++;
     if (track_pieces_counter >= TRACK_TRACKDATA_TOTAL_BYTES) {
         trackErrorCode = 6; /* many_elem */
-        goto error_dispatch;
+        break; /* exit while(1) */
     }
 
     /* Get exit direction for current piece */
@@ -3381,10 +3300,39 @@ after_checkpoint:
     default:
         break;
     }
-    goto main_loop;
+    continue; /* goto main_loop */
+    } /* end while (1) */
+
+    if (trackErrorCode != 0) {
+        return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
+    }
+
+    /* ===== PHASE 8: Track complete ===== */
+    if (!loopFoundFlag) {
+        return track_setup_error_return(7 /* no_path */, trkColIndex, trkRowIndex, tcompArr);
+    }
+
+    /* Set error position variables */
+    sprite_render_state = startcol2;
+    game_security_flag = startrow2;
+
+    /* Compute checkpoint limit = min(track_pieces_counter / 3, 64) */
+    si = track_pieces_counter / 3;
+    if (si > 64) {
+        si = 64;
+    }
+    game_exit_request_flag = (unsigned char)si;
+
+    /* Clear subTOIBlockArr for checkpoint phase */
+    for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
+        subTOIBlockArr[si] = 0;
+    }
+
+    /* Init checkpoint loop */
+    di = 0; /* checkpoint counter */
+    si = 0; /* iteration index */
 
     /* ===== PHASE 10: Checkpoint computation loop ===== */
-checkpoint_loop_entry:
     while (si < (signed char)game_exit_request_flag) {
         int mapIdx;
         unsigned char *visitedPtr;
@@ -3424,19 +3372,18 @@ checkpoint_loop_entry:
                 short altCam = *(short *)(&subBlockInfo->si_opp1);
                 if (altCam != 0) {
                     cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCam);
-                    goto use_camera_ofs;
+                } else {
+                    cameraOfs = trkobjinfo_camera_ptr(subBlockInfo);
                 }
             }
-            /* Fall through to normal camera data */
-        }
-
-        /* Normal camera data: get from sub-block */
-        {
+        } else {
+            /* Normal camera data: get from sub-block */
             subBlockInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
             cameraOfs = trkobjinfo_camera_ptr(subBlockInfo);
         }
 
-    use_camera_ofs: {
+        /* use_camera_ofs: camera data processing */
+        {
         short *camSrc;
         int camDir;
 
@@ -3522,36 +3469,10 @@ checkpoint_loop_entry:
         si++; /* iteration index++ */
     }
 
-    /* ===== PHASE 11: Cleanup and return ===== */
+    /* ===== PHASE 11: Success path ===== */
     game_exit_request_flag = (unsigned char)di;
-    trackErrorCode = 0; /* success */
-    goto cleanup;
-
-    /* --- Error handlers --- */
-error_dispatch:
-    if (trkColIndex == TRACK_U8_INVALID) {
-        trkColIndex = 0;
-        goto error_handler_B;
-    }
-    /* error_handler_A */
-    if (trkColIndex == TRACK_SIZE) {
-        trkColIndex = TRACK_LAST_INDEX;
-    }
-error_handler_B:
-    if (trkRowIndex == TRACK_U8_INVALID) {
-        trkRowIndex = 0;
-    }
-    else if (trkRowIndex == TRACK_SIZE) {
-        trkRowIndex = TRACK_LAST_INDEX;
-    }
-    sprite_render_state = trkColIndex;
-    game_security_flag = trkRowIndex;
-
-cleanup:
-    /* Snapshot td15 before exiting track_setup */
-
     mmgr_release((char *)tcompArr);
-    return (signed char)trackErrorCode;
+    return 0;
 }
 
 /** @brief Read u16.
