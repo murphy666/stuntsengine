@@ -546,7 +546,7 @@ void update_grip(struct CARSTATE *carstate, struct SIMD *simd, int);
 void update_player_state(struct CARSTATE *playerstate, struct SIMD *playersimd,
                          struct CARSTATE *oppstate, struct SIMD *oppsimd, int);
 int get_kevinrandom(void);
-void state_spawn_debris_particles(int arg0, int arg2, int arg4);
+void state_spawn_debris_particles(int debrisType, int scatterAngle, int baseSpeed);
 void update_world_debris_particles(void);
 
 /** @brief Upd statef20 from steer input.
@@ -1202,12 +1202,12 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
 }
 
 /** @brief State spawn debris particles.
- * @param arg0 Parameter value.
- * @param arg2 Parameter value.
- * @param arg4 Parameter value.
+ * @param debrisType  0=player crash, 1=opponent crash, 2+=obstacle type.
+ * @param scatterAngle  Base scatter angle (car rotation x).
+ * @param baseSpeed  Additional base velocity (scaled speed, 0 for crash).
  */
 void
-state_spawn_debris_particles(int arg0, int arg2, int arg4) {
+state_spawn_debris_particles(int debrisType, int scatterAngle, int baseSpeed) {
     int angle_base;
     int angle_divisor;
     int max_spawn_count;
@@ -1223,15 +1223,15 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
 
     obstacle_vertical_velocity = state.game_debris_vy;
 
-    if (arg0 < 2) {
-        angle_base = arg2;
+    if (debrisType < 2) {
+        angle_base = scatterAngle;
         angle_divisor = STATECAR_DEBRIS_ANGLE_DIVISOR_WIDE;
         max_spawn_count = STATECAR_DEBRIS_MAX_WIDE;
-        shape_base_index = (arg0 << 2) + 4;
+        shape_base_index = (debrisType << 2) + 4;
         vertical_velocity_scale = 6;
     }
     else {
-        angle_base = arg2 - 96;
+        angle_base = scatterAngle - 96;
         angle_divisor = STATECAR_DEBRIS_ANGLE_DIVISOR_NARROW;
         max_spawn_count = 8;
         shape_base_index = 0;
@@ -1255,7 +1255,7 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
             continue;
         }
 
-        state.game_obstacle_status[slotIdx] = (char)arg0;
+        state.game_obstacle_status[slotIdx] = (char)debrisType;
         state.game_obstacle_shape[slotIdx] = (char)((used & 3) + shape_base_index);
 
         state.game_debris_dx[slotIdx] = 0;
@@ -1272,7 +1272,7 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
         initialSpeed = get_kevinrandom();
         initialSpeed = ((initialSpeed << 1) + initialSpeed) << 1; /* *6 */
         initialSpeed >>= 2;                                        /* /4 */
-        initialSpeed += arg4 + 384;
+        initialSpeed += baseSpeed + 384;
         state.game_obstacle_active[slotIdx] = (short)initialSpeed;
 
         initial_vertical_velocity = (vertical_velocity_scale * initialSpeed) >> 2;
@@ -2368,13 +2368,13 @@ audio_sync_car_audio(void) {
    off-course segments the player has traversed. Returns 1 if penalty
    detected, 0 if player is at start. Uses backtracking stack for junctions. */
 /** @brief Detect penalty.
- * @param extVar2ptr Parameter value.
- * @param extVar1Eptr Parameter value.
+ * @param waypointIdxPtr  In: starting waypoint index. Out: waypoint where player found.
+ * @param penaltyOutPtr  Out: penalty score, or -2 for flyover.
  * @return Function return value.
  */
 
 short
-detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
+detect_penalty(short *waypointIdxPtr, short *penaltyOutPtr) {
     extern unsigned char trkObjectList[];
     char visited[904];
     short pathStack[132];
@@ -2406,14 +2406,14 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
         || (signed char)playerTileCol == state.game_startcol2) {
         if ((signed char)playerTileRow == state.game_startrow
             || (signed char)playerTileRow == state.game_startrow2) {
-            *extVar1Eptr = 0;
+            *penaltyOutPtr = 0;
             return 0;
         }
     }
 
     /* Bounds check */
     if (playerTileCol < 0 || playerTileCol > 29 || playerTileRow < 0 || playerTileRow > 29) {
-        *extVar1Eptr = -2;
+        *penaltyOutPtr = -2;
         return 1;
     }
 
@@ -2425,7 +2425,7 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
     for (i = 0; i < track_pieces_counter; i++)
         visited[i] = 0;
 
-    waypointIdx = *extVar2ptr;
+    waypointIdx = *waypointIdxPtr;
 
     while (1) {
         /* Follow path: look up next piece */
@@ -2442,8 +2442,8 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
             }
             /* Stack empty */
             if (bestPenalty != 0) {
-                *extVar2ptr = bestWaypointIndex;
-                *extVar1Eptr = bestPenalty;
+                *waypointIdxPtr = bestWaypointIndex;
+                *penaltyOutPtr = bestPenalty;
                 return 1;
             }
             /* No penalty found, set start to current */
@@ -2451,7 +2451,7 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
             state.game_startcol2 = (signed char)playerTileCol;
             state.game_startrow = (signed char)playerTileRow;
             state.game_startrow2 = (signed char)playerTileRow;
-            *extVar1Eptr = -2;
+            *penaltyOutPtr = -2;
             return 1;
         }
 
@@ -2499,8 +2499,8 @@ detect_penalty(short *extVar2ptr, short *extVar1Eptr) {
 
         if (pathPenalty <= 0) {
             /* Player found on track with no penalty */
-            *extVar2ptr = nextWaypoint;
-            *extVar1Eptr = pathPenalty;
+            *waypointIdxPtr = nextWaypoint;
+            *penaltyOutPtr = pathPenalty;
             return 1;
         }
         /* Check if this is the best penalty path */
