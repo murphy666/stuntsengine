@@ -1215,8 +1215,8 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
     int vertical_velocity_scale;
     int freecount;
     int used;
-    int si;
-    int di;
+    int slotIdx;
+    int initialSpeed;
     int angle;
     int initial_vertical_velocity;
     short *obstacle_vertical_velocity;
@@ -1240,8 +1240,8 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
 
     state.game_obstacle_count = 1;
     freecount = 0;
-    for (si = 0; si < 24; si++) {
-        if (state.game_obstacle_active[si] == 0) {
+    for (slotIdx = 0; slotIdx < 24; slotIdx++) {
+        if (state.game_obstacle_active[slotIdx] == 0) {
             freecount++;
         }
     }
@@ -1250,33 +1250,33 @@ state_spawn_debris_particles(int arg0, int arg2, int arg4) {
     }
 
     used = 0;
-    for (si = 0; si < 24 && used < freecount; si++) {
-        if (state.game_obstacle_active[si] != 0) {
+    for (slotIdx = 0; slotIdx < 24 && used < freecount; slotIdx++) {
+        if (state.game_obstacle_active[slotIdx] != 0) {
             continue;
         }
 
-        state.game_obstacle_status[si] = (char)arg0;
-        state.game_obstacle_shape[si] = (char)((used & 3) + shape_base_index);
+        state.game_obstacle_status[slotIdx] = (char)arg0;
+        state.game_obstacle_shape[slotIdx] = (char)((used & 3) + shape_base_index);
 
-        state.game_debris_dx[si] = 0;
-        state.game_debris_dy[si] = 0;
-        state.game_debris_dz[si] = 0;
+        state.game_debris_dx[slotIdx] = 0;
+        state.game_debris_dy[slotIdx] = 0;
+        state.game_debris_dz[slotIdx] = 0;
 
-        state.game_obstacle_rotx[si] = (short)(get_kevinrandom() * 4);
-        state.game_obstacle_roty[si] = (short)(get_kevinrandom() * 4);
+        state.game_obstacle_rotx[slotIdx] = (short)(get_kevinrandom() * 4);
+        state.game_obstacle_roty[slotIdx] = (short)(get_kevinrandom() * 4);
 
         angle = ((freecount * used) / angle_divisor) + angle_base;
         angle &= 1023;
-        state.game_obstacle_rotz[si] = (short)angle;
+        state.game_obstacle_rotz[slotIdx] = (short)angle;
 
-        di = get_kevinrandom();
-        di = ((di << 1) + di) << 1; /* *6 */
-        di >>= 2;                   /* /4 */
-        di += arg4 + 384;
-        state.game_obstacle_active[si] = (short)di;
+        initialSpeed = get_kevinrandom();
+        initialSpeed = ((initialSpeed << 1) + initialSpeed) << 1; /* *6 */
+        initialSpeed >>= 2;                                        /* /4 */
+        initialSpeed += arg4 + 384;
+        state.game_obstacle_active[slotIdx] = (short)initialSpeed;
 
-        initial_vertical_velocity = (vertical_velocity_scale * di) >> 2;
-        obstacle_vertical_velocity[si] = (short)initial_vertical_velocity;
+        initial_vertical_velocity = (vertical_velocity_scale * initialSpeed) >> 2;
+        obstacle_vertical_velocity[slotIdx] = (short)initial_vertical_velocity;
 
         used++;
     }
@@ -1288,31 +1288,31 @@ void
 update_world_debris_particles(void) {
     bool has_active_particles = false;
     short *obstacle_vertical_velocity = state.game_debris_vy;
-    int si;
+    int slotIdx;
     struct MATRIX *rot;
     struct VECTOR invec;
     struct VECTOR outvec;
     long worldY;
 
-    for (si = 0; si < 24; si++) {
-        if (state.game_obstacle_active[si] == 0) {
+    for (slotIdx = 0; slotIdx < 24; slotIdx++) {
+        if (state.game_obstacle_active[slotIdx] == 0) {
             continue;
         }
 
-        rot = mat_rot_zxy(state.game_obstacle_rotz[si], 0, 0, 0);
+        rot = mat_rot_zxy(state.game_obstacle_rotz[slotIdx], 0, 0, 0);
         invec.x = 0;
         invec.y = 0;
-        invec.z = state.game_obstacle_active[si];
+        invec.z = state.game_obstacle_active[slotIdx];
         mat_mul_vector(&invec, rot, &outvec);
 
-        state.game_debris_dx[si] += outvec.x;
-        state.game_debris_dz[si] += outvec.z;
+        state.game_debris_dx[slotIdx] += outvec.x;
+        state.game_debris_dz[slotIdx] += outvec.z;
 
-        obstacle_vertical_velocity[si] -= 19;
-        state.game_debris_dy[si] += obstacle_vertical_velocity[si];
+        obstacle_vertical_velocity[slotIdx] -= 19;
+        state.game_debris_dy[slotIdx] += obstacle_vertical_velocity[slotIdx];
         if (framespersec == 10) {
-            obstacle_vertical_velocity[si] -= 19;
-            state.game_debris_dy[si] += obstacle_vertical_velocity[si];
+            obstacle_vertical_velocity[slotIdx] -= 19;
+            state.game_debris_dy[slotIdx] += obstacle_vertical_velocity[slotIdx];
         }
         else if (framespersec >= 30) {
             /* At 30fps there are 1.5× more ticks per second than 20fps.
@@ -1320,14 +1320,14 @@ update_world_debris_particles(void) {
                skip the extra step — 30 ticks × 19 > 20 ticks × 19. */
         }
 
-        worldY = state.game_debris_dy[si] + state.playerstate.car_posWorld1.ly;
+        worldY = state.game_debris_dy[slotIdx] + state.playerstate.car_posWorld1.ly;
         if (worldY >= 0) {
             has_active_particles = true;
-            state.game_obstacle_rotx[si] = (short)(state.game_obstacle_rotx[si] + 16);
-            state.game_obstacle_roty[si] = (short)(state.game_obstacle_roty[si] + 16);
+            state.game_obstacle_rotx[slotIdx] = (short)(state.game_obstacle_rotx[slotIdx] + 16);
+            state.game_obstacle_roty[slotIdx] = (short)(state.game_obstacle_roty[slotIdx] + 16);
         }
         else {
-            state.game_obstacle_active[si] = 0;
+            state.game_obstacle_active[slotIdx] = 0;
         }
     }
 

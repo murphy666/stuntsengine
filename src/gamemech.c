@@ -610,7 +610,7 @@ replay_capture_frame_input(int command) {
  */
 void
 update_follow_camera_vectors(void) {
-    int si, di;
+    int carIdx, cameraDelta;
     int trackedCarCount;
     struct CARSTATE *pState;
     int carPosX, carPosY, carPosZ;
@@ -626,17 +626,17 @@ update_follow_camera_vectors(void) {
     if (gameconfig.game_opponenttype != 0)
         trackedCarCount = 2;
 
-    for (si = 0; si < trackedCarCount; si++) {
+    for (carIdx = 0; carIdx < trackedCarCount; carIdx++) {
         /* copy game_camera_pos -> game_camera2_pos for this car */
         {
-            struct VECTOR *src = &state.game_camera_pos[si];
-            struct VECTOR *dst = &state.game_camera2_pos[si];
+            struct VECTOR *src = &state.game_camera_pos[carIdx];
+            struct VECTOR *dst = &state.game_camera2_pos[carIdx];
             dst->x = src->x;
             dst->y = src->y;
             dst->z = src->z;
         }
 
-        if (si == 0)
+        if (carIdx == 0)
             pState = &state.playerstate;
         else
             pState = &state.opponentstate;
@@ -654,7 +654,7 @@ update_follow_camera_vectors(void) {
 
         /* If car is in normal driving mode heading toward the next waypoint,
            keep the projected waypoint target. Otherwise override with actual car position. */
-        if (!(si == 0 && state.game_flyover_state == 0 && state.game_flyover_counter == 0)
+        if (!(carIdx == 0 && state.game_flyover_state == 0 && state.game_flyover_counter == 0)
             || pState->car_collision_contact_flag != 0
             || pState->car_crashBmpFlag != 0
             || pState->car_waypoint_seq_index == -1
@@ -668,31 +668,31 @@ update_follow_camera_vectors(void) {
         /* height adjustment */
         {
             int target_y = carPosY + GAMEMECH_FOLLOW_CAMERA_TARGET_HEIGHT_OFFSET;
-            struct VECTOR *vec1 = &state.game_camera_pos[si];
+            struct VECTOR *vec1 = &state.game_camera_pos[carIdx];
 
             cameraYOffset = vec1->y - target_y;
             if (cameraYOffset != 0) {
-                di = cameraYOffset;
-                if (di > GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
-                    di = GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
-                else if (di < -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
-                    di = -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
-                vec1->y -= di;
+                cameraDelta = cameraYOffset;
+                if (cameraDelta > GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
+                    cameraDelta = GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
+                else if (cameraDelta < -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT)
+                    cameraDelta = -GAMEMECH_FOLLOW_CAMERA_VERTICAL_SLEW_LIMIT;
+                vec1->y -= cameraDelta;
             }
         }
 
         /* compute angle to target */
         {
-            struct VECTOR *vec1 = &state.game_camera_pos[si];
+            struct VECTOR *vec1 = &state.game_camera_pos[carIdx];
             targetAngle = polarAngle(cameraTarget[2] - vec1->z, cameraTarget[0] - vec1->x);
 
-            di = polarRadius2D(carPosZ - vec1->z, carPosX - vec1->x);
+            cameraDelta = polarRadius2D(carPosZ - vec1->z, carPosX - vec1->x);
         }
 
         /* move camera toward target if distance exceeds the follow threshold */
-        if (di > GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD) {
-            int move = di - GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD;
-            struct VECTOR *vec1 = &state.game_camera_pos[si];
+        if (cameraDelta > GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD) {
+            int move = cameraDelta - GAMEMECH_FOLLOW_CAMERA_DISTANCE_THRESHOLD;
+            struct VECTOR *vec1 = &state.game_camera_pos[carIdx];
             if (framespersec == 20) {
                 if (move > GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20)
                     move = GAMEMECH_FOLLOW_CAMERA_MOVE_LIMIT_FPS20;
@@ -743,7 +743,7 @@ update_follow_camera_vectors(void) {
                 if (abs_dx < (long)nearestTrackDistance && abs_dz < (long)nearestTrackDistance) {
                     checkpointDistance = polarRadius2D(deltaZ, deltaX);
                     if (checkpointDistance < nearestTrackDistance) {
-                        state.game_track_indices[si] = trackIndex;
+                        state.game_track_indices[carIdx] = trackIndex;
                         nearestTrackDistance = checkpointDistance;
                     }
                 }
@@ -1233,15 +1233,15 @@ mouse_minmax_position(int command) {
  */
 void
 replay_apply_steering_correction(void) {
-    int si, di;
+    int historySlot, targetSteer;
     char responseStep, correctionMask;
 
-    si = state.game_frame & GAMEMECH_REPLAY_STEERING_HISTORY_MASK;
+    historySlot = state.game_frame & GAMEMECH_REPLAY_STEERING_HISTORY_MASK;
 
-    if (*((unsigned char *)&sprite_palette_indices + si) == 0)
+    if (*((unsigned char *)&sprite_palette_indices + historySlot) == 0)
         return;
 
-    di = (int)(char)*((char *)&sprite_offset_table + si);
+    targetSteer = (int)(char)*((char *)&sprite_offset_table + historySlot);
 
     /* compute response rate from speed */
     responseStep = *((unsigned char *)steerWhlRespTable_ptr
@@ -1250,26 +1250,26 @@ replay_apply_steering_correction(void) {
                      + 1);
 
     /* double response if steering same direction */
-    if (state.playerstate.car_steeringAngle < di) {
+    if (state.playerstate.car_steeringAngle < targetSteer) {
         if (state.playerstate.car_steeringAngle < -GAMEMECH_REPLAY_STEER_TOLERANCE)
             responseStep <<= GAMEMECH_REPLAY_STEER_RESPONSE_BOOST_SHIFT;
     }
-    else if (state.playerstate.car_steeringAngle > di) {
+    else if (state.playerstate.car_steeringAngle > targetSteer) {
         if (state.playerstate.car_steeringAngle > GAMEMECH_REPLAY_STEER_TOLERANCE)
             responseStep <<= GAMEMECH_REPLAY_STEER_RESPONSE_BOOST_SHIFT;
     }
 
     /* determine corrective action */
-    if (state.playerstate.car_steeringAngle > di) {
-        if (state.playerstate.car_steeringAngle - (int)(char)responseStep >= di) {
+    if (state.playerstate.car_steeringAngle > targetSteer) {
+        if (state.playerstate.car_steeringAngle - (int)(char)responseStep >= targetSteer) {
             correctionMask = GAMEMECH_INPUT_STEER_LEFT_MASK;
         }
         else {
             correctionMask = 0;
         }
     }
-    else if (state.playerstate.car_steeringAngle < di) {
-        if (state.playerstate.car_steeringAngle + (int)(char)responseStep <= di) {
+    else if (state.playerstate.car_steeringAngle < targetSteer) {
+        if (state.playerstate.car_steeringAngle + (int)(char)responseStep <= targetSteer) {
             correctionMask = GAMEMECH_INPUT_STEER_RIGHT_MASK;
         }
         else {
@@ -1285,7 +1285,7 @@ replay_apply_steering_correction(void) {
         rpl[state.game_frame] |= (unsigned char)correctionMask;
     }
 
-    *((unsigned char *)&sprite_palette_indices + si) = 0;
+    *((unsigned char *)&sprite_palette_indices + historySlot) = 0;
 }
 
 

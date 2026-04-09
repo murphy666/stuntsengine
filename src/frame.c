@@ -1617,7 +1617,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     }
                 }
 
-                render_result = shape3d_render_transformed(&currenttransshape[di]); // DI??
+                render_result = shape3d_render_transformed(&currenttransshape[di]);
                 if (render_result > 0) {
                     break; /* clipped: exit shape render for-loop */
                 }
