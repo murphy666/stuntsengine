@@ -3150,7 +3150,7 @@ done_clip:
 
 unsigned legacy_interp_default_scale = 50;
 
-static unsigned g_interp_blob[1177] = {
+static unsigned g_interp_blob[1177] __attribute__((unused)) = {
     2256u,  32768u, 21845u, 43690u, 16384u, 32768u, 49152u, 13107u, 26214u, 39321u, 52428u, 10922u,
     21845u, 32768u, 43690u, 54613u, 9362u,  18724u, 28086u, 37449u, 46811u, 56173u, 8192u,  16384u,
     24576u, 32768u, 40960u, 49152u, 57344u, 7281u,  14563u, 21845u, 29127u, 36408u, 43690u, 50972u,
@@ -3252,7 +3252,7 @@ static unsigned g_interp_blob[1177] = {
     64198u,
 };
 
-static unsigned g_interp_offsets_rel[50] = {
+static unsigned g_interp_offsets_rel[50] __attribute__((unused)) = {
     0u,    0u,    0u,    2u,    6u,    12u,   20u,   30u,   42u,   56u,   72u,   90u,   110u,
     132u,  156u,  182u,  210u,  240u,  272u,  306u,  342u,  380u,  420u,  462u,  506u,  552u,
     600u,  650u,  702u,  756u,  812u,  870u,  930u,  992u,  1056u, 1122u, 1190u, 1260u, 1332u,

@@ -960,7 +960,7 @@ load_tracks_menu_shapes(void) {
     unsigned char map_scroll_x;            /* map scroll X */
     unsigned char map_scroll_y;            /* map scroll Y */
     unsigned char last_named_element;      /* last element name displayed */
-    unsigned char validation_result;       /* track validation result */
+    unsigned char validation_result __attribute__((unused));       /* track validation result */
     unsigned char cursor_col;              /* cursor col position */
     unsigned char cursor_row;              /* cursor row position */
     unsigned char picker_row;              /* picker row */
