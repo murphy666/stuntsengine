@@ -25,13 +25,13 @@
  */
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "framebuffer.h"
 #include "game_timing.h"
 #include "timer.h"
-#include "data_game.h"
 #include "ui.h"
 
 /* Variables moved from data_game.c (private to this translation unit) */

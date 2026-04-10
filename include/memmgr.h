@@ -23,6 +23,8 @@
 #ifndef MEMMGR_H
 #define MEMMGR_H
 
+extern char textresprefix;
+
 #pragma pack(push, 1)
 struct MEMCHUNK {
     char resname[12];

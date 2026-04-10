@@ -23,6 +23,70 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "game_types.h"
+
+extern short *carresptr;
+extern struct GAMESTATE state;
+extern unsigned short distance_accumulator_counter;
+extern unsigned short elapsed_time1;
+extern unsigned short framespersec;
+extern short gState_144;
+extern unsigned short gState_frame;
+extern short gState_impactSpeed;
+extern short gState_jumpCount;
+extern short gState_pEndFrame;
+extern short gState_penalty;
+extern short gState_topSpeed;
+extern short gState_total_finish_time;
+extern long gState_travDist;
+extern char g_path_buf[GAME_PATH_BUF_SIZE];
+extern unsigned char game_exit_request_flag;
+extern unsigned char game_finish_state;
+extern unsigned char game_mode_state_register;
+extern unsigned char game_pause_counter;
+extern unsigned short game_timer_milliseconds;
+extern struct GAMEINFO gameconfig;
+extern void *gameresptr;
+extern unsigned int idle_counter;
+extern bool is_in_replay;
+extern char is_in_replay_copy;
+extern bool lap_completion_trigger_flag;
+extern void *mainresptr;
+extern int menu_selection_buffer;
+extern unsigned char opponent_speed_table[];
+extern bool passed_security;
+extern bool dashb_toggle;
+extern short penalty_time;
+extern short planindex;
+extern short planindex_copy;
+extern char race_condition_state_flag;
+extern bool replay_autoplay_active;
+extern char *replay_buffer;
+extern unsigned char replay_capture_frame_skip_counter;
+extern unsigned short replay_frame_counter;
+extern char *replay_header;
+extern char replay_mode_state_flag;
+extern bool replaybar_enabled;
+extern bool replaybar_toggle;
+extern int run_game_random;
+extern void *sdgameresptr;
+extern char show_penalty_counter;
+extern struct SIMD simd_player;
+extern bool followOpponentFlag;
+extern bool checkpoint_lap_trigger;
+extern short inverse_fps_hundredths;
+extern short timer_tick_counter;
+extern bool timertestflag_copy;
+extern unsigned short timertestflag;
+extern struct GAMESTATE *cvxptr;
+extern void *steerWhlRespTable_ptr;
+extern unsigned char game_replay_mode;
+extern char aMain[];
+extern unsigned char aDesert[];
+extern unsigned char aAlpine[];
+extern unsigned char aCity[];
+extern unsigned char aCountry[];
+
 void loop_game(int command, int context_value, int frame_value);
 void run_game(void);
 

@@ -23,6 +23,8 @@
 #ifndef UI_H
 #define UI_H
 
+extern char *window_save_buf;
+
 /* Text input */
 unsigned short read_line(char *buffer, unsigned char flags, unsigned short max_chars,
                          unsigned short width, unsigned short height, void *fontptr,

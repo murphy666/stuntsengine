@@ -68,6 +68,37 @@ struct TRANSFORMEDSHAPE3D {
 #define SHAPE3D_CULL_ENTRY_SIZE_BYTES 4
 #define SHAPE3D_PRIMITIVE_SIZE_BYTES  8
 
+/* Shared 3-D render state */
+extern unsigned short polygon_alternate_color;
+extern unsigned short polygon_pattern_type;
+extern char backlights_paint_override;
+extern struct MATRIX mat_temp;
+extern unsigned char cos80[4];
+extern unsigned char sin80[4];
+extern unsigned char projectiondata5[2];
+extern unsigned char projectiondata8[2];
+extern unsigned char projectiondata9[2];
+extern unsigned char projectiondata10[2];
+extern struct RECTANGLE select_rect_rc;
+extern struct SHAPE3D game3dshapes[];
+extern unsigned char *material_clrlist2_ptr_cpy;
+extern unsigned char *material_clrlist_ptr_cpy;
+extern unsigned char *material_patlist2_ptr_cpy;
+extern unsigned char *material_patlist_ptr_cpy;
+extern unsigned char *material_clrlist2_ptr;
+extern unsigned char *material_clrlist_ptr;
+extern unsigned char *material_patlist2_ptr;
+extern unsigned char *material_patlist_ptr;
+extern unsigned char material_color_list[];
+extern unsigned char material_pattern2_list[];
+extern unsigned char material_pattern_list[];
+extern short viewport_clipping_bounds[];
+extern struct VECTOR carshapevec;
+extern struct VECTOR carshapevecs[];
+extern struct VECTOR oppcarshapevec;
+extern struct VECTOR oppcarshapevecs[];
+extern short game_frame_pointer[];
+
 /**
  * @brief Parse a raw shape buffer and populate a SHAPE3D struct.
  */

@@ -23,6 +23,22 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
+#include "game_types.h"
+
+extern int audio_opponent_engine_handle;
+extern int audio_engine_sound_handle;
+extern short audio_frame_index;
+extern bool audio_replay_apply_state;
+extern char audiodriverstring[];
+extern int crash_sound_handle;
+extern char opponent_audio_state;
+extern char player_audio_state;
+extern void *songfileptr;
+extern void *voicefileptr;
+extern short *aero_table_player;
+extern short *aero_table_opponent;
+extern char replay_audio_frame_buffer[];
+
 /* Audio engine init/teardown */
 void *init_audio_resources(void *songptr, void *voiceptr, const char *name);
 void load_audio_finalize(void *audiores);

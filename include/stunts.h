@@ -26,10 +26,6 @@
 /* Types */
 #include "game_types.h"
 
-/* Data / global variables */
-#include "data_game.h"
-#include "data_menu_track.h"
-
 /* Core modules */
 #include "math.h"
 #include "memmgr.h"

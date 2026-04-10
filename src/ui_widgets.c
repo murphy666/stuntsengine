@@ -37,7 +37,6 @@
 #include "keyboard.h"
 #include "timer.h"
 #include "highscore.h" /* menu_reset_idle_timers */
-#include "data_game.h" /* camera_view_matrix, object_visibility_state, kbormouse, idle_expired, idle_counter */
 #include "ui.h" /* show_dialog */
 
 /* ------------------------------------------------------------------ */

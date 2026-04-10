@@ -63,6 +63,14 @@ static unsigned short carmenu_buttons_y1[] = { 229, 229, 229, 229, 229 };
 static unsigned short carmenu_buttons_y2[] = { 316, 316, 316, 316, 316 };
 static unsigned short carmenu_buttons_x1[] = { 107, 125, 143, 161, 179 };
 static unsigned short carmenu_buttons_x2[] = { 124, 142, 160, 178, 196 };
+static unsigned short trackmenu_buttons_x1[] = { 16, 112, 208 };
+static unsigned short trackmenu_buttons_x2[] = { 112, 208, 304 };
+static unsigned short trackmenu_buttons_y1[] = { 171, 171, 171 };
+static unsigned short trackmenu_buttons_y2[] = { 197, 197, 197 };
+static unsigned short opponentmenu_buttons_x1[] = { 20, 76, 132, 188, 244 };
+static unsigned short opponentmenu_buttons_x2[] = { 76, 132, 188, 244, 300 };
+static unsigned short opponentmenu_buttons_y1[] = { 177, 177, 177, 177, 177 };
+static unsigned short opponentmenu_buttons_y2[] = { 197, 197, 197, 197, 197 };
 
 /** @brief Spin-wait until all keyboard and mouse buttons are released. */
 

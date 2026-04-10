@@ -99,4 +99,53 @@ struct TCOMP_ENTRY {
 };
 #pragma pack(pop)
 
+/* Raw track lookup tables */
+extern unsigned char track_camera_coords[];
+extern unsigned char shapeinfos[];
+extern unsigned char trkObjectList[];
+extern unsigned char sceneshapes2[];
+extern unsigned char sceneshapes3[];
+extern int terraincenterpos[];
+extern int trackpos2[];
+extern int trackpos[];
+extern int terrainrows[];
+extern int terrainpos[];
+extern int trackrows[];
+extern int trackcenterpos2[];
+extern int trackcenterpos[];
+extern short hillHeightConsts[];
+extern short *obstacle_world_pos;
+extern int wallStartX;
+extern short *track_waypoint_next;
+extern int wallStartZ;
+extern short *track_waypoint_alt;
+extern bool track_object_render_enabled;
+extern char *track_waypoint_order;
+extern int wallindex;
+extern int elRdWallRelated;
+extern int startcol2;
+extern int hillFlag;
+extern int startrow2;
+extern char *track_elem_ordered;
+extern short *waypoint_world_pos;
+extern int elem_xCenter;
+extern int terrainHeight;
+extern int elem_zCenter;
+extern unsigned char *track_elem_map;
+extern char current_surf_type;
+extern char *track_element_height_ofs;
+extern unsigned char *track_terrain_map;
+extern char *track_cam_height_base;
+extern char *path_conn_flags;
+extern short track_angle;
+extern char *path_col;
+extern char *path_row;
+extern int wallHeight;
+extern short wallOrientation;
+extern short *obstacle_rot_z;
+extern short track_pieces_counter;
+extern unsigned char *tile_obstacle_map;
+extern unsigned char *obstacle_scene_index;
+extern short *wallptr;
+
 #endif /* TRACK_H */

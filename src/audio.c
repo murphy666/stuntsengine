@@ -34,6 +34,20 @@
 #include <SDL2/SDL.h>
 #include "opl2.h"
 
+char audiodriverstring[] = { 115, 98, 49, 53, 0 };
+char player_audio_state = 0;
+char opponent_audio_state = 0;
+int crash_sound_handle = 0;
+int audio_opponent_engine_handle = 0;
+int audio_engine_sound_handle = 0;
+void *songfileptr = 0;
+void *voicefileptr = 0;
+short audio_frame_index = 0;
+short *aero_table_player = 0;
+short *aero_table_opponent = 0;
+bool audio_replay_apply_state = false;
+char replay_audio_frame_buffer[1360] = { 0 };
+
 #define AUDIO_MAX_HANDLES             25
 #define AUDIO_INVALID_CHUNK           ((short)-1)
 #define AUDIO_FX_TICKS_PERSIST        255u
@@ -145,10 +159,9 @@ typedef struct AUDIO_SB_DSP_STATE {
 } AUDIO_SB_DSP_STATE;
 
 typedef struct AUDIO_VCE_INSTRUMENT {
+    unsigned short record_size;
     bool valid;
     bool has_fm; /* 1 = full OPL2 FM params valid (ADENG1.VCE) */
-    char name[5];
-    unsigned short record_size;
     /* Frequency mapping (rec[14/15]): Fnum = RPM / freq_div + freq_base * 16 */
     unsigned char freq_div;
     unsigned char freq_base;
@@ -159,21 +172,26 @@ typedef struct AUDIO_VCE_INSTRUMENT {
     /* OPL2 channel regs (rec[68..69]) — from AD15.DRV disassembly */
     unsigned char opl_con; /* connection: 0=FM, 1=AM (additive) */
     unsigned char opl_fb;  /* operator feedback: 0-7 */
-    /* Op0 (modulator) 12 fields at rec[70]: AR,DR,SL,RR,TL,KSL,MULT,KSR,EGT,VIB,AM,WS */
-    unsigned char op0[12];
-    /* Op1 (carrier)   12 fields at rec[82]: same layout */
-    unsigned char op1[12];
     /* Drum group flag: rec[5]==5 triggers per-note instrument remap (seg028) */
     unsigned char drum_flag;
     /* Legacy fields */
     unsigned char brightness;
+    char name[5];
+    /* Op0 (modulator) 12 fields at rec[70]: AR,DR,SL,RR,TL,KSL,MULT,KSR,EGT,VIB,AM,WS */
+    unsigned char op0[12];
+    /* Op1 (carrier)   12 fields at rec[82]: same layout */
+    unsigned char op1[12];
 } AUDIO_VCE_INSTRUMENT;
 
 typedef struct AUDIO_HANDLE_STUB {
-    bool allocated;
-    bool playing;
-    bool dirty;
-    bool pending_restart;
+    void *data_ptr;
+    void *song_res;
+    void *voice_res;
+    uint32_t phase_accum;
+    uint32_t skid_phase_accum; /* independent PRNG state for skid slot */
+    int opl2_channel;               /* -1 = not assigned, 0-8 = OPL2 channel */
+    int opl2_skid_channel;  /* OPL2 channel for tire squeal, -1 = none */
+    int opl2_crash_channel; /* OPL2 channel for crash SFX, -1 = none */
     short init_mode;
     short volume;
     short last_volume;
@@ -187,24 +205,24 @@ typedef struct AUDIO_HANDLE_STUB {
     short chunk_crash1;
     short chunk_crash2;
     unsigned short engine_active_ticks;
-    uint32_t phase_accum;
-    uint32_t skid_phase_accum; /* independent PRNG state for skid slot */
-    void *data_ptr;
-    void *song_res;
-    void *voice_res;
+    AUDIO_VCE_INSTRUMENT engi_inst; /* cached ENGI instrument from this handle's VCE */
+    AUDIO_VCE_INSTRUMENT skid_inst; /* tire squeal */
+    AUDIO_VCE_INSTRUMENT scra_inst; /* tire scrape */
+    AUDIO_VCE_INSTRUMENT cras_inst; /* crash boom */
+    AUDIO_VCE_INSTRUMENT blow_inst; /* blowout */
+    AUDIO_VCE_INSTRUMENT bump_inst; /* bump */
+    bool allocated;
+    bool playing;
+    bool dirty;
+    bool pending_restart;
     /* Frequency mapping from VCE instrument rec[14]/rec[15].
      * Fnum = rpm / freq_div + freq_base * 16  (default: div=6 for PCENG1 ENGI) */
     unsigned char freq_div;
     unsigned char freq_base;
     /* OPL2 FM synthesis state */
-    int opl2_channel;               /* -1 = not assigned, 0-8 = OPL2 channel */
     bool opl2_keyon;       /* current key-on state on this OPL2 channel */
     bool opl2_programmed;  /* 1 = FM registers written at least once */
     bool has_engi_inst;    /* 1 = engi_inst below is valid */
-    AUDIO_VCE_INSTRUMENT engi_inst; /* cached ENGI instrument from this handle's VCE */
-    /* OPL2 SFX channels for tire squeal and crash (driven by VCE instruments, not noise) */
-    int opl2_skid_channel;  /* OPL2 channel for tire squeal, -1 = none */
-    int opl2_crash_channel; /* OPL2 channel for crash SFX, -1 = none */
     bool opl2_skid_keyon;
     bool opl2_crash_keyon;
     bool has_skid_inst;    /* 1 = skid_inst valid (VCE "SKID") */
@@ -212,11 +230,6 @@ typedef struct AUDIO_HANDLE_STUB {
     bool has_cras_inst;    /* 1 = cras_inst valid (VCE "CRAS") */
     bool has_blow_inst;    /* 1 = blow_inst valid (VCE "BLOW") */
     bool has_bump_inst;    /* 1 = bump_inst valid (VCE "BUMP") */
-    AUDIO_VCE_INSTRUMENT skid_inst; /* tire squeal */
-    AUDIO_VCE_INSTRUMENT scra_inst; /* tire scrape */
-    AUDIO_VCE_INSTRUMENT cras_inst; /* crash boom */
-    AUDIO_VCE_INSTRUMENT blow_inst; /* blowout */
-    AUDIO_VCE_INSTRUMENT bump_inst; /* bump */
 } AUDIO_HANDLE_STUB;
 
 static AUDIO_HANDLE_STUB g_audio_handles[AUDIO_MAX_HANDLES];

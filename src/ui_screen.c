@@ -16,7 +16,6 @@
 #include "mouse.h"
 #include "timer.h"
 #include "shape2d.h"
-#include "data_game.h"
 #include "highscore.h"
 
 /* ------------------------------------------------------------------ */

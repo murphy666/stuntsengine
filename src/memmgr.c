@@ -28,6 +28,8 @@
 #include "stunts.h"
 #include "memmgr.h"
 
+char textresprefix = 0;
+
 typedef struct {
     char name[13];
     void *ptr;

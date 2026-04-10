@@ -21,12 +21,36 @@
  */
 
 #include "keyboard.h"
-#include "data_game.h"
 #include "framebuffer.h"
 #include "stunts.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
+
+unsigned short newjoyflags = 0;
+unsigned short mouse_oldbut = 0;
+unsigned short joyinputcode = 0;
+unsigned short mousebutinputcode = 0;
+unsigned const char g_ascii_props[]
+    = { 32,  32,  32,  32,  32, 32, 32, 32,  32,  40,  40,  40,  40,  40,  32,  32,  32,  32,
+        32,  32,  32,  32,  32, 32, 32, 32,  32,  32,  32,  32,  32,  32,  72,  16,  16,  16,
+        16,  16,  16,  16,  16, 16, 16, 16,  16,  16,  16,  16,  132, 132, 132, 132, 132, 132,
+        132, 132, 132, 132, 16, 16, 16, 16,  16,  16,  16,  129, 129, 129, 129, 129, 129, 1,
+        1,   1,   1,   1,   1,  1,  1,  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
+        1,   16,  16,  16,  16, 16, 16, 130, 130, 130, 130, 130, 130, 2,   2,   2,   2,   2,
+        2,   2,   2,   2,   2,  2,  2,  2,   2,   2,   2,   2,   2,   2,   2,   16,  16,  16,
+        16,  32,  0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0 };
+bool game_startup_flag = false;
+unsigned char kbinput[90] = { 0 };
+unsigned short kbjoyflags = 0;
+char mouse_button_press_state[2] = { 0, 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static void (*callbacks[64])(void) = { 0 };

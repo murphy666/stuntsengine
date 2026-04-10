@@ -50,19 +50,7 @@ void *file_read(const char *filename, void *dst, int fatal);
 void *file_read_fatal(const char *filename, void *dst);
 void *file_read_nofatal(const char *filename, void *dst);
 
-/* Global state — defined in src/data_runtime.c */
-
-#ifdef DATA_RUNTIME_IMPL
-#define _RT_
-#else
-#define _RT_ extern
-#endif
-
-_RT_ bool joystick_assigned_flags;
-_RT_ unsigned resource_alloc_state_a;
-_RT_ unsigned resource_alloc_state_b;
-
-#undef _RT_
+extern bool joystick_assigned_flags;
 
 extern bool is_audioloaded;
 extern bool g_is_busy;

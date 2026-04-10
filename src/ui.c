@@ -55,6 +55,8 @@
 #include "ui_keys.h"
 #include "ui_widgets.h"
 
+char *window_save_buf = 0;
+
 /* Variables moved from data_game.c */
 static void *sprite_ptrs[10] = { 0 };
 static unsigned short window_x_positions[10] = { 0 };

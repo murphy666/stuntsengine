@@ -47,6 +47,72 @@
 #include "keyboard.h"
 #include "font.h"
 
+struct RECTANGLE rect_invalid = { 9999, -1, 9999, -1 };
+int dialog_fnt_colour = 15;
+unsigned short camera_view_matrix = 5;
+unsigned short object_visibility_state = 14;
+unsigned short button_text_color = 15;
+unsigned short button_shadow_color = 8;
+unsigned short button_highlight_color = 7;
+int performGraphColor = 1;
+unsigned short dialogarg2 = 4;
+struct MATRIX mat_car_orientation = { 0 };
+int screen_display_toggle_flag = 0;
+char current_screen_buffer_selector = 0;
+struct SPRITE *mmouspriteptr = 0;
+int waitflag = 0;
+short sprite_row_offset_table = 0;
+struct SPRITE *smouspriteptr = 0;
+char screen_shake_intensity = 0;
+short angle_rotation_state[2] = { 0, 0 };
+void *opp_res = 0;
+struct RECTANGLE frame_dirty_rects[15] = { 0 };
+struct RECTANGLE terrain_rect = { 0, 0, 0, 0 };
+struct RECTANGLE world_object_rect = { 0, 0, 0, 0 };
+unsigned short skybox_grd_color = 0;
+unsigned char replay_fps_inverse_scale = 0;
+char idle_expired = 0;
+short video_flag1_is1 = 0;
+short camera_y_offset = 0;
+struct SPRITE *wndsprite = 0;
+unsigned short framespersec2 = 0;
+short meter_needle_color = 0;
+struct PLANE *current_planptr = 0;
+short video_flag2_is1 = 0;
+short current_rotation_angle_value = 0;
+struct VECTOR vec_movement_local = { 0 };
+struct VECTOR vec_planerotopresult = { 0 };
+short pState_minusRotate_z_2 = 0;
+short pState_minusRotate_x_2 = 0;
+short pState_minusRotate_y_2 = 0;
+short pState_f36Mminf40sar2 = 0;
+void *dasmshapeptr = 0;
+struct PLANE *planptr = 0;
+short video_flag3_isFFFF = -1;
+struct RECTANGLE rect_buffer_front[15] = { 0 };
+struct SPRITE *mouseunkspriteptr = 0;
+unsigned short sdgame2_widths[3] = { 0 };
+struct RECTANGLE rect_buffer_back[15] = { 0 };
+int height_above_replaybar = 0;
+#pragma pack(push, 1)
+char video_flag6_is1 = 0;
+#pragma pack(pop)
+int dashbmp_y = 0;
+void *sdgame2shapes[] = { 0, 0, 0, 0, 0 };
+bool replaybar_toggle = false;
+int dastbmp_y = 0;
+int roofbmpheight = 0;
+short video_flag4_is1 = 0;
+short sprite_transformation_angle = 0;
+char resID_byte1[2048] = { 0 };
+bool video_flag5_is0 = false;
+bool replaybar_enabled = false;
+char cameramode = 0;
+unsigned char timertestflag2 = 0;
+unsigned short rotation_x_angle = 210;
+unsigned short rotation_z_angle = 464;
+unsigned short rotation_y_angle = 80;
+
 enum { RENDER_DIRTY_RECT_CAPACITY = 45 };
 
 /* Variables moved from data_game.c */
@@ -55,6 +121,12 @@ static void *sdgame2ptr = 0;
 static short skybox_wat_color = 0;
 static void *skyboxes[] = { 0, 0, 0, 0 };
 static char texture_page_index = 0;
+struct TRANSFORMEDSHAPE3D *curtransshape_ptr = 0;
+short transformedshape_zarray[29] = { 0 };
+unsigned char transformedshape_arg2array[30] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+char transformedshape_counter = 0;
+short transformedshape_indices[29] = { 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static short angular_velocity_state = 0;

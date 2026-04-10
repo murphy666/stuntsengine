@@ -25,6 +25,12 @@
 
 struct RECTANGLE;
 
+extern char *highscore_data;
+extern unsigned short highscore_primary_index[];
+extern char gnam_string[];
+extern char gsna_string[];
+extern char player_name_buffer[];
+
 unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultFlag);
 unsigned short highscore_write_b(void);
 unsigned short end_hiscore(void);

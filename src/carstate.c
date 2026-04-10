@@ -32,6 +32,10 @@ static unsigned char breakable_obstacle_collision_box[8] = { 5, 0, 40, 0, 5, 0, 
 static unsigned char finish_pole_collision_box[8] = { 6, 0, 121, 0, 6, 0, 9, 0 };
 static unsigned char roadside_pole_collision_box[8] = { 1, 0, 10, 0, 1, 0, 10, 0 };
 static char sprite_boundary_marker = (char)255;
+static unsigned char wheel_rating_coefficients[8] = { 21, 0, 21, 0, 15, 0, 15, 0 };
+static unsigned short grassDecelDivTab[] = { 255, 256, 192, 128, 64 };
+static short position_rotation_matrix[] = { 1, 0, 0, 1 };
+static short camera_position_vector[] = { 0, 0, 1, 1 };
 
 
 enum {
@@ -3364,9 +3368,9 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
             vec_1C6.y = (short)playerSimd->collide_points[0].py << 6;
             mat_mul_vector(&vec_1C6, wallAlignMatrix, &vec_FC);
 
-            vec_1C6.x = (short)(vec_FC.x + pState_lvec1_x) >> 6;
-            vec_1C6.y = (short)(vec_FC.y + pState_lvec1_y) >> 6;
-            vec_1C6.z = (short)(vec_FC.z + pState_lvec1_z) >> 6;
+            vec_1C6.x = (vec_FC.x + pState_lvec1_x) >> 6;
+            vec_1C6.y = (vec_FC.y + pState_lvec1_y) >> 6;
+            vec_1C6.z = (vec_FC.z + pState_lvec1_z) >> 6;
 
             vec_17C = vec_1C6;
             build_track_object(&vec_1C6, &playerState->car_whlWorldCrds2[wheelIndex]);

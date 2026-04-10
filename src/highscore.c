@@ -91,6 +91,30 @@ highscore_set_entry_score(unsigned char *entry, unsigned short score) {
     *(unsigned short *)(entry + HIGHSCORE_ENTRY_SCORE_OFFSET) = score;
 }
 
+static void
+highscore_copy_text_field(unsigned char *dest, size_t capacity, const char *src) {
+    size_t copy_len;
+
+    if (capacity == 0) {
+        return;
+    }
+
+    if (src == NULL) {
+        dest[0] = '\0';
+        return;
+    }
+
+    copy_len = strnlen(src, capacity - 1);
+    memcpy(dest, src, copy_len);
+    dest[copy_len] = '\0';
+}
+
+char *highscore_data = 0;
+unsigned short highscore_primary_index[HIGHSCORE_ENTRY_COUNT] = { 0, 1, 2, 3, 4, 5, 6 };
+char gnam_string[40] = { 0 };
+char gsna_string[5] = { 0 };
+char player_name_buffer[3] = { 0, 0, 0 };
+
 /* Variables moved from data_game.c */
 static unsigned short highscore_secondary_indices[HIGHSCORE_SECONDARY_INDEX_COUNT] = { 0, 0, 0,
                                                                                        0, 0, 0 };
@@ -317,16 +341,16 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultF
             entry[i] = 0;
         }
     }
-    (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET), HIGHSCORE_ENTRY_DETAIL_CAPACITY, "%s",
-             gnam_string);
+    highscore_copy_text_field(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET, HIGHSCORE_ENTRY_DETAIL_CAPACITY,
+                              gnam_string);
     entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = raceResultFlag;
 
     if (gameconfig.game_opponenttype != 0) {
-        (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET),
-                 HIGHSCORE_ENTRY_OPPONENT_PREFIX_CAPACITY, "%s", player_name_buffer);
+        highscore_copy_text_field(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET,
+                                  HIGHSCORE_ENTRY_OPPONENT_PREFIX_CAPACITY, player_name_buffer);
         entry[HIGHSCORE_ENTRY_OPPONENT_SEPARATOR_OFFSET] = '/';
-        (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET),
-                 HIGHSCORE_ENTRY_OPPONENT_SUFFIX_CAPACITY, "%s", gsna_string);
+        highscore_copy_text_field(entry + HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET,
+                                  HIGHSCORE_ENTRY_OPPONENT_SUFFIX_CAPACITY, gsna_string);
     }
     else {
         memcpy(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET, " ", 2);

@@ -44,6 +44,66 @@
 #include "ui_widgets.h"
 #include "framebuffer.h"
 
+short *carresptr = 0;
+struct GAMESTATE state = { 0 };
+unsigned short replay_frame_counter = 0;
+int run_game_random = 0;
+unsigned char game_pause_counter = 0;
+bool dashb_toggle = false;
+char replay_mode_state_flag = 0;
+long gState_travDist = 0;
+unsigned short gState_frame = 0;
+short gState_total_finish_time = 0;
+short gState_144 = 0;
+short gState_pEndFrame = 0;
+short gState_penalty = 0;
+short gState_impactSpeed = 0;
+short gState_topSpeed = 0;
+short gState_jumpCount = 0;
+bool timertestflag_copy = false;
+short inverse_fps_hundredths = 0;
+char show_penalty_counter = 0;
+void *gameresptr = 0;
+struct GAMEINFO gameconfig = { 0 };
+unsigned short framespersec = 0;
+unsigned char game_finish_state = 0;
+bool replay_autoplay_active = false;
+int menu_selection_buffer = 0;
+short timer_tick_counter = 0;
+unsigned short timertestflag = 0;
+unsigned int idle_counter = 0;
+void *mainresptr = 0;
+unsigned char opponent_speed_table[16] = { 0 };
+char g_path_buf[GAME_PATH_BUF_SIZE] = { 0 };
+short planindex = 0;
+short planindex_copy = 0;
+char race_condition_state_flag = 0;
+bool is_in_replay = false;
+unsigned char replay_capture_frame_skip_counter = 0;
+char *replay_buffer = 0;
+char is_in_replay_copy = 0;
+struct GAMESTATE *cvxptr = 0;
+unsigned short elapsed_time1 = 0;
+unsigned short game_timer_milliseconds = 0;
+void *sdgameresptr = 0;
+unsigned short distance_accumulator_counter = 0;
+bool lap_completion_trigger_flag = false;
+unsigned char game_replay_mode = 0;
+bool passed_security = false;
+struct SIMD simd_player = { 0 };
+char *replay_header = 0;
+unsigned char game_exit_request_flag = 0;
+short penalty_time = 0;
+bool followOpponentFlag = false;
+void *steerWhlRespTable_ptr = 0;
+bool checkpoint_lap_trigger = false;
+unsigned char game_mode_state_register = 0;
+char aMain[] = "main";
+unsigned char aDesert[] = "desert";
+unsigned char aAlpine[] = "alpine";
+unsigned char aCity[] = "city";
+unsigned char aCountry[] = "country";
+
 /* Variables moved from data_game.c */
 static void (*exitlistfuncs[11])(void) = { 0 };
 static bool dashb_toggle_copy = false;

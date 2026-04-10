@@ -23,6 +23,18 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#include "game_types.h"
+
+extern unsigned short newjoyflags;
+extern unsigned short mouse_oldbut;
+extern unsigned short joyinputcode;
+extern unsigned short mousebutinputcode;
+extern unsigned const char g_ascii_props[];
+extern bool game_startup_flag;
+extern unsigned char kbinput[];
+extern unsigned short kbjoyflags;
+extern char mouse_button_press_state[];
+
 void kb_init_interrupt(void);
 void kb_exit_handler(void);
 void kb_int16_handler(unsigned bp, unsigned di, unsigned si, unsigned ds, unsigned es, unsigned dx,

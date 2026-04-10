@@ -51,6 +51,7 @@ static struct RECTANGLE sky_starfield_rect
 
 /* file-local data (moved from data_global.c) */
 static unsigned short off_3BE44[8] = { 31340, 31318, 31296, 31340, 31318, 31296, 31340, 31318 };
+static unsigned short animation_duration_table[8] = { 30, 200, 320, 400, 530, 700, 880, 960 };
 static char tile_scan_pattern_octant_7[135] = {
     -1, -8, 2, 0,   -8, 2, 1,   -8, 2,                       /* dist=8 (3 tiles) */
     -2, -7, 2, -1, -7, 2, 0,   -7, 2, 1, -7, 2, 2, -7, 2, /* dist=7 (5 tiles) */
