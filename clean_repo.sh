@@ -25,16 +25,16 @@ for dir in build build_cmake build_cmake_release build_cmake_asan build_cmake_wi
     fi
 done
 
-# ── 2. Downloaded SDL2 Windows dev package ────────────────────────────────────
+# ── 2. Downloaded SDL3 Windows dev package ────────────────────────────────────
 # CMake re-downloads it automatically on the next Windows cross-compile if the
-# sentinel file (x86_64-w64-mingw32/lib/cmake/SDL2/sdl2-config.cmake) is gone.
-SDL2_WIN_DIR="library/sdl2-windows"
-if compgen -G "${SDL2_WIN_DIR}/SDL2-*" > /dev/null 2>&1; then
-    echo "--> Removing ${SDL2_WIN_DIR}/SDL2-*/"
-    rm -rf "${SDL2_WIN_DIR}"/SDL2-*/
+# extracted config tree under library/sdl3-windows/ is gone.
+SDL3_WIN_DIR="library/sdl3-windows"
+if compgen -G "${SDL3_WIN_DIR}/SDL3-*" > /dev/null 2>&1; then
+    echo "--> Removing ${SDL3_WIN_DIR}/SDL3-*/"
+    rm -rf "${SDL3_WIN_DIR}"/SDL3-*/
 fi
 # Remove any leftover tarball too
-rm -f "${SDL2_WIN_DIR}"/SDL2-devel-*.tar.gz 2>/dev/null || true
+rm -f "${SDL3_WIN_DIR}"/SDL3-devel-*.tar.gz 2>/dev/null || true
 
 # ── 2. FetchContent / CMake cache leftovers in any other build dirs ───────────
 find . -maxdepth 2 -name "CMakeCache.txt" \

@@ -21,7 +21,7 @@
  */
 
 /**
- * video.c - SDL2 video mode and palette functions
+ * video.c - SDL3 video mode and palette functions
  */
 
 #include <stdarg.h>
@@ -42,7 +42,7 @@ static unsigned char input_queue_buffer = 0;
 typedef void (*voidfunctype)(void);
 
 /* CRITICAL: All SDL state MUST come before sdl_framebuffer to prevent overflow corruption */
-static SDL2Context sdl_ctx;
+static SDLContext sdl_ctx;
 static Framebuffer sdl_fb;
 static void *sdl_ctx_saved_window = NULL;
 static void *sdl_ctx_saved_renderer = NULL;
@@ -93,7 +93,7 @@ video_scale_up(void) {
     if (sdl_scale >= 3)
         return;
     sdl_scale++;
-    fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+    fb_sdl_set_scale(&sdl_ctx, sdl_scale);
     if (video_scale_changed_cb)
         video_scale_changed_cb();
 }
@@ -108,7 +108,7 @@ video_scale_down(void) {
     if (sdl_scale <= 1)
         return;
     sdl_scale--;
-    fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+    fb_sdl_set_scale(&sdl_ctx, sdl_scale);
     if (video_scale_changed_cb)
         video_scale_changed_cb();
 }
@@ -130,7 +130,7 @@ video_set_scale(int scale) {
         scale = 3;
     sdl_scale = scale;
     if (sdl_active && !sdl_fullscreen) {
-        fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
+        fb_sdl_set_scale(&sdl_ctx, sdl_scale);
     }
 }
 
@@ -140,7 +140,7 @@ void
 video_toggle_fullscreen(void) {
 
     sdl_fullscreen = !sdl_fullscreen;
-    fb_sdl2_toggle_fullscreen(&sdl_ctx);
+    fb_sdl_toggle_fullscreen(&sdl_ctx);
 }
 
 /** @brief Try to initialize SDL video and the main rendering surface.
@@ -169,7 +169,7 @@ video_try_init_sdl(void) {
     if (sdl_scale < 1 || sdl_scale > 3)
         sdl_scale = 3;
 
-    if (fb_sdl2_init(&sdl_ctx, "stuntsengine", sdl_scale) == 0) {
+    if (fb_sdl_init(&sdl_ctx, "stuntsengine", sdl_scale) == 0) {
         sdl_ctx_saved_window = sdl_ctx.window;
         sdl_ctx_saved_renderer = sdl_ctx.renderer;
         sdl_ctx_saved_texture = sdl_ctx.texture;
@@ -221,7 +221,7 @@ video_present_frame(void) {
     video_wait_refresh_slot(&next_present_counter, &present_accum);
 
     memcpy(sdl_fb.pixels, sdl_framebuffer, (size_t)FB_PIXELS);
-    fb_sdl2_present(&sdl_ctx, &sdl_fb);
+    fb_sdl_present(&sdl_ctx, &sdl_fb);
 }
 
 /** @brief Video refresh.
@@ -332,7 +332,7 @@ video_on_exit(void) {
         return;
     }
 
-    fb_sdl2_shutdown(&sdl_ctx);
+    fb_sdl_shutdown(&sdl_ctx);
     sdl_active = false;
     video_exit_handler_registered = false;
 }

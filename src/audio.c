@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include "opl2.h"
 
 char audiodriverstring[] = { 115, 98, 49, 53, 0 };
@@ -257,6 +257,8 @@ static unsigned int g_audio_dma_ring_write = 0;
 static unsigned int g_audio_dma_ring_read = 0;
 static unsigned int g_audio_phase_accum = 0;
 static SDL_AudioDeviceID g_audio_sdl_dev = 0;
+static SDL_AudioStream *g_audio_sdl_stream = 0;
+static SDL_Mutex *g_audio_sdl_mutex = 0;
 /* Per-channel OPL2 ownership: g_opl2_ch_owner[ch] = handle_id, or -1 if free */
 static int g_opl2_ch_owner[9] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 /* Shared render buffer for OPL2 engine samples (all channels mixed by the chip) */
@@ -1571,8 +1573,8 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
 
 static void
 audio_sdl_lock(void) {
-    if (g_audio_sdl_dev != 0) {
-        SDL_LockAudioDevice(g_audio_sdl_dev);
+    if (g_audio_sdl_mutex != 0) {
+        SDL_LockMutex(g_audio_sdl_mutex);
     }
 }
 
@@ -1584,8 +1586,8 @@ audio_sdl_lock(void) {
 
 static void
 audio_sdl_unlock(void) {
-    if (g_audio_sdl_dev != 0) {
-        SDL_UnlockAudioDevice(g_audio_sdl_dev);
+    if (g_audio_sdl_mutex != 0) {
+        SDL_UnlockMutex(g_audio_sdl_mutex);
     }
 }
 
@@ -1601,44 +1603,54 @@ audio_sdl_unlock(void) {
 static int
 audio_sdl_open_device(void) {
     SDL_AudioSpec desired;
-    SDL_AudioSpec obtained;
     const char *driver_name;
 
-    if (g_audio_sdl_dev != 0) {
+    if (g_audio_sdl_stream != 0) {
         return 1;
     }
 
     if (!(SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO)) {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+        if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+            return 0;
+        }
+    }
+
+    if (g_audio_sdl_mutex == 0) {
+        g_audio_sdl_mutex = SDL_CreateMutex();
+        if (g_audio_sdl_mutex == 0) {
             return 0;
         }
     }
 
     SDL_zero(desired);
-    SDL_zero(obtained);
-    desired.freq = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
-    desired.format = AUDIO_S16SYS;
+    desired.freq = (int)AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
+    desired.format = SDL_AUDIO_S16;
     desired.channels = 2;
-    desired.samples = AUDIO_SDL_BUFFER_SAMPLES;
-    desired.callback = 0;
-    desired.userdata = 0;
 
-    g_audio_sdl_dev = SDL_OpenAudioDevice(0, 0, &desired, &obtained, 0);
+    g_audio_sdl_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desired, 0,
+                                                   0);
+    if (g_audio_sdl_stream == 0) {
+        return 0;
+    }
+
+    g_audio_sdl_dev = SDL_GetAudioStreamDevice(g_audio_sdl_stream);
     if (g_audio_sdl_dev == 0) {
+        SDL_DestroyAudioStream(g_audio_sdl_stream);
+        g_audio_sdl_stream = 0;
         return 0;
     }
 
     driver_name = SDL_GetCurrentAudioDriver();
     (void)driver_name;
 
-    if (obtained.freq > 0) {
-        g_audio_output_rate_hz = (unsigned int)obtained.freq;
-    }
-    else {
-        g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
+    g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
+    if (!SDL_ResumeAudioStreamDevice(g_audio_sdl_stream)) {
+        SDL_DestroyAudioStream(g_audio_sdl_stream);
+        g_audio_sdl_stream = 0;
+        g_audio_sdl_dev = 0;
+        return 0;
     }
 
-    SDL_PauseAudioDevice(g_audio_sdl_dev, 0);
     return 1;
 }
 
@@ -1648,9 +1660,16 @@ audio_sdl_open_device(void) {
 
 static void
 audio_sdl_close_device(void) {
+    if (g_audio_sdl_stream != 0) {
+        SDL_DestroyAudioStream(g_audio_sdl_stream);
+        g_audio_sdl_stream = 0;
+    }
     if (g_audio_sdl_dev != 0) {
-        SDL_CloseAudioDevice(g_audio_sdl_dev);
         g_audio_sdl_dev = 0;
+    }
+    if (g_audio_sdl_mutex != 0) {
+        SDL_DestroyMutex(g_audio_sdl_mutex);
+        g_audio_sdl_mutex = 0;
     }
     g_audio_output_rate_hz = AUDIO_SDL_DEFAULT_OUTPUT_RATE_HZ;
 }
@@ -1764,14 +1783,19 @@ audio_sdl_queue_from_ring(void) {
     int16_t interleaved[AUDIO_OPL2_SAMPLE_BUF_SAMPLES * 2];
     int frame_count;
     int frame_budget;
+    int queued_audio;
     Uint32 queued_bytes;
     Uint32 target_bytes;
 
-    if (g_audio_sdl_dev == 0) {
+    if (g_audio_sdl_stream == 0) {
         return;
     }
 
-    queued_bytes = SDL_GetQueuedAudioSize(g_audio_sdl_dev);
+    queued_audio = SDL_GetAudioStreamQueued(g_audio_sdl_stream);
+    if (queued_audio < 0) {
+        return;
+    }
+    queued_bytes = (Uint32)queued_audio;
     if (queued_bytes > (Uint32)(g_audio_output_rate_hz * AUDIO_SDL_STEREO_FRAME_BYTES)) {
         return;
     }
@@ -1804,8 +1828,8 @@ audio_sdl_queue_from_ring(void) {
     }
 
     if (frame_count > 0) {
-        SDL_QueueAudio(g_audio_sdl_dev, interleaved,
-                       (Uint32)(frame_count * 2 * (int)sizeof(int16_t)));
+        (void)SDL_PutAudioStreamData(g_audio_sdl_stream, interleaved,
+                                     frame_count * 2 * (int)sizeof(int16_t));
     }
 }
 

@@ -514,6 +514,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 
 #include "stunts.h"
 #include "math.h"
+#include "track.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1928,7 +1929,6 @@ short
 track_waypoint_lookup(short path_index, struct VECTOR *waypoint_out, short lane_index,
                       short *opponent_speed_out) {
 
-    extern unsigned char trkObjectList[];
     unsigned char tileElem;
     unsigned char td18subTOI;
     unsigned char td18connStatus;
@@ -2406,7 +2406,6 @@ audio_sync_car_audio(void) {
 
 short
 detect_penalty(short *waypointIdxPtr, short *penaltyOutPtr) {
-    extern unsigned char trkObjectList[];
     char visited[904];
     short pathStack[132];
     short penaltyStack[132];

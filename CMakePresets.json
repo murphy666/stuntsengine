@@ -36,7 +36,7 @@
     {
       "name": "windows-x64",
       "displayName": "Windows x64 (MinGW cross-compile)",
-      "description": "Cross-compile for Windows 64-bit using MinGW-w64 on Linux. SDL2 is auto-downloaded to library/sdl2-windows/ during configure.",
+      "description": "Cross-compile for Windows 64-bit using MinGW-w64 on Linux. SDL3 is auto-downloaded to library/sdl3-windows/ during configure.",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build_cmake_windows",
       "toolchainFile": "${sourceDir}/cmake/toolchain-mingw-w64-x86_64.cmake",

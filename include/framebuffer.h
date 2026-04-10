@@ -39,12 +39,12 @@ struct SDL_Window;
 struct SDL_Renderer;
 struct SDL_Texture;
 
-typedef struct SDL2Context {
+typedef struct SDLContext {
     struct SDL_Window *window;
     struct SDL_Renderer *renderer;
     struct SDL_Texture *texture;
     uint32_t rgba[FB_PIXELS];
-} SDL2Context;
+} SDLContext;
 
 void fb_init(Framebuffer *fb);
 void fb_clear(Framebuffer *fb, uint8_t color_index);
@@ -56,11 +56,11 @@ void fb_set_palette_entry(Framebuffer *fb, uint8_t index, uint8_t r6, uint8_t g6
 uint32_t fb_palette_index_to_rgba(const Framebuffer *fb, uint8_t index);
 void fb_to_rgba(const Framebuffer *fb, uint32_t *out_rgba, size_t out_len);
 
-int fb_sdl2_init(SDL2Context *ctx, const char *title, int window_scale);
-void fb_sdl2_present(SDL2Context *ctx, const Framebuffer *fb);
-void fb_sdl2_shutdown(SDL2Context *ctx);
-void fb_sdl2_set_scale(SDL2Context *ctx, int scale);
-void fb_sdl2_toggle_fullscreen(SDL2Context *ctx);
+int fb_sdl_init(SDLContext *ctx, const char *title, int window_scale);
+void fb_sdl_present(SDLContext *ctx, const Framebuffer *fb);
+void fb_sdl_shutdown(SDLContext *ctx);
+void fb_sdl_set_scale(SDLContext *ctx, int scale);
+void fb_sdl_toggle_fullscreen(SDLContext *ctx);
 
 /* Video window controls (defined in video.c) */
 void video_scale_up(void);

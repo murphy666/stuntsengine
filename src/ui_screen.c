@@ -1,5 +1,5 @@
 /*
- * ui_screen.c - SDL2-style event-driven screen manager for Stunts UI
+ * ui_screen.c - SDL3-style event-driven screen manager for Stunts UI
  *
  * Provides a screen stack with event dispatch, replacing per-menu
  * while(1) loops.  Each screen gets UIEvents and renders one frame;

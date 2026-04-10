@@ -22,81 +22,78 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
 
 # ---------------------------------------------------------------------------
-# SDL2
+# SDL3
 #
-# On Linux:  found via pkg-config / system headers automatically.
-# On Windows (cross-compile): auto-downloaded to library/sdl2-windows/.
-#   Override with -DSDL2_DIR=<path> if you have a custom installation.
+# On Linux:  found via CMake config or pkg-config / system headers.
+# On Windows (cross-compile): auto-downloaded to library/sdl3-windows/.
+#   Override with -DSDL3_DIR=<path> if you have a custom installation.
 # ---------------------------------------------------------------------------
 
-# Auto-download SDL2 MinGW development archive for Windows cross-builds
+# Auto-download SDL3 MinGW development archive for Windows cross-builds.
 if(WIN32)
-    set(_SDL2_VERSION  "2.32.2")
-    set(_SDL2_ARCHIVE  "SDL2-devel-${_SDL2_VERSION}-mingw.tar.gz")
-    set(_SDL2_URL      "https://github.com/libsdl-org/SDL/releases/download/release-${_SDL2_VERSION}/${_SDL2_ARCHIVE}")
-    set(_SDL2_LOCAL    "${CMAKE_CURRENT_SOURCE_DIR}/library/sdl2-windows")
-    set(_SDL2_SENTINEL "${_SDL2_LOCAL}/SDL2-${_SDL2_VERSION}/x86_64-w64-mingw32/lib/cmake/SDL2/sdl2-config.cmake")
+    set(_SDL3_VERSION "3.4.4")
+    set(_SDL3_ARCHIVE "SDL3-devel-${_SDL3_VERSION}-mingw.tar.gz")
+    set(_SDL3_URL "https://github.com/libsdl-org/SDL/releases/download/release-${_SDL3_VERSION}/${_SDL3_ARCHIVE}")
+    set(_SDL3_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/library/sdl3-windows")
 
-    if(NOT EXISTS "${_SDL2_SENTINEL}")
-        message(STATUS "Downloading SDL2 ${_SDL2_VERSION} MinGW development archive ...")
-        file(MAKE_DIRECTORY "${_SDL2_LOCAL}")
-        set(_SDL2_TARBALL "${_SDL2_LOCAL}/${_SDL2_ARCHIVE}")
-        file(DOWNLOAD "${_SDL2_URL}" "${_SDL2_TARBALL}"
-            STATUS _sdl2_dl_status
+    file(GLOB _SDL3_CONFIGS
+        "${_SDL3_LOCAL}/*/x86_64-w64-mingw32/lib/cmake/SDL3/SDL3Config.cmake")
+
+    if(NOT _SDL3_CONFIGS)
+        message(STATUS "Downloading SDL3 ${_SDL3_VERSION} MinGW development archive ...")
+        file(MAKE_DIRECTORY "${_SDL3_LOCAL}")
+        set(_SDL3_TARBALL "${_SDL3_LOCAL}/${_SDL3_ARCHIVE}")
+        file(DOWNLOAD "${_SDL3_URL}" "${_SDL3_TARBALL}"
+            STATUS _sdl3_dl_status
             SHOW_PROGRESS)
-        list(GET _sdl2_dl_status 0 _sdl2_dl_code)
-        if(NOT _sdl2_dl_code EQUAL 0)
-            list(GET _sdl2_dl_status 1 _sdl2_dl_msg)
+        list(GET _sdl3_dl_status 0 _sdl3_dl_code)
+        if(NOT _sdl3_dl_code EQUAL 0)
+            list(GET _sdl3_dl_status 1 _sdl3_dl_msg)
             message(FATAL_ERROR
-                "Failed to download SDL2: ${_sdl2_dl_msg}\n"
-                "URL: ${_SDL2_URL}\n"
-                "Download it manually and extract to ${_SDL2_LOCAL}/")
+                "Failed to download SDL3: ${_sdl3_dl_msg}\n"
+                "URL: ${_SDL3_URL}\n"
+                "Download it manually and extract to ${_SDL3_LOCAL}/")
         endif()
-        message(STATUS "Extracting ${_SDL2_ARCHIVE} ...")
+        message(STATUS "Extracting ${_SDL3_ARCHIVE} ...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E tar xzf "${_SDL2_TARBALL}"
-            WORKING_DIRECTORY "${_SDL2_LOCAL}"
-            RESULT_VARIABLE _sdl2_tar_result)
-        if(NOT _sdl2_tar_result EQUAL 0)
-            message(FATAL_ERROR "Failed to extract ${_SDL2_ARCHIVE}")
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${_SDL3_TARBALL}"
+            WORKING_DIRECTORY "${_SDL3_LOCAL}"
+            RESULT_VARIABLE _sdl3_tar_result)
+        if(NOT _sdl3_tar_result EQUAL 0)
+            message(FATAL_ERROR "Failed to extract ${_SDL3_ARCHIVE}")
         endif()
-        file(REMOVE "${_SDL2_TARBALL}")
+        file(REMOVE "${_SDL3_TARBALL}")
+        file(GLOB _SDL3_CONFIGS
+            "${_SDL3_LOCAL}/*/x86_64-w64-mingw32/lib/cmake/SDL3/SDL3Config.cmake")
     endif()
 
-    set(SDL2_DIR "${_SDL2_LOCAL}/SDL2-${_SDL2_VERSION}/x86_64-w64-mingw32/lib/cmake/SDL2"
-        CACHE PATH "SDL2 cmake config directory" FORCE)
-    unset(_SDL2_VERSION)
-    unset(_SDL2_ARCHIVE)
-    unset(_SDL2_URL)
-    unset(_SDL2_LOCAL)
-    unset(_SDL2_SENTINEL)
-endif()
-
-find_package(SDL2 REQUIRED)
-
-# Normalise: older FindSDL2.cmake exports SDL2_INCLUDE_DIRS / SDL2_LIBRARIES;
-# vcpkg and the official SDL2 package export SDL2::SDL2.
-if(NOT TARGET SDL2::SDL2)
-    add_library(SDL2::SDL2 INTERFACE IMPORTED)
-    set_target_properties(SDL2::SDL2 PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${SDL2_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES      "${SDL2_LIBRARIES}")
-endif()
-
-# The official SDL2 MinGW cmake config sets INTERFACE_INCLUDE_DIRECTORIES to
-# "<arch>/include/SDL2" — one level too deep for #include <SDL2/SDL.h>.
-# We add the parent dir ("<arch>/include") so both forms work.
-if(WIN32 AND TARGET SDL2::SDL2)
-    get_target_property(_sdl2_raw_inc SDL2::SDL2 INTERFACE_INCLUDE_DIRECTORIES)
-    if(_sdl2_raw_inc)
-        get_filename_component(_sdl2_inc_parent "${_sdl2_raw_inc}" DIRECTORY)
-        if(IS_DIRECTORY "${_sdl2_inc_parent}")
-            set_property(TARGET SDL2::SDL2 APPEND PROPERTY
-                INTERFACE_INCLUDE_DIRECTORIES "${_sdl2_inc_parent}")
-        endif()
+    list(LENGTH _SDL3_CONFIGS _SDL3_CONFIG_COUNT)
+    if(_SDL3_CONFIG_COUNT EQUAL 0)
+        message(FATAL_ERROR "SDL3Config.cmake not found after extraction in ${_SDL3_LOCAL}")
     endif()
-    unset(_sdl2_raw_inc)
-    unset(_sdl2_inc_parent)
+    list(GET _SDL3_CONFIGS 0 _SDL3_CONFIG)
+    get_filename_component(_SDL3_CONFIG_DIR "${_SDL3_CONFIG}" DIRECTORY)
+
+    set(SDL3_DIR "${_SDL3_CONFIG_DIR}"
+        CACHE PATH "SDL3 cmake config directory" FORCE)
+    unset(_SDL3_VERSION)
+    unset(_SDL3_ARCHIVE)
+    unset(_SDL3_URL)
+    unset(_SDL3_LOCAL)
+    unset(_SDL3_CONFIGS)
+    unset(_SDL3_CONFIG_COUNT)
+    unset(_SDL3_CONFIG)
+    unset(_SDL3_CONFIG_DIR)
+endif()
+
+find_package(SDL3 QUIET CONFIG)
+
+if(TARGET SDL3::SDL3)
+    set(STUNTS_SDL_TARGET SDL3::SDL3)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+    set(STUNTS_SDL_TARGET PkgConfig::SDL3)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -192,16 +189,14 @@ add_executable(stunts ${ALL_SRC} $<TARGET_OBJECTS:fmopl_obj>)
 target_include_directories(stunts PRIVATE src include library/adplug/src)
 target_compile_options(stunts PRIVATE
     ${STUNTS_WARN_FLAGS})
-target_link_libraries(stunts PRIVATE SDL2::SDL2)
+target_link_libraries(stunts PRIVATE ${STUNTS_SDL_TARGET})
 
 # Math library — not needed on Windows (MSVC CRT), required on Linux/MinGW
 if(NOT MSVC)
     target_link_libraries(stunts PRIVATE m)
 endif()
 
-# Windows: tell SDL not to hijack main(); we provide our own console entry point.
-# SDL2main.a would provide WinMain→SDL_main bridging which we don't need for a
-# console app. Instead use SDL_MAIN_HANDLED + -mconsole linker flag.
+# Windows: keep the console entry point and bypass SDL's optional main wrapper.
 if(WIN32)
     target_compile_definitions(stunts PRIVATE SDL_MAIN_HANDLED)
     target_link_options(stunts PRIVATE -mconsole)
@@ -231,23 +226,23 @@ else()
     message(STATUS "Game resources folder not found — skipping copy")
 endif()
 
-# On Windows cross-build: copy SDL2.dll next to the executable so it can run.
+# On Windows cross-build: copy SDL3.dll next to the executable so it can run.
 if(WIN32)
-    # Derive the SDL2 arch root from SDL2_DIR:
-    # SDL2_DIR = .../x86_64-w64-mingw32/lib/cmake/SDL2  (go up 3 levels)
-    get_filename_component(_sdl2_cmake_dir "${SDL2_DIR}" ABSOLUTE)
-    get_filename_component(_sdl2_lib_cmake "${_sdl2_cmake_dir}"   DIRECTORY)
-    get_filename_component(_sdl2_lib       "${_sdl2_lib_cmake}"   DIRECTORY)
-    get_filename_component(_sdl2_arch_root "${_sdl2_lib}"         DIRECTORY)
-    set(_sdl2_dll "${_sdl2_arch_root}/bin/SDL2.dll")
-    if(EXISTS "${_sdl2_dll}")
+    # Derive the SDL3 arch root from SDL3_DIR:
+    # SDL3_DIR = .../x86_64-w64-mingw32/lib/cmake/SDL3  (go up 3 levels)
+    get_filename_component(_sdl3_cmake_dir "${SDL3_DIR}" ABSOLUTE)
+    get_filename_component(_sdl3_lib_cmake "${_sdl3_cmake_dir}"   DIRECTORY)
+    get_filename_component(_sdl3_lib       "${_sdl3_lib_cmake}"   DIRECTORY)
+    get_filename_component(_sdl3_arch_root "${_sdl3_lib}"         DIRECTORY)
+    set(_sdl3_dll "${_sdl3_arch_root}/bin/SDL3.dll")
+    if(EXISTS "${_sdl3_dll}")
         add_custom_command(TARGET stunts POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${_sdl2_dll}"
+                "${_sdl3_dll}"
                 "$<TARGET_FILE_DIR:stunts>"
-            COMMENT "Copying SDL2.dll")
+            COMMENT "Copying SDL3.dll")
     else()
-        message(WARNING "SDL2.dll not found at ${_sdl2_dll} — copy it manually next to stunts.exe")
+        message(WARNING "SDL3.dll not found at ${_sdl3_dll} — copy it manually next to stunts.exe")
     endif()
 
     # Copy MinGW runtime DLLs required by the produced executable when running

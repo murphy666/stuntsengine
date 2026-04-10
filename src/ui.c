@@ -1897,9 +1897,6 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
 /*--------------------------------------------------------------*/
 unsigned short
 do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *textresptr) {
-    /* Forward declaration for DOS-style file path parsing function from fileio.c */
-    extern void parse_filepath_separators_dosptr(const char *src_path, void *dst_path_buffer);
-
     /* Local variables matching assembly - 1820 (1820) bytes stack */
     unsigned short separator_y;         /* Temp calculation */
     unsigned short filename_text_width; /* Text width temp */

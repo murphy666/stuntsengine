@@ -1278,7 +1278,7 @@ check_input(void) {
         short flags;
         /* Pump SDL events so kbinput key-release events are processed.
 		 * Without this, kbinput[ENTER] stays 1 forever when the first
-		 * branch is taken and SDL_KEYUP is never seen. */
+		 * branch is taken and the key-up event is never seen. */
         kb_poll_sdl_input();
         flags = get_kb_or_joy_flags();
         if ((flags & 48) != 0) {

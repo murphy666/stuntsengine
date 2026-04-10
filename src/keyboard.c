@@ -23,7 +23,7 @@
 #include "keyboard.h"
 #include "framebuffer.h"
 #include "stunts.h"
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -140,7 +140,7 @@ static unsigned short kb_sdl_mouse_max_y = KB_SDL_DEFAULT_MOUSE_MAX_Y;
 static unsigned short kb_sdl_queue[KB_SDL_QUEUE_SIZE];
 static unsigned short kb_sdl_queue_head = 0;
 static unsigned short kb_sdl_queue_tail = 0;
-static SDL_GameController *kb_sdl_controller = 0;
+static SDL_Gamepad *kb_sdl_controller = 0;
 
 #define KBINPUT_SIZE 90u
 
@@ -327,9 +327,9 @@ kb_sdl_scancode(SDL_Scancode sc) {
  */
 static unsigned char
 kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
-    if (key >= SDLK_a && key <= SDLK_z) {
-        unsigned char ch = (unsigned char)('a' + (key - SDLK_a));
-        if ((mod & KMOD_SHIFT) != 0 || (mod & KMOD_CAPS) != 0) {
+    if (key >= SDLK_A && key <= SDLK_Z) {
+        unsigned char ch = (unsigned char)('a' + (key - SDLK_A));
+        if ((mod & SDL_KMOD_SHIFT) != 0 || (mod & SDL_KMOD_CAPS) != 0) {
             ch = (unsigned char)(ch - ('a' - 'A'));
         }
         return ch;
@@ -399,13 +399,19 @@ kb_has_pending_input(void) {
  */
 static void
 kb_sdl_update_mouse_from_system(void) {
-    int sx, sy;
+    float sxf = 0.0f;
+    float syf = 0.0f;
+    int sx;
+    int sy;
     int win_w = 0;
     int win_h = 0;
     SDL_Window *mouse_win;
     int range_x;
     int range_y;
-    unsigned int mstate = SDL_GetMouseState(&sx, &sy);
+    SDL_MouseButtonFlags mstate = SDL_GetMouseState(&sxf, &syf);
+
+    sx = (int)sxf;
+    sy = (int)syf;
 
     /* Convert from actual window coordinates to current game mouse range. */
     mouse_win = SDL_GetMouseFocus();
@@ -434,11 +440,11 @@ kb_sdl_update_mouse_from_system(void) {
     kb_sdl_mouse_x = (unsigned short)sx;
     kb_sdl_mouse_y = (unsigned short)sy;
     kb_sdl_mouse_buttons = 0;
-    if ((mstate & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0u)
+    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) != 0u)
         kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_LEFT;
-    if ((mstate & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0u)
+    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)) != 0u)
         kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_RIGHT;
-    if ((mstate & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0u)
+    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0u)
         kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_MIDDLE;
 }
 
@@ -452,24 +458,24 @@ kb_poll_sdl_input(void) {
     }
 
     while (SDL_PollEvent(&ev)) {
-        if (ev.type == SDL_QUIT) {
+        if (ev.type == SDL_EVENT_QUIT) {
             kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
 
-        if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_CLOSE) {
+        if (ev.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
             kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
 
-        if (ev.type == SDL_KEYDOWN || ev.type == SDL_KEYUP) {
+        if (ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_KEY_UP) {
             /* Host-only keys: intercept before the game sees them */
-            if (ev.type == SDL_KEYDOWN && ev.key.repeat == 0) {
-                SDL_Keycode sym = ev.key.keysym.sym;
-                SDL_Keymod mod = ev.key.keysym.mod;
-                if ((sym == SDLK_RETURN || sym == SDLK_RETURN2) && (mod & KMOD_ALT)) {
+            if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.repeat == 0) {
+                SDL_Keycode sym = ev.key.key;
+                SDL_Keymod mod = ev.key.mod;
+                if ((sym == SDLK_RETURN || sym == SDLK_RETURN2) && (mod & SDL_KMOD_ALT)) {
                     video_toggle_fullscreen();
                     continue;
                 }
@@ -482,12 +488,12 @@ kb_poll_sdl_input(void) {
                     continue;
                 }
             }
-            unsigned char dos_sc = kb_sdl_scancode(ev.key.keysym.scancode);
+            unsigned char dos_sc = kb_sdl_scancode(ev.key.scancode);
             if (dos_sc != 0 && dos_sc < KBINPUT_SIZE) {
-                kbinput[dos_sc] = (ev.type == SDL_KEYDOWN) ? 1u : 0u;
+                kbinput[dos_sc] = (ev.type == SDL_EVENT_KEY_DOWN) ? 1u : 0u;
                 kblastinput = dos_sc;
-                if (ev.type == SDL_KEYDOWN && ev.key.repeat == 0) {
-                    unsigned char ascii = kb_sdl_ascii(ev.key.keysym.sym, ev.key.keysym.mod);
+                if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.repeat == 0) {
+                    unsigned char ascii = kb_sdl_ascii(ev.key.key, ev.key.mod);
                     unsigned short key
                         = (unsigned short)(((unsigned short)dos_sc << KB_KEYCODE_SCANCODE_SHIFT)
                                            | ascii);
@@ -500,18 +506,17 @@ kb_poll_sdl_input(void) {
             continue;
         }
 
-        if (ev.type == SDL_CONTROLLERDEVICEADDED && kb_sdl_controller == 0) {
-            if (SDL_IsGameController(ev.cdevice.which)) {
-                kb_sdl_controller = SDL_GameControllerOpen(ev.cdevice.which);
+        if (ev.type == SDL_EVENT_GAMEPAD_ADDED && kb_sdl_controller == 0) {
+            if (SDL_IsGamepad(ev.gdevice.which)) {
+                kb_sdl_controller = SDL_OpenGamepad(ev.gdevice.which);
             }
             continue;
         }
 
-        if (ev.type == SDL_CONTROLLERDEVICEREMOVED && kb_sdl_controller != 0) {
-            SDL_JoystickID jid
-                = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(kb_sdl_controller));
-            if (jid == ev.cdevice.which) {
-                SDL_GameControllerClose(kb_sdl_controller);
+        if (ev.type == SDL_EVENT_GAMEPAD_REMOVED && kb_sdl_controller != 0) {
+            SDL_JoystickID jid = SDL_GetGamepadID(kb_sdl_controller);
+            if (jid == ev.gdevice.which) {
+                SDL_CloseGamepad(kb_sdl_controller);
                 kb_sdl_controller = 0;
             }
             continue;
@@ -581,11 +586,16 @@ kb_init_interrupt(void) {
     kb_sdl_queue_tail = 0;
     kb_sdl_quit = false;
     kb_sdl_inited = true;
-    if (SDL_WasInit(SDL_INIT_GAMECONTROLLER) == 0) {
-        SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+    if ((SDL_WasInit(SDL_INIT_GAMEPAD) & SDL_INIT_GAMEPAD) == 0) {
+        (void)SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     }
-    if (SDL_NumJoysticks() > 0 && SDL_IsGameController(0)) {
-        kb_sdl_controller = SDL_GameControllerOpen(0);
+    {
+        int gamepad_count = 0;
+        SDL_JoystickID *gamepads = SDL_GetGamepads(&gamepad_count);
+        if (gamepads != 0 && gamepad_count > 0) {
+            kb_sdl_controller = SDL_OpenGamepad(gamepads[0]);
+        }
+        SDL_free(gamepads);
     }
     add_exit_handler(kb_exit_handler);
 }
@@ -596,7 +606,7 @@ void
 kb_exit_handler(void) {
 
     if (kb_sdl_controller != 0) {
-        SDL_GameControllerClose(kb_sdl_controller);
+        SDL_CloseGamepad(kb_sdl_controller);
         kb_sdl_controller = 0;
     }
     kb_sdl_inited = false;
@@ -825,7 +835,7 @@ kb_get_char(void) {
 short
 get_joy_flags(void) {
     unsigned short joy = 0;
-    const Uint8 *state;
+    const bool *state;
 
     kb_poll_sdl_input();
 
@@ -844,8 +854,8 @@ get_joy_flags(void) {
         joy |= 32;
 
     if (kb_sdl_controller != 0) {
-        Sint16 lx = SDL_GameControllerGetAxis(kb_sdl_controller, SDL_CONTROLLER_AXIS_LEFTX);
-        Sint16 ly = SDL_GameControllerGetAxis(kb_sdl_controller, SDL_CONTROLLER_AXIS_LEFTY);
+        Sint16 lx = SDL_GetGamepadAxis(kb_sdl_controller, SDL_GAMEPAD_AXIS_LEFTX);
+        Sint16 ly = SDL_GetGamepadAxis(kb_sdl_controller, SDL_GAMEPAD_AXIS_LEFTY);
         if (lx < -KB_CONTROLLER_AXIS_DEADZONE)
             joy |= KB_JOY_FLAG_LEFT;
         if (lx > KB_CONTROLLER_AXIS_DEADZONE)
@@ -854,9 +864,9 @@ get_joy_flags(void) {
             joy |= KB_JOY_FLAG_UP;
         if (ly > KB_CONTROLLER_AXIS_DEADZONE)
             joy |= KB_JOY_FLAG_DOWN;
-        if (SDL_GameControllerGetButton(kb_sdl_controller, SDL_CONTROLLER_BUTTON_A))
+        if (SDL_GetGamepadButton(kb_sdl_controller, SDL_GAMEPAD_BUTTON_SOUTH))
             joy |= KB_JOY_FLAG_BUTTON1;
-        if (SDL_GameControllerGetButton(kb_sdl_controller, SDL_CONTROLLER_BUTTON_B))
+        if (SDL_GetGamepadButton(kb_sdl_controller, SDL_GAMEPAD_BUTTON_EAST))
             joy |= KB_JOY_FLAG_BUTTON2;
     }
 

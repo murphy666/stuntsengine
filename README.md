@@ -19,12 +19,12 @@ Now I decided to drop DOS support entirely, It was time to move to modern hardwa
 
 ### Move from DOS to Modern Linux
 
-The initial move to a Linux/GCC build was quick using SDL2 as the backend. After getting the game to start, a lot of work was needed to port to modern hardware, dealing with a lot of 16-bit to 64-bit arch issues (The ASAN build preset helped a lot). Fixing resource loading at first, then video output to SDL, and finally display the in-game main menu. Then I moved to getting a working game. Using Copilot I started comparing the original ASM code to the ported C code and fixing mismatches. Again a long process of back and forth, but still much faster than doing it manually. Having C code alongside the original ASM allowed Copilot to make good progress by 
+The initial move to a Linux/GCC build was quick using SDL as the backend. After getting the game to start, a lot of work was needed to port to modern hardware, dealing with a lot of 16-bit to 64-bit arch issues (The ASAN build preset helped a lot). Fixing resource loading at first, then video output to SDL, and finally display the in-game main menu. Then I moved to getting a working game. Using Copilot I started comparing the original ASM code to the ported C code and fixing mismatches. Again a long process of back and forth, but still much faster than doing it manually. Having C code alongside the original ASM allowed Copilot to make good progress by 
 directly comparing the two.
 
 ## Current port state
 
-Yes the code is generated in major part with Copilot but I reviewed and update code as needed to a more usable and modern source code. But still the code is a weird mix of a lot old logics code with hardcoded values and "ASM like" C functions, Many globals and some new modern refactor SDL2 logics. But now with this foundation it is easy to debug and doing refactor and clean-up as needed. 
+Yes the code is generated in major part with Copilot but I reviewed and update code as needed to a more usable and modern source code. But still the code is a weird mix of a lot old logics code with hardcoded values and "ASM like" C functions, Many globals and some new modern refactor SDL3 logics. But now with this foundation it is easy to debug and doing refactor and clean-up as needed. 
 
 The game is playable with most of the features fully implemented.
 
@@ -39,7 +39,7 @@ include/        Public header files
 src/            C source files (engine, rendering, audio, menus, physics …)
 library/
   adplug/       Git submodule – OPL2 FM emulator (auto-cloned on first build)
-  sdl2-windows/ SDL2 MinGW dev archive (auto-downloaded for Windows builds)
+  sdl3-windows/ SDL3 MinGW dev archive (auto-downloaded for Windows builds)
 ressources/     Game resource files (see "Game Resources" below)
 docs/           Design documents and the original game manual
 cmake/          CMake toolchain file for MinGW cross-compilation
@@ -53,14 +53,14 @@ clean_repo.sh   Script to remove all build artifacts and downloaded deps
 ### Linux
 
 ```bash
-sudo apt-get install build-essential cmake libsdl2-dev git
+sudo apt-get install build-essential cmake libsdl3-dev git
 ```
 
 | Tool | Minimum version |
 |------|----------------|
 | GCC or Clang | any modern version |
 | CMake | 3.16 |
-| SDL2 dev headers | 2.x |
+| SDL3 dev headers | 3.x |
 | Git | any |
 
 ### Windows (cross-compile from Linux)
@@ -71,8 +71,8 @@ Install the Linux prerequisites above, then add MinGW-w64:
 sudo apt-get install mingw-w64
 ```
 
-The SDL2 Windows development archive is **downloaded automatically** by CMake
-on the first configure run. No manual SDL2 setup is needed.
+The SDL3 Windows development archive is **downloaded automatically** by CMake
+on the first configure run. No manual SDL3 setup is needed.
 
 ---
 
@@ -125,8 +125,8 @@ cmake --preset windows-x64
 cmake --build --preset windows-x64
 ```
 
-SDL2 is downloaded automatically on the first configure run.
-The output (`stunts.exe` + `SDL2.dll`) can be copied directly to a Windows machine.
+SDL3 is downloaded automatically on the first configure run.
+The output (`stunts.exe` + `SDL3.dll`) can be copied directly to a Windows machine.
 
 ### All presets
 
@@ -158,7 +158,7 @@ GitHub Actions release builds are defined in [.github/workflows/release.yml](.gi
 `clean_repo.sh` removes all generated and downloaded content:
 
 ```bash
-./clean_repo.sh             # remove build dirs, SDL2 package, submodule content
+./clean_repo.sh             # remove build dirs, SDL3 package, submodule content
 ./clean_repo.sh --archive   # same + create ../stuntsengine-clean.tar.gz
 ```
 

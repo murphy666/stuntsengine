@@ -1,5 +1,5 @@
 /*
- * ui_screen.h - SDL2-style event-driven screen system for Stunts UI
+ * ui_screen.h - SDL3-style event-driven screen system for Stunts UI
  *
  * Replaces the per-menu while(1) polling loops with a proper
  * screen stack.  Each screen provides callbacks for events, updates,
