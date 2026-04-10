@@ -2957,9 +2957,9 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     }
                     else {
                         vector_lerp_at_z(&vec_1C, &prevPosLocal, &vec_FC, 0);
-                        vec_17C.x = (short)(vec_1C.x - vec_FC.x) << 6;
-                        vec_17C.y = (short)(vec_1C.y - vec_FC.y) << 6;
-                        vec_17C.z = (short)(vec_1C.z - vec_FC.z) << 6;
+                        vec_17C.x = (vec_1C.x - vec_FC.x) << 6;
+                        vec_17C.y = (vec_1C.y - vec_FC.y) << 6;
+                        vec_17C.z = (vec_1C.z - vec_FC.z) << 6;
                         consumedSpeed = polarRadius3D(&vec_17C);
                         remainingSpeed = speed2ScaledStep - consumedSpeed;
                     }
@@ -3017,11 +3017,11 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                                 prevPosLocal.z = 0;
                             }
                             else {
-                                prevPosLocal.x = (short)((wp2->lx - wp1->lx) * remainingSpeed)
+                                prevPosLocal.x = ((wp2->lx - wp1->lx) * remainingSpeed)
                                                  / speed2ScaledStep;
-                                prevPosLocal.y = (short)((wp2->ly - wp1->ly) * remainingSpeed)
+                                prevPosLocal.y = ((wp2->ly - wp1->ly) * remainingSpeed)
                                                  / speed2ScaledStep;
-                                prevPosLocal.z = (short)((wp2->lz - wp1->lz) * remainingSpeed)
+                                prevPosLocal.z = ((wp2->lz - wp1->lz) * remainingSpeed)
                                                  / speed2ScaledStep;
                             }
                             wp2->lx = prevPosLocal.x + vec_1C.x + wp1->lx;
@@ -3157,19 +3157,19 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         vec_1C.y = (short)wallRelativeAngle;
 
                         vector_lerp_at_z(&vec_1C, &prevPosLocal, &vec_FC, 0);
-                        vec_17C.x = (short)(vec_1C.x - vec_FC.x) << 6;
-                        vec_17C.y = (short)(vec_1C.y - vec_FC.y) << 6;
-                        vec_17C.z = (short)(vec_1C.z - vec_FC.z) << 6;
+                        vec_17C.x = (vec_1C.x - vec_FC.x) << 6;
+                        vec_17C.y = (vec_1C.y - vec_FC.y) << 6;
+                        vec_17C.z = (vec_1C.z - vec_FC.z) << 6;
 
                         wallRelativeAngle = polarRadius3D(&vec_17C);
                         remainingSpeed = playerState->car_wheel_susp_ext[wheelIndex]
                                          + speed2ScaledStep;
                         consumedSpeed = remainingSpeed - wallRelativeAngle;
-                        prevPosLocal.x = (short)((wheelPos2Ptr->lx - wheelPos1Ptr->lx) * consumedSpeed)
+                        prevPosLocal.x = ((wheelPos2Ptr->lx - wheelPos1Ptr->lx) * consumedSpeed)
                                          / remainingSpeed;
-                        prevPosLocal.y = (short)((wheelPos2Ptr->ly - wheelPos1Ptr->ly) * consumedSpeed)
+                        prevPosLocal.y = ((wheelPos2Ptr->ly - wheelPos1Ptr->ly) * consumedSpeed)
                                          / remainingSpeed;
-                        prevPosLocal.z = (short)((wheelPos2Ptr->lz - wheelPos1Ptr->lz) * consumedSpeed)
+                        prevPosLocal.z = ((wheelPos2Ptr->lz - wheelPos1Ptr->lz) * consumedSpeed)
                                          / remainingSpeed;
 
                         vec_movement_local.x = 0;
@@ -3199,7 +3199,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         /* Push wheel away from plane surface */
                         vec_1C6.z = 0;
                         vec_1C6.x = 0;
-                        vec_1C6.y = (short)(-nextPosAndNormalIP) << 6;
+                        vec_1C6.y = (-nextPosAndNormalIP) << 6;
                         mat_mul_vector2(&vec_1C6, &planptr[planindex].plane_rotation, &vec_FC);
                         wheelPos2Ptr->lx += vec_FC.x;
                         wheelPos2Ptr->ly += vec_FC.y;
@@ -3365,7 +3365,7 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
         for (wheelIndex = 0; wheelIndex < 4; wheelIndex++) {
             vec_1C6 = playerSimd->wheel_coords[wheelIndex];
-            vec_1C6.y = (short)playerSimd->collide_points[0].py << 6;
+            vec_1C6.y = playerSimd->collide_points[0].py << 6;
             mat_mul_vector(&vec_1C6, wallAlignMatrix, &vec_FC);
 
             vec_1C6.x = (vec_FC.x + pState_lvec1_x) >> 6;
