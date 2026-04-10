@@ -114,7 +114,6 @@ font_op(char *text, unsigned short maxChars) {
     bool has_width_byte = false;
     unsigned short remaining = maxChars;
     if (default_width == 0) {
-        default_width = 8;
     }
 
     if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {

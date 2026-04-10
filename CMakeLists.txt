@@ -6,6 +6,9 @@ project(stunts C CXX)
 # ---------------------------------------------------------------------------
 option(STUNTS_ASAN    "Build with AddressSanitizer (GCC/Clang only)"  OFF)
 
+# Generate compile_commands.json for clang-tidy / IDEs.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # ---------------------------------------------------------------------------
 # C standard
 # ---------------------------------------------------------------------------
@@ -297,4 +300,32 @@ if(CLANG_FORMAT_EXE)
     )
 else()
     message(STATUS "clang-format not found — format/format-check targets disabled")
+endif()
+
+# ---------------------------------------------------------------------------
+# clang-tidy target: `tidy` (report) and `tidy-fix` (apply fixes)
+# Requires compile_commands.json — ensure you build from a configured tree.
+# ---------------------------------------------------------------------------
+find_program(CLANG_TIDY_EXE NAMES clang-tidy clang-tidy-20 clang-tidy-19
+                                   clang-tidy-18 clang-tidy-17)
+if(CLANG_TIDY_EXE)
+    add_custom_target(tidy
+        COMMAND ${CLANG_TIDY_EXE}
+            -p "${CMAKE_BINARY_DIR}"
+            ${ALL_SRC}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running clang-tidy (report only)"
+        VERBATIM
+    )
+    add_custom_target(tidy-fix
+        COMMAND ${CLANG_TIDY_EXE}
+            -p "${CMAKE_BINARY_DIR}"
+            --fix
+            ${ALL_SRC}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running clang-tidy --fix"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-tidy not found — tidy/tidy-fix targets disabled")
 endif()

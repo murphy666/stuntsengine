@@ -57,7 +57,7 @@ mmgr_store_entry(const char *name, void *ptr, size_t size) {
         if (g_mmgr_entries[i].ptr == ptr) {
             if (chunk_name != NULL) {
                 memset(g_mmgr_entries[i].name, 0, sizeof(g_mmgr_entries[i].name));
-                snprintf(g_mmgr_entries[i].name, sizeof(g_mmgr_entries[i].name), "%s", chunk_name);
+                (void)snprintf(g_mmgr_entries[i].name, sizeof(g_mmgr_entries[i].name), "%s", chunk_name);
             }
             g_mmgr_entries[i].size = size;
             return;
@@ -76,7 +76,7 @@ mmgr_store_entry(const char *name, void *ptr, size_t size) {
         MMGR_ENTRY *entry = &g_mmgr_entries[g_mmgr_count++];
         memset(entry, 0, sizeof(*entry));
         if (chunk_name != NULL) {
-            snprintf(entry->name, sizeof(entry->name), "%s", chunk_name);
+            (void)snprintf(entry->name, sizeof(entry->name), "%s", chunk_name);
         }
         entry->ptr = ptr;
         entry->size = size;

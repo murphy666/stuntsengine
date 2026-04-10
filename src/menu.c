@@ -21,6 +21,7 @@
  */
 
 /* menu.c — Menus & intro extracted from stunts.c */
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +52,7 @@ static unsigned short terrain_type_lookup = 9;
 /* file-local data (moved from data_global.c) */
 static struct RECTANGLE carmenu_cliprect = { 0, 320, 0, 95 };
 static struct RECTANGLE menu_clip_rect = { 0, 320, 0, 0 };
-static struct VECTOR carmenu_carpos = { 0, 64696, 2880 };
+static struct VECTOR carmenu_carpos = { 0, (short)64696, 2880 };
 
 /* menu button arrays (moved from data_global.c) */
 static unsigned short menu_buttons_x1[] = { 105, 66, 5, 190, 255 };
@@ -244,7 +245,7 @@ input_repeat_check_intro_stable(unsigned short timeout) {
     unsigned short spin_guard = 0;
 
     /* Reset timer baseline so we measure from now */
-    timer_get_delta();
+    (void)timer_get_delta();
 
     while (elapsed < timeout) {
         unsigned long delta = timer_get_delta();
@@ -310,7 +311,7 @@ load_intro_resources(void) {
     static const char arrow_names[] = "arowarrwarw1arw2arw3arw4arw5arw6arw7arw8type";
     char *arrows[11];
     void *cred_res;
-    unsigned short i;
+    unsigned int i;
     unsigned short first_arrow_idx;
 
     cred_res = file_load_resfile("cred");
@@ -613,125 +614,132 @@ run_tracks_menu(unsigned short unused) {
         show_waiting();
         waitflag = MENU_WAITFLAG_TRACK_PREVIEW;
 
-    // Build preview window and render current track snapshot.
-    wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);
+        // Build preview window and render current track snapshot.
+        wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);
 
-    load_skybox(track_elem_map[MENU_TRACK_SKYBOX_TILE_INDEX]);
-    shape3d_load_all();
-    set_projection(MENU_TRACK_PROJ_ANGLE_X, MENU_TRACK_PROJ_ANGLE_Y, MENU_SCREEN_WIDTH,
-                   MENU_SCREEN_HEIGHT);
-    init_game_state(-2);
-    sprite_select_wnd_as_sprite1();
-    sprite_clear_sprite1_color((unsigned char)skybox_grd_color);
-    sprite_set_1_size(0, MENU_SCREEN_WIDTH, 0, MENU_SCREEN_HEIGHT);
-    draw_track_preview();
-    shape3d_free_all();
-    unload_skybox();
-    sprite_select_wnd_as_sprite1();
+        load_skybox(track_elem_map[MENU_TRACK_SKYBOX_TILE_INDEX]);
+        shape3d_load_all();
+        set_projection(MENU_TRACK_PROJ_ANGLE_X, MENU_TRACK_PROJ_ANGLE_Y, MENU_SCREEN_WIDTH,
+                       MENU_SCREEN_HEIGHT);
+        init_game_state(-2);
+        sprite_select_wnd_as_sprite1();
+        sprite_clear_sprite1_color((unsigned char)skybox_grd_color);
+        sprite_set_1_size(0, MENU_SCREEN_WIDTH, 0, MENU_SCREEN_HEIGHT);
+        draw_track_preview();
+        shape3d_free_all();
+        unload_skybox();
+        sprite_select_wnd_as_sprite1();
 
-    copy_string(resID_byte1, "'");
-    {
-        size_t len = strlen(resID_byte1);
-        snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, "%s'", gameconfig.game_trackname);
-    }
-    intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_TRACK_TITLE_Y,
-                    dialog_fnt_colour, 0);
-
-    if (highscore_write_a_(0) == 0) {
-        best_entry = (unsigned char *)highscore_data
-                     + (highscore_primary_index[0] * MENU_HIGHSCORE_ENTRY_SIZE);
-        if (*(unsigned short *)(best_entry + MENU_HIGHSCORE_TIME_OFFSET)
-            != MENU_HIGHSCORE_INVALID_TIME) {
-            copy_string(resID_byte1, locate_text_res(mainresptr, "hs0"));
-            intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_HS_TITLE_Y,
-                            dialog_fnt_colour, 0);
-
-            font_set_fontdef2(fontnptr);
-            print_highscore_entry_(0, lengths);
-            font_set_colors(0, 0);
-            font_draw_text(resID_byte1 + lengths[0], MENU_HIGHSCORE_COL0_X, MENU_HIGHSCORE_ROW_Y);
-            font_draw_text(resID_byte1 + lengths[1], MENU_HIGHSCORE_COL1_X, MENU_HIGHSCORE_ROW_Y);
-            font_draw_text(resID_byte1 + lengths[2], MENU_HIGHSCORE_COL2_X, MENU_HIGHSCORE_ROW_Y);
-            font_draw_text(resID_byte1 + lengths[3], MENU_HIGHSCORE_COL3_X, MENU_HIGHSCORE_ROW_Y);
-            font_set_fontdef();
+        copy_string(resID_byte1, "'");
+        {
+            size_t len = strlen(resID_byte1);
+            (void)snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, "%s'",
+                     gameconfig.game_trackname);
         }
-    }
+        intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_TRACK_TITLE_Y,
+                        dialog_fnt_colour, 0);
 
-    {
-        void *tedit_res = file_load_resfile("tedit");
+        if (highscore_write_a_(0) == 0) {
+            best_entry = (unsigned char *)highscore_data
+                         + ((ptrdiff_t)(highscore_primary_index[0] * MENU_HIGHSCORE_ENTRY_SIZE));
+            if (*(unsigned short *)(best_entry + MENU_HIGHSCORE_TIME_OFFSET)
+                != MENU_HIGHSCORE_INVALID_TIME) {
+                copy_string(resID_byte1, locate_text_res(mainresptr, "hs0"));
+                intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), MENU_TEXT_HS_TITLE_Y,
+                                dialog_fnt_colour, 0);
 
-        draw_button(locate_text_res(tedit_res, "bmt"), MENU_TRACK_BTN_SELECT_X, MENU_TRACK_BTN_Y,
-                    MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color, button_shadow_color,
-                    button_highlight_color, 0);
-
-        /* ASM: "bet" button at y=113 (New/Edit Tracks) — was missing */
-        draw_button(locate_text_res(tedit_res, "bet"), MENU_TRACK_BTN_EDIT_X, MENU_TRACK_BTN_Y,
-                    MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color, button_shadow_color,
-                    button_highlight_color, 0);
-
-        draw_button(locate_text_res(tedit_res, "bmm"), MENU_TRACK_BTN_MENU_X, MENU_TRACK_BTN_Y,
-                    MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color, button_shadow_color,
-                    button_highlight_color, 0);
-
-        unload_resource(tedit_res);
-    }
-
-    /* Set up button menu for the 3-button track selection bar */
-    memset(&btnmenu, 0, sizeof(btnmenu));
-    btnmenu.count = MENU_TRACK_BUTTON_COUNT;
-    memcpy(btnmenu.x1, trackmenu_buttons_x1, sizeof(unsigned short) * btnmenu.count);
-    memcpy(btnmenu.x2, trackmenu_buttons_x2, sizeof(unsigned short) * btnmenu.count);
-    memcpy(btnmenu.y1, trackmenu_buttons_y1, sizeof(unsigned short) * btnmenu.count);
-    memcpy(btnmenu.y2, trackmenu_buttons_y2, sizeof(unsigned short) * btnmenu.count);
-    btnmenu.sprite_hi = camera_view_matrix;
-    btnmenu.sprite_lo = object_visibility_state;
-    btnmenu.default_sel = 0;
-    btnmenu.idle_timeout = MENU_IDLE_TIMEOUT_SHORT;
-    btnmenu.nav_mode = UI_NAV_HORIZONTAL;
-    btnmenu.frame_cb = trackmenu_frame_cb;
-    btnmenu.frame_cb_ctx = NULL;
-    cb_ctx.blit_mode = MENU_BLIT_MODE_FULL;
-    btnmenu.selection_cb = trackmenu_on_selection;
-    btnmenu.selection_cb_ctx = &cb_ctx;
-
-    while (1) {
-        int modal;
-        UIScreen *scr = ui_screen_from_button_menu(&btnmenu);
-        modal = ui_screen_run_modal(scr);
-        selection = UI_MODAL_TO_SEL(modal);
-
-        if (selection == UI_SEL_CANCEL || selection == UI_SEL_TIMEOUT
-            || selection == MENU_TRACK_BTN_DONE) {
-            sprite_free_wnd(wndsprite);
-            return;
-        }
-
-        if (selection == MENU_TRACK_BTN_SELECT) {
-            char track_dir_backup[MENU_TRACK_NAME_BACKUP_SIZE];
-            snprintf(track_dir_backup, sizeof(track_dir_backup), "%s", track_highscore_path_buffer);
-            chosen = do_fileselect_dialog(track_highscore_path_buffer, gameconfig.game_trackname,
-                                          ".trk", locate_text_res(mainresptr, "trk"));
-            snprintf(track_highscore_path_buffer, MENU_TRACK_NAME_BACKUP_SIZE, "%s",
-                     track_dir_backup);
-            file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk",
-                            g_path_buf, sizeof(g_path_buf));
-            if (chosen != 0) {
-                file_read_fatal(g_path_buf, track_elem_map);
-                sprite_free_wnd(wndsprite);
-                break; /* rebuild view with new track */
+                font_set_fontdef2(fontnptr);
+                print_highscore_entry_(0, lengths);
+                font_set_colors(0, 0);
+                font_draw_text(resID_byte1 + lengths[0], MENU_HIGHSCORE_COL0_X,
+                               MENU_HIGHSCORE_ROW_Y);
+                font_draw_text(resID_byte1 + lengths[1], MENU_HIGHSCORE_COL1_X,
+                               MENU_HIGHSCORE_ROW_Y);
+                font_draw_text(resID_byte1 + lengths[2], MENU_HIGHSCORE_COL2_X,
+                               MENU_HIGHSCORE_ROW_Y);
+                font_draw_text(resID_byte1 + lengths[3], MENU_HIGHSCORE_COL3_X,
+                               MENU_HIGHSCORE_ROW_Y);
+                font_set_fontdef();
             }
-            /* Re-enter the button loop with selection reset */
-            cb_ctx.blit_mode = MENU_BLIT_MODE_PARTIAL;
-            btnmenu.default_sel = MENU_TRACK_BTN_SELECT;
-            continue;
         }
 
-        if (selection == MENU_TRACK_BTN_RELOAD) {
-            sprite_free_wnd(wndsprite);
-            need_track_setup = 1;
-            break; /* reload track setup */
+        {
+            void *tedit_res = file_load_resfile("tedit");
+
+            draw_button(locate_text_res(tedit_res, "bmt"), MENU_TRACK_BTN_SELECT_X,
+                        MENU_TRACK_BTN_Y, MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color,
+                        button_shadow_color, button_highlight_color, 0);
+
+            /* ASM: "bet" button at y=113 (New/Edit Tracks) — was missing */
+            draw_button(locate_text_res(tedit_res, "bet"), MENU_TRACK_BTN_EDIT_X, MENU_TRACK_BTN_Y,
+                        MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color, button_shadow_color,
+                        button_highlight_color, 0);
+
+            draw_button(locate_text_res(tedit_res, "bmm"), MENU_TRACK_BTN_MENU_X, MENU_TRACK_BTN_Y,
+                        MENU_TRACK_BTN_W, MENU_TRACK_BTN_H, button_text_color, button_shadow_color,
+                        button_highlight_color, 0);
+
+            unload_resource(tedit_res);
         }
-    }
+
+        /* Set up button menu for the 3-button track selection bar */
+        memset(&btnmenu, 0, sizeof(btnmenu));
+        btnmenu.count = MENU_TRACK_BUTTON_COUNT;
+        memcpy(btnmenu.x1, trackmenu_buttons_x1, sizeof(unsigned short) * btnmenu.count);
+        memcpy(btnmenu.x2, trackmenu_buttons_x2, sizeof(unsigned short) * btnmenu.count);
+        memcpy(btnmenu.y1, trackmenu_buttons_y1, sizeof(unsigned short) * btnmenu.count);
+        memcpy(btnmenu.y2, trackmenu_buttons_y2, sizeof(unsigned short) * btnmenu.count);
+        btnmenu.sprite_hi = camera_view_matrix;
+        btnmenu.sprite_lo = object_visibility_state;
+        btnmenu.default_sel = 0;
+        btnmenu.idle_timeout = MENU_IDLE_TIMEOUT_SHORT;
+        btnmenu.nav_mode = UI_NAV_HORIZONTAL;
+        btnmenu.frame_cb = trackmenu_frame_cb;
+        btnmenu.frame_cb_ctx = NULL;
+        cb_ctx.blit_mode = MENU_BLIT_MODE_FULL;
+        btnmenu.selection_cb = trackmenu_on_selection;
+        btnmenu.selection_cb_ctx = &cb_ctx;
+
+        while (1) {
+            int modal;
+            UIScreen *scr = ui_screen_from_button_menu(&btnmenu);
+            modal = ui_screen_run_modal(scr);
+            selection = UI_MODAL_TO_SEL(modal);
+
+            if (selection == UI_SEL_CANCEL || selection == UI_SEL_TIMEOUT
+                || selection == MENU_TRACK_BTN_DONE) {
+                sprite_free_wnd(wndsprite);
+                return;
+            }
+
+            if (selection == MENU_TRACK_BTN_SELECT) {
+                char track_dir_backup[MENU_TRACK_NAME_BACKUP_SIZE];
+                (void)snprintf(track_dir_backup, sizeof(track_dir_backup), "%s",
+                         track_highscore_path_buffer);
+                chosen = do_fileselect_dialog(track_highscore_path_buffer,
+                                              gameconfig.game_trackname, ".trk",
+                                              locate_text_res(mainresptr, "trk"));
+                (void)snprintf(track_highscore_path_buffer, MENU_TRACK_NAME_BACKUP_SIZE, "%s",
+                         track_dir_backup);
+                file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk",
+                                g_path_buf, sizeof(g_path_buf));
+                if (chosen != 0) {
+                    file_read_fatal(g_path_buf, track_elem_map);
+                    sprite_free_wnd(wndsprite);
+                    break; /* rebuild view with new track */
+                }
+                /* Re-enter the button loop with selection reset */
+                cb_ctx.blit_mode = MENU_BLIT_MODE_PARTIAL;
+                btnmenu.default_sel = MENU_TRACK_BTN_SELECT;
+                continue;
+            }
+
+            if (selection == MENU_TRACK_BTN_RELOAD) {
+                sprite_free_wnd(wndsprite);
+                need_track_setup = 1;
+                break; /* reload track setup */
+            }
+        }
 
     } /* end outer while(1): rebuild or reload track view */
 }
@@ -1303,7 +1311,7 @@ car_on_render(UIScreen *self) {
     bool need_blit;
     unsigned short carpos_polar;
     unsigned short old_frames;
-    unsigned short graph_x, graph_y;
+    unsigned int graph_x, graph_y;
     char *descptr;
 
     /* ---- car change: reload resources + draw UI ---- */
@@ -1429,7 +1437,7 @@ car_on_render(UIScreen *self) {
             *st->materialofs = 0;
         }
 
-        st->local_transshape.rotvec.z = st->rotation;
+        st->local_transshape.rotvec.z = (short)st->rotation;
         st->local_transshape.material = *st->materialofs;
         (void)shape3d_render_transformed(&st->local_transshape);
 
@@ -1664,7 +1672,7 @@ make_car_screen(char *caridptr, unsigned char *materialofs, unsigned char *trans
     menu_reset_idle_timers();
     set_projection(MENU_CAR_PROJ_ANGLE_X, MENU_CAR_PROJ_ANGLE_Y, MENU_SCREEN_WIDTH,
                    MENU_CAR_PROJ_HEIGHT);
-    timer_get_delta_alt();
+    (void)timer_get_delta_alt();
     init_polyinfo();
 
     wndsprite = sprite_make_wnd(MENU_SCREEN_WIDTH, MENU_SCREEN_HEIGHT, MENU_SCREEN_DEPTH);

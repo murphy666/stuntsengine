@@ -1,0 +1,45 @@
+---
+# Stunts Engine — clang-tidy configuration
+#
+# Run with:
+#   cmake --build build_cmake --target tidy        # report
+#   cmake --build build_cmake --target tidy-fix    # apply fixes
+#
+# Or directly:
+#   clang-tidy -p build_cmake src/*.c
+
+Checks: >
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  bugprone-assignment-in-if-condition,
+  bugprone-implicit-widening-of-multiplication-result,
+  bugprone-integer-overflow,
+  bugprone-misplaced-operator-in-strlen-in-alloc,
+  bugprone-misplaced-widening-cast,
+  bugprone-narrowing-conversions,
+  bugprone-not-null-terminated-result,
+  bugprone-sizeof-expression,
+  bugprone-suspicious-enum-usage,
+  bugprone-suspicious-include,
+  bugprone-suspicious-memset-usage,
+  bugprone-suspicious-missing-comma,
+  bugprone-suspicious-semicolon,
+  bugprone-suspicious-string-compare,
+  bugprone-swapped-arguments,
+  bugprone-too-small-loop-variable,
+  bugprone-undefined-memory-manipulation,
+  cert-err33-c,
+  cert-err34-c,
+  cert-flp30-c,
+  cert-str34-c,
+  misc-misleading-identifier,
+  readability-misleading-indentation
+
+# Treat no findings as success; leave individual check suppression to the source.
+WarningsAsErrors: ""
+
+# Only report findings in our own headers (not SDL2 / library/).
+HeaderFilterRegex: "include/.*\\.h$"
+
+# Pick up the project's .clang-format style for --fix reformatting.
+FormatStyle: file

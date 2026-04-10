@@ -21,6 +21,7 @@
  */
 
 /* highscore.c — Highscore system extracted from stunts.c */
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -77,7 +78,7 @@ enum {
 
 static unsigned char *
 highscore_entry_ptr(unsigned short index) {
-    return (unsigned char *)highscore_data + (index * HIGHSCORE_ENTRY_SIZE);
+    return (unsigned char *)highscore_data + ((ptrdiff_t)(index * HIGHSCORE_ENTRY_SIZE));
 }
 
 static unsigned short
@@ -91,15 +92,15 @@ highscore_set_entry_score(unsigned char *entry, unsigned short score) {
 }
 
 /* Variables moved from data_game.c */
-static unsigned short highscore_secondary_indices[HIGHSCORE_SECONDARY_INDEX_COUNT]
-    = { 0, 0, 0, 0, 0, 0 };
+static unsigned short highscore_secondary_indices[HIGHSCORE_SECONDARY_INDEX_COUNT] = { 0, 0, 0,
+                                                                                       0, 0, 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static unsigned short end_hiscore_random = 0;
 static struct RECTANGLE hiscore_draw_text_rect = { 0, 0, 0, 0 };
 static unsigned char input_button_repeat_state = 0;
-static char input_replay_buffer[HIGHSCORE_ENTRY_NAME_CAPACITY]
-    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static char input_replay_buffer[HIGHSCORE_ENTRY_NAME_CAPACITY] = { 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                   0, 0, 0, 0, 0, 0, 0, 0 };
 
 
 /* file-local data (moved from data_global.c) */
@@ -184,9 +185,9 @@ menu_reset_idle_timers(void) {
  */
 unsigned short
 highscore_write_a_(unsigned short write_defaults) {
-    unsigned short i;
+    unsigned int i;
     unsigned char entry[HIGHSCORE_ENTRY_SIZE];
-    unsigned short j;
+    unsigned int j;
 
     input_button_repeat_state = HIGHSCORE_UI_INDEX_NONE;
     for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
@@ -233,13 +234,13 @@ highscore_write_a_(unsigned short write_defaults) {
 unsigned short
 highscore_write_b(void) {
     unsigned char buffer[HIGHSCORE_TABLE_SIZE];
-    unsigned short i;
-    unsigned short j;
+    unsigned int i;
+    unsigned int j;
 
     for (i = 0; i < HIGHSCORE_ENTRY_COUNT; ++i) {
         unsigned short mapped_index = highscore_primary_index[i];
         unsigned char *src = highscore_entry_ptr(mapped_index);
-        unsigned char *dst = buffer + (i * HIGHSCORE_ENTRY_SIZE);
+        unsigned char *dst = buffer + ((size_t)(i * HIGHSCORE_ENTRY_SIZE));
         for (j = 0; j < HIGHSCORE_ENTRY_SIZE; ++j) {
             dst[j] = src[j];
         }
@@ -273,8 +274,8 @@ highscore_write_b(void) {
 unsigned short
 enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultFlag) {
     unsigned char entry[HIGHSCORE_ENTRY_SIZE];
-    unsigned short insertion = 0;
-    unsigned short i;
+    unsigned int insertion = 0;
+    unsigned int i;
     unsigned short dialog_coords[2] = { 0, 0 };
 
     if (framespersec == HIGHSCORE_FPS_DOUBLE_SCORE) {
@@ -316,15 +317,15 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultF
             entry[i] = 0;
         }
     }
-    snprintf((char *)(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET), HIGHSCORE_ENTRY_DETAIL_CAPACITY,
-             "%s", gnam_string);
+    (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_DETAIL_OFFSET), HIGHSCORE_ENTRY_DETAIL_CAPACITY, "%s",
+             gnam_string);
     entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] = raceResultFlag;
 
     if (gameconfig.game_opponenttype != 0) {
-        snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET),
+        (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET),
                  HIGHSCORE_ENTRY_OPPONENT_PREFIX_CAPACITY, "%s", player_name_buffer);
         entry[HIGHSCORE_ENTRY_OPPONENT_SEPARATOR_OFFSET] = '/';
-        snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET),
+        (void)snprintf((char *)(entry + HIGHSCORE_ENTRY_OPPONENT_SUFFIX_OFFSET),
                  HIGHSCORE_ENTRY_OPPONENT_SUFFIX_CAPACITY, "%s", gsna_string);
     }
     else {
@@ -348,7 +349,7 @@ enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultF
                        dialog_coords[1], terraincenterpos + HIGHSCORE_ENTRY_DETAIL_OFFSET);
     }
 
-    snprintf((char *)entry, HIGHSCORE_ENTRY_NAME_CAPACITY, "%s", input_replay_buffer);
+    (void)snprintf((char *)entry, HIGHSCORE_ENTRY_NAME_CAPACITY, "%s", input_replay_buffer);
 
     memcpy((void *)highscore_entry_ptr(HIGHSCORE_TEMP_ENTRY_INDEX), entry, sizeof(entry));
 
@@ -375,7 +376,7 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
     unsigned char entry[HIGHSCORE_ENTRY_SIZE];
     unsigned short mapped_index;
     unsigned short offset;
-    unsigned short i;
+    unsigned int i;
     unsigned short time_value;
     unsigned short old_framespersec;
     char frame_buf[16];
@@ -393,13 +394,13 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
     }
 
     dst = resID_byte1;
-    snprintf(dst, 2048, "%s", (char *)entry);
+    (void)snprintf(dst, 2048, "%s", (char *)entry);
     offset = (unsigned short)(strlen(dst) + 1);
     if (lengths != NULL) {
         lengths[1] = (unsigned char)offset;
     }
 
-    snprintf(dst + offset, 2048 - offset, "%s", (char *)entry + HIGHSCORE_ENTRY_DETAIL_OFFSET);
+    (void)snprintf(dst + offset, 2048 - offset, "%s", (char *)entry + HIGHSCORE_ENTRY_DETAIL_OFFSET);
     offset = (unsigned short)(offset + strlen(dst + offset) + 1);
     if (lengths != NULL) {
         lengths[2] = (unsigned char)offset;
@@ -408,17 +409,17 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
 
     if (entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] == 1) {
         size_t cur_len = strlen(dst + offset);
-        snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "(");
+        (void)snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "(");
     }
 
     {
         size_t cur_len = strlen(dst + offset);
-        snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "%s",
+        (void)snprintf(dst + offset + cur_len, 2048 - offset - cur_len, "%s",
                  (char *)entry + HIGHSCORE_ENTRY_OPPONENT_OFFSET);
     }
     if (entry[HIGHSCORE_ENTRY_RESULT_FLAG_OFFSET] == 1) {
         size_t cur_len = strlen(dst + offset);
-        snprintf(dst + offset + cur_len, 2048 - offset - cur_len, ")");
+        (void)snprintf(dst + offset + cur_len, 2048 - offset - cur_len, ")");
     }
 
     offset = (unsigned short)(offset + strlen(dst + offset) + 1);
@@ -432,7 +433,7 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
     format_frame_as_string(frame_buf, time_value == HIGHSCORE_EMPTY_SCORE ? 0 : time_value, 1);
     framespersec = old_framespersec;
 
-    snprintf(dst + offset, 2048 - offset, "%s", frame_buf);
+    (void)snprintf(dst + offset, 2048 - offset, "%s", frame_buf);
 }
 
 /* --- highscore_draw_screen --- */
@@ -444,7 +445,7 @@ print_highscore_entry_(unsigned short index, unsigned char *lengths) {
 void
 highscore_draw_screen(void) {
     unsigned char lengths[4];
-    unsigned short i;
+    unsigned int i;
     unsigned short y;
     unsigned short color;
     unsigned short centered_x;
@@ -454,7 +455,7 @@ highscore_draw_screen(void) {
     copy_string(resID_byte1, locate_text_res(mainresptr, "hs1"));
     {
         size_t len = strlen(resID_byte1);
-        snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, " '%s'", gameconfig.game_trackname);
+        (void)snprintf(resID_byte1 + len, sizeof(resID_byte1) - len, " '%s'", gameconfig.game_trackname);
     }
     centered_x = font_get_centered_x(resID_byte1);
     hiscore_draw_text(resID_byte1, centered_x, 5, dialog_fnt_colour, 0);
@@ -723,7 +724,7 @@ end_hiscore(void) {
     }
     copy_string(resID_byte1, locate_text_res(misc_res, "avs"));
     print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1), avg_speed, 0,
-                  HIGHSCORE_STAT_DIGITS);
+                              HIGHSCORE_STAT_DIGITS);
     copy_string(resID_byte1 + strlen(resID_byte1), locate_text_res(misc_res, "mph"));
     DRAW_LINE(resID_byte1);
 
@@ -740,8 +741,7 @@ end_hiscore(void) {
     // Top speed.
     copy_string(resID_byte1, locate_text_res(misc_res, "top"));
     print_int_as_string_maybe(resID_byte1 + strlen(resID_byte1),
-                              (unsigned short)(gState_topSpeed >> 8), 0,
-                              HIGHSCORE_STAT_DIGITS);
+                              (unsigned short)(gState_topSpeed >> 8), 0, HIGHSCORE_STAT_DIGITS);
     copy_string(resID_byte1 + strlen(resID_byte1), locate_text_res(misc_res, "mph"));
     DRAW_LINE(resID_byte1);
 
@@ -756,10 +756,8 @@ end_hiscore(void) {
     // Opponent animation/text setup (simplified).
     if (allow_animation != 0 && (replay_mode_state_flag & 4) == 0) {
         opp_text_res = opp_res;
-        opp_anim_shape = (struct SHAPE2D *)locate_shape_alt(opp_res,
-                                                            (race_result == HIGHSCORE_RESULT_PLAYER_WIN)
-                                                                ? "winn"
-                                                                : "lose");
+        opp_anim_shape = (struct SHAPE2D *)locate_shape_alt(
+            opp_res, (race_result == HIGHSCORE_RESULT_PLAYER_WIN) ? "winn" : "lose");
         anim_letter = (race_result == HIGHSCORE_RESULT_PLAYER_WIN) ? 'v' : 'd';
         anim_frame = end_hiscore_random
             = (unsigned char)((get_kevinrandom() + gState_frame)
@@ -776,7 +774,7 @@ end_hiscore(void) {
         {
             void *track_res = file_load_resource(1, g_path_buf);
             if (track_res != 0) {
-                unsigned short i;
+                unsigned int i;
                 for (i = 0; i < HIGHSCORE_TRACK_BYTES_TO_COMPARE; ++i) {
                     if (*((unsigned char *)track_res + i)
                         != *((unsigned char *)track_elem_map + i)) {
@@ -834,7 +832,6 @@ end_hiscore(void) {
             char *inh_txt = locate_text_res(misc_res, "inh");
             enter_hiscore(gState_total_finish_time, inh_txt, race_result);
         }
-        need_highscore_entry = 0;
         highscore_write_b();
         highscore_draw_screen();
     }
@@ -865,21 +862,17 @@ end_hiscore(void) {
         char *label3 = locate_text_res(misc_res, "bmm");
 
         draw_button(label0, (unsigned short)(button_x1[0] + 1), button_y1[0],
-                HIGHSCORE_BUTTON_DRAW_WIDTH,
-                    (unsigned short)(button_y2[0] - button_y1[0]), button_text_color,
-                    button_shadow_color, button_highlight_color, 0);
+                    HIGHSCORE_BUTTON_DRAW_WIDTH, (unsigned short)(button_y2[0] - button_y1[0]),
+                    button_text_color, button_shadow_color, button_highlight_color, 0);
         draw_button(label1, (unsigned short)(button_x1[1] + 1), button_y1[1],
-                HIGHSCORE_BUTTON_DRAW_WIDTH,
-                    (unsigned short)(button_y2[1] - button_y1[1]), button_text_color,
-                    button_shadow_color, button_highlight_color, 0);
+                    HIGHSCORE_BUTTON_DRAW_WIDTH, (unsigned short)(button_y2[1] - button_y1[1]),
+                    button_text_color, button_shadow_color, button_highlight_color, 0);
         draw_button(label2, (unsigned short)(button_x1[2] + 1), button_y1[2],
-                HIGHSCORE_BUTTON_DRAW_WIDTH,
-                    (unsigned short)(button_y2[2] - button_y1[2]), button_text_color,
-                    button_shadow_color, button_highlight_color, 0);
+                    HIGHSCORE_BUTTON_DRAW_WIDTH, (unsigned short)(button_y2[2] - button_y1[2]),
+                    button_text_color, button_shadow_color, button_highlight_color, 0);
         draw_button(label3, (unsigned short)(button_x1[3] + 1), button_y1[3],
-                HIGHSCORE_BUTTON_DRAW_WIDTH,
-                    (unsigned short)(button_y2[3] - button_y1[3]), button_text_color,
-                    button_shadow_color, button_highlight_color, 0);
+                    HIGHSCORE_BUTTON_DRAW_WIDTH, (unsigned short)(button_y2[3] - button_y1[3]),
+                    button_text_color, button_shadow_color, button_highlight_color, 0);
     }
 
     // Menu loop — event-driven via UIScreen.

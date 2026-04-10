@@ -205,9 +205,9 @@ sin_fast(unsigned short s) {
     case 1:
         return sintab[ANGLE_QUADRANT - c];
     case 2:
-        return -sintab[c];
+        return (short)-sintab[c];
     case 3:
-        return -sintab[ANGLE_QUADRANT - c];
+        return (short)-sintab[ANGLE_QUADRANT - c];
     }
     return 0;
 }
@@ -322,13 +322,13 @@ polarRadius2D(int z, int y) {
         result = cos_fast(result);
         if (y < 0)
             y = -y;
-        return (((unsigned long)y) << FIXED_POINT_SHIFT) / result;
+        return (int)(((unsigned long)y) << FIXED_POINT_SHIFT) / result;
     }
     else {
         result = sin_fast(result);
         if (z < 0)
             z = -z;
-        return (((unsigned long)z) << FIXED_POINT_SHIFT) / result;
+        return (int)(((unsigned long)z) << FIXED_POINT_SHIFT) / result;
     }
 }
 
@@ -388,39 +388,39 @@ void
 mat_mul_vector(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) {
 
     if (mat->m._11 != 0 && invec->x != 0)
-        outvec->x = ((long)mat->m._11 * invec->x) >> FIXED_POINT_SHIFT;
+        outvec->x = (short)(((long)mat->m._11 * invec->x) >> FIXED_POINT_SHIFT);
     else
         outvec->x = 0;
 
     if (mat->m._12 != 0 && invec->y != 0)
-        outvec->x += ((long)mat->m._12 * invec->y) >> FIXED_POINT_SHIFT;
+        outvec->x = (short)(outvec->x + (((long)mat->m._12 * invec->y) >> FIXED_POINT_SHIFT));
 
     if (mat->m._13 != 0 && invec->z != 0)
-        outvec->x += ((long)mat->m._13 * invec->z) >> FIXED_POINT_SHIFT;
+        outvec->x = (short)(outvec->x + (((long)mat->m._13 * invec->z) >> FIXED_POINT_SHIFT));
 
 
     if (mat->m._21 != 0 && invec->x != 0)
-        outvec->y = ((long)mat->m._21 * invec->x) >> FIXED_POINT_SHIFT;
+        outvec->y = (short)(((long)mat->m._21 * invec->x) >> FIXED_POINT_SHIFT);
     else
         outvec->y = 0;
 
     if (mat->m._22 != 0 && invec->y != 0)
-        outvec->y += ((long)mat->m._22 * invec->y) >> FIXED_POINT_SHIFT;
+        outvec->y = (short)(outvec->y + (((long)mat->m._22 * invec->y) >> FIXED_POINT_SHIFT));
 
     if (mat->m._23 != 0 && invec->z != 0)
-        outvec->y += ((long)mat->m._23 * invec->z) >> FIXED_POINT_SHIFT;
+        outvec->y = (short)(outvec->y + (((long)mat->m._23 * invec->z) >> FIXED_POINT_SHIFT));
 
 
     if (mat->m._31 != 0 && invec->x != 0)
-        outvec->z = ((long)mat->m._31 * invec->x) >> FIXED_POINT_SHIFT;
+        outvec->z = (short)(((long)mat->m._31 * invec->x) >> FIXED_POINT_SHIFT);
     else
         outvec->z = 0;
 
     if (mat->m._32 != 0 && invec->y != 0)
-        outvec->z += ((long)mat->m._32 * invec->y) >> FIXED_POINT_SHIFT;
+        outvec->z = (short)(outvec->z + (((long)mat->m._32 * invec->y) >> FIXED_POINT_SHIFT));
 
     if (mat->m._33 != 0 && invec->z != 0)
-        outvec->z += ((long)mat->m._33 * invec->z) >> FIXED_POINT_SHIFT;
+        outvec->z = (short)(outvec->z + (((long)mat->m._33 * invec->z) >> FIXED_POINT_SHIFT));
 }
 
 /** @brief Matrix.
@@ -462,15 +462,17 @@ mat_multiply(struct MATRIX *rmat, struct MATRIX *lmat, struct MATRIX *outmat) {
     counter = 9;
     while (counter > 0) {
         if (rmatvals[0] != 0 && lmatvals[0] != 0)
-            outmatvals[0] = ((long)rmatvals[0] * lmatvals[0]) >> FIXED_POINT_SHIFT;
+            outmatvals[0] = (short)(((long)rmatvals[0] * lmatvals[0]) >> FIXED_POINT_SHIFT);
         else
             outmatvals[0] = 0;
 
         if (rmatvals[1] != 0 && lmatvals[3] != 0)
-            outmatvals[0] += ((long)rmatvals[1] * lmatvals[3]) >> FIXED_POINT_SHIFT;
+            outmatvals[0]
+                = (short)(outmatvals[0] + (((long)rmatvals[1] * lmatvals[3]) >> FIXED_POINT_SHIFT));
 
         if (rmatvals[2] != 0 && lmatvals[6] != 0)
-            outmatvals[0] += ((long)rmatvals[2] * lmatvals[6]) >> FIXED_POINT_SHIFT;
+            outmatvals[0]
+                = (short)(outmatvals[0] + (((long)rmatvals[2] * lmatvals[6]) >> FIXED_POINT_SHIFT));
 
         outmatvals++;
         if (counter != 7 && counter != 4) {
@@ -501,15 +503,15 @@ mat_invert(struct MATRIX *inmat, struct MATRIX *outmat) {
     if (inmat == outmat) {
         temp = outmat->m._21;
         outmat->m._21 = outmat->m._12;
-        outmat->m._12 = temp;
+        outmat->m._12 = (short)temp;
 
         temp = outmat->m._31;
         outmat->m._31 = outmat->m._13;
-        outmat->m._13 = temp;
+        outmat->m._13 = (short)temp;
 
         temp = outmat->m._32;
         outmat->m._32 = outmat->m._23;
-        outmat->m._23 = temp;
+        outmat->m._23 = (short)temp;
     }
     else {
         outmat->m._11 = inmat->m._11;
@@ -542,11 +544,11 @@ mat_rot_x(struct MATRIX *outmat, int angle) {
     outmat->m._21 = 0;
     outmat->m._31 = 0;
     outmat->m._12 = 0;
-    outmat->m._22 = c;
-    outmat->m._32 = s;
+    outmat->m._22 = (short)c;
+    outmat->m._32 = (short)s;
     outmat->m._13 = 0;
-    outmat->m._23 = -s;
-    outmat->m._33 = c;
+    outmat->m._23 = (short)-s;
+    outmat->m._33 = (short)c;
 }
 
 /** @brief Build a rotation matrix around the Y axis.
@@ -560,15 +562,15 @@ mat_rot_y(struct MATRIX *outmat, int angle) {
 
     c = cos_fast(angle);
     s = sin_fast(angle);
-    outmat->m._11 = c;
+    outmat->m._11 = (short)c;
     outmat->m._21 = 0;
-    outmat->m._31 = -s;
+    outmat->m._31 = (short)-s;
     outmat->m._12 = 0;
     outmat->m._22 = FIXED_POINT_ONE;
     outmat->m._32 = 0;
-    outmat->m._13 = s;
+    outmat->m._13 = (short)s;
     outmat->m._23 = 0;
-    outmat->m._33 = c;
+    outmat->m._33 = (short)c;
 }
 
 /** @brief Build a rotation matrix around the Z axis.
@@ -582,11 +584,11 @@ mat_rot_z(struct MATRIX *outmat, int angle) {
 
     c = cos_fast(angle);
     s = sin_fast(angle);
-    outmat->m._11 = c;
-    outmat->m._21 = s;
+    outmat->m._11 = (short)c;
+    outmat->m._21 = (short)s;
     outmat->m._31 = 0;
-    outmat->m._12 = -s;
-    outmat->m._22 = c;
+    outmat->m._12 = (short)-s;
+    outmat->m._22 = (short)c;
     outmat->m._32 = 0;
     outmat->m._13 = 0;
     outmat->m._23 = 0;
@@ -997,7 +999,7 @@ rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *r
 	*/
     for (i = 0; i < rect_count; i++) {
 
-        entry_flags = rect_source_flags[i];
+        entry_flags = (unsigned char)rect_source_flags[i];
         if ((entry_flags & 1) != 0) {
             rectptr_a = &rect_array_a[i];
         }
@@ -1123,7 +1125,7 @@ vector_direction_bucket32(struct VECTOR *vec) {
         angle += ANGLE_FULL_TURN;
     }
 
-    result += (((angle << 4) - angle) >> 10);
+    result += (int)(((angle << 4) - angle) >> 10);
 
     return result;
 }
@@ -1309,8 +1311,8 @@ vector_lerp_at_z(struct VECTOR *vec1, struct VECTOR *vec2, struct VECTOR *outvec
         z_range = z_range >> 1;
     }
 
-    outvec->x = (vec1->x - vec2->x) * z_offset / z_range + vec2->x;
-    outvec->y = (vec1->y - vec2->y) * z_offset / z_range + vec2->y;
+    outvec->x = (short)(((long)(vec1->x - vec2->x) * z_offset) / z_range + vec2->x);
+    outvec->y = (short)(((long)(vec1->y - vec2->y) * z_offset) / z_range + vec2->y);
 }
 
 /** @brief Multiply two 16-bit values and return a scaled 16-bit result.
@@ -1322,7 +1324,8 @@ vector_lerp_at_z(struct VECTOR *vec1, struct VECTOR *vec2, struct VECTOR *outvec
 short
 multiply_and_scale(short a1, short a2) {
     long mul = (long)a1 * (long)a2 * 4L;
-    return (mul >> SCALE_MUL_SHIFT) + ((mul & SCALE_MUL_ROUND_MASK) >> SCALE_MUL_BIAS_SHIFT);
+    return (short)((mul >> SCALE_MUL_SHIFT)
+                   + ((mul & SCALE_MUL_ROUND_MASK) >> SCALE_MUL_BIAS_SHIFT));
 }
 
 
@@ -1343,7 +1346,7 @@ multiply_and_scale(short a1, short a2) {
  */
 int
 vec_normalInnerProduct(int x, int y, int z, struct VECTOR *normal) {
-    return (((long)normal->x * x) + ((long)normal->z * z) + ((long)normal->y * y))
+    return (int)(((long)normal->x * x) + ((long)normal->z * z) + ((long)normal->y * y))
            / NORMAL_DOT_DIVISOR;
 }
 
@@ -1370,15 +1373,15 @@ plane_get_collision_point(int plane_index, int x, int y, int z) {
         curplane = &planptr[plane_index];
     }
 
-    b.y = curplane->plane_origin.y + terrainHeight;
-    a.y = y - b.y;
+    b.y = (short)(curplane->plane_origin.y + terrainHeight);
+    a.y = (short)(y - b.y);
     if (plane_index < 4) {
         return a.y;
     }
-    b.x = curplane->plane_origin.x + elem_xCenter;
-    b.z = curplane->plane_origin.z + elem_zCenter;
-    a.x = x - b.x;
-    a.z = z - b.z;
+    b.x = (short)(curplane->plane_origin.x + elem_xCenter);
+    b.z = (short)(curplane->plane_origin.z + elem_zCenter);
+    a.x = (short)(x - b.x);
+    a.z = (short)(z - b.z);
     {
         int _result = vec_normalInnerProduct(a.x, a.y, a.z, &curplane->plane_normal);
         return _result;

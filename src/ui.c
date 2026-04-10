@@ -38,6 +38,7 @@
  *   (More functions to be added)
  */
 
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include "compat_fs.h"
@@ -88,7 +89,7 @@ window_stack_get_save_ptr(unsigned short idx) {
 
     /* Use window_save_buf only when the sprite size matches the original 16-bit layout. */
     if (window_save_buf != NULL && (sizeof(struct SPRITE) * 2u) <= 60u) {
-        return window_save_buf + (idx * 60u);
+        return window_save_buf + ((size_t)(idx * 60u));
     }
 
     return (char *)g_window_stack_save[idx];
@@ -102,13 +103,13 @@ window_stack_get_save_ptr(unsigned short idx) {
  * Static variables for read_line text input state
  * These were game_mode_tracker-menu_state_data in seg032.asm
  /*--------------------------------------------------------------*/
-static unsigned short rl_cursor_height;  /* game_mode_tracker - cursor height (1 or 8) */
-static unsigned short rl_x_pos;          /* read_line_x_pos - x position */
-static unsigned short rl_y_pos;          /* read_line_y_pos - y position */
-static bool rl_cursor_visible; /* read_line_cursor_visible - cursor visible flag */
-static char *rl_buffer_ptr;              /* off_42A1E - buffer pointer */
-static unsigned short rl_max_width;      /* read_line_max_width_px - max width in pixels */
-static unsigned short rl_cursor_pos;     /* menu_state_data - cursor position in buffer */
+static unsigned short rl_cursor_height; /* game_mode_tracker - cursor height (1 or 8) */
+static unsigned short rl_x_pos;         /* read_line_x_pos - x position */
+static unsigned short rl_y_pos;         /* read_line_y_pos - y position */
+static bool rl_cursor_visible;          /* read_line_cursor_visible - cursor visible flag */
+static char *rl_buffer_ptr;             /* off_42A1E - buffer pointer */
+static unsigned short rl_max_width;     /* read_line_max_width_px - max width in pixels */
+static unsigned short rl_cursor_pos;    /* menu_state_data - cursor position in buffer */
 
 /*--------------------------------------------------------------
  * read_line_helper2 - Render text in input field
@@ -283,14 +284,13 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
     read_line_helper();
 
     /* Set up timeout if specified */
-    timer_copy_counter((unsigned long)timeout);
+    (void)timer_copy_counter((unsigned long)timeout);
     set_add_value(4, 0);
 
     first_key = 1;
 
     /* Main input loop */
     while (1) {
-        key_code = 0;
 
         /* Call user callback every iteration if provided */
         if (callback != 0) {
@@ -326,7 +326,7 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
         }
 
         /* Reset timeout on keypress */
-        timer_copy_counter((unsigned long)timeout);
+        (void)timer_copy_counter((unsigned long)timeout);
 
         /* Check for exit keys */
         if (key_code == UI_KEY_ENTER || key_code == UI_KEY_ESCAPE) { /* Enter or Escape */
@@ -525,12 +525,12 @@ ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, un
     avail_mem = mmgr_get_res_ofs_diff_scaled();
 
     if (avail_mem < required_mem) {
-        fprintf(stderr, "ui_window_push_modal: insufficient mem avail=%lu required=%lu w=%u h=%u\n",
+        (void)fprintf(stderr, "ui_window_push_modal: insufficient mem avail=%lu required=%lu w=%u h=%u\n",
                 avail_mem, required_mem, width, height);
         return 0;
     }
     if (window_stack_depth >= 10) {
-        fprintf(stderr, "ui_window_push_modal: window stack overflow depth=%u\n",
+        (void)fprintf(stderr, "ui_window_push_modal: window stack overflow depth=%u\n",
                 window_stack_depth);
         return 0;
     }
@@ -540,7 +540,7 @@ ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, un
     /* Create window sprite */
     new_sprite = sprite_make_wnd(width, height, 15);
     if (new_sprite == NULL) {
-        fprintf(stderr, "ui_window_push_modal: sprite_make_wnd failed w=%u h=%u\n", width, height);
+        (void)fprintf(stderr, "ui_window_push_modal: sprite_make_wnd failed w=%u h=%u\n", width, height);
         return 0;
     }
 
@@ -556,7 +556,7 @@ ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, un
     sprite_bytes = (unsigned int)(sizeof(struct SPRITE));
     save_ptr = window_stack_get_save_ptr(idx);
     if (save_ptr == NULL) {
-        fprintf(stderr, "ui_window_push_modal: save buffer unavailable idx=%u\n", idx);
+        (void)fprintf(stderr, "ui_window_push_modal: save buffer unavailable idx=%u\n", idx);
         return 0;
     }
     memcpy(save_ptr, &saved_sprites[0], sizeof(struct SPRITE));
@@ -604,7 +604,7 @@ ui_window_pop_modal(void) {
     sprite_bytes = (unsigned int)(sizeof(struct SPRITE));
     save_ptr = window_stack_get_save_ptr(idx);
     if (save_ptr == NULL) {
-        fprintf(stderr, "ui_window_pop_modal: save buffer unavailable idx=%u\n", idx);
+        (void)fprintf(stderr, "ui_window_pop_modal: save buffer unavailable idx=%u\n", idx);
         return;
     }
     memcpy(&saved_sprites[0], save_ptr, sizeof(struct SPRITE));
@@ -1288,101 +1288,99 @@ do_joy_restext(void) {
     }
     else {
 
-    /* Clear assigned flags */
-    for (i = 0; i < 9; i++) {
-        joy_assigned[i] = 0;
-    }
+        /* Clear assigned flags */
+        for (i = 0; i < 9; i++) {
+            joy_assigned[i] = 0;
+        }
 
-    joystick_assigned_flags = true;
-    mouse_draw_opaque_check();
+        joystick_assigned_flags = true;
+        mouse_draw_opaque_check();
 
-    /* coords mapping from asm (index-based):
+        /* coords mapping from asm (index-based):
 	   coords[0..9] provide the anchor positions used for divider lines and slot layout.
 	   The four fill calls below mirror the original geometry equations from seg009.
 	*/
 
-    /* Draw horizontal/vertical divider lines */
-    temp_width = coords[9] - coords[3] - 8;
-    sprite_fill_rect((unsigned short)(coords[2] - 4), coords[3], 1, temp_width,
-                     (unsigned char)dialogarg2);
-    sprite_fill_rect((unsigned short)(coords[4] - 4), coords[5], 1, temp_width,
-                     (unsigned char)dialogarg2);
+        /* Draw horizontal/vertical divider lines */
+        temp_width = coords[9] - coords[3] - 8;
+        sprite_fill_rect((unsigned short)(coords[2] - 4), coords[3], 1, temp_width,
+                         (unsigned char)dialogarg2);
+        sprite_fill_rect((unsigned short)(coords[4] - 4), coords[5], 1, temp_width,
+                         (unsigned char)dialogarg2);
 
-    temp_height = coords[6] - coords[0];
-    sprite_fill_rect(coords[0], (unsigned short)(coords[7] - 4), temp_height, 1,
-                     (unsigned char)dialogarg2);
-    sprite_fill_rect(coords[0], (unsigned short)(coords[8] - 4), temp_height, 1,
-                     (unsigned char)dialogarg2);
+        temp_height = coords[6] - coords[0];
+        sprite_fill_rect(coords[0], (unsigned short)(coords[7] - 4), temp_height, 1,
+                         (unsigned char)dialogarg2);
+        sprite_fill_rect(coords[0], (unsigned short)(coords[8] - 4), temp_height, 1,
+                         (unsigned char)dialogarg2);
 
-    /* Setup button positions - coords[10..21] are reused as derived slot anchors
+        /* Setup button positions - coords[10..21] are reused as derived slot anchors
 	   for the 9 joystick function slots. */
-    /* Row group 1 uses coords[2] as X anchor. */
-    coords[10] = coords[2];
-    coords[11] = coords[2];
-    coords[12] = coords[2];
-    /* Row group 2 uses coords[4] as X anchor. */
-    coords[13] = coords[4];
-    coords[14] = coords[4];
-    coords[15] = coords[4];
-    /* Column anchors use coords[0]. */
-    coords[16] = coords[0];
-    coords[17] = coords[0];
-    coords[18] = coords[0];
+        /* Row group 1 uses coords[2] as X anchor. */
+        coords[10] = coords[2];
+        coords[11] = coords[2];
+        coords[12] = coords[2];
+        /* Row group 2 uses coords[4] as X anchor. */
+        coords[13] = coords[4];
+        coords[14] = coords[4];
+        coords[15] = coords[4];
+        /* Column anchors use coords[0]. */
+        coords[16] = coords[0];
+        coords[17] = coords[0];
+        coords[18] = coords[0];
 
-    /* Derived button cell size from primary anchors. */
-    temp_width = coords[2] - coords[0] - 8;  /* button width */
-    temp_height = coords[7] - coords[1] - 8; /* button height */
+        /* Derived button cell size from primary anchors. */
 
-    prev_joy = -1;
-    joystick_init_calibration();
+        prev_joy = -1;
+        joystick_init_calibration();
 
-    /* Main input loop */
-    while (1) {
-        keycode = kb_read_char();
-        if (keycode != 0) {
-            /* Key pressed - check if all assigned */
-            for (i = 0; i < 9; i++) {
-                joystick_assigned_flags &= joy_assigned[i];
+        /* Main input loop */
+        while (1) {
+            keycode = kb_read_char();
+            if (keycode != 0) {
+                /* Key pressed - check if all assigned */
+                for (i = 0; i < 9; i++) {
+                    joystick_assigned_flags &= joy_assigned[i];
+                }
+                break;
             }
-            break;
-        }
 
-        /* Check joystick */
-        ax = get_joy_flags();
-        if (ax & 48) {
-            /* Joystick buttons pressed - check if all assigned */
-            for (i = 0; i < 9; i++) {
-                joystick_assigned_flags &= joy_assigned[i];
+            /* Check joystick */
+            ax = get_joy_flags();
+            if (ax & 48) {
+                /* Joystick buttons pressed - check if all assigned */
+                for (i = 0; i < 9; i++) {
+                    joystick_assigned_flags &= joy_assigned[i];
+                }
+                break;
             }
-            break;
+
+            current_joy = joystick_direction_lookup(ax);
+            if (current_joy == prev_joy) {
+                continue;
+            }
+
+            /* Highlight changed - redraw all slots unhighlighted */
+            for (i = 0; i < 9; i++) {
+                /* Clear slot with background color */
+                /* Position calculation would need proper slot arrays */
+            }
+
+            /* Highlight current slot */
+            if (current_joy >= 0 && current_joy < 9) {
+                joy_assigned[current_joy] = 1;
+            }
+            prev_joy = current_joy;
         }
 
-        current_joy = joystick_direction_lookup(ax);
-        if (current_joy == prev_joy) {
-            continue;
+        /* Close dialog */
+        ui_window_pop_modal();
+
+        if (!joystick_assigned_flags) {
+            /* Show "jox" error dialog - joystick not fully configured */
+            textres_ptr = locate_text_res(mainresptr, "jox");
+            ui_dialog_info_restext(textres_ptr);
         }
-
-        /* Highlight changed - redraw all slots unhighlighted */
-        for (i = 0; i < 9; i++) {
-            /* Clear slot with background color */
-            /* Position calculation would need proper slot arrays */
-        }
-
-        /* Highlight current slot */
-        if (current_joy >= 0 && current_joy < 9) {
-            joy_assigned[current_joy] = 1;
-        }
-        prev_joy = current_joy;
-    }
-
-    /* Close dialog */
-    ui_window_pop_modal();
-
-    if (!joystick_assigned_flags) {
-        /* Show "jox" error dialog - joystick not fully configured */
-        textres_ptr = locate_text_res(mainresptr, "jox");
-        ui_dialog_info_restext(textres_ptr);
-    }
 
     } /* end else: dialog was accepted */
 
@@ -1481,8 +1479,6 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             }
             line_char_index = 0;
             text_y_offset += line_height;
-            saved_text_ofs_unused = 0;
-            saved_text_seg_unused = 0;
         }
         else if (*text_ptr == '}') {
             /* Section separator */
@@ -1493,13 +1489,11 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             }
             line_char_index = 0;
             text_y_offset += 4;
-            saved_text_ofs_unused = 0;
-            saved_text_seg_unused = 0;
         }
         else {
             /* Normal character */
             if (line_char_index < (sizeof(line_buf) - 1)) {
-                line_buf[line_char_index++] = current_char;
+                line_buf[line_char_index++] = (char)current_char;
             }
         }
         text_ptr++;
@@ -1528,7 +1522,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
     /* Create modal window if requested */
     if (create_window != 0) {
         if (!ui_window_push_modal(dialog_x1, dialog_y1, dialog_x2, dialog_y2)) {
-            fprintf(stderr, "show_dialog: ui_window_push_modal failed\n");
+            (void)fprintf(stderr, "show_dialog: ui_window_push_modal failed\n");
             return -1;
         }
     }
@@ -1564,8 +1558,6 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             sprite_draw_text_opaque(line_buf, dialog_x, dialog_y + text_y_offset);
             line_char_index = 0;
             text_y_offset += line_height;
-            saved_text_ofs_unused = 0;
-            saved_text_seg_unused = 0;
         }
         else if (*text_ptr == '}') {
             /* Section separator */
@@ -1573,8 +1565,6 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             sprite_draw_text_opaque(line_buf, dialog_x, dialog_y + text_y_offset);
             line_char_index = 0;
             text_y_offset += 4;
-            saved_text_ofs_unused = 0;
-            saved_text_seg_unused = 0;
         }
         else if (*text_ptr == '@') {
             /* Coordinate marker for type 3 dialogs */
@@ -1593,7 +1583,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
         }
         else {
             if (line_char_index < (sizeof(line_buf) - 1)) {
-                line_buf[line_char_index++] = current_char;
+                line_buf[line_char_index++] = (char)current_char;
             }
         }
         text_ptr++;
@@ -1715,7 +1705,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
 
     case 3:
         /* Return button count */
-        return coord_write_index / 2;
+        return (short)coord_write_index / 2;
 
     case 4:
         /* Timed display */
@@ -1727,7 +1717,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
         /* Interactive button selection */
         selected_button = default_button;
         prev_selected_button = 255;
-        timer_get_delta_alt();
+        (void)timer_get_delta_alt();
         mouse_draw_opaque_check();
 
         if (button_count == 0) {
@@ -1761,9 +1751,9 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             }
         }
 
-        if (coords_array != 0 && coords_array[selected_button * 2] == 0) {
+        if (coords_array != 0 && coords_array[(ptrdiff_t)(selected_button * 2)] == 0) {
             for (loop_index = 0; loop_index < button_count; loop_index++) {
-                if (coords_array[loop_index * 2] != 0) {
+                if (coords_array[(ptrdiff_t)(loop_index * 2)] != 0) {
                     selected_button = (unsigned char)loop_index;
                     break;
                 }
@@ -1783,7 +1773,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                         font_set_colors(dialog_fnt_colour, dialog_text_color);
                     }
 
-                    if (coords_array != 0 && coords_array[loop_index * 2] == 0) {
+                    if (coords_array != 0 && coords_array[(ptrdiff_t)(loop_index * 2)] == 0) {
                         font_set_colors(performGraphColor, dialog_text_color);
                     }
 
@@ -1809,7 +1799,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
             hit_button_index = (unsigned char)mouse_multi_hittest(
                 button_count, button_x_start, button_x_end, button_y_start, button_y_end);
             if (hit_button_index != 255) {
-                if (coords_array == 0 || coords_array[hit_button_index * 2] != 0) {
+                if (coords_array == 0 || coords_array[(ptrdiff_t)(hit_button_index * 2)] != 0) {
                     if (kbormouse && selected_button != hit_button_index) {
                         selected_button = hit_button_index;
                     }
@@ -1840,7 +1830,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                     else {
                         selected_button--;
                     }
-                    if (coords_array == 0 || coords_array[selected_button * 2] != 0) {
+                    if (coords_array == 0 || coords_array[(ptrdiff_t)(selected_button * 2)] != 0) {
                         break;
                     }
                     tries--;
@@ -1855,7 +1845,7 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                     if (selected_button >= button_count) {
                         selected_button = 0;
                     }
-                    if (coords_array == 0 || coords_array[selected_button * 2] != 0) {
+                    if (coords_array == 0 || coords_array[(ptrdiff_t)(selected_button * 2)] != 0) {
                         break;
                     }
                     tries--;
@@ -2007,290 +1997,292 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
     sprite_draw_text_opaque(pathbuf, list_x, filename_row_y);
 
     while (1) {
-    mouse_draw_transparent_check();
-    file_count = 0;
+        mouse_draw_transparent_check();
+        file_count = 0;
 
-    /* Search for files matching pattern */
-    find_result_path = file_combine_and_find(pathbuf, "*", (char *)ext);
-    if (find_result_path == 0) {
+        /* Search for files matching pattern */
+        find_result_path = file_combine_and_find(pathbuf, "*", (char *)ext);
+        if (find_result_path == 0) {
 
-        /* No files found or need to re-enter filename */
-        font_set_colors(dialog_fnt_colour, dialog_text_color);
+            /* No files found or need to re-enter filename */
+            font_set_colors(dialog_fnt_colour, dialog_text_color);
 
-        /* Call read_line to edit the filename */
-        si = call_read_line(pathbuf, 18, list_x, filename_row_y, mainresptr);
+            /* Call read_line to edit the filename */
+            si = call_read_line(pathbuf, 18, list_x, filename_row_y, mainresptr);
 
-        if (si == UI_KEY_ESCAPE) { /* ESC pressed */
-            dialog_accept = 0;
-            break;
+            if (si == UI_KEY_ESCAPE) { /* ESC pressed */
+                dialog_accept = 0;
+                break;
+            }
+            continue; /* no files found — re-enter path and search again */
         }
-        continue; /* no files found — re-enter path and search again */
-    }
 
-    /* Parse first file found into file list */
-    parse_filepath_separators_dosptr(find_result_path, resID_byte1);
-    for (si = 0; si < file_count; si++) {
-        if (fs_strcasecmp(&file_names[si][0], resID_byte1) == 0) {
-            break;
-        }
-    }
-    if (si == file_count && file_count < 128) {
-        size_t name_len = strnlen(resID_byte1, sizeof(file_names[file_count]) - 1);
-        memcpy(&file_names[file_count][0], resID_byte1, name_len);
-        file_names[file_count][name_len] = '\0';
-        file_count++;
-    }
-
-    /* Continue finding more files */
-    while (1) {
-        find_result_path = file_find_next_alt();
-        if (find_result_path == 0)
-            break;
-
+        /* Parse first file found into file list */
         parse_filepath_separators_dosptr(find_result_path, resID_byte1);
         for (si = 0; si < file_count; si++) {
             if (fs_strcasecmp(&file_names[si][0], resID_byte1) == 0) {
                 break;
             }
         }
-        if (si == file_count) {
-            if (file_count >= 128)
-                break; /* Max 128 files */
+        if (si == file_count && file_count < 128) {
             size_t name_len = strnlen(resID_byte1, sizeof(file_names[file_count]) - 1);
             memcpy(&file_names[file_count][0], resID_byte1, name_len);
             file_names[file_count][name_len] = '\0';
             file_count++;
         }
-    }
 
-    /* Sort file list alphabetically using bubble sort */
-    if (file_count > 1) {
-        for (si = 0; si < file_count - 1; si++) {
-            for (compare_index = si + 1; compare_index < file_count; compare_index++) {
-                if (strcmp(&file_names[compare_index][0], &file_names[si][0]) < 0) {
-                    /* Swap entries */
-                    char tmp[13];
-                    memcpy(tmp, &file_names[si][0], 13);
-                    memcpy(&file_names[si][0], &file_names[compare_index][0], 13);
-                    memcpy(&file_names[compare_index][0], tmp, 13);
+        /* Continue finding more files */
+        while (1) {
+            find_result_path = file_find_next_alt();
+            if (find_result_path == 0)
+                break;
+
+            parse_filepath_separators_dosptr(find_result_path, resID_byte1);
+            for (si = 0; si < file_count; si++) {
+                if (fs_strcasecmp(&file_names[si][0], resID_byte1) == 0) {
+                    break;
+                }
+            }
+            if (si == file_count) {
+                if (file_count >= 128)
+                    break; /* Max 128 files */
+                size_t name_len = strnlen(resID_byte1, sizeof(file_names[file_count]) - 1);
+                memcpy(&file_names[file_count][0], resID_byte1, name_len);
+                file_names[file_count][name_len] = '\0';
+                file_count++;
+            }
+        }
+
+        /* Sort file list alphabetically using bubble sort */
+        if (file_count > 1) {
+            for (si = 0; si < file_count - 1; si++) {
+                for (compare_index = si + 1; compare_index < file_count; compare_index++) {
+                    if (strcmp(&file_names[compare_index][0], &file_names[si][0]) < 0) {
+                        /* Swap entries */
+                        char tmp[13];
+                        memcpy(tmp, &file_names[si][0], 13);
+                        memcpy(&file_names[si][0], &file_names[compare_index][0], 13);
+                        memcpy(&file_names[compare_index][0], tmp, 13);
+                    }
                 }
             }
         }
-    }
 
-    /* Draw scroll buttons if more than 7 files */
-    if (file_count > 7) {
-        /* Draw Up button */
-        textres_ptr = (char *)locate_text_res(mainresptr, "lsu");
-        copy_string(resID_byte1, textres_ptr);
-        scroll_up_label_y = row_y_start[1]; /* ASM alias: scroll_up_label_y overlaps row slot 1 */
-        si = (unsigned short)font_get_centered_x(resID_byte1);
-        sprite_draw_text_opaque(resID_byte1, si, scroll_up_label_y);
+        /* Draw scroll buttons if more than 7 files */
+        if (file_count > 7) {
+            /* Draw Up button */
+            textres_ptr = (char *)locate_text_res(mainresptr, "lsu");
+            copy_string(resID_byte1, textres_ptr);
+            scroll_up_label_y
+                = row_y_start[1]; /* ASM alias: scroll_up_label_y overlaps row slot 1 */
+            si = (unsigned short)font_get_centered_x(resID_byte1);
+            sprite_draw_text_opaque(resID_byte1, si, scroll_up_label_y);
 
-        /* Draw Down button */
-        textres_ptr = (char *)locate_text_res(mainresptr, "lsd");
-        copy_string(resID_byte1, textres_ptr);
-        scroll_down_label_y = row_y_start[9] - 1; /* Save Y position */
-        si = (unsigned short)font_get_centered_x(resID_byte1);
-        sprite_draw_text_opaque(resID_byte1, si, scroll_down_label_y);
-    }
+            /* Draw Down button */
+            textres_ptr = (char *)locate_text_res(mainresptr, "lsd");
+            copy_string(resID_byte1, textres_ptr);
+            scroll_down_label_y = row_y_start[9] - 1; /* Save Y position */
+            si = (unsigned short)font_get_centered_x(resID_byte1);
+            sprite_draw_text_opaque(resID_byte1, si, scroll_down_label_y);
+        }
 
-    /* Initialize selection state */
-    selected_file_index = 0;
-    scroll_offset = 0;
-    prev_selected_index = 255;
-    prev_scroll_offset = 255;
-    /* Consume the click/press that opened the parent menu item so the
+        /* Initialize selection state */
+        selected_file_index = 0;
+        scroll_offset = 0;
+        prev_selected_index = 255;
+        prev_scroll_offset = 255;
+        /* Consume the click/press that opened the parent menu item so the
 	   file dialog doesn't immediately confirm on first frame. */
-    check_input();
-    mousebutinputcode = 0;
-    joyinputcode = 0;
-    timer_get_delta_alt();
-    selection_done = 0;
+        check_input();
+        mousebutinputcode = 0;
+        joyinputcode = 0;
+        (void)timer_get_delta_alt();
+        selection_done = 0;
 
-    /* Main selection loop */
-    while (selection_done == 0) {
-        /* Redraw file list if selection or scroll changed */
-        if (prev_selected_index != selected_file_index || prev_scroll_offset != scroll_offset) {
-            prev_selected_index = selected_file_index;
-            prev_scroll_offset = scroll_offset;
+        /* Main selection loop */
+        while (selection_done == 0) {
+            /* Redraw file list if selection or scroll changed */
+            if (prev_selected_index != selected_file_index || prev_scroll_offset != scroll_offset) {
+                prev_selected_index = selected_file_index;
+                prev_scroll_offset = scroll_offset;
 
-            mouse_draw_opaque_check();
+                mouse_draw_opaque_check();
 
-            /** @brief Files.
+                /** @brief Files.
  * @param si Parameter `si`.
  * @return Function result.
  */
-            /* Draw visible files (up to 7) */
-            for (si = 0; si < 7; si++) {
-                i = scroll_offset + si;
+                /* Draw visible files (up to 7) */
+                for (si = 0; si < 7; si++) {
+                    i = scroll_offset + si;
 
-                /** @brief Item.
+                    /** @brief Item.
  * @param black Parameter `black`.
  * @param black Parameter `black`.
  * @param white Parameter `white`.
  * @param selected_file_index Parameter `selected_file_index`.
  * @return Function result.
  */
-                /* Set highlight color for selected item (ASM parity).
+                    /* Set highlight color for selected item (ASM parity).
 					   Selected:   fontdef[0]=dialog_text_color(black), fontdef[1]=dialog_fnt_colour(white)
 					              → font_draw_text paints glyph pixels black, cell BG pixels white.
 					   Unselected: fontdef[0]=dialog_fnt_colour(white), fontdef[1]=dialog_text_color(black)
 					              → white glyphs on black cell background. */
-                if (i == selected_file_index) {
-                    font_set_colors(dialog_text_color, dialog_fnt_colour);
-                }
-                else {
-                    font_set_colors(dialog_fnt_colour, dialog_text_color);
+                    if (i == selected_file_index) {
+                        font_set_colors(dialog_text_color, dialog_fnt_colour);
+                    }
+                    else {
+                        font_set_colors(dialog_fnt_colour, dialog_text_color);
+                    }
+
+                    /* Draw filename or blank if past end of list */
+                    if (i < file_count) {
+                        memcpy(resID_byte1, &file_names[i][0], sizeof(file_names[i]));
+                    }
+                    else {
+                        memcpy(resID_byte1, "        ", 9); /* 8 spaces + NUL */
+                    }
+
+                    sprite_draw_text_opaque(resID_byte1, list_x, row_y_start[si + 2]);
+
+                    /* Clear area to right of filename (use matching row background color) */
+                    filename_text_width = font_get_text_width(resID_byte1);
+                    sprite_fill_rect(list_x + filename_text_width, row_y_start[si + 2],
+                                     list_x_end - list_x - filename_text_width, 8,
+                                     (i == selected_file_index) ? dialog_fnt_colour
+                                                                : dialog_text_color);
                 }
 
-                /* Draw filename or blank if past end of list */
-                if (i < file_count) {
-                    memcpy(resID_byte1, &file_names[i][0], sizeof(file_names[i]));
-                }
-                else {
-                    memcpy(resID_byte1, "        ", 9); /* 8 spaces + NUL */
-                }
-
-                sprite_draw_text_opaque(resID_byte1, list_x, row_y_start[si + 2]);
-
-                /* Clear area to right of filename (use matching row background color) */
-                filename_text_width = font_get_text_width(resID_byte1);
-                sprite_fill_rect(list_x + filename_text_width, row_y_start[si + 2],
-                                 list_x_end - list_x - filename_text_width, 8,
-                                 (i == selected_file_index) ? dialog_fnt_colour
-                                                            : dialog_text_color);
+                mouse_draw_transparent_check();
             }
 
-            mouse_draw_transparent_check();
-        }
+            /* Get input */
+            nav_input_code = input_checking(timer_get_delta_alt());
 
-        /* Get input */
-        nav_input_code = input_checking(timer_get_delta_alt());
+            /* Check mouse hit test on buttons */
+            row_hit_or_index = (unsigned char)mouse_multi_hittest(10, row_x_start, row_x_end,
+                                                                  row_y_start, row_y_end);
+            {
+                unsigned short mouse_release_click = 0;
+                if (kbormouse && UI_IS_CONFIRM(nav_input_code)) {
+                    mouse_release_click = 1;
+                }
 
-        /* Check mouse hit test on buttons */
-        row_hit_or_index = (unsigned char)mouse_multi_hittest(10, row_x_start, row_x_end,
-                                                              row_y_start, row_y_end);
-        {
-            unsigned short mouse_release_click = 0;
-            if (kbormouse && UI_IS_CONFIRM(nav_input_code)) {
-                mouse_release_click = 1;
-            }
-
-            if (row_hit_or_index != 255) {
-                if (row_hit_or_index == 0) {
-                    /* Scroll up button */
-                    if (mouse_release_click != 0) {
-                        selected_file_index = 0;
-                        scroll_offset = 255; /* Will be fixed up below */
-                        nav_input_code = 0;
-                    }
-                }
-                else if (row_hit_or_index == 1) {
-                    /* Scroll up one */
-                    if (mouse_release_click != 0) {
-                        if (selected_file_index + scroll_offset > 0) {
-                            selected_file_index--;
+                if (row_hit_or_index != 255) {
+                    if (row_hit_or_index == 0) {
+                        /* Scroll up button */
+                        if (mouse_release_click != 0) {
+                            selected_file_index = 0;
+                            scroll_offset = 255; /* Will be fixed up below */
+                            nav_input_code = 0;
                         }
-                        if (selected_file_index < scroll_offset) {
-                            scroll_offset = selected_file_index;
-                        }
-                        nav_input_code = 0;
                     }
-                }
-                else if (row_hit_or_index == 9) {
-                    /* Scroll down button */
-                    if (mouse_release_click != 0) {
-                        if (selected_file_index < file_count - 1) {
-                            selected_file_index++;
+                    else if (row_hit_or_index == 1) {
+                        /* Scroll up one */
+                        if (mouse_release_click != 0) {
+                            if (selected_file_index + scroll_offset > 0) {
+                                selected_file_index--;
+                            }
+                            if (selected_file_index < scroll_offset) {
+                                scroll_offset = selected_file_index;
+                            }
+                            nav_input_code = 0;
                         }
-                        nav_input_code = 0;
                     }
-                }
-                else {
-                    /** @brief Release.
+                    else if (row_hit_or_index == 9) {
+                        /* Scroll down button */
+                        if (mouse_release_click != 0) {
+                            if (selected_file_index < file_count - 1) {
+                                selected_file_index++;
+                            }
+                            nav_input_code = 0;
+                        }
+                    }
+                    else {
+                        /** @brief Release.
  * @param mouse_release_click Parameter `mouse_release_click`.
  * @return Function result.
  */
-                    /* File row selected on mouse-button release (not hover). */
-                    if (mouse_release_click != 0) {
-                        i = scroll_offset + row_hit_or_index - 2;
-                        if (i < file_count) {
-                            selected_file_index = (unsigned char)i;
+                        /* File row selected on mouse-button release (not hover). */
+                        if (mouse_release_click != 0) {
+                            i = scroll_offset + row_hit_or_index - 2;
+                            if (i < file_count) {
+                                selected_file_index = (unsigned char)i;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        /* Handle keyboard input */
-        if (UI_IS_CONFIRM(nav_input_code)) {
-            /* Enter or Space - select file */
-            selection_done = 1;
-        }
-        else if (UI_IS_CANCEL(nav_input_code)) {
-            /* Escape - cancel */
-            selection_done = 255;
-        }
-        else if (nav_input_code == UI_KEY_UP) {
-            /* Up arrow */
-            selected_file_index--;
-        }
-        else if (nav_input_code == UI_KEY_DOWN) {
-            /* Down arrow */
-            if (selected_file_index < file_count - 1) {
-                selected_file_index++;
+            /* Handle keyboard input */
+            if (UI_IS_CONFIRM(nav_input_code)) {
+                /* Enter or Space - select file */
+                selection_done = 1;
             }
-        }
-        else if (nav_input_code != 0) {
-            /* Letter key - jump to file starting with that letter */
-            c = (char)nav_input_code;
-            if (g_ascii_props[(unsigned char)c] & 1) {
-                c += 32; /* Convert to lowercase */
+            else if (UI_IS_CANCEL(nav_input_code)) {
+                /* Escape - cancel */
+                selection_done = 255;
             }
+            else if (nav_input_code == UI_KEY_UP) {
+                /* Up arrow */
+                selected_file_index--;
+            }
+            else if (nav_input_code == UI_KEY_DOWN) {
+                /* Down arrow */
+                if (selected_file_index < file_count - 1) {
+                    selected_file_index++;
+                }
+            }
+            else if (nav_input_code != 0) {
+                /* Letter key - jump to file starting with that letter */
+                c = (char)nav_input_code;
+                if (g_ascii_props[(unsigned char)c] & 1) {
+                    c += 32; /* Convert to lowercase */
+                }
 
-            if ((g_ascii_props[(unsigned char)c] & 1) || (g_ascii_props[(unsigned char)c] & 2)) {
-                /* Valid letter - search for matching file */
-                search_char = c;
-                for (row_hit_or_index = 0; row_hit_or_index < file_count; row_hit_or_index++) {
-                    c = file_names[row_hit_or_index][0];
-                    if (g_ascii_props[(unsigned char)c] & 1) {
-                        c += 32;
-                    }
-                    if (c == search_char) {
-                        selected_file_index = row_hit_or_index;
-                        break;
+                if ((g_ascii_props[(unsigned char)c] & 1)
+                    || (g_ascii_props[(unsigned char)c] & 2)) {
+                    /* Valid letter - search for matching file */
+                    search_char = c;
+                    for (row_hit_or_index = 0; row_hit_or_index < file_count; row_hit_or_index++) {
+                        c = file_names[row_hit_or_index][0];
+                        if (g_ascii_props[(unsigned char)c] & 1) {
+                            c += 32;
+                        }
+                        if (c == search_char) {
+                            selected_file_index = row_hit_or_index;
+                            break;
+                        }
                     }
                 }
             }
+
+            /* Adjust scroll to keep selection visible */
+            if (selected_file_index < scroll_offset) {
+                scroll_offset = selected_file_index;
+            }
+            while (scroll_offset + 6 < selected_file_index) {
+                scroll_offset++;
+            }
+
+            /* Clamp scroll */
+            if ((signed char)scroll_offset < 0) {
+                // goto input_filename_loop; // Removed: label not defined, unreachable
+            }
         }
 
-        /* Adjust scroll to keep selection visible */
-        if (selected_file_index < scroll_offset) {
-            scroll_offset = selected_file_index;
+        if (selection_done == 255) {
+            /* Cancelled */
+            dialog_accept = 0;
         }
-        while (scroll_offset + 6 < selected_file_index) {
-            scroll_offset++;
-        }
-
-        /* Clamp scroll */
-        if ((signed char)scroll_offset < 0) {
-            // goto input_filename_loop; // Removed: label not defined, unreachable
-        }
-    }
-
-    if (selection_done == 255) {
-        /* Cancelled */
-        dialog_accept = 0;
-    }
-    else {
-        /* Copy selected filename into defaultName (9-byte game_trackname field).
+        else {
+            /* Copy selected filename into defaultName (9-byte game_trackname field).
 		   Intentional truncation: file names can be up to 12 chars. */
-        memcpy(defaultName, &file_names[selected_file_index][0], 8);
-        defaultName[8] = '\0';
-        dialog_accept = 1;
-    }
-    break; /* files found and selection made — exit search loop */
+            memcpy(defaultName, &file_names[selected_file_index][0], 8);
+            defaultName[8] = '\0';
+            dialog_accept = 1;
+        }
+        break; /* files found and selection made — exit search loop */
 
     } /* end while(1) file search loop */
 
@@ -2436,7 +2428,7 @@ ensure_file_exists(int file_idx) {
     /* Build disk text resource ID: "id2", "id3", "id4", etc. */
     disktext_id[0] = 'i';
     disktext_id[1] = 'd';
-    disktext_id[2] = '0' + file_idx;
+    disktext_id[2] = (char)'0' + file_idx;
     disktext_id[3] = '\0';
 
     while (1) {

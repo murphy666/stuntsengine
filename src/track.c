@@ -24,6 +24,7 @@
  * track.c - Track menu, setup, and raw decode
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -411,9 +412,9 @@ int
 track_validate_elements_for_terrain(void) {
     unsigned char validation_result; /* result/error code */
     unsigned char terrain_type;      /* terrain type */
-    unsigned char row;               /* row counter */
+    unsigned int row;                /* row counter */
     unsigned char element_type;      /* element type */
-    unsigned char col;               /* column counter */
+    unsigned int col;                /* column counter */
     int row_ofs;
     int row_ofs_prev;
     unsigned int elem_tmp;
@@ -533,8 +534,8 @@ track_validate_elements_for_terrain(void) {
 void
 preRender_icons(unsigned char icon_page) {
     unsigned char element_id; /* element ID */
-    unsigned char col;        /* column counter */
-    unsigned char row;        /* row counter */
+    unsigned int col;         /* column counter */
+    unsigned int row;         /* row counter */
     unsigned int x, y;
 
     /* Pages 1+: clear picker grid once to base terrain to avoid marker-cell overdraw
@@ -608,14 +609,14 @@ preRender_icons(unsigned char icon_page) {
 void
 draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned char *render_flags_1,
                 unsigned char *render_flags_2) {
-    signed char row;            /* row counter (0-10) */
-    signed char col;            /* column counter (0-11) */
+    int row;                    /* row counter (0-10) */
+    int col;                    /* column counter (0-11) */
     unsigned char terrain_type; /* terrain type */
     unsigned char element_type; /* element type */
     int buffer_row_ofs;         /* row * 12 for buffer index */
     int buffer_index;           /* cell index in buffer */
     int map_row_twice;          /* row offset calculation */
-    int colIdx, colOfs;                 /* col index and col offset as ints */
+    int colIdx, colOfs;         /* col index and col offset as ints */
     int terrIdx, elemIdx;
     int map_row, map_col;
     unsigned char terrVal, elemVal;
@@ -702,8 +703,8 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     }
 
                     /* Source element is current row, previous column. */
-                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + colIdx + (int)col_offset
-                              - 1;
+                    elemSrc = track_row_ofs_safe((int)row + (int)row_offset) + colIdx
+                              + (int)col_offset - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
                         screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
@@ -943,47 +944,47 @@ load_tracks_menu_shapes(void) {
     struct SPRITE *crs_wnd[4];
 
     /* State variables */
-    unsigned char last_place_col;          /* last cursor col for swap detection */
-    unsigned char last_place_row;          /* last cursor row for swap detection */
-    unsigned char prev_category;           /* previous category */
-    bool redraw_map;              /* redraw map flag */
-    bool redraw_scrollbars;       /* redraw scrollbars flag */
-    bool redraw_cursor;           /* redraw cursor flag */
-    bool redraw_window_base;      /* redraw stable window snapshot flag */
-    bool keep_running;            /* keep running flag */
-    unsigned char current_category;        /* current category (0=terrain, 1-10=elements) */
-    bool needs_validation;        /* validate track flag */
-    unsigned char picker_mode;             /* picker mode (0=map, 1=picker) */
-    unsigned char selected_element;        /* selected element ID */
-    unsigned short anim_index;             /* animation counter */
-    unsigned char picker_col;              /* picker column */
-    unsigned char map_scroll_x;            /* map scroll X */
-    unsigned char map_scroll_y;            /* map scroll Y */
-    unsigned char last_named_element;      /* last element name displayed */
-    unsigned char validation_result __attribute__((unused));       /* track validation result */
-    unsigned char cursor_col;              /* cursor col position */
-    unsigned char cursor_row;              /* cursor row position */
-    unsigned char picker_row;              /* picker row */
-    unsigned char cursor_height_tiles = 1; /* cursor height (tiles) */
-    unsigned char cursor_width_tiles = 1;  /* cursor width (tiles) */
-    unsigned char cursor_shape_index = 0;  /* cursor shape index */
-    unsigned char cursor_element;          /* current element at cursor */
-    bool track_modified;          /* track modified flag */
-    unsigned char swap_element;            /* swap element holder */
-    unsigned char anim_saved_element;      /* animation element holder */
-    unsigned char swap_temp_element;       /* temp element holder */
-    unsigned char last_scroll_x;           /* last scroll X */
-    unsigned char last_scroll_y;           /* last scroll Y */
-    unsigned char temp_col;                /* temp picker col */
-    unsigned char temp_row;                /* temp picker row */
-    unsigned char mouse_track_value;       /* mouse track result */
-    unsigned char mouse_hit_index;         /* mouse hit index */
-    unsigned char cursor_mode_for_blink;   /* cursor blink state */
-    unsigned char dialog_result;           /* dialog result */
+    unsigned char last_place_col;     /* last cursor col for swap detection */
+    unsigned char last_place_row;     /* last cursor row for swap detection */
+    unsigned char prev_category;      /* previous category */
+    bool redraw_map;                  /* redraw map flag */
+    bool redraw_scrollbars;           /* redraw scrollbars flag */
+    bool redraw_cursor;               /* redraw cursor flag */
+    bool redraw_window_base;          /* redraw stable window snapshot flag */
+    bool keep_running;                /* keep running flag */
+    unsigned char current_category;   /* current category (0=terrain, 1-10=elements) */
+    bool needs_validation;            /* validate track flag */
+    unsigned char picker_mode;        /* picker mode (0=map, 1=picker) */
+    unsigned char selected_element;   /* selected element ID */
+    unsigned short anim_index;        /* animation counter */
+    unsigned char picker_col;         /* picker column */
+    unsigned char map_scroll_x;       /* map scroll X */
+    unsigned char map_scroll_y;       /* map scroll Y */
+    unsigned char last_named_element; /* last element name displayed */
+    unsigned char validation_result __attribute__((unused)); /* track validation result */
+    unsigned char cursor_col;                                /* cursor col position */
+    unsigned char cursor_row;                                /* cursor row position */
+    unsigned char picker_row;                                /* picker row */
+    unsigned char cursor_height_tiles = 1;                   /* cursor height (tiles) */
+    unsigned char cursor_width_tiles = 1;                    /* cursor width (tiles) */
+    unsigned char cursor_shape_index = 0;                    /* cursor shape index */
+    unsigned char cursor_element;                            /* current element at cursor */
+    bool track_modified;                                     /* track modified flag */
+    unsigned char swap_element;                              /* swap element holder */
+    unsigned char anim_saved_element;                        /* animation element holder */
+    unsigned char swap_temp_element;                         /* temp element holder */
+    unsigned char last_scroll_x;                             /* last scroll X */
+    unsigned char last_scroll_y;                             /* last scroll Y */
+    unsigned char temp_col;                                  /* temp picker col */
+    unsigned char temp_row;                                  /* temp picker row */
+    unsigned char mouse_track_value;                         /* mouse track result */
+    unsigned char mouse_hit_index;                           /* mouse hit index */
+    unsigned char cursor_mode_for_blink;                     /* cursor blink state */
+    unsigned char dialog_result;                             /* dialog result */
 
     /* Working variables */
     unsigned short last_mouse_x, last_mouse_y;
-    bool cursor_blink_toggle;    /* cursor blink toggle */
+    bool cursor_blink_toggle;              /* cursor blink toggle */
     unsigned short blink_timer;            /* timer accumulator */
     unsigned short input_code;             /* input code */
     unsigned short cursor_screen_x;        /* cursor screen X */
@@ -1059,17 +1060,17 @@ load_tracks_menu_shapes(void) {
     /* Load element icon shapes (186 elements) */
     for (i = 0; i < TRACK_ELEMENT_ICON_COUNT; i++) {
         /* Get 4-char name from snam and load mask shape */
-        resID_byte1[0] = *((char *)snam_ptr + i * 4);
-        resID_byte1[1] = *((char *)snam_ptr + i * 4 + 1);
-        resID_byte1[2] = *((char *)snam_ptr + i * 4 + 2);
-        resID_byte1[3] = *((char *)snam_ptr + i * 4 + 3);
+        resID_byte1[0] = *((char *)snam_ptr + (ptrdiff_t)(i * 4));
+        resID_byte1[1] = *((char *)snam_ptr + (ptrdiff_t)(i * 4) + 1);
+        resID_byte1[2] = *((char *)snam_ptr + (ptrdiff_t)(i * 4) + 2);
+        resID_byte1[3] = *((char *)snam_ptr + (ptrdiff_t)(i * 4) + 3);
         tracksmenushape2dunk[i] = locate_shape_fatal(sdtedit_shapes, resID_byte1);
 
         /* Get 4-char name from mnam and load filling shape */
-        resID_byte1[0] = *((char *)mnam_ptr + i * 4);
-        resID_byte1[1] = *((char *)mnam_ptr + i * 4 + 1);
-        resID_byte1[2] = *((char *)mnam_ptr + i * 4 + 2);
-        resID_byte1[3] = *((char *)mnam_ptr + i * 4 + 3);
+        resID_byte1[0] = *((char *)mnam_ptr + (ptrdiff_t)(i * 4));
+        resID_byte1[1] = *((char *)mnam_ptr + (ptrdiff_t)(i * 4) + 1);
+        resID_byte1[2] = *((char *)mnam_ptr + (ptrdiff_t)(i * 4) + 2);
+        resID_byte1[3] = *((char *)mnam_ptr + (ptrdiff_t)(i * 4) + 3);
         tracksmenushape2dunk2[i] = locate_shape_fatal(sdtedit_shapes, resID_byte1);
     }
 
@@ -1081,7 +1082,6 @@ load_tracks_menu_shapes(void) {
     redraw_map = true;
     redraw_scrollbars = true;
     redraw_cursor = true;
-    redraw_window_base = true;
     keep_running = true;
     current_category = 1;
     needs_validation = true;
@@ -1099,7 +1099,6 @@ load_tracks_menu_shapes(void) {
     cursor_row = game_security_flag;  /* Start cursor Y */
     picker_row = 7;
     cursor_blink_toggle = false;
-    cursor_mode_for_blink = 0;
     blink_timer = TRACK_CURSOR_BLINK_START;
     last_place_row = TRACK_U8_INVALID;
     swap_element = 0;
@@ -1524,204 +1523,205 @@ load_tracks_menu_shapes(void) {
                                    cursor_screen_y);
         }
 
-    do {
-        if (blink_timer > TRACK_CURSOR_BLINK_THRESHOLD) {
-            mouse_draw_opaque_check();
-            track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
-            sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
-            if (picker_mode == 0) {
-                if (cursor_blink_toggle) {
-                    sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index],
-                                      cursor_screen_x, cursor_screen_y);
-                }
-                else {
-                    sprite_shape_to_1(crs_wnd[cursor_shape_index]->sprite_bitmapptr,
-                                      cursor_screen_x, cursor_screen_y);
-                }
-            }
-            else if (!cursor_blink_toggle) {
-                sprite_draw_rect_outline(cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
-                                         (unsigned short)(cursor_screen_x + cursor_draw_width),
-                                         (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
-                                         obstacle_collision_table);
-            }
-
-            mouse_draw_transparent_check();
-            cursor_blink_toggle = !cursor_blink_toggle;
-            blink_timer = 0;
-        }
-
-        /* Present composed track-menu frame */
-        sprite_copy_2_to_1();
-        mouse_draw_opaque_check();
-        sprite_putimage(wndsprite->sprite_bitmapptr);
-        mouse_draw_transparent_check();
-        video_refresh();
-
-        /*----------------------------------------
-		 * Input loop
-		 /*--------------------------------------------------------------*/
-        {
-            unsigned long delta = timer_get_delta_alt();
-            blink_timer += (unsigned short)delta;
-            input_code = input_checking((unsigned short)delta);
-            if (input_code == 0
-                && (((unsigned short)mouse_xpos != last_mouse_x)
-                    || ((unsigned short)mouse_ypos != last_mouse_y))) {
-                input_code = 1;
-            }
-            last_mouse_x = (unsigned short)mouse_xpos;
-            last_mouse_y = (unsigned short)mouse_ypos;
-        }
-
-        /* Mouse button hit testing */
-        mouse_hit_index = mouse_multi_hittest(5, trackmenu2_buttons_x1, trackmenu2_buttons_x2,
-                                              trackmenu2_buttons_y1, trackmenu2_buttons_y2);
-
-        if (mouse_hit_index != TRACK_U8_INVALID) {
-            if (mouse_hit_index == 0) {
-                if ((mouse_butstate & 3) != 0) {
-                    picker_mode = 0;
-                    mouse_track_value = mouse_track_op(1, 9, 192, 181, 5, map_scroll_x,
-                                                       TRACK_MAP_VISIBLE_COLS, TRACK_SIZE);
-                    cursor_col += mouse_track_value - map_scroll_x;
-                    map_scroll_x = mouse_track_value;
-                    if (map_scroll_x > (TRACK_SIZE - TRACK_MAP_VISIBLE_COLS))
-                        map_scroll_x = TRACK_SIZE - TRACK_MAP_VISIBLE_COLS;
-                    input_code = 1;
-                }
-            }
-            else if (mouse_hit_index == 1) {
-                if ((mouse_butstate & 3) != 0) {
-                    picker_mode = 0;
-                    mouse_track_value = mouse_track_op(1, 202, 5, 4, 176, map_scroll_y,
-                                                       TRACK_MAP_VISIBLE_ROWS, TRACK_SIZE);
-                    cursor_row += mouse_track_value - map_scroll_y;
-                    map_scroll_y = mouse_track_value;
-                    if (map_scroll_y > (TRACK_SIZE - TRACK_MAP_VISIBLE_ROWS))
-                        map_scroll_y = TRACK_SIZE - TRACK_MAP_VISIBLE_ROWS;
-                    input_code = 1;
-                }
-            }
-            else if (mouse_hit_index == 2) {
-                if (picker_mode != 1 || picker_row != 6) {
-                    picker_mode = 1;
-                    picker_row = 6;
-                    input_code = 1;
-                }
-                if ((mouse_butstate & 3) != 0) {
-                    unsigned short cat_track_value
-                        = (current_category == 0) ? 0 : (unsigned short)(current_category - 1);
-                    mouse_track_value = mouse_track_op(1, 221, 95, 133, 5, cat_track_value, 1,
-                                                       TRACK_MENU_PBOX_ROWS);
-                    current_category = (unsigned char)(mouse_track_value + 1);
-                    input_code = 1;
-                }
-            }
-            else if (mouse_hit_index == 3) {
-                temp_col = (mouse_xpos - TRACK_MAP_TILE_OFFSET_X) / TRACK_TILE_PIXELS;
-                temp_row = (mouse_ypos - TRACK_MAP_TILE_OFFSET_Y) / TRACK_TILE_PIXELS;
-                if (current_category != 0) {
-                    multiflag = TRKOBJ_MULTI_TILE_FLAG(selected_element);
-                    if (temp_row == (TRACK_MAP_VISIBLE_ROWS - 1) && (multiflag & 1) != 0)
-                        temp_row--;
-                    if (temp_col == (TRACK_MAP_VISIBLE_COLS - 1) && (multiflag & 2) != 0)
-                        temp_col--;
-                }
-                temp_col += map_scroll_x;
-                temp_row += map_scroll_y;
-                if (picker_mode != 0 || cursor_col != temp_col || cursor_row != temp_row) {
-                    picker_mode = 0;
-                    cursor_col = temp_col;
-                    cursor_row = temp_row;
-                    input_code = 1;
-                }
-                if (input_code == 32)
-                    input_code = 13;
-            }
-            else if (mouse_hit_index == 4) {
-                temp_col = (mouse_xpos - TRACK_MENU_X) / TRACK_TILE_PIXELS;
-                temp_row = (mouse_ypos - TRACK_MENU_Y) / TRACK_TILE_PIXELS;
-                if (temp_row < 6) {
-                    unsigned int pbox_idx;
-                    unsigned char pbox_val;
-
-                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
-                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
-                               + (unsigned int)temp_col;
-                    pbox_val = pboxshape[pbox_idx];
-                    if (pbox_val == TRACK_MARKER_CORNER) {
-                        if (temp_row > 0)
-                            temp_row--;
-                        if (temp_col > 0)
-                            temp_col--;
-                    }
-                    else if (pbox_val == TRACK_MARKER_VERTICAL) {
-                        if (temp_row > 0)
-                            temp_row--;
-                    }
-                    else if (pbox_val == TRACK_MARKER_HORIZONTAL) {
-                        if (temp_col > 0)
-                            temp_col--;
-                    }
-
-                    /* Re-check once after adjustment for mixed markers. */
-                    pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
-                               + (unsigned int)current_category * TRACK_PAGE_STRIDE
-                               + (unsigned int)temp_col;
-                    pbox_val = pboxshape[pbox_idx];
-                    if (pbox_val == TRACK_MARKER_VERTICAL && temp_row > 0)
-                        temp_row--;
-                    if (pbox_val == TRACK_MARKER_HORIZONTAL && temp_col > 0)
-                        temp_col--;
-                }
-                else {
-                    temp_row = (mouse_ypos - 28) / TRACK_TILE_PIXELS;
-                    if (temp_row == 7)
-                        temp_col = 0;
-                    else if (temp_col >= 3)
-                        temp_col = 3;
-                    else
-                        temp_col = 0;
-                }
-                if (picker_mode != 1 || picker_col != temp_col || picker_row != temp_row) {
-                    picker_col = temp_col;
-                    picker_row = temp_row;
-                    picker_mode = 1;
-                    if (input_code == 32) {
-                        input_code = 13;
+        do {
+            if (blink_timer > TRACK_CURSOR_BLINK_THRESHOLD) {
+                mouse_draw_opaque_check();
+                track_editor_copy_window_bitmap((struct SPRITE *)wndsprite, wndsprite_base);
+                sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
+                if (picker_mode == 0) {
+                    if (cursor_blink_toggle) {
+                        sprite_shape_to_1((void *)tracksmenushapes3[cursor_shape_index],
+                                          cursor_screen_x, cursor_screen_y);
                     }
                     else {
+                        sprite_shape_to_1(crs_wnd[cursor_shape_index]->sprite_bitmapptr,
+                                          cursor_screen_x, cursor_screen_y);
+                    }
+                }
+                else if (!cursor_blink_toggle) {
+                    sprite_draw_rect_outline(
+                        cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
+                        (unsigned short)(cursor_screen_x + cursor_draw_width),
+                        (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
+                        obstacle_collision_table);
+                }
+
+                mouse_draw_transparent_check();
+                cursor_blink_toggle = !cursor_blink_toggle;
+                blink_timer = 0;
+            }
+
+            /* Present composed track-menu frame */
+            sprite_copy_2_to_1();
+            mouse_draw_opaque_check();
+            sprite_putimage(wndsprite->sprite_bitmapptr);
+            mouse_draw_transparent_check();
+            video_refresh();
+
+            /*----------------------------------------
+		 * Input loop
+		 /*--------------------------------------------------------------*/
+            {
+                unsigned long delta = timer_get_delta_alt();
+                blink_timer += (unsigned short)delta;
+                input_code = input_checking((unsigned short)delta);
+                if (input_code == 0
+                    && (((unsigned short)mouse_xpos != last_mouse_x)
+                        || ((unsigned short)mouse_ypos != last_mouse_y))) {
+                    input_code = 1;
+                }
+                last_mouse_x = (unsigned short)mouse_xpos;
+                last_mouse_y = (unsigned short)mouse_ypos;
+            }
+
+            /* Mouse button hit testing */
+            mouse_hit_index = mouse_multi_hittest(5, trackmenu2_buttons_x1, trackmenu2_buttons_x2,
+                                                  trackmenu2_buttons_y1, trackmenu2_buttons_y2);
+
+            if (mouse_hit_index != TRACK_U8_INVALID) {
+                if (mouse_hit_index == 0) {
+                    if ((mouse_butstate & 3) != 0) {
+                        picker_mode = 0;
+                        mouse_track_value = mouse_track_op(1, 9, 192, 181, 5, map_scroll_x,
+                                                           TRACK_MAP_VISIBLE_COLS, TRACK_SIZE);
+                        cursor_col += mouse_track_value - map_scroll_x;
+                        map_scroll_x = mouse_track_value;
+                        if (map_scroll_x > (TRACK_SIZE - TRACK_MAP_VISIBLE_COLS))
+                            map_scroll_x = TRACK_SIZE - TRACK_MAP_VISIBLE_COLS;
                         input_code = 1;
                     }
                 }
-                else if (input_code == 32) {
-                    input_code = 13;
+                else if (mouse_hit_index == 1) {
+                    if ((mouse_butstate & 3) != 0) {
+                        picker_mode = 0;
+                        mouse_track_value = mouse_track_op(1, 202, 5, 4, 176, map_scroll_y,
+                                                           TRACK_MAP_VISIBLE_ROWS, TRACK_SIZE);
+                        cursor_row += mouse_track_value - map_scroll_y;
+                        map_scroll_y = mouse_track_value;
+                        if (map_scroll_y > (TRACK_SIZE - TRACK_MAP_VISIBLE_ROWS))
+                            map_scroll_y = TRACK_SIZE - TRACK_MAP_VISIBLE_ROWS;
+                        input_code = 1;
+                    }
                 }
+                else if (mouse_hit_index == 2) {
+                    if (picker_mode != 1 || picker_row != 6) {
+                        picker_mode = 1;
+                        picker_row = 6;
+                        input_code = 1;
+                    }
+                    if ((mouse_butstate & 3) != 0) {
+                        unsigned short cat_track_value
+                            = (current_category == 0) ? 0 : (unsigned short)(current_category - 1);
+                        mouse_track_value = mouse_track_op(1, 221, 95, 133, 5, cat_track_value, 1,
+                                                           TRACK_MENU_PBOX_ROWS);
+                        current_category = (unsigned char)(mouse_track_value + 1);
+                        input_code = 1;
+                    }
+                }
+                else if (mouse_hit_index == 3) {
+                    temp_col = (mouse_xpos - TRACK_MAP_TILE_OFFSET_X) / TRACK_TILE_PIXELS;
+                    temp_row = (mouse_ypos - TRACK_MAP_TILE_OFFSET_Y) / TRACK_TILE_PIXELS;
+                    if (current_category != 0) {
+                        multiflag = TRKOBJ_MULTI_TILE_FLAG(selected_element);
+                        if (temp_row == (TRACK_MAP_VISIBLE_ROWS - 1) && (multiflag & 1) != 0)
+                            temp_row--;
+                        if (temp_col == (TRACK_MAP_VISIBLE_COLS - 1) && (multiflag & 2) != 0)
+                            temp_col--;
+                    }
+                    temp_col += map_scroll_x;
+                    temp_row += map_scroll_y;
+                    if (picker_mode != 0 || cursor_col != temp_col || cursor_row != temp_row) {
+                        picker_mode = 0;
+                        cursor_col = temp_col;
+                        cursor_row = temp_row;
+                        input_code = 1;
+                    }
+                    if (input_code == 32)
+                        input_code = 13;
+                }
+                else if (mouse_hit_index == 4) {
+                    temp_col = (mouse_xpos - TRACK_MENU_X) / TRACK_TILE_PIXELS;
+                    temp_row = (mouse_ypos - TRACK_MENU_Y) / TRACK_TILE_PIXELS;
+                    if (temp_row < 6) {
+                        unsigned int pbox_idx;
+                        unsigned char pbox_val;
+
+                        pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
+                                   + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                                   + (unsigned int)temp_col;
+                        pbox_val = pboxshape[pbox_idx];
+                        if (pbox_val == TRACK_MARKER_CORNER) {
+                            if (temp_row > 0)
+                                temp_row--;
+                            if (temp_col > 0)
+                                temp_col--;
+                        }
+                        else if (pbox_val == TRACK_MARKER_VERTICAL) {
+                            if (temp_row > 0)
+                                temp_row--;
+                        }
+                        else if (pbox_val == TRACK_MARKER_HORIZONTAL) {
+                            if (temp_col > 0)
+                                temp_col--;
+                        }
+
+                        /* Re-check once after adjustment for mixed markers. */
+                        pbox_idx = (unsigned int)temp_row * TRACK_PICKER_COLS
+                                   + (unsigned int)current_category * TRACK_PAGE_STRIDE
+                                   + (unsigned int)temp_col;
+                        pbox_val = pboxshape[pbox_idx];
+                        if (pbox_val == TRACK_MARKER_VERTICAL && temp_row > 0)
+                            temp_row--;
+                        if (pbox_val == TRACK_MARKER_HORIZONTAL && temp_col > 0)
+                            temp_col--;
+                    }
+                    else {
+                        temp_row = (mouse_ypos - 28) / TRACK_TILE_PIXELS;
+                        if (temp_row == 7)
+                            temp_col = 0;
+                        else if (temp_col >= 3)
+                            temp_col = 3;
+                        else
+                            temp_col = 0;
+                    }
+                    if (picker_mode != 1 || picker_col != temp_col || picker_row != temp_row) {
+                        picker_col = temp_col;
+                        picker_row = temp_row;
+                        picker_mode = 1;
+                        if (input_code == 32) {
+                            input_code = 13;
+                        }
+                        else {
+                            input_code = 1;
+                        }
+                    }
+                    else if (input_code == 32) {
+                        input_code = 13;
+                    }
+                }
+
+                /* Restore draw target to the main track-editor window. */
+                sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
             }
 
-            /* Restore draw target to the main track-editor window. */
-            sprite_set_1_from_argptr((struct SPRITE *)wndsprite);
-        }
+            if (input_code == 1) {
+                last_place_col = TRACK_U8_INVALID;
+                redraw_map = true;
+                redraw_cursor = true;
+                redraw_window_base = true;
+            }
 
-        if (input_code == 1) {
-            last_place_col = TRACK_U8_INVALID;
-            redraw_map = true;
-            redraw_cursor = true;
-            redraw_window_base = true;
-        }
-
-        /* If no input and animation active, continue animation */
-        if (input_code == 0 && anim_index != 0) {
-            input_code = 1;
-        }
+            /* If no input and animation active, continue animation */
+            if (input_code == 0 && anim_index != 0) {
+                input_code = 1;
+            }
 
         } while (input_code == 0);
         /* No input - keep polling and blink cursor; input received: continue below */
 
         /* Delay handling for key repeat */
         if (anim_index != 0) {
-            timer_wait_ticks_and_get_counter(10);
+            (void)timer_wait_ticks_and_get_counter(10);
         }
 
         /*----------------------------------------
@@ -2138,7 +2138,7 @@ load_tracks_menu_shapes(void) {
                             elem_map[si] = 0;
                         }
                         /* Load terrain template */
-                        aTer0[3] = '0' + dialog_result;
+                        aTer0[3] = (char)'0' + dialog_result;
                         terrain_template_ptr = locate_shape_alt(tedit_res, aTer0);
                         terr_map = (unsigned char *)track_terrain_map;
                         for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
@@ -2163,37 +2163,36 @@ load_tracks_menu_shapes(void) {
                             TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
                     }
                     if (!track_modified || dialog_result != 0) {
-                    si = 1;
-                    g_is_busy = true;
-                    redraw_map = true;
-                    {
-                        char track_dir_backup[82];
-                        snprintf(track_dir_backup, sizeof(track_dir_backup), "%s",
-                                 track_highscore_path_buffer);
-
-                        /* File select dialog */
-                        track_consume_dialog_click();
-                        si = do_fileselect_dialog(track_highscore_path_buffer,
-                                                  gameconfig.game_trackname, ".trk",
-                                                  locate_text_res(mainresptr, "trk"));
-                        /* do_fileselect_dialog already wrote the selected base name (no extension)
-						   into gameconfig.game_trackname — nothing more to parse here. */
-                        snprintf(track_highscore_path_buffer, 82, "%s", track_dir_backup);
-                    }
-
-                    file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk",
-                                    g_path_buf, sizeof(g_path_buf));
-
-                    if (si > 0) {
-                        /* Load track file */
-                        file_read_fatal(g_path_buf, (char *)track_elem_map);
-                        track_setup();
-                        picker_mode = 0;
-                        cursor_row = game_security_flag;
-                        cursor_col = sprite_render_state;
-                        track_modified = false;
+                        g_is_busy = true;
                         redraw_map = true;
-                    }
+                        {
+                            char track_dir_backup[82];
+                            (void)snprintf(track_dir_backup, sizeof(track_dir_backup), "%s",
+                                     track_highscore_path_buffer);
+
+                            /* File select dialog */
+                            track_consume_dialog_click();
+                            si = do_fileselect_dialog(track_highscore_path_buffer,
+                                                      gameconfig.game_trackname, ".trk",
+                                                      locate_text_res(mainresptr, "trk"));
+                            /* do_fileselect_dialog already wrote the selected base name (no extension)
+						   into gameconfig.game_trackname — nothing more to parse here. */
+                            (void)snprintf(track_highscore_path_buffer, 82, "%s", track_dir_backup);
+                        }
+
+                        file_build_path(track_highscore_path_buffer, gameconfig.game_trackname,
+                                        ".trk", g_path_buf, sizeof(g_path_buf));
+
+                        if (si > 0) {
+                            /* Load track file */
+                            file_read_fatal(g_path_buf, (char *)track_elem_map);
+                            track_setup();
+                            picker_mode = 0;
+                            cursor_row = game_security_flag;
+                            cursor_col = sprite_render_state;
+                            track_modified = false;
+                            redraw_map = true;
+                        }
                     }
                 }
                 else {
@@ -2207,7 +2206,7 @@ load_tracks_menu_shapes(void) {
                             elem_map[si] = 0;
                         }
                         /* Load terrain template */
-                        aTer0[3] = '0' + dialog_result;
+                        aTer0[3] = (char)'0' + dialog_result;
                         terrain_template_ptr = locate_shape_alt(tedit_res, aTer0);
                         terr_map = (unsigned char *)track_terrain_map;
                         for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
@@ -2401,7 +2400,7 @@ load_tracks_menu_shapes(void) {
  */
 static unsigned char *
 trkobject_raw_entry(unsigned char elem) {
-    return ((unsigned char *)trkObjectList) + ((unsigned int)elem * 14U);
+    return ((unsigned char *)trkObjectList) + ((size_t)((unsigned int)elem * 14U));
 }
 
 /** @brief Trk resolve ofs.
@@ -2448,7 +2447,7 @@ trkobject_info_ptr(unsigned char elem) {
  */
 static struct TRKOBJINFO_RAW *
 trkobjinfo_block(unsigned char *base, unsigned char block) {
-    return (struct TRKOBJINFO_RAW *)(base + ((unsigned int)block * 14u));
+    return (struct TRKOBJINFO_RAW *)(base + ((size_t)((unsigned int)block * 14u)));
 }
 
 /** @brief Trkobjinfo camera ptr.
@@ -2469,14 +2468,17 @@ trkobject_multitile_flag(unsigned char elem) {
     return trkobject_raw_entry(elem)[11];
 }
 
-static signed char track_setup_error_return(
-    unsigned char trackErrorCode, unsigned char trkColIndex,
-    unsigned char trkRowIndex, struct TCOMP_ENTRY *tcompArr)
-{
-    if (trkColIndex == TRACK_U8_INVALID) trkColIndex = 0;
-    else if (trkColIndex == TRACK_SIZE) trkColIndex = TRACK_LAST_INDEX;
-    if (trkRowIndex == TRACK_U8_INVALID) trkRowIndex = 0;
-    else if (trkRowIndex == TRACK_SIZE) trkRowIndex = TRACK_LAST_INDEX;
+static signed char
+track_setup_error_return(unsigned char trackErrorCode, unsigned char trkColIndex,
+                         unsigned char trkRowIndex, struct TCOMP_ENTRY *tcompArr) {
+    if (trkColIndex == TRACK_U8_INVALID)
+        trkColIndex = 0;
+    else if (trkColIndex == TRACK_SIZE)
+        trkColIndex = TRACK_LAST_INDEX;
+    if (trkRowIndex == TRACK_U8_INVALID)
+        trkRowIndex = 0;
+    else if (trkRowIndex == TRACK_SIZE)
+        trkRowIndex = TRACK_LAST_INDEX;
     sprite_render_state = trkColIndex;
     game_security_flag = trkRowIndex;
     mmgr_release((char *)tcompArr);
@@ -2571,12 +2573,14 @@ track_setup(void) {
             if (terrConnDataEtoW[(unsigned char)tileTerr] != prevConnCode
                 && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
-            } else {
+            }
+            else {
                 prevConnCode = terrConnDataWtoE[(unsigned char)tileTerr];
                 trkColIndex++;
             }
         }
-        if (trackErrorCode == 0) trkRowIndex++;
+        if (trackErrorCode == 0)
+            trkRowIndex++;
     }
     if (trackErrorCode != 0) {
         return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
@@ -2593,12 +2597,14 @@ track_setup(void) {
             if (terrConnDataNtoS[(unsigned char)tileTerr] != prevConnCode
                 && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
                 trackErrorCode = 11; /* terr_mism */
-            } else {
+            }
+            else {
                 prevConnCode = terrConnDataStoN[(unsigned char)tileTerr];
                 trkRowIndex++;
             }
         }
-        if (trackErrorCode == 0) trkColIndex++;
+        if (trackErrorCode == 0)
+            trkColIndex++;
     }
     if (trackErrorCode != 0) {
         return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
@@ -2662,7 +2668,8 @@ track_setup(void) {
                 if (is_sf) {
                     if (sfCount != 0) {
                         trackErrorCode = 3; /* many_sf */
-                    } else {
+                    }
+                    else {
                         startcol2 = trkColIndex;
                         startrow2 = trkRowIndex;
 
@@ -2679,9 +2686,11 @@ track_setup(void) {
                 }
             }
 
-            if (trackErrorCode == 0) trkColIndex++;
+            if (trackErrorCode == 0)
+                trkColIndex++;
         }
-        if (trackErrorCode == 0) trkRowIndex++;
+        if (trackErrorCode == 0)
+            trkRowIndex++;
     }
     if (trackErrorCode == 0 && sfCount == 0) {
         trackErrorCode = 1; /* no_sf */
@@ -2713,594 +2722,605 @@ track_setup(void) {
 
     /* ===== PHASE 7: Main loop ===== */
     while (1) {
-    int need_backtrack;
-    matchCount = 0;
-    need_backtrack = ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0
-        || (signed char)trkColIndex > TRACK_LAST_INDEX
-        || (signed char)trkRowIndex > TRACK_LAST_INDEX);
-    if (!need_backtrack) {
-    /* --- Process tile --- */
-    tempColExt = (signed char)trkColIndex;
-    tempRowIdx2 = (signed char)trkRowIndex * 2;
+        int need_backtrack;
+        matchCount = 0;
+        need_backtrack = ((signed char)trkColIndex < 0 || (signed char)trkRowIndex < 0
+                          || (signed char)trkColIndex > TRACK_LAST_INDEX
+                          || (signed char)trkRowIndex > TRACK_LAST_INDEX);
+        if (!need_backtrack) {
+            /* --- Process tile --- */
+            tempColExt = (int)(signed char)trkColIndex;
+            tempRowIdx2 = (signed char)trkRowIndex * 2;
 
-    /* Read tileElem from map */
-    tileElem = track_elem_map[trackrows[tempRowIdx2 / 2] + tempColExt];
+            /* Read tileElem from map */
+            tileElem = track_elem_map[trackrows[tempRowIdx2 / 2] + tempColExt];
 
-    /* Wait: tempRowIdx2 = (signed char)trkRowIndex * 2 is used for word array index.
+            /* Wait: tempRowIdx2 = (signed char)trkRowIndex * 2 is used for word array index.
 	   trackrows[tempRowIdx2 / 2] = trackrows[(signed char)trkRowIndex] */
 
-    /* Read tileTerr */
-    tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex] + tempColExt];
+            /* Read tileTerr */
+            tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex] + tempColExt];
 
-    /** @brief Hill.
+            /** @brief Hill.
  * @param tileTerr Parameter `tileTerr`.
  * @return Function result.
  */
-    /* subst_hillroad_track if terrain is hill (7-10) and element is non-zero */
-    if (tileElem != 0 && tileTerr != 0 && tileTerr >= 7 && tileTerr < 11) {
-        tileElem = subst_hillroad_track((unsigned char)tileTerr, (unsigned char)tileElem);
-    }
+            /* subst_hillroad_track if terrain is hill (7-10) and element is non-zero */
+            if (tileElem != 0 && tileTerr != 0 && tileTerr >= 7 && tileTerr < 11) {
+                tileElem = subst_hillroad_track((unsigned char)tileTerr, (unsigned char)tileElem);
+            }
 
-    /** @brief Elements.
+            /** @brief Elements.
  * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
  * @return Function result.
  */
-    /* Handle filler elements (253, 254, 255) */
-    if (tileElem >= TRACK_MARKER_CORNER) {
-        switch ((unsigned int)tileElem) {
-        case TRACK_MARKER_CORNER:
-            /* NW corner filler - adjust both col and row */
-            trkColIndex--;
-            trkRowIndex--;
-            switch (trackDirection) {
-            case 0:
-                tileEntryPoint = 12;
-                break;
-            case 256:
-                tileEntryPoint = 0;
-                break;
-            case 512:
-                tileEntryPoint = 0;
-                break;
-            case 768:
-                tileEntryPoint = 9;
-                break;
-            default:
-                break;
-            }
-            break;
+            /* Handle filler elements (253, 254, 255) */
+            if (tileElem >= TRACK_MARKER_CORNER) {
+                switch ((unsigned int)tileElem) {
+                case TRACK_MARKER_CORNER:
+                    /* NW corner filler - adjust both col and row */
+                    trkColIndex--;
+                    trkRowIndex--;
+                    switch (trackDirection) {
+                    case 0:
+                        tileEntryPoint = 12;
+                        break;
+                    case 256:
+                        tileEntryPoint = 0;
+                        break;
+                    case 512:
+                        tileEntryPoint = 0;
+                        break;
+                    case 768:
+                        tileEntryPoint = 9;
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
 
-        case TRACK_MARKER_VERTICAL:
-            /* N side filler - adjust row only */
-            trkRowIndex--;
-            switch (trackDirection) {
-            case 0:
-                tileEntryPoint = 11;
-                break;
-            case 256:
-                tileEntryPoint = 6;
-                break;
-            case 512:
-                tileEntryPoint = 0;
-                break;
-            case 768:
-                tileEntryPoint = 7;
-                break;
-            default:
-                break;
-            }
-            break;
+                case TRACK_MARKER_VERTICAL:
+                    /* N side filler - adjust row only */
+                    trkRowIndex--;
+                    switch (trackDirection) {
+                    case 0:
+                        tileEntryPoint = 11;
+                        break;
+                    case 256:
+                        tileEntryPoint = 6;
+                        break;
+                    case 512:
+                        tileEntryPoint = 0;
+                        break;
+                    case 768:
+                        tileEntryPoint = 7;
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
 
-        case TRACK_MARKER_HORIZONTAL:
-            /* W side filler - adjust col only */
-            trkColIndex--;
-            switch (trackDirection) {
-            case 0:
-                tileEntryPoint = 10;
-                break;
-            case 256:
-                tileEntryPoint = 0;
-                break;
-            case 512:
-                tileEntryPoint = 5;
-                break;
-            case 768:
-                tileEntryPoint = 8;
-                break;
-            default:
-                break;
-            }
-            break;
+                case TRACK_MARKER_HORIZONTAL:
+                    /* W side filler - adjust col only */
+                    trkColIndex--;
+                    switch (trackDirection) {
+                    case 0:
+                        tileEntryPoint = 10;
+                        break;
+                    case 256:
+                        tileEntryPoint = 0;
+                        break;
+                    case 512:
+                        tileEntryPoint = 5;
+                        break;
+                    case 768:
+                        tileEntryPoint = 8;
+                        break;
+                    default:
+                        break;
+                    }
+                    break;
 
-        default:
-            break;
-        }
-        tileElem = track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex];
-    }
-    else {
-        /* Non-filler: compute entry point from trackDirection */
-        switch (trackDirection) {
-        case 0:
-            tileEntryPoint = 2;
-            break;
-        case 256:
-            tileEntryPoint = 4;
-            break;
-        case 512:
-            tileEntryPoint = 1;
-            break;
-        case 768:
-            tileEntryPoint = 3;
-            break;
-        default:
-            break;
-        }
-    }
-    /* Validate: if sfPassCount==0 and entryPoint==0 -> int_err */
-    if (sfPassCount == 0 && tileEntryPoint == 0) {
-        trackErrorCode = 2; /* int_err */
-        break; /* exit while(1) */
-    }
-
-    /* ===== Search TRKOBJINFO blocks for matching entry/exit point ===== */
-    matchCount = 0;
-    ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-    if (ptrTOInfo != (unsigned char *)0) {
-    for (si = 0; trkobjinfo_block(ptrTOInfo, 0)->si_noOfBlocks > (unsigned char)si; si++) {
-        connCheckFlag = -1; /* unmatched */
-        ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)si);
-
-        /* Check entryPoint match */
-        if (ptrCurrTOInfo->si_entryPoint == tileEntryPoint) {
-            /* entryPoint matches, check entryType */
-            if (ptrCurrTOInfo->si_entryType == prevConnCode) {
-                connCheckFlag = 0; /* normal match */
+                default:
+                    break;
+                }
+                tileElem = track_elem_map[trackrows[(signed char)trkRowIndex]
+                                          + (signed char)trkColIndex];
             }
             else {
-                trackErrorCode = 4; /* elem_mism */
-                break; /* exit for-si */
+                /* Non-filler: compute entry point from trackDirection */
+                switch (trackDirection) {
+                case 0:
+                    tileEntryPoint = 2;
+                    break;
+                case 256:
+                    tileEntryPoint = 4;
+                    break;
+                case 512:
+                    tileEntryPoint = 1;
+                    break;
+                case 768:
+                    tileEntryPoint = 3;
+                    break;
+                default:
+                    break;
+                }
             }
-        }
-        else {
-            /** @brief Match.
+            /* Validate: if sfPassCount==0 and entryPoint==0 -> int_err */
+            if (sfPassCount == 0 && tileEntryPoint == 0) {
+                trackErrorCode = 2; /* int_err */
+                break;              /* exit while(1) */
+            }
+
+            /* ===== Search TRKOBJINFO blocks for matching entry/exit point ===== */
+            matchCount = 0;
+            ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
+            if (ptrTOInfo != (unsigned char *)0) {
+                for (si = 0; trkobjinfo_block(ptrTOInfo, 0)->si_noOfBlocks > (unsigned char)si;
+                     si++) {
+                    connCheckFlag = -1; /* unmatched */
+                    ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)si);
+
+                    /* Check entryPoint match */
+                    if (ptrCurrTOInfo->si_entryPoint == tileEntryPoint) {
+                        /* entryPoint matches, check entryType */
+                        if (ptrCurrTOInfo->si_entryType == prevConnCode) {
+                            connCheckFlag = 0; /* normal match */
+                        }
+                        else {
+                            trackErrorCode = 4; /* elem_mism */
+                            break;              /* exit for-si */
+                        }
+                    }
+                    else {
+                        /** @brief Match.
  * @param tileEntryPoint Parameter `tileEntryPoint`.
  * @return Function result.
  */
-            /* Try exit point match (reverse direction) */
-            if (ptrCurrTOInfo->si_exitPoint == tileEntryPoint) {
-                if (ptrCurrTOInfo->si_exitType == prevConnCode) {
-                    connCheckFlag = 1; /* reverse match */
+                        /* Try exit point match (reverse direction) */
+                        if (ptrCurrTOInfo->si_exitPoint == tileEntryPoint) {
+                            if (ptrCurrTOInfo->si_exitType == prevConnCode) {
+                                connCheckFlag = 1; /* reverse match */
+                            }
+                            else {
+                                trackErrorCode = 4; /* elem_mism */
+                                break;              /* exit for-si */
+                            }
+                        }
+                        /* else connCheckFlag stays -1 */
+                    }
+
+                    if (connCheckFlag >= 0) {
+                        /* Check if we've already visited this tile */
+                        if (visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
+                            != 0) {
+                            /* Already visited: scan existing pieces for a loop */
+                            for (di = 0; di < track_pieces_counter; di++) {
+                                /* Check col match */
+                                if (path_col[di] != trkColIndex)
+                                    continue;
+                                /* Check row match */
+                                if (path_row[di] != trkRowIndex)
+                                    continue;
+                                /* Check subTOIBlock match */
+                                if (subTOIBlockArr[di] != (unsigned char)si)
+                                    continue;
+                                /* Check connStatus match */
+                                if (connStatusArr[di] != (unsigned char)connCheckFlag) {
+                                    trackErrorCode = 5; /* wrong_way */
+                                    break;              /* exit for-di */
+                                }
+                                /* Match found - link it */
+                                connCheckFlag = -1; /* mark as already linked */
+                                {
+                                    short *linkPtr;
+                                    linkPtr = &track_waypoint_next[prevPieceIdx];
+                                    if (*linkPtr != -1) {
+                                        /* td01 slot already used, use td02 instead */
+                                        linkPtr = &track_waypoint_alt[prevPieceIdx];
+                                    }
+                                    *linkPtr = (short)di;
+                                }
+                                if (di == 0) {
+                                    loopFoundFlag = 1;
+                                }
+                                /* DON'T break - continue scanning for wrong_way errors */
+                            }
+                            if (trackErrorCode != 0)
+                                break; /* exit for-si on wrong_way */
+                        }
+                    } /* end connCheckFlag >= 0 */
+                    if (connCheckFlag < 0) {
+                        continue; /* already linked or unmatched, skip to next block */
+                    }
+
+                    /* First match or additional match? */
+                    if (matchCount == 0) {
+                        /* First match: save it */
+                        subTOIBlock = (unsigned char)si;
+                        MconnStatus = (unsigned char)connCheckFlag;
+                    }
+                    else {
+                        /* Additional match: push to tcomp backtrack stack */
+                        if (tcompDepth >= TRACK_SETUP_DEPTH_MAX) {
+                            trackErrorCode = 8; /* many_path */
+                            break;              /* exit for-si */
+                        }
+
+                        tcompEntry = &tcompArr[tcompDepth];
+                        tcompEntry->tc_col = trkColIndex;
+                        tcompEntry->tc_row = trkRowIndex;
+                        tcompEntry->tc_tileElem = tileElem;
+                        tcompEntry->tc_subBlock = (unsigned char)si;
+                        tcompEntry->tc_connStatus = (unsigned char)connCheckFlag;
+                        tcompEntry->tc_prevCode = prevConnCode;
+                        tcompEntry->tc_prevIdx = (short)prevPieceIdx;
+                        tcompEntry->tc_distCount = distCount;
+                        tcompEntry->tc_prevCol = MprevColIndex;
+                        tcompEntry->tc_prevRow = MprevRowIndex;
+                        tcompEntry->tc_prevElem = MprevTileElem;
+                        tcompEntry->tc_prevSub = prevSubBlock;
+                        tcompEntry->tc_prevConn = MprevConnStatus;
+                        tcompDepth++;
+                    }
+                    matchCount++;
+                }
+            } /* if (ptrTOInfo != NULL) */
+            if (trackErrorCode != 0)
+                break; /* exit while(1) on for-si error */
+
+            if (matchCount == 0) {
+                /* No match found */
+                if (prevConnCode != 1) {
+                    need_backtrack = 1; /* backtrack */
+                }
+                else if (sfPassCount >= 2) {
+                    need_backtrack = 1;
                 }
                 else {
-                    trackErrorCode = 4; /* elem_mism */
-                    break; /* exit for-si */
-                }
-            }
-            /* else connCheckFlag stays -1 */
-        }
-
-        if (connCheckFlag >= 0) {
-        /* Check if we've already visited this tile */
-        if (visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex] != 0) {
-            /* Already visited: scan existing pieces for a loop */
-            for (di = 0; di < track_pieces_counter; di++) {
-                /* Check col match */
-                if (path_col[di] != trkColIndex)
-                    continue;
-                /* Check row match */
-                if (path_row[di] != trkRowIndex)
-                    continue;
-                /* Check subTOIBlock match */
-                if (subTOIBlockArr[di] != (unsigned char)si)
-                    continue;
-                /* Check connStatus match */
-                if (connStatusArr[di] != (unsigned char)connCheckFlag) {
-                    trackErrorCode = 5; /* wrong_way */
-                    break; /* exit for-di */
-                }
-                /* Match found - link it */
-                connCheckFlag = -1; /* mark as already linked */
-                {
-                    short *linkPtr;
-                    linkPtr = &track_waypoint_next[prevPieceIdx];
-                    if (*linkPtr != -1) {
-                        /* td01 slot already used, use td02 instead */
-                        linkPtr = &track_waypoint_alt[prevPieceIdx];
+                    if (distCount < 2) {
+                        trackErrorCode = 9; /* no_runway */
+                        break;              /* exit while(1) */
                     }
-                    *linkPtr = di;
+                    /* Extend runway */
+                    distCount++;
+                    sfPassCount++;
+                    switch (trackDirection) {
+                    case 0: /* North */
+                        trkColIndex = MprevColIndex;
+                        trkRowIndex = MprevRowIndex - sfPassCount - 1;
+                        continue;
+                    case 512: /* South */
+                        trkColIndex = MprevColIndex;
+                        trkRowIndex = MprevRowIndex + sfPassCount + 1;
+                        continue;
+                    case 256: /* East */
+                        trkRowIndex = MprevRowIndex;
+                        trkColIndex = MprevColIndex + sfPassCount + 1;
+                        continue;
+                    case 768: /* West */
+                        trkRowIndex = MprevRowIndex;
+                        trkColIndex = MprevColIndex - sfPassCount - 1;
+                        continue;
+                    default:
+                        continue;
+                    }
                 }
-                if (di == 0) {
-                    loopFoundFlag = 1;
-                }
-                /* DON'T break - continue scanning for wrong_way errors */
             }
-            if (trackErrorCode != 0) break; /* exit for-si on wrong_way */
-        }
-        } /* end connCheckFlag >= 0 */
-        if (connCheckFlag < 0) {
-            continue; /* already linked or unmatched, skip to next block */
+        } /* end if (!need_backtrack) */
+
+        /* Try backtracking */
+        if (need_backtrack) {
+            if (tcompDepth == 0) {
+                break; /* track_complete */
+            }
+            tcompDepth--;
+            tcompEntry = &tcompArr[tcompDepth];
+            trkColIndex = tcompEntry->tc_col;
+            trkRowIndex = tcompEntry->tc_row;
+            tileElem = tcompEntry->tc_tileElem;
+            subTOIBlock = tcompEntry->tc_subBlock;
+            MconnStatus = tcompEntry->tc_connStatus;
+            prevConnCode = tcompEntry->tc_prevCode;
+            prevPieceIdx = tcompEntry->tc_prevIdx;
+            distCount = tcompEntry->tc_distCount;
+            MprevColIndex = tcompEntry->tc_prevCol;
+            MprevRowIndex = tcompEntry->tc_prevRow;
+            MprevTileElem = tcompEntry->tc_prevElem;
+            prevSubBlock = tcompEntry->tc_prevSub;
+            MprevConnStatus = tcompEntry->tc_prevConn;
+            matchCount = 1;
         }
 
-        /* First match or additional match? */
+        /* check_match: */
         if (matchCount == 0) {
-            /* First match: save it */
-            subTOIBlock = (unsigned char)si;
-            MconnStatus = (unsigned char)connCheckFlag;
+            continue; /* goto main_loop */
+        }
+        if (sfPassCount > 1) {
+            trackErrorCode = 10; /* long_jump */
+            break;               /* exit while(1) */
+        }
+
+        /* ===== PHASE 9: Process piece (inline in main loop) ===== */
+        sfPassCount = 0;
+
+        /* Mark tile as visited */
+        visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex] = 1;
+
+        /* Record subTOIBlock and connStatus for this piece */
+        subTOIBlockArr[track_pieces_counter] = subTOIBlock;
+        connStatusArr[track_pieces_counter] = MconnStatus;
+
+        /* Link previous piece to current */
+        if (prevPieceIdx != -1) {
+            short *linkPtr;
+            linkPtr = &track_waypoint_next[prevPieceIdx];
+            if (*linkPtr != -1) {
+                /* td01 already used, use td02 */
+                linkPtr = &track_waypoint_alt[prevPieceIdx];
+            }
+            *linkPtr = track_pieces_counter;
+        }
+
+        /* Save current piece index as prevPieceIdx */
+        prevPieceIdx = track_pieces_counter;
+
+        /* Record col and row in path arrays */
+        path_col[track_pieces_counter] = (char)trkColIndex;
+        path_row[track_pieces_counter] = (char)trkRowIndex;
+
+        /* Record connStatus and subTOIBlock in path_conn_flags (packed byte) */
+        path_conn_flags[track_pieces_counter] = (char)(MconnStatus << 4) + subTOIBlock;
+
+        /* Record tileElem in td17 */
+        track_elem_ordered[track_pieces_counter] = (char)tileElem;
+
+        /* Get ptrTOInfo and ptrCurrTOInfo for this tile/block */
+        ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
+        ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
+
+        /* Get opp3 value */
+        opp3Val = ptrCurrTOInfo->si_opp3;
+
+        if (opp3Val == 0) {
+            /* opp3 == 0: increment distCount, skip checkpoint data */
+            distCount++;
         }
         else {
-            /* Additional match: push to tcomp backtrack stack */
-            if (tcompDepth >= TRACK_SETUP_DEPTH_MAX) {
-                trackErrorCode = 8; /* many_path */
-                break; /* exit for-si */
-            }
+            if (opp3Val != TRACK_U8_INVALID && distCount > 3
+                && lap_checkpoint_counter < TRACK_CHECKPOINT_LIMIT_MAX) {
+                /* ---- Checkpoint data recording ---- */
+                {
+                    struct TRKOBJINFO_RAW *currTOI;
+                    struct TRKOBJINFO_RAW *prevTOI;
+                    short *camSrc;
+                    short altCamOfs;
 
-            tcompEntry = &tcompArr[tcompDepth];
-            tcompEntry->tc_col = trkColIndex;
-            tcompEntry->tc_row = trkRowIndex;
-            tcompEntry->tc_tileElem = tileElem;
-            tcompEntry->tc_subBlock = (unsigned char)si;
-            tcompEntry->tc_connStatus = (unsigned char)connCheckFlag;
-            tcompEntry->tc_prevCode = prevConnCode;
-            tcompEntry->tc_prevIdx = prevPieceIdx;
-            tcompEntry->tc_distCount = distCount;
-            tcompEntry->tc_prevCol = MprevColIndex;
-            tcompEntry->tc_prevRow = MprevRowIndex;
-            tcompEntry->tc_prevElem = MprevTileElem;
-            tcompEntry->tc_prevSub = prevSubBlock;
-            tcompEntry->tc_prevConn = MprevConnStatus;
-            tcompDepth++;
-        }
-        matchCount++;
-    }
-    } /* if (ptrTOInfo != NULL) */
-    if (trackErrorCode != 0) break; /* exit while(1) on for-si error */
+                    /* Re-get ptrTOInfo/ptrCurrTOInfo for current tile */
+                    ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
+                    currTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
+                    opp3Val = currTOI->si_opp3;
 
-    if (matchCount == 0) {
-        /* No match found */
-        if (prevConnCode != 1) {
-            need_backtrack = 1; /* backtrack */
-        } else if (sfPassCount >= 2) {
-            need_backtrack = 1;
-        } else {
-            if (distCount < 2) {
-                trackErrorCode = 9; /* no_runway */
-                break; /* exit while(1) */
-            }
-            /* Extend runway */
-            distCount++;
-            sfPassCount++;
-            switch (trackDirection) {
-            case 0: /* North */
-                trkColIndex = MprevColIndex;
-                trkRowIndex = MprevRowIndex - sfPassCount - 1;
-                continue;
-            case 512: /* South */
-                trkColIndex = MprevColIndex;
-                trkRowIndex = MprevRowIndex + sfPassCount + 1;
-                continue;
-            case 256: /* East */
-                trkRowIndex = MprevRowIndex;
-                trkColIndex = MprevColIndex + sfPassCount + 1;
-                continue;
-            case 768: /* West */
-                trkRowIndex = MprevRowIndex;
-                trkColIndex = MprevColIndex - sfPassCount - 1;
-                continue;
-            default:
-                continue;
-            }
-        }
-    }
-    } /* end if (!need_backtrack) */
+                    /* Get ptrTOInfo/ptrCurrTOInfo for PREVIOUS tile */
+                    ptrTOInfo = trkobject_info_ptr((unsigned char)MprevTileElem);
+                    prevTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)prevSubBlock);
 
-    /* Try backtracking */
-    if (need_backtrack) {
-        if (tcompDepth == 0) {
-            break; /* track_complete */
-        }
-        tcompDepth--;
-        tcompEntry = &tcompArr[tcompDepth];
-        trkColIndex = tcompEntry->tc_col;
-        trkRowIndex = tcompEntry->tc_row;
-        tileElem = tcompEntry->tc_tileElem;
-        subTOIBlock = tcompEntry->tc_subBlock;
-        MconnStatus = tcompEntry->tc_connStatus;
-        prevConnCode = tcompEntry->tc_prevCode;
-        prevPieceIdx = tcompEntry->tc_prevIdx;
-        distCount = tcompEntry->tc_distCount;
-        MprevColIndex = tcompEntry->tc_prevCol;
-        MprevRowIndex = tcompEntry->tc_prevRow;
-        MprevTileElem = tcompEntry->tc_prevElem;
-        prevSubBlock = tcompEntry->tc_prevSub;
-        MprevConnStatus = tcompEntry->tc_prevConn;
-        matchCount = 1;
-    }
-
-    /* check_match: */
-    if (matchCount == 0) {
-        continue; /* goto main_loop */
-    }
-    if (sfPassCount > 1) {
-        trackErrorCode = 10; /* long_jump */
-        break; /* exit while(1) */
-    }
-
-    /* ===== PHASE 9: Process piece (inline in main loop) ===== */
-    sfPassCount = 0;
-
-    /* Mark tile as visited */
-    visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex] = 1;
-
-    /* Record subTOIBlock and connStatus for this piece */
-    subTOIBlockArr[track_pieces_counter] = subTOIBlock;
-    connStatusArr[track_pieces_counter] = MconnStatus;
-
-    /* Link previous piece to current */
-    if (prevPieceIdx != -1) {
-        short *linkPtr;
-        linkPtr = &track_waypoint_next[prevPieceIdx];
-        if (*linkPtr != -1) {
-            /* td01 already used, use td02 */
-            linkPtr = &track_waypoint_alt[prevPieceIdx];
-        }
-        *linkPtr = track_pieces_counter;
-    }
-
-    /* Save current piece index as prevPieceIdx */
-    prevPieceIdx = track_pieces_counter;
-
-    /* Record col and row in path arrays */
-    path_col[track_pieces_counter] = trkColIndex;
-    path_row[track_pieces_counter] = trkRowIndex;
-
-    /* Record connStatus and subTOIBlock in path_conn_flags (packed byte) */
-    path_conn_flags[track_pieces_counter] = (MconnStatus << 4) + subTOIBlock;
-
-    /* Record tileElem in td17 */
-    track_elem_ordered[track_pieces_counter] = tileElem;
-
-    /* Get ptrTOInfo and ptrCurrTOInfo for this tile/block */
-    ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-    ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
-
-    /* Get opp3 value */
-    opp3Val = ptrCurrTOInfo->si_opp3;
-
-    if (opp3Val == 0) {
-        /* opp3 == 0: increment distCount, skip checkpoint data */
-        distCount++;
-    } else {
-        if (opp3Val != TRACK_U8_INVALID
-            && distCount > 3
-            && lap_checkpoint_counter < TRACK_CHECKPOINT_LIMIT_MAX) {
-            /* ---- Checkpoint data recording ---- */
-            {
-                struct TRKOBJINFO_RAW *currTOI;
-                struct TRKOBJINFO_RAW *prevTOI;
-                short *camSrc;
-                short altCamOfs;
-
-                /* Re-get ptrTOInfo/ptrCurrTOInfo for current tile */
-                ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-                currTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
-                opp3Val = currTOI->si_opp3;
-
-                /* Get ptrTOInfo/ptrCurrTOInfo for PREVIOUS tile */
-                ptrTOInfo = trkobject_info_ptr((unsigned char)MprevTileElem);
-                prevTOI = trkobjinfo_block(ptrTOInfo, (unsigned char)prevSubBlock);
-
-                /* Get camera data pointer */
-                if (MprevConnStatus != 0) {
-                    /* Check alternate camera data at offset +10 (si_opp1+si_opp2 as word) */
-                    altCamOfs = *(short *)(&prevTOI->si_opp1);
-                    if (altCamOfs != 0) {
-                        cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCamOfs);
+                    /* Get camera data pointer */
+                    if (MprevConnStatus != 0) {
+                        /* Check alternate camera data at offset +10 (si_opp1+si_opp2 as word) */
+                        altCamOfs = *(short *)(&prevTOI->si_opp1);
+                        if (altCamOfs != 0) {
+                            cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCamOfs);
+                        }
+                        else {
+                            cameraOfs = trkobjinfo_camera_ptr(prevTOI);
+                        }
                     }
                     else {
                         cameraOfs = trkobjinfo_camera_ptr(prevTOI);
                     }
-                }
-                else {
-                    cameraOfs = trkobjinfo_camera_ptr(prevTOI);
-                }
 
-                /* Compute camera data entry address */
-                if (MprevConnStatus != 0) {
-                    /* Reversed: cameraBase + arrowType * 12 + 12 */
-                    camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 12);
-                }
-                else {
-                    /* Normal: cameraBase + arrowType * 12 + 6 */
-                    camSrc = (short *)((char *)cameraOfs + (unsigned char)prevTOI->si_arrowType * 12 + 6);
-                }
-
-                /* Copy 3 words of camera data */
-                checkX = camSrc[0];
-                checkY = camSrc[1];
-                checkZ = camSrc[2];
-
-                /* Apply opp3 direction lookup */
-                if (MconnStatus != 0) {
-                    opp3Val = animation_frame_transition_table[(signed char)opp3Val];
-                }
-                else {
-                    opp3Val = animation_state_advance_table[(signed char)opp3Val];
-                }
-
-                /* Get arrowOrient -> trackDirection */
-                trackDirection = prevTOI->si_arrowOrient;
-
-                /* Rotate camera data based on trackDirection */
-                if (trackDirection == 768) {
-                    /* Rotate 270 deg: swap X<->Z, negate new X */
-                    tempSwap = checkX;
-                    checkX = -checkZ;
-                    checkZ = tempSwap;
-                }
-                else if (trackDirection == 512) {
-                    /* Rotate 180 deg: negate both X and Z */
-                    checkZ = -checkZ;
-                    checkX = -checkX;
-                }
-                else if (trackDirection == 256) {
-                    /* Rotate 90 deg: swap X<->Z, negate new Z */
-                    tempSwap = checkX;
-                    checkX = checkZ;
-                    checkZ = -tempSwap;
-                }
-
-                /* Store direction in td08 */
-                if (MprevConnStatus != 0) {
-                    /* Reverse direction: XOR high byte with 2 */
-                    obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection ^ 512;
-                }
-                else {
-                    obstacle_rot_z[(signed char)lap_checkpoint_counter] = trackDirection;
-                }
-
-                /* Store opp3 in obstacle_scene_index */
-                obstacle_scene_index[(signed char)lap_checkpoint_counter] = opp3Val;
-
-                /* Get terrain for prev tile, add hill height if terrain==6 */
-                if (track_terrain_map[terrainrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
-                    == 6) {
-                    checkY += TRACK_HILL_HEIGHT_OFFSET; /* hill height = 450 */
-                }
-
-                /* Store checkpoint Y in obstacle_world_pos[checkpointIdx*3 + 1] */
-                {
-                    int chkIdx6 = (signed char)lap_checkpoint_counter * 3;
-
-                    obstacle_world_pos[chkIdx6 + 1] = checkY;
-
-                    /* Compute Z position */
-                    if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 1) {
-                        /* Multi-tile (flag bit 0): use trackpos */
-                        checkZ += trackpos[(signed char)MprevRowIndex];
+                    /* Compute camera data entry address */
+                    if (MprevConnStatus != 0) {
+                        /* Reversed: cameraBase + arrowType * 12 + 12 */
+                        camSrc = (short *)((char *)cameraOfs
+                                           + (ptrdiff_t)((unsigned char)prevTOI->si_arrowType * 12) + 12);
                     }
                     else {
-                        /* Single-tile: use trackcenterpos */
-                        checkZ += trackcenterpos[(signed char)MprevRowIndex];
+                        /* Normal: cameraBase + arrowType * 12 + 6 */
+                        camSrc = (short *)((char *)cameraOfs
+                                           + (ptrdiff_t)((unsigned char)prevTOI->si_arrowType * 12) + 6);
                     }
-                    obstacle_world_pos[chkIdx6 + 2] = checkZ;
 
-                    /* Compute X position */
-                    if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 2) {
-                        /* Multi-tile (flag bit 1): use trackpos2+1 */
-                        checkX += trackpos2[(signed char)MprevColIndex + 1];
+                    /* Copy 3 words of camera data */
+                    checkX = camSrc[0];
+                    checkY = camSrc[1];
+                    checkZ = camSrc[2];
+
+                    /* Apply opp3 direction lookup */
+                    if (MconnStatus != 0) {
+                        opp3Val = animation_frame_transition_table[(signed char)opp3Val];
                     }
                     else {
-                        /* Single-tile: use trackcenterpos2 */
-                        checkX += trackcenterpos2[(signed char)MprevColIndex];
+                        opp3Val = animation_state_advance_table[(signed char)opp3Val];
                     }
-                    obstacle_world_pos[chkIdx6] = checkX;
+
+                    /* Get arrowOrient -> trackDirection */
+                    trackDirection = prevTOI->si_arrowOrient;
+
+                    /* Rotate camera data based on trackDirection */
+                    if (trackDirection == 768) {
+                        /* Rotate 270 deg: swap X<->Z, negate new X */
+                        tempSwap = checkX;
+                        checkX = -checkZ;
+                        checkZ = tempSwap;
+                    }
+                    else if (trackDirection == 512) {
+                        /* Rotate 180 deg: negate both X and Z */
+                        checkZ = -checkZ;
+                        checkX = -checkX;
+                    }
+                    else if (trackDirection == 256) {
+                        /* Rotate 90 deg: swap X<->Z, negate new Z */
+                        tempSwap = checkX;
+                        checkX = checkZ;
+                        checkZ = -tempSwap;
+                    }
+
+                    /* Store direction in td08 */
+                    if (MprevConnStatus != 0) {
+                        /* Reverse direction: XOR high byte with 2 */
+                        obstacle_rot_z[(signed char)lap_checkpoint_counter] = (short)trackDirection ^ 512;
+                    }
+                    else {
+                        obstacle_rot_z[(signed char)lap_checkpoint_counter] = (short)trackDirection;
+                    }
+
+                    /* Store opp3 in obstacle_scene_index */
+                    obstacle_scene_index[(signed char)lap_checkpoint_counter] = opp3Val;
+
+                    /* Get terrain for prev tile, add hill height if terrain==6 */
+                    if (track_terrain_map[terrainrows[(signed char)MprevRowIndex]
+                                          + (signed char)MprevColIndex]
+                        == 6) {
+                        checkY += TRACK_HILL_HEIGHT_OFFSET; /* hill height = 450 */
+                    }
+
+                    /* Store checkpoint Y in obstacle_world_pos[checkpointIdx*3 + 1] */
+                    {
+                        int chkIdx6 = (signed char)lap_checkpoint_counter * 3;
+
+                        obstacle_world_pos[chkIdx6 + 1] = (short)checkY;
+
+                        /* Compute Z position */
+                        if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 1) {
+                            /* Multi-tile (flag bit 0): use trackpos */
+                            checkZ += trackpos[(signed char)MprevRowIndex];
+                        }
+                        else {
+                            /* Single-tile: use trackcenterpos */
+                            checkZ += trackcenterpos[(signed char)MprevRowIndex];
+                        }
+                        obstacle_world_pos[chkIdx6 + 2] = (short)checkZ;
+
+                        /* Compute X position */
+                        if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 2) {
+                            /* Multi-tile (flag bit 1): use trackpos2+1 */
+                            checkX += trackpos2[(signed char)MprevColIndex + 1];
+                        }
+                        else {
+                            /* Single-tile: use trackcenterpos2 */
+                            checkX += trackcenterpos2[(signed char)MprevColIndex];
+                        }
+                        obstacle_world_pos[chkIdx6] = (short)checkX;
+                    }
+
+                    /* Mark tile in tile_obstacle_map */
+                    tile_obstacle_map[trackrows[(signed char)MprevRowIndex]
+                                      + (signed char)MprevColIndex]
+                        = lap_checkpoint_counter;
+
+                    lap_checkpoint_counter++; /* checkpoint counter++ */
                 }
-
-                /* Mark tile in tile_obstacle_map */
-                tile_obstacle_map[trackrows[(signed char)MprevRowIndex] + (signed char)MprevColIndex]
-                    = lap_checkpoint_counter;
-
-                lap_checkpoint_counter++; /* checkpoint counter++ */
             }
+            /* reset_dist: */
+            distCount = 0;
         }
-        /* reset_dist: */
-        distCount = 0;
-    }
 
-    /* after_checkpoint: */
-    track_pieces_counter++;
-    if (track_pieces_counter >= TRACK_TRACKDATA_TOTAL_BYTES) {
-        trackErrorCode = 6; /* many_elem */
-        break; /* exit while(1) */
-    }
+        /* after_checkpoint: */
+        track_pieces_counter++;
+        if (track_pieces_counter >= TRACK_TRACKDATA_TOTAL_BYTES) {
+            trackErrorCode = 6; /* many_elem */
+            break;              /* exit while(1) */
+        }
 
-    /* Get exit direction for current piece */
-    ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
-    ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
+        /* Get exit direction for current piece */
+        ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
+        ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
 
-    /* Determine exit point and type based on connStatus */
-    if (MconnStatus != 0) {
-        /* Reversed: use entryPoint as exit */
-        McurrExitPoint = ptrCurrTOInfo->si_entryPoint;
-        prevConnCode = ptrCurrTOInfo->si_entryType;
-    }
-    else {
-        /* Normal: use exitPoint */
-        McurrExitPoint = ptrCurrTOInfo->si_exitPoint;
-        prevConnCode = ptrCurrTOInfo->si_exitType;
-    }
+        /* Determine exit point and type based on connStatus */
+        if (MconnStatus != 0) {
+            /* Reversed: use entryPoint as exit */
+            McurrExitPoint = ptrCurrTOInfo->si_entryPoint;
+            prevConnCode = ptrCurrTOInfo->si_entryType;
+        }
+        else {
+            /* Normal: use exitPoint */
+            McurrExitPoint = ptrCurrTOInfo->si_exitPoint;
+            prevConnCode = ptrCurrTOInfo->si_exitType;
+        }
 
-    /* Save current state as prev */
-    MprevColIndex = trkColIndex;
-    MprevRowIndex = trkRowIndex;
-    MprevConnStatus = MconnStatus;
-    prevSubBlock = subTOIBlock;
-    MprevTileElem = tileElem;
+        /* Save current state as prev */
+        MprevColIndex = trkColIndex;
+        MprevRowIndex = trkRowIndex;
+        MprevConnStatus = MconnStatus;
+        prevSubBlock = subTOIBlock;
+        MprevTileElem = tileElem;
 
-    /** @brief Point.
+        /** @brief Point.
  * @param McurrExitPoint Parameter `McurrExitPoint`.
  * @return Function result.
  */
-    /* Dispatch on exit point (1-12) */
-    switch (McurrExitPoint) {
-    case 1: /* N */
-        trkRowIndex--;
-        trackDirection = 0;
-        break;
-    case 2: /* S */
-        trkRowIndex++;
-        trackDirection = 512;
-        break;
-    case 3: /* E */
-        trkColIndex++;
-        trackDirection = 256;
-        break;
-    case 4: /* W */
-        trkColIndex--;
-        trackDirection = 768;
-        break;
-    case 5: /* NE */
-        trkRowIndex--;
-        trkColIndex++;
-        trackDirection = 0;
-        break;
-    case 6: /* SW */
-        trkRowIndex++;
-        trkColIndex--;
-        trackDirection = 768;
-        break;
-    case 7: /* SE via E */
-        trkColIndex++;
-        trkRowIndex++;
-        trackDirection = 256;
-        break;
-    case 8: /* E+col=2 */
-        trkColIndex += 2;
-        trackDirection = 256;
-        break;
-    case 9: /* E+col=2, S */
-        trkColIndex += 2;
-        trkRowIndex++;
-        trackDirection = 256;
-        break;
-    case 10: /* SE */
-        trkColIndex++;
-        trkRowIndex++;
-        trackDirection = 512;
-        break;
-    case 11: /* S, row+=2 */
-        trkRowIndex += 2;
-        trackDirection = 512;
-        break;
-    case 12: /* SE, row+=2 */
-        trkColIndex++;
-        trkRowIndex += 2;
-        trackDirection = 512;
-        break;
-    default:
-        break;
-    }
-    continue; /* goto main_loop */
+        /* Dispatch on exit point (1-12) */
+        switch (McurrExitPoint) {
+        case 1: /* N */
+            trkRowIndex--;
+            trackDirection = 0;
+            break;
+        case 2: /* S */
+            trkRowIndex++;
+            trackDirection = 512;
+            break;
+        case 3: /* E */
+            trkColIndex++;
+            trackDirection = 256;
+            break;
+        case 4: /* W */
+            trkColIndex--;
+            trackDirection = 768;
+            break;
+        case 5: /* NE */
+            trkRowIndex--;
+            trkColIndex++;
+            trackDirection = 0;
+            break;
+        case 6: /* SW */
+            trkRowIndex++;
+            trkColIndex--;
+            trackDirection = 768;
+            break;
+        case 7: /* SE via E */
+            trkColIndex++;
+            trkRowIndex++;
+            trackDirection = 256;
+            break;
+        case 8: /* E+col=2 */
+            trkColIndex += 2;
+            trackDirection = 256;
+            break;
+        case 9: /* E+col=2, S */
+            trkColIndex += 2;
+            trkRowIndex++;
+            trackDirection = 256;
+            break;
+        case 10: /* SE */
+            trkColIndex++;
+            trkRowIndex++;
+            trackDirection = 512;
+            break;
+        case 11: /* S, row+=2 */
+            trkRowIndex += 2;
+            trackDirection = 512;
+            break;
+        case 12: /* SE, row+=2 */
+            trkColIndex++;
+            trkRowIndex += 2;
+            trackDirection = 512;
+            break;
+        default:
+            break;
+        }
+        continue; /* goto main_loop */
     } /* end while (1) */
 
     if (trackErrorCode != 0) {
@@ -3359,11 +3379,10 @@ track_setup(void) {
 
         /* Read packed path_conn_flags entry */
         subTOIBlock = path_conn_flags[chkPathIdx] & 15;
-        connCheckFlag = path_conn_flags[chkPathIdx] & 16;
+        connCheckFlag = (signed char)path_conn_flags[chkPathIdx] & 16;
 
         /* Get ptrCurrTOInfo */
         ptrTOInfo = trkobject_info_ptr((unsigned char)chkTileElem);
-        ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, 0);
 
         if (connCheckFlag != 0) {
             /* connCheckFlag!=0: check for alternate camera data */
@@ -3372,11 +3391,13 @@ track_setup(void) {
                 short altCam = *(short *)(&subBlockInfo->si_opp1);
                 if (altCam != 0) {
                     cameraOfs = (short *)trk_resolve_ofs((unsigned short)altCam);
-                } else {
+                }
+                else {
                     cameraOfs = trkobjinfo_camera_ptr(subBlockInfo);
                 }
             }
-        } else {
+        }
+        else {
             /* Normal camera data: get from sub-block */
             subBlockInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
             cameraOfs = trkobjinfo_camera_ptr(subBlockInfo);
@@ -3384,87 +3405,86 @@ track_setup(void) {
 
         /* use_camera_ofs: camera data processing */
         {
-        short *camSrc;
-        int camDir;
+            short *camSrc;
+            int camDir;
 
-        /* Get arrowType for camera lookup from sub-block */
-        subBlockInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
+            /* Get arrowType for camera lookup from sub-block */
+            subBlockInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)subTOIBlock);
 
-        /* Camera data: cameraBase + arrowType * 12 (no extra offset in Phase 10) */
-        camSrc = (short *)((char *)cameraOfs + (unsigned char)subBlockInfo->si_arrowType * 12);
+            /* Camera data: cameraBase + arrowType * 12 (no extra offset in Phase 10) */
+            camSrc = (short *)((char *)cameraOfs + (ptrdiff_t)((unsigned char)subBlockInfo->si_arrowType * 12));
 
-        /* Copy 3 words of camera data */
-        checkX = camSrc[0];
-        checkY = camSrc[1];
-        checkZ = camSrc[2];
+            /* Copy 3 words of camera data */
+            checkX = camSrc[0];
+            checkY = camSrc[1];
+            checkZ = camSrc[2];
 
-        /* Get arrowOrient */
-        camDir = subBlockInfo->si_arrowOrient;
-        trackDirection = camDir;
+            /* Get arrowOrient */
+            camDir = subBlockInfo->si_arrowOrient;
 
-        /* Rotate camera data based on arrowOrient */
-        if (camDir == 768) {
-            tempSwap = checkX;
-            checkX = -checkZ;
-            checkZ = tempSwap;
-        }
-        else if (camDir == 512) {
-            checkZ = -checkZ;
-            checkX = -checkX;
-        }
-        else if (camDir == 256) {
-            tempSwap = checkX;
-            checkX = checkZ;
-            checkZ = -tempSwap;
-        }
+            /* Rotate camera data based on arrowOrient */
+            if (camDir == 768) {
+                tempSwap = checkX;
+                checkX = -checkZ;
+                checkZ = tempSwap;
+            }
+            else if (camDir == 512) {
+                checkZ = -checkZ;
+                checkX = -checkX;
+            }
+            else if (camDir == 256) {
+                tempSwap = checkX;
+                checkX = checkZ;
+                checkZ = -tempSwap;
+            }
 
-        /* Check terrain for hill height */
-        if (track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
-            == 6) {
-            /* Hill: set track_element_height_ofs to 450 */
-            ((short *)track_element_height_ofs)[di] = TRACK_HILL_HEIGHT_OFFSET;
-        }
-        else {
-            /* Not hill: set track_element_height_ofs to 0 */
-            ((short *)track_element_height_ofs)[di] = 0;
-        }
+            /* Check terrain for hill height */
+            if (track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
+                == 6) {
+                /* Hill: set track_element_height_ofs to 450 */
+                ((short *)track_element_height_ofs)[di] = TRACK_HILL_HEIGHT_OFFSET;
+            }
+            else {
+                /* Not hill: set track_element_height_ofs to 0 */
+                ((short *)track_element_height_ofs)[di] = 0;
+            }
 
-        /* Store in track_cam_height_base (always 0) */
-        ((short *)track_cam_height_base)[di] = 0;
+            /* Store in track_cam_height_base (always 0) */
+            ((short *)track_cam_height_base)[di] = 0;
 
-        /* waypoint_world_pos[di*3 + 1] = track_element_height_ofs[di] + camData[1] */
-        waypoint_world_pos[di * 3 + 1] = ((short *)track_element_height_ofs)[di] + checkY;
+            /* waypoint_world_pos[di*3 + 1] = track_element_height_ofs[di] + camData[1] */
+            waypoint_world_pos[di * 3 + 1] = (short)((short *)track_element_height_ofs)[di] + checkY;
 
-        /** @brief Position.
+            /** @brief Position.
  * @param chkTileElem Parameter `chkTileElem`.
  * @return Function result.
  */
-        /* Compute Z position (waypoint_world_pos[di*3 + 2]) */
-        if (trkobject_multitile_flag((unsigned char)chkTileElem) & 1) {
-            /* Multi-tile */
-            waypoint_world_pos[di * 3 + 2] = trackpos[(signed char)trkRowIndex] + checkZ;
-        }
-        else {
-            /* Single-tile */
-            waypoint_world_pos[di * 3 + 2] = trackcenterpos[(signed char)trkRowIndex] + checkZ;
-        }
+            /* Compute Z position (waypoint_world_pos[di*3 + 2]) */
+            if (trkobject_multitile_flag((unsigned char)chkTileElem) & 1) {
+                /* Multi-tile */
+                waypoint_world_pos[di * 3 + 2] = (short)trackpos[(signed char)trkRowIndex] + checkZ;
+            }
+            else {
+                /* Single-tile */
+                waypoint_world_pos[di * 3 + 2] = (short)trackcenterpos[(signed char)trkRowIndex] + checkZ;
+            }
 
-        /** @brief Position.
+            /** @brief Position.
  * @param chkTileElem Parameter `chkTileElem`.
  * @return Function result.
  */
-        /* Compute X position (waypoint_world_pos[di*3]) */
-        if (trkobject_multitile_flag((unsigned char)chkTileElem) & 2) {
-            /* Multi-tile */
-            waypoint_world_pos[di * 3] = trackpos2[(signed char)trkColIndex + 1] + checkX;
-        }
-        else {
-            /* Single-tile */
-            waypoint_world_pos[di * 3] = trackcenterpos2[(signed char)trkColIndex] + checkX;
-        }
+            /* Compute X position (waypoint_world_pos[di*3]) */
+            if (trkobject_multitile_flag((unsigned char)chkTileElem) & 2) {
+                /* Multi-tile */
+                waypoint_world_pos[(ptrdiff_t)(di * 3)] = (short)trackpos2[(signed char)trkColIndex + 1] + checkX;
+            }
+            else {
+                /* Single-tile */
+                waypoint_world_pos[(ptrdiff_t)(di * 3)] = (short)trackcenterpos2[(signed char)trkColIndex] + checkX;
+            }
 
-        di++; /* checkpoint counter++ */
-    }
+            di++; /* checkpoint counter++ */
+        }
 
         si++; /* iteration index++ */
     }
@@ -3501,7 +3521,7 @@ state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
         return 0;
     }
 
-    p = table + ((unsigned int)STATE_TRACKOBJECT_RAW_SIZE * index);
+    p = table + ((size_t)((unsigned int)STATE_TRACKOBJECT_RAW_SIZE * index));
     out->trkobj_info_ofs = read_u16(p + 0);
     out->rot_y = (int16_t)read_u16(p + 2);
     out->shape_ofs = read_u16(p + 4);
@@ -3530,7 +3550,7 @@ state_trkobjinfo_raw_decode(const unsigned char *table, unsigned int index,
         return 0;
     }
 
-    p = table + ((unsigned int)STATE_TRKOBJINFO_RAW_SIZE * index);
+    p = table + ((size_t)((unsigned int)STATE_TRKOBJINFO_RAW_SIZE * index));
     out->no_of_blocks = p[0];
     out->entry_point = p[1];
     out->exit_point = p[2];

@@ -71,7 +71,7 @@ void format_frame_as_string(char *dest, unsigned short frames, unsigned short sh
 void nopsub_28F26(void);
 
 /* System-level helpers */
-void fatal_error(const char *, ...);
+_Noreturn void fatal_error(const char *, ...);
 void add_exit_handler(void (*handler)(void));
 short set_criterr_handler(short (*callback)(void));
 void libsub_quit_to_dos_alt(short a1);

@@ -170,7 +170,7 @@ file_decomp_rle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *o
     esclen &= 127u;
     if (esclen > RS_RLE_ESCLEN_MAX)
         return 0;
-    if (src_len < (size_t)(9u + esclen + srclen))
+    if (src_len < (size_t)9u + (size_t)esclen + (size_t)srclen)
         return 0;
 
     memset(esclookup, 0, sizeof(esclookup));
@@ -374,7 +374,7 @@ file_try_binary_with_exts(const char *filename, const char *const *exts) {
         return NULL;
     for (int i = 0; exts[i]; i++) {
         char path[FS_PATH_MAX];
-        snprintf(path, sizeof(path), "%s%s", filename, exts[i]);
+        (void)snprintf(path, sizeof(path), "%s%s", filename, exts[i]);
         void *ptr = file_load_binary_nofatal(path);
         if (ptr)
             return ptr;
@@ -398,7 +398,7 @@ file_try_driver_prefixed_binary(const char *filename, const char *const *exts) {
     if (!prefix[0] || !prefix[1])
         return NULL;
 
-    snprintf(stem, sizeof(stem), "%s%s", prefix, filename);
+    (void)snprintf(stem, sizeof(stem), "%s%s", prefix, filename);
     return file_try_binary_with_exts(stem, exts);
 }
 
@@ -453,9 +453,9 @@ file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
             if (fs_strcasecmp(ent->d_name, component) == 0) {
                 rlen = strlen(resolved);
                 if (rlen > 0)
-                    snprintf(resolved + rlen, sizeof(resolved) - rlen, "/%s", ent->d_name);
+                    (void)snprintf(resolved + rlen, sizeof(resolved) - rlen, "/%s", ent->d_name);
                 else
-                    snprintf(resolved, sizeof(resolved), "%s", ent->d_name);
+                    (void)snprintf(resolved, sizeof(resolved), "%s", ent->d_name);
                 found = true;
                 break;
             }
@@ -466,7 +466,7 @@ file_resolve_case_insensitive(const char *input, char *out, size_t out_size) {
     }
     if (!resolved[0])
         return 0;
-    snprintf(out, out_size, "%s", resolved);
+    (void)snprintf(out, out_size, "%s", resolved);
     return 1;
 #endif
 }
@@ -586,7 +586,7 @@ file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
         DIR *dir;
         struct dirent *ent;
 
-        snprintf(candidate, sizeof(candidate), "%s%s", g_file_search_prefixes[i], query);
+        (void)snprintf(candidate, sizeof(candidate), "%s%s", g_file_search_prefixes[i], query);
         pattern = path_split_dir(candidate, dirpath, sizeof(dirpath));
         if (!pattern)
             continue;
@@ -623,7 +623,7 @@ file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
     }
 
     if (g_find_match_count > 0) {
-        snprintf(out, out_size, "%s", g_find_matches[0]);
+        (void)snprintf(out, out_size, "%s", g_find_matches[0]);
         return 1;
     }
     return 0;
@@ -640,12 +640,12 @@ file_resolve_existing_path(const char *filename, char *out, size_t out_size) {
     for (int i = 0; g_file_search_prefixes[i]; i++) {
         char tmp[FS_PATH_MAX];
         FILE *f;
-        snprintf(tmp, sizeof(tmp), "%s%s", g_file_search_prefixes[i], filename);
+        (void)snprintf(tmp, sizeof(tmp), "%s%s", g_file_search_prefixes[i], filename);
 
         f = fopen(tmp, "rb");
         if (f) {
-            fclose(f);
-            snprintf(out, out_size, "%s", tmp);
+            (void)fclose(f);
+            (void)snprintf(out, out_size, "%s", tmp);
             return 1;
         }
         if (file_resolve_case_insensitive(tmp, out, out_size))
@@ -686,7 +686,7 @@ file_find(const char *query) {
         g_find_match_index = 0;
     }
 
-    snprintf(g_find_query, sizeof(g_find_query), "%s", resolved);
+    (void)snprintf(g_find_query, sizeof(g_find_query), "%s", resolved);
     return g_find_query;
 }
 
@@ -694,7 +694,7 @@ const char *
 file_find_next(void) {
     if (++g_find_match_index >= g_find_match_count)
         return NULL;
-    snprintf(g_find_query, sizeof(g_find_query), "%s", g_find_matches[g_find_match_index]);
+    (void)snprintf(g_find_query, sizeof(g_find_query), "%s", g_find_matches[g_find_match_index]);
     return g_find_query;
 }
 
@@ -722,7 +722,7 @@ file_build_path(const char *dir, const char *name, const char *ext, char *dst, s
     if (name)
         pos += (size_t)snprintf(dst + pos, dst_size - pos, "%s", name);
     if (ext)
-        snprintf(dst + pos, dst_size - pos, "%s", ext);
+        (void)snprintf(dst + pos, dst_size - pos, "%s", ext);
 }
 
 const char *
@@ -742,18 +742,18 @@ file_paras(const char *filename, int fatal) {
 
     if (!file_resolve_existing_path(filename, resolved, sizeof(resolved))) {
         if (fatal)
-            fprintf(stderr, "file_paras: cannot open %s\n", filename ? filename : "(null)");
+            (void)fprintf(stderr, "file_paras: cannot open %s\n", filename ? filename : "(null)");
         return 0;
     }
     f = fopen(resolved, "rb");
     if (!f) {
         if (fatal)
-            fprintf(stderr, "file_paras: cannot open %s\n", filename ? filename : "(null)");
+            (void)fprintf(stderr, "file_paras: cannot open %s\n", filename ? filename : "(null)");
         return 0;
     }
-    fseek(f, 0, SEEK_END);
+    (void)fseek(f, 0, SEEK_END);
     size = ftell(f);
-    fclose(f);
+    (void)fclose(f);
     return (size > 0) ? (unsigned short)(((unsigned long)size + 15UL) >> 4) : 0;
 }
 
@@ -788,20 +788,20 @@ file_read(const char *filename, void *dst, int fatal) {
 
     if (!file_resolve_existing_path(filename, resolved, sizeof(resolved))) {
         if (fatal)
-            fprintf(stderr, "file_read: cannot open %s\n", filename ? filename : "(null)");
+            (void)fprintf(stderr, "file_read: cannot open %s\n", filename ? filename : "(null)");
         return NULL;
     }
     f = fopen(resolved, "rb");
     if (!f) {
         if (fatal)
-            fprintf(stderr, "file_read: cannot open %s\n", filename ? filename : "(null)");
+            (void)fprintf(stderr, "file_read: cannot open %s\n", filename ? filename : "(null)");
         return NULL;
     }
-    fseek(f, 0, SEEK_END);
+    (void)fseek(f, 0, SEEK_END);
     size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    (void)fseek(f, 0, SEEK_SET);
     if (size <= 0) {
-        fclose(f);
+        (void)fclose(f);
         return NULL;
     }
 
@@ -811,8 +811,8 @@ file_read(const char *filename, void *dst, int fatal) {
         dst = calloc(1, alloc_size);
     }
     if (dst)
-        fread(dst, 1, (size_t)size, f);
-    fclose(f);
+        (void)fread(dst, 1, (size_t)size, f);
+    (void)fclose(f);
     return dst;
 }
 
@@ -830,12 +830,12 @@ file_write(const char *filename, void *src, unsigned long length, int fatal) {
     FILE *f = fopen(filename, "wb");
     if (!f) {
         if (fatal)
-            fprintf(stderr, "file_write: cannot open %s\n", filename ? filename : "(null)");
+            (void)fprintf(stderr, "file_write: cannot open %s\n", filename ? filename : "(null)");
         return -1;
     }
     if (src && length > 0)
-        fwrite(src, 1, (size_t)length, f);
-    fclose(f);
+        (void)fwrite(src, 1, (size_t)length, f);
+    (void)fclose(f);
     return 0;
 }
 
@@ -862,11 +862,11 @@ file_get_size_resolved(const char *filename, size_t *out_size) {
     if (!f)
         return 0;
     if (fseek(f, 0, SEEK_END) != 0) {
-        fclose(f);
+        (void)fclose(f);
         return 0;
     }
     size = ftell(f);
-    fclose(f);
+    (void)fclose(f);
     if (size <= 0)
         return 0;
     *out_size = (size_t)size;
@@ -889,7 +889,7 @@ file_decomp(const char *filename, int fatal) {
 
     if (!file_get_size_resolved(filename, &src_size)) {
         if (fatal)
-            fprintf(stderr, "file_decomp: cannot open %s\n", filename);
+            (void)fprintf(stderr, "file_decomp: cannot open %s\n", filename);
         return NULL;
     }
     src_raw = (uint8_t *)file_read(filename, NULL, fatal);
@@ -912,7 +912,7 @@ file_decomp(const char *filename, int fatal) {
         if (passes == 0 || passes > 8 || src_padded_size < 5 || (src[4] != 1 && src[4] != 2)) {
             free(src);
             if (fatal)
-                fprintf(stderr, "invalid packed data in %s\n", filename);
+                (void)fprintf(stderr, "invalid packed data in %s\n", filename);
             return NULL;
         }
         pass_src = src + 4;
@@ -922,7 +922,7 @@ file_decomp(const char *filename, int fatal) {
         if (src[0] != 1 && src[0] != 2) {
             free(src);
             if (fatal)
-                fprintf(stderr, "invalid packed data in %s\n", filename);
+                (void)fprintf(stderr, "invalid packed data in %s\n", filename);
             return NULL;
         }
         passes = 1;
@@ -951,7 +951,7 @@ file_decomp(const char *filename, int fatal) {
             free(current);
             free(src);
             if (fatal)
-                fprintf(stderr, "invalid packed data in %s\n", filename);
+                (void)fprintf(stderr, "invalid packed data in %s\n", filename);
             return NULL;
         }
 
@@ -1021,12 +1021,12 @@ file_load_resfile(const char *filename) {
     if (!filename)
         return NULL;
 
-    snprintf(name, sizeof(name), "%s.res", filename);
+    (void)snprintf(name, sizeof(name), "%s.res", filename);
     r = file_load_resource(1, name);
     if (r)
         return r;
 
-    snprintf(name, sizeof(name), "%s.pre", filename);
+    (void)snprintf(name, sizeof(name), "%s.pre", filename);
     return file_load_resource(7, name);
 }
 
@@ -1064,7 +1064,7 @@ file_load_resource(int type, const char *filename) {
         void *r = file_try_driver_prefixed_binary(filename, sfx_exts);
         if (!r) {
             char gepath[FS_PATH_MAX];
-            snprintf(gepath, sizeof(gepath), "ge%s", filename);
+            (void)snprintf(gepath, sizeof(gepath), "ge%s", filename);
             r = file_try_binary_with_exts(gepath, sfx_exts);
         }
         return r ? r : file_try_binary_with_exts(filename, sfx_exts);
@@ -1115,12 +1115,12 @@ file_load_3dres(const char *filename) {
     if (!filename)
         return NULL;
 
-    snprintf(name, sizeof(name), "%s.p3s", filename);
+    (void)snprintf(name, sizeof(name), "%s.p3s", filename);
     r = file_load_resource(7, name);
     if (r)
         return r;
 
-    snprintf(name, sizeof(name), "%s.3sh", filename);
+    (void)snprintf(name, sizeof(name), "%s.3sh", filename);
     return file_load_resource(1, name);
 }
 
@@ -1130,7 +1130,7 @@ short
 file_load_replay(const char *dir, const char *name) {
     file_build_path(dir, name, ".rpl", g_path_buf, sizeof(g_path_buf));
     g_is_busy = true;
-    file_read_fatal(g_path_buf, replay_header);
+    replay_header = (char *)file_read_fatal(g_path_buf, replay_header);
     gameconfig = *(struct GAMEINFO *)replay_header;
     g_is_busy = false;
     return 0;

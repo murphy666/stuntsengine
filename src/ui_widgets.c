@@ -68,7 +68,7 @@ ui_button_menu_run(UIButtonMenu *menu) {
     check_input();
     mousebutinputcode = 0;
     joyinputcode = 0;
-    timer_get_delta_alt();
+    (void)timer_get_delta_alt();
 
     while (1) {
         /* ----- selection-change callback ----- */
@@ -104,7 +104,6 @@ ui_button_menu_run(UIButtonMenu *menu) {
                 idle_counter += delta;
                 if (idle_expired != 0 || local_idle >= menu->idle_timeout) {
                     idle_expired++;
-                    selected = menu->default_sel;
                     return UI_SEL_TIMEOUT;
                 }
             }

@@ -136,7 +136,7 @@ timer_get_display_hz(void) {
         const char *env_hz = getenv("STUNTS_DISPLAY_HZ");
         unsigned long hz = GAME_DISPLAY_HZ;
         if (env_hz != 0 && *env_hz != '\0') {
-            int parsed = atoi(env_hz);
+            int parsed = (int)strtol(env_hz, NULL, 10);
             if (parsed < TIMER_DISPLAY_HZ_MIN) {
                 parsed = TIMER_DISPLAY_HZ_MIN;
             }
@@ -368,7 +368,7 @@ timer_wait_ticks_and_get_counter(unsigned long ticks) {
 static unsigned long
 timer_now_ms(void) {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
 }
 

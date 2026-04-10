@@ -161,7 +161,7 @@ video_try_init_sdl(void) {
     {
         const char *scale_env = getenv("STUNTS_SCALE");
         if (scale_env != NULL) {
-            int s = atoi(scale_env);
+            int s = (int)strtol(scale_env, NULL, 10);
             if (s >= 1 && s <= 3)
                 sdl_scale = s;
         }
@@ -220,7 +220,7 @@ video_present_frame(void) {
 
     video_wait_refresh_slot(&next_present_counter, &present_accum);
 
-    memcpy(sdl_fb.pixels, sdl_framebuffer, FB_PIXELS);
+    memcpy(sdl_fb.pixels, sdl_framebuffer, (size_t)FB_PIXELS);
     fb_sdl2_present(&sdl_ctx, &sdl_fb);
 }
 

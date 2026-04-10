@@ -143,7 +143,7 @@ fb_palette_index_to_rgba(const Framebuffer *fb, uint8_t index) {
 void
 fb_to_rgba(const Framebuffer *fb, uint32_t *out_rgba, size_t out_len) {
     size_t i;
-    size_t n = FB_PIXELS;
+    size_t n = (size_t)FB_PIXELS;
 
     if (fb == 0 || out_rgba == 0) {
         return;
@@ -230,7 +230,7 @@ fb_sdl2_present(SDL2Context *ctx, const Framebuffer *fb) {
         return;
     }
 
-    fb_to_rgba(fb, ctx->rgba, FB_PIXELS);
+    fb_to_rgba(fb, ctx->rgba, (size_t)FB_PIXELS);
 
     SDL_UpdateTexture(ctx->texture, 0, ctx->rgba, FB_WIDTH * (int)sizeof(uint32_t));
     SDL_RenderClear(ctx->renderer);

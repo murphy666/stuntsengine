@@ -24,6 +24,7 @@
 #include "ressources.h"
 #include "timer.h"
 #include "game_timing.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -496,7 +497,7 @@ load_sfx_file(const char *filename) {
     }
 
     /* Build path: prefix + filename + ".sfx" */
-    snprintf(path, sizeof(path), "%s%s.sfx", prefix, filename);
+    (void)snprintf(path, sizeof(path), "%s%s.sfx", prefix, filename);
 
     /* Try loading with case-insensitive file lookup */
     ptr = file_load_binary_nofatal(path);
@@ -505,7 +506,7 @@ load_sfx_file(const char *filename) {
     }
 
     /* Fallback to generic "geeng.sfx" if driver-specific file not found */
-    snprintf(path, sizeof(path), "ge%s.sfx", filename);
+    (void)snprintf(path, sizeof(path), "ge%s.sfx", filename);
     ptr = file_load_binary_nofatal(path);
     if (ptr != NULL) {
         return ptr;
@@ -894,9 +895,9 @@ audio_parse_vce_instruments(void *voiceptr) {
         const unsigned char *rec;
         AUDIO_VCE_INSTRUMENT *inst = &g_audio_vce_instruments[i];
 
-        record_rel = audio_read_u32_le(vce + offs_base + (unsigned int)i * 4u);
+        record_rel = audio_read_u32_le(vce + offs_base + (size_t)((unsigned int)i * 4u));
         if (i + 1u < count) {
-            record_rel_next = audio_read_u32_le(vce + offs_base + (unsigned int)(i + 1u) * 4u);
+            record_rel_next = audio_read_u32_le(vce + offs_base + (size_t)((unsigned int)(i + 1u) * 4u));
         }
         else {
             record_rel_next = total_size - records_base;
@@ -1103,8 +1104,8 @@ audio_container_get_chunk_ci(const unsigned char *container, const char *name4,
     }
 
     for (i = 0u; i < count; i++) {
-        if (audio_chunk_name_eq4(container + names_base + i * 4u, name4)) {
-            unsigned int rel = audio_read_u32_le(container + offs_base + i * 4u);
+        if (audio_chunk_name_eq4(container + names_base + (size_t)(i * 4u), name4)) {
+            unsigned int rel = audio_read_u32_le(container + offs_base + (size_t)(i * 4u));
             const unsigned char *chunk;
             unsigned int chunk_size;
 
@@ -1142,7 +1143,7 @@ audio_debug_music_log(const char *fmt, ...) {
         return;
     }
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    (void)vfprintf(stderr, fmt, args);
     va_end(args);
     g_audio_debug_music_lines++;
 }
@@ -1433,7 +1434,7 @@ audio_extract_menu_resource_notes(void *songptr, const char *menu_name) {
         for (i = 0u; i < instrument_count; i++) {
             char inst_name[5];
             int inst_idx;
-            memcpy(inst_name, hdr_chunk + inst_pos + i * 4u, 4u);
+            memcpy(inst_name, hdr_chunk + inst_pos + (size_t)(i * 4u), 4u);
             inst_name[4] = '\0';
             inst_idx = audio_find_vce_instrument_index_by_name(inst_name);
             g_audio_kms_hdr1_inst_map[i] = inst_idx;
@@ -1784,7 +1785,7 @@ audio_sdl_queue_from_ring(void) {
         if (!audio_dma_ring_read_sample(&mono)) {
             break;
         }
-        interleaved[frame_count * 2] = mono;
+        interleaved[(ptrdiff_t)(frame_count * 2)] = mono;
         interleaved[frame_count * 2 + 1] = mono;
         frame_count++;
     }
@@ -3631,19 +3632,19 @@ audio_load_driver(const char *driver, short a2, short a3) {
     menu_duration_scale_env = getenv("STUNTS_AUDIO_MENU_DURATION_SCALE");
     debug_music_lines_env = getenv("STUNTS_AUDIO_DEBUG_MUSIC_LINES");
     g_audio_debug_music = (unsigned char)((debug_music_env != 0 && *debug_music_env != '\0'
-                                           && atoi(debug_music_env) != 0)
+                                           && strtol(debug_music_env, NULL, 10) != 0)
                                               ? 1
                                               : 0);
     g_audio_debug_music_inst_only
         = (unsigned char)((debug_music_inst_only_env != 0 && *debug_music_inst_only_env != '\0'
-                           && atoi(debug_music_inst_only_env) != 0)
+                           && strtol(debug_music_inst_only_env, NULL, 10) != 0)
                               ? 1
                               : 0);
     g_audio_debug_music_lines = 0u;
     g_audio_debug_music_max_lines = 400u;
     g_audio_engine_gain = 160;
     if (engine_gain_env != 0 && *engine_gain_env != '\0') {
-        int gain = atoi(engine_gain_env);
+        int gain = (int)strtol(engine_gain_env, NULL, 10);
         if (gain < 64) {
             gain = 64;
         }
@@ -3653,7 +3654,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_engine_gain = gain;
     }
     if (debug_music_lines_env != 0 && *debug_music_lines_env != '\0') {
-        unsigned int limit = (unsigned int)atoi(debug_music_lines_env);
+        unsigned int limit = (unsigned int)(int)strtol(debug_music_lines_env, NULL, 10);
         if (limit < 100u) {
             limit = 100u;
         }
@@ -3663,7 +3664,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_debug_music_max_lines = limit;
     }
     if (menu_gain_env != 0 && *menu_gain_env != '\0') {
-        int gain = atoi(menu_gain_env);
+        int gain = (int)strtol(menu_gain_env, NULL, 10);
         if (gain < 1000) {
             gain = 1000;
         }
@@ -3676,7 +3677,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_menu_gain = AUDIO_MENU_DEFAULT_GAIN;
     }
     if (menu_note_ticks_env != 0 && *menu_note_ticks_env != '\0') {
-        int ticks = atoi(menu_note_ticks_env);
+        int ticks = (int)strtol(menu_note_ticks_env, NULL, 10);
         if (ticks < AUDIO_MENU_NOTE_TICKS_MIN) {
             ticks = AUDIO_MENU_NOTE_TICKS_MIN;
         }
@@ -3689,7 +3690,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_menu_note_ticks = 24u;
     }
     if (menu_transpose_env != 0 && *menu_transpose_env != '\0') {
-        int semitones = atoi(menu_transpose_env);
+        int semitones = (int)strtol(menu_transpose_env, NULL, 10);
         if (semitones < -48) {
             semitones = -48;
         }
@@ -3702,7 +3703,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_menu_note_transpose = -12;
     }
     if (menu_duration_scale_env != 0 && *menu_duration_scale_env != '\0') {
-        int scale = atoi(menu_duration_scale_env);
+        int scale = (int)strtol(menu_duration_scale_env, NULL, 10);
         if (scale < 1) {
             scale = 1;
         }
@@ -3715,7 +3716,7 @@ audio_load_driver(const char *driver, short a2, short a3) {
         g_audio_menu_duration_scale = 1u;
     }
     if (refresh_hz_env != 0 && *refresh_hz_env != '\0') {
-        int hz = atoi(refresh_hz_env);
+        int hz = (int)strtol(refresh_hz_env, NULL, 10);
         if (hz < 30) {
             hz = 30;
         }

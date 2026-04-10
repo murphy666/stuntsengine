@@ -362,11 +362,11 @@ stn_persist_load(void) {
     }
 
     if (fread(&cfg, sizeof(cfg), 1, fp) != 1) {
-        fclose(fp);
+        (void)fclose(fp);
         return 0;
     }
 
-    fclose(fp);
+    (void)fclose(fp);
 
     if (memcmp(cfg.magic, "STNCFG01", 8) != 0 || cfg.version != STN_PERSIST_VERSION) {
         return 0;
@@ -399,8 +399,8 @@ stn_persist_save(void) {
     cfg.gameconfig = gameconfig;
     memcpy(cfg.track_path, track_highscore_path_buffer, STN_PERSIST_PATH_LEN);
     memcpy(cfg.replay_path, replay_file_path_buffer, STN_PERSIST_PATH_LEN);
-    cfg.mouse_mode = mouse_motion_state_flag;
-    cfg.joystick_mode = joystick_assigned_flags;
+    cfg.mouse_mode = (char)mouse_motion_state_flag;
+    cfg.joystick_mode = (char)joystick_assigned_flags;
     cfg.video_scale = (char)video_get_scale();
 
     fp = fopen(STN_PERSIST_CONFIG_FILE, "wb");
@@ -409,7 +409,7 @@ stn_persist_save(void) {
     }
 
     (void)fwrite(&cfg, sizeof(cfg), 1, fp);
-    fclose(fp);
+    (void)fclose(fp);
 }
 
 /* Exit handler list - array of 10  function pointers
@@ -531,7 +531,7 @@ set_default_car(void) {
     gameconfig.game_opponenttype = 0;     /* default opponent: Clock */
     gameconfig.game_opponentmaterial = 1; /* alternate material from player */
     gameconfig.game_opponentcarid[0]
-        = STN_TRACK_OPPONENT_AUTOSELECT; /* auto-select at race start */
+        = (char)STN_TRACK_OPPONENT_AUTOSELECT; /* auto-select at race start */
     gameconfig.game_opponenttransmission = 0;
 }
 
@@ -610,13 +610,12 @@ init_trackdata(void) {
     trkptr += 901;
     obstacle_scene_index = trkptr;
 
-    trkptr += 48;
 }
 
 struct RECTANGLE shaperect = { 0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT };
 struct TRANSFORMEDSHAPE3D transshape;
 struct RECTANGLE cliprect = { 0, STN_SCREEN_WIDTH, 0, STN_CLIPRECT_BOTTOM };
-struct VECTOR carpos = { 0, 64696, 2880 }; // from the original
+struct VECTOR carpos = { 0, (short)64696, 2880 }; // from the original
 
 /** @brief Reset replay-related runtime variables to defaults
  */
@@ -646,12 +645,12 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     int i;
     struct VECTOR whlPos;
 
-    playerstate->car_posWorld1.lx = posX;
-    playerstate->car_posWorld2.lx = posX;
-    playerstate->car_posWorld1.ly = posY + 512;
-    playerstate->car_posWorld2.ly = posY;
-    playerstate->car_posWorld1.lz = posZ;
-    playerstate->car_posWorld2.lz = posZ;
+    playerstate->car_posWorld1.lx = (int)posX;
+    playerstate->car_posWorld2.lx = (int)posX;
+    playerstate->car_posWorld1.ly = (int)posY + 512;
+    playerstate->car_posWorld2.ly = (int)posY;
+    playerstate->car_posWorld1.lz = (int)posZ;
+    playerstate->car_posWorld2.lz = (int)posZ;
 
     playerstate->car_rotate.x = track_angle;
     playerstate->car_rotate.y = 0;
@@ -686,9 +685,9 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_demandedGrip = 0;
     playerstate->car_surfacegrip_sum = 1000;
 
-    whlPos.x = posX / 64;
-    whlPos.y = posY / 64;
-    whlPos.z = posZ / 64;
+    whlPos.x = (short)posX / 64;
+    whlPos.y = (short)posY / 64;
+    whlPos.z = (short)posZ / 64;
 
     for (i = 0; i < 4; ++i) {
         playerstate->car_surfaceWhl[i] = 1;
@@ -740,11 +739,11 @@ init_game_state(short arg) {
         steerWhlRespTable_ptr = &steerWhlRespTable_20fps;
     }
 
-    fps_times_thirty = framespersec * STN_FPS_TEXT_MULT;
+    fps_times_thirty = (short)framespersec * STN_FPS_TEXT_MULT;
     if (framespersec == 0) {
         framespersec = STN_FPS_DEFAULT; // Default to 10 if not set
     }
-    inverse_fps_hundredths = 100 / framespersec;
+    inverse_fps_hundredths = (short)100 / framespersec;
 
     if (arg != -3) {
         reset_replay_runtime_state();
@@ -767,14 +766,14 @@ init_game_state(short arg) {
         }
 
         state.game_camera_pos[0].x
-            = multiply_and_scale(sin_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
+            = (short)multiply_and_scale(sin_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
               + multiply_and_scale(sin_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
               + ((short)startcol2 << STN_TRACK_CELL_SHIFT);
 
-        state.game_camera_pos[0].y = hillHeightConsts[hillFlag] + STN_TRACK_SPAWN_Y_OFFSET;
+        state.game_camera_pos[0].y = (short)hillHeightConsts[hillFlag] + STN_TRACK_SPAWN_Y_OFFSET;
 
         state.game_camera_pos[0].z
-            = multiply_and_scale(cos_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
+            = (short)multiply_and_scale(cos_fast(track_angle + 768), STN_TRACK_DIR_BIAS_SMALL)
               + multiply_and_scale(cos_fast(track_angle + 512), STN_TRACK_DIR_BIAS_LARGE)
               + trackpos[startrow2];
 
@@ -805,7 +804,7 @@ init_game_state(short arg) {
             (long)(trackcenterpos2[startcol2] + tmpcol) * (1L << STN_WORLD_SCALE_SHIFT),
             (long)hillHeightConsts[hillFlag] * (1L << STN_WORLD_SCALE_SHIFT),
             (long)(trackcenterpos[startrow2] + tmprow) * (1L << STN_WORLD_SCALE_SHIFT),
-            -track_angle);
+            (short)-track_angle);
 
         state.game_current_waypoint_index = 0;
         state.game_collision_type = 0;
@@ -813,10 +812,10 @@ init_game_state(short arg) {
         state.game_flyover_state = 0;
         state.game_flyover_counter = 0;
 
-        state.game_startcol = startcol2;
-        state.game_startcol2 = startcol2;
-        state.game_startrow = startrow2;
-        state.game_startrow2 = startrow2;
+        state.game_startcol = (short)startcol2;
+        state.game_startcol2 = (short)startcol2;
+        state.game_startrow = (short)startrow2;
+        state.game_startrow2 = (short)startrow2;
 
         if (arg != -2) {
             track_waypoint_lookup(state.playerstate.car_waypoint_seq_index,
@@ -850,7 +849,7 @@ init_game_state(short arg) {
             (long)(trackcenterpos2[startcol2] + tmpcol) * (1L << STN_WORLD_SCALE_SHIFT),
             (long)hillHeightConsts[hillFlag] * (1L << STN_WORLD_SCALE_SHIFT),
             (long)(trackcenterpos[startrow2] + tmprow) * (1L << STN_WORLD_SCALE_SHIFT),
-            -track_angle);
+            (short)-track_angle);
 
         if (gameconfig.game_opponenttype && arg != -2) {
             short opponent_path_index = 0;
@@ -931,8 +930,7 @@ update_gamestate() {
     }
 
     state.game_frame++;
-    if (state.game_crash_eval_type != 0
-        && state.game_frame_in_sec < state.game_frames_per_sec) {
+    if (state.game_crash_eval_type != 0 && state.game_frame_in_sec < state.game_frames_per_sec) {
         state.game_frame_in_sec++;
         if (state.game_frame_in_sec == state.game_frames_per_sec && game_finish_state == 0) {
             if (state.playerstate.car_crashBmpFlag == 1 && state.playerstate.car_speed2 != 0) {
@@ -974,10 +972,10 @@ update_gamestate() {
 
             if (game_pause_counter == STN_REPLAY_PAUSE_STATE_RECOVERING) {
                 if (multiply_and_scale(cos_fast(track_angle),
-                                       trackcenterpos[startrow2]
+                                       (short)trackcenterpos[startrow2]
                                            - (state.playerstate.car_posWorld1.lz >> 6))
                         + multiply_and_scale(sin_fast(track_angle),
-                                             trackcenterpos2[startcol2]
+                                             (short)trackcenterpos2[startcol2]
                                                  - (state.playerstate.car_posWorld1.lx >> 6))
                     <= STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX) {
                     if (state.playerstate.car_speed != 0) {
@@ -1106,9 +1104,9 @@ audio_unload(void) {
  */
 void
 input_push_status(void) {
-    int idx = input_status_stack_index;
-    sprite_buffer_x_coords[idx] = mouse_motion_detected_flag;
-    sprite_buffer_y_coords[idx] = kbormouse;
+    int idx = (unsigned char)input_status_stack_index;
+    sprite_buffer_x_coords[idx] = (char)mouse_motion_detected_flag;
+    sprite_buffer_y_coords[idx] = (char)kbormouse;
     input_status_stack_index++;
 }
 
@@ -1121,7 +1119,7 @@ input_pop_status(void) {
         return;
     }
     input_status_stack_index--;
-    idx = input_status_stack_index;
+    idx = (unsigned char)input_status_stack_index;
     mouse_motion_detected_flag = sprite_buffer_x_coords[idx];
     kbormouse = sprite_buffer_y_coords[idx];
     if (!kbormouse) {
@@ -1202,11 +1200,11 @@ format_frame_as_string(char *dest, unsigned short frames, unsigned short showFra
     if (showFractions != 0) {
         unsigned short fraction = (unsigned short)((100 / fps) * remainingFrames);
         /* minutes≤54, seconds≤59, fraction≤99 — all fit in "%2u:%02u.%02u" (max 11 chars) */
-        snprintf(dest, 16, "%2u:%02u.%02u", (unsigned)(minutes % 100u), (unsigned)(seconds % 60u),
+        (void)snprintf(dest, 16, "%2u:%02u.%02u", (unsigned)(minutes % 100u), (unsigned)(seconds % 60u),
                  (unsigned)(fraction % 100u));
     }
     else {
-        snprintf(dest, 16, "%2u:%02u", (unsigned)(minutes % 100u), (unsigned)(seconds % 60u));
+        (void)snprintf(dest, 16, "%2u:%02u", (unsigned)(minutes % 100u), (unsigned)(seconds % 60u));
     }
 }
 
@@ -1263,7 +1261,7 @@ input_repeat_check(unsigned short timeout) {
     unsigned short spin_guard = 0;
 
     // Initial timer call to reset
-    timer_get_delta_alt();
+    (void)timer_get_delta_alt();
 
     while (timeout > totalTime) {
         delta = (unsigned short)timer_get_delta_alt();
@@ -1621,7 +1619,7 @@ setup_aero_trackdata(void *carresptr, int is_opponent) {
         // Division by 2^9.
         // 2^8 shifts one fullbyte, and it is known there is a 1/2 factor in FDrag.
         for (i = 0; i < 64; i++) {
-            aero_table_player[i] = ((long)simd_player.aero_resistance * (long)i * (long)i) >> 9;
+            aero_table_player[i] = (short)((long)simd_player.aero_resistance * (long)i * (long)i) >> 9;
         }
 
         copy_string(gnam_string, locate_shape_alt(carresptr, "gnam"));
@@ -1634,7 +1632,7 @@ setup_aero_trackdata(void *carresptr, int is_opponent) {
         simd_opponent_rt.aerorestable = (uintptr_t)aero_table_opponent;
 
         for (i = 0; i < 64; i++) {
-            aero_table_opponent[i] = ((long)simd_opponent_rt.aero_resistance * (long)i * (long)i)
+            aero_table_opponent[i] = (short)((long)simd_opponent_rt.aero_resistance * (long)i * (long)i)
                                      >> 9;
         }
         copy_string(gsna_string, locate_shape_alt(carresptr, "gsna"));
@@ -1719,7 +1717,7 @@ init_plantrak_(void) {
 
     idx = (unsigned short)state.opponentstate.car_waypoint_seq_index;
     td3_entry = td3[idx];
-    track_waypoint_lookup(td3_entry, &state.opponentstate.car_waypoint_target,
+    track_waypoint_lookup((short)td3_entry, &state.opponentstate.car_waypoint_target,
                           state.opponentstate.car_track_waypoint_index,
                           (short *)&state.game_track_lookup_temp);
     state.opponentstate.car_track_waypoint_index++;
@@ -1954,11 +1952,10 @@ run_game(void) {
 
         while (1) {
 
-            timer_get_counter(); /* drive timer ISR: frame_callback → replay_capture_frame_input → replay_frame_counter++ */
+            (void)timer_get_counter(); /* drive timer ISR: frame_callback → replay_capture_frame_input → replay_frame_counter++ */
 
             if (state.game_frame != replay_frame_counter) {
-                if ((mouse_motion_state_flag || joystick_assigned_flags)
-                    && game_replay_mode == 0) {
+                if ((mouse_motion_state_flag || joystick_assigned_flags) && game_replay_mode == 0) {
                     replay_apply_steering_correction();
                 }
                 update_gamestate();
@@ -2003,7 +2000,7 @@ run_game(void) {
 
             if (video_flag5_is0) {
                 setup_mcgawnd2();
-                screen_display_toggle_flag = current_screen_buffer_selector;
+                screen_display_toggle_flag = (unsigned char)current_screen_buffer_selector;
             }
             else {
                 sprite_select_wnd_as_sprite1();
@@ -2012,10 +2009,10 @@ run_game(void) {
             if (game_replay_mode != game_replay_mode_copy || dashb_toggle != dashb_toggle_copy
                 || replaybar_toggle != replaybar_toggle_copy || is_in_replay != is_in_replay_copy
                 || followOpponentFlag != followOpponentFlag_copy) {
-                game_replay_mode_copy = game_replay_mode;
+                game_replay_mode_copy = (char)game_replay_mode;
                 dashb_toggle_copy = dashb_toggle;
                 replaybar_toggle_copy = replaybar_toggle;
-                is_in_replay_copy = is_in_replay;
+                is_in_replay_copy = (char)is_in_replay;
                 followOpponentFlag_copy = followOpponentFlag;
                 roofbmpheight_copy = 0;
                 game_input_keyboard_state = false;
@@ -2060,7 +2057,7 @@ run_game(void) {
                     rect_windshield.top = roofbmpheight_copy;
                     rect_windshield.bottom = dashbmp_y_copy;
                     prev_roof_height = roofbmpheight_copy;
-                    timer_tick_counter = dashbmp_y_copy;
+                    timer_tick_counter = (short)dashbmp_y_copy;
                     prev_hud_limit = height_above_replaybar;
                 }
             }
@@ -2115,7 +2112,7 @@ run_game(void) {
                 mouse_draw_opaque_check();
                 setup_mcgawnd1();
                 current_screen_buffer_selector ^= 1;
-                screen_display_toggle_flag = current_screen_buffer_selector;
+                screen_display_toggle_flag = (unsigned char)current_screen_buffer_selector;
                 mouse_draw_transparent_check();
             }
 
@@ -2150,7 +2147,8 @@ run_game(void) {
 
                 do {
                     input_key = kb_get_char();
-                    if (input_key != 0 && input_key != UI_KEY_ESCAPE_EXT && input_key != UI_KEY_ESCAPE) {
+                    if (input_key != 0 && input_key != UI_KEY_ESCAPE_EXT
+                        && input_key != UI_KEY_ESCAPE) {
                         handle_ingame_kb_shortcuts(input_key);
                     }
                     if (input_key == UI_KEY_ESCAPE_EXT || input_key == UI_KEY_ESCAPE) {
@@ -2167,8 +2165,8 @@ run_game(void) {
                         break;
                     }
 
-                } while (input_key == UI_KEY_UP || input_key == UI_KEY_LEFT || input_key == UI_KEY_RIGHT
-                         || input_key == UI_KEY_DOWN);
+                } while (input_key == UI_KEY_UP || input_key == UI_KEY_LEFT
+                         || input_key == UI_KEY_RIGHT || input_key == UI_KEY_DOWN);
 
                 if (game_replay_mode == 1) {
                     mouse_get_state(&mouse_butstate, &mouse_xpos, &mouse_ypos);
@@ -2430,7 +2428,7 @@ init_main(int argc, char *argv[]) {
     sprite_copy_2_to_1();
     sprite_set_1_size(0, 320, 0, 120);
 
-    timer_get_delta_alt();
+    (void)timer_get_delta_alt();
     /*
 	 * Keep DOS startup stable: skip sprite clear stress operation here because
 	 * it currently causes immediate termination in this port.
@@ -2554,7 +2552,7 @@ main(int argc, char *argv[]) {
             if (!is_audioloaded) {
                 file_load_audiores("skidslct", "skidms", "SLCT");
             }
-            result = run_menu_();
+            result = (int)run_menu_();
             if (((unsigned char)result) == 255) {
                 audio_unload();
                 regsi = 0;
@@ -2607,8 +2605,10 @@ main(int argc, char *argv[]) {
             }
 
             memcpy(&gameconfigcopy, &gameconfig, sizeof(struct GAMEINFO));
+            if (!track_file_append)
+                fatal_error("track_file_append uninitialized");
             for (i = 0; i < STN_TRACKDATA_BLOCK_MAIN; i++) {
-                track_file_append[i] = track_elem_map[i];
+                track_file_append[i] = (char)track_elem_map[i];
             }
             for (i = 0; i < STN_TRACKDATA_TRACKNAME_LEN; i++) {
                 track_file_append[i + STN_TRACKDATA_PATH_BASE] = track_highscore_path_buffer[i];
@@ -2696,15 +2696,15 @@ main(int argc, char *argv[]) {
  */
 /* ── Utility functions (previously in utils.c) ───────────────────────────── */
 
-void
+_Noreturn void
 fatal_error(const char *fmt, ...) {
     va_list args;
-    fprintf(stderr, "FATAL: ");
+    (void)fprintf(stderr, "FATAL: ");
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    (void)vfprintf(stderr, fmt, args);
     va_end(args);
-    fprintf(stderr, "\n");
-    fflush(stderr);
+    (void)fprintf(stderr, "\n");
+    (void)fflush(stderr);
     abort();
 }
 

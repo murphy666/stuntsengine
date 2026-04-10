@@ -714,13 +714,13 @@ joystick_get_scaled_x(void) {
     short ax;
     unsigned long result;
 
-    ax = joyflag1 - screen_scroll_values;
+    ax = (short)joyflag1 - screen_scroll_values;
     if (ax < 0)
         ax = 0;
 
     result = (unsigned long)ax * viewport_transform_matrix;
     ax = (short)(result >> 8);
-    return ax - 31;
+    return (short)ax - 31;
 }
 
 /* Keyboard scan code and input globals */

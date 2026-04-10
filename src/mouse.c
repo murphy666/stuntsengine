@@ -170,7 +170,7 @@ mouse_set_minmax(int hmin, int vmin, int hmax, int vmax) {
  */
 void
 mouse_set_position(int x, int y) {
-    physics_update_accumulator = x;
+    physics_update_accumulator = (short)x;
     game_paused_timer_counter = y;
     kb_sdl_set_mouse_position((unsigned short)x, (unsigned short)y);
     (void)mousehorscale;

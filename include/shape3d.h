@@ -23,6 +23,7 @@
 #ifndef SHAPE3D_H
 #define SHAPE3D_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "math.h"
 
@@ -80,16 +81,16 @@ shape3d_init_shape_pure(char *shapeptr, struct SHAPE3D *gameshape) {
 
     gameshape->shape3d_verts = (struct VECTOR *)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
 
-    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+    gameshape->shape3d_cull1 = shapeptr + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES)
                                + SHAPE3D_HEADER_SIZE_BYTES;
 
-    gameshape->shape3d_cull2 = shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
-                               + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+    gameshape->shape3d_cull2 = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
+                               + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES)
                                + SHAPE3D_HEADER_SIZE_BYTES;
 
     gameshape->shape3d_primitives
-        = shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
-          + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
+        = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
+          + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES) + SHAPE3D_HEADER_SIZE_BYTES;
 }
 
 /**
