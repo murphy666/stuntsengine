@@ -500,7 +500,7 @@ run_option_menu_(void) {
             should_repeat = false;
             break;
         case 1:
-            if (mouse_motion_state_flag) {
+            if (mouse_control_enabled) {
                 input_default = MENU_INPUT_DEVICE_MOUSE;
             }
             else if (joystick_assigned_flags) {
@@ -827,7 +827,7 @@ opp_update_hittest(OppMenuState *st) {
                                     opponentmenu_buttons_x2, opponentmenu_buttons_y1,
                                     opponentmenu_buttons_y2);
     if (hit >= 0 && hit < MENU_OPP_BUTTON_COUNT) {
-        if (kbormouse
+        if (mouse_input_active
             && !(gameconfig.game_opponenttype == MENU_OPPONENT_TYPE_NONE
                  && hit == MENU_OPP_BTN_CAR)) {
             st->selected = (unsigned char)hit;
@@ -937,7 +937,7 @@ opp_on_event(UIScreen *self, const UIEvent *ev) {
 
     if (ev->type == UI_EVENT_MOUSE_DOWN) {
         opp_update_hittest(st);
-        if (kbormouse) {
+        if (mouse_input_active) {
             return opp_activate(st);
         }
         return 0;
@@ -1280,7 +1280,7 @@ car_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_MOVE) {
         unsigned char hit = mouse_multi_hittest(MENU_CAR_BUTTON_COUNT, st->button_x1, st->button_x2,
                                                 st->button_y1, st->button_y2);
-        if (hit != MENU_SENTINEL_U8 && kbormouse) {
+        if (hit != MENU_SENTINEL_U8 && mouse_input_active) {
             st->hover_index = hit;
         }
         return 0;
@@ -1289,7 +1289,7 @@ car_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_DOWN) {
         unsigned char hit = mouse_multi_hittest(MENU_CAR_BUTTON_COUNT, st->button_x1, st->button_x2,
                                                 st->button_y1, st->button_y2);
-        if (hit != MENU_SENTINEL_U8 && kbormouse) {
+        if (hit != MENU_SENTINEL_U8 && mouse_input_active) {
             st->hover_index = hit;
             return car_activate(st);
         }
@@ -1499,7 +1499,6 @@ car_on_render(UIScreen *self) {
             sprite_putimage(wndsprite->sprite_bitmapptr);
             car_draw_opponent_portrait(st);
             mouse_draw_transparent_check();
-            video_refresh();
             sprite_copy_2_to_1();
         }
         menu_reset_idle_timers();

@@ -834,12 +834,12 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
     }
 
     /* Mode 1: Interactive tracking */
-    mouse_pos = is_vertical ? (mouse_ypos - y1) : (mouse_xpos - x1);
+    mouse_pos = is_vertical ? (mouse_y - y1) : (mouse_x - x1);
 
     /* Check if click is outside the current handle position */
     if (mouse_pos < slider_pos_start || mouse_pos > slider_pos_end) {
         /* Wait for mouse button release */
-        while (mouse_butstate & 3) {
+        while (mouse_has_action_buttons(mouse_buttons)) {
             input_checking(timer_get_delta_alt());
         }
 
@@ -858,11 +858,11 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
         temp_value = 65535;
         prev_pos = slider_pos_start;
 
-        while (mouse_butstate & 3) {
+        while (mouse_has_action_buttons(mouse_buttons)) {
             input_checking(timer_get_delta_alt());
 
             /* Get current mouse position */
-            mouse_delta = is_vertical ? (mouse_ypos - y1) : (mouse_xpos - x1);
+            mouse_delta = is_vertical ? (mouse_y - y1) : (mouse_x - x1);
 
             /* Calculate new slider position */
             new_pos = mouse_delta - mouse_pos + slider_pos_start;
@@ -985,7 +985,7 @@ input_checking(unsigned short delta) {
     /* Check keyboard input */
     key_code = kb_get_char();
     if (key_code != 0) {
-        kbormouse = false;
+        mouse_input_active = false;
     }
 
     /* Check joystick */
@@ -999,74 +999,38 @@ input_checking(unsigned short delta) {
         newjoyflags = joy_changed;
         joyflags = joy_flags_new;
 
-        /* Map joystick buttons to key codes */
-        if (newjoyflags & 32) {
-            joyinputcode = UI_KEY_ENTER;
-        }
-        else if (newjoyflags & 16) {
-            joyinputcode = UI_KEY_SPACE;
-        }
-        else if (newjoyflags & 1) {
-            joyinputcode = UI_KEY_UP;
-        }
-        else if (newjoyflags & 2) {
-            joyinputcode = UI_KEY_DOWN;
-        }
-        else if (newjoyflags & 8) {
-            joyinputcode = UI_KEY_LEFT;
-        }
-        else if (newjoyflags & 4) {
-            joyinputcode = UI_KEY_RIGHT;
-        }
+        joyinputcode = kb_input_flags_to_keycode(newjoyflags);
 
         if (joyinputcode != 0) {
             input_framecount3 = input_framecount;
-            kbormouse = false;
+            mouse_input_active = false;
         }
     }
     else if (joy_flags_new != 0) {
         /* Auto-repeat for held joystick */
         if (input_framecount3 + INPUT_REPEAT_INTERVAL < input_framecount) {
-            /* Same logic as initial joystick press for auto-repeat */
-            if (newjoyflags & 32) {
-                joyinputcode = UI_KEY_ENTER;
-            }
-            else if (newjoyflags & 16) {
-                joyinputcode = UI_KEY_SPACE;
-            }
-            else if (newjoyflags & 1) {
-                joyinputcode = UI_KEY_UP;
-            }
-            else if (newjoyflags & 2) {
-                joyinputcode = UI_KEY_DOWN;
-            }
-            else if (newjoyflags & 8) {
-                joyinputcode = UI_KEY_LEFT;
-            }
-            else if (newjoyflags & 4) {
-                joyinputcode = UI_KEY_RIGHT;
-            }
+            joyinputcode = kb_input_flags_to_keycode(newjoyflags);
 
             if (joyinputcode != 0) {
                 input_framecount3 = input_framecount;
-                kbormouse = false;
+                mouse_input_active = false;
             }
         }
     }
 
     /* Check mouse state */
-    mouse_get_state(&mouse_butstate, &mouse_xpos, &mouse_ypos);
+    mouse_poll_input();
 
     /* Mouse movement detection */
-    if (mouse_xpos != mouse_oldx || mouse_ypos != mouse_oldy || mouse_butstate != mouse_oldbut) {
-        mouse_oldx = mouse_xpos;
-        mouse_oldy = mouse_ypos;
-        kbormouse = true;
+    if (mouse_x != mouse_oldx || mouse_y != mouse_oldy || mouse_buttons != mouse_oldbut) {
+        mouse_oldx = mouse_x;
+        mouse_oldy = mouse_y;
+        mouse_input_active = true;
         input_framecounter = 0;
 
         /* Redraw mouse if needed */
-        if (mouse_motion_detected_flag) {
-            if (mouse_isdirty) {
+        if (mouse_cursor_enabled) {
+            if (mouse_cursor_dirty) {
                 mouse_draw_opaque();
             }
             mouse_draw_transparent();
@@ -1078,15 +1042,15 @@ input_checking(unsigned short delta) {
 		 * Original DOS threshold: 500 raw 100Hz ticks = 5 seconds.
 /** @brief Units.
  * @param tick Parameter `tick`.
- * @param kbormouse Parameter `kbormouse`.
+ * @param mouse_input_active Parameter `mouse_input_active`.
  * @return Function result.
  */
-        if (kbormouse) {
+        if (mouse_input_active) {
             input_framecounter += delta;
             if (input_framecounter > UI_MOUSE_AUTOHIDE_MS) {
                 input_framecounter = 0;
-                kbormouse = false;
-                if (mouse_isdirty) {
+                mouse_input_active = false;
+                if (mouse_cursor_dirty) {
                     mouse_draw_opaque();
                     video_refresh();
                 }
@@ -1095,40 +1059,30 @@ input_checking(unsigned short delta) {
     }
 
     /* Handle mouse button changes */
-    if (kbormouse) {
-        if (mouse_butstate != mouse_oldbut) {
-            mouse_oldbut = mouse_butstate;
+    if (mouse_input_active) {
+        if (mouse_buttons != mouse_oldbut) {
+            mouse_oldbut = mouse_buttons;
 
             /** @brief Press.
- * @param mouse_butstate Parameter `mouse_butstate`.
+ * @param mouse_buttons Parameter `mouse_buttons`.
  * @return Function result.
  */
             /* Register click on button PRESS (matching original game behavior) */
-            if (mouse_butstate & 1) {
-                mousebutinputcode = 32; /* Left button = Space */
-            }
-            else if (mouse_butstate & 2) {
-                mousebutinputcode = 13; /* Right button = Enter */
-            }
+            mousebutinputcode = mouse_buttons_to_keycode(mouse_buttons);
 
             if (mousebutinputcode != 0) {
                 input_framecount2 = input_framecount;
             }
             input_framecounter = 0;
         }
-        else if (mouse_butstate != 0) {
+        else if (mouse_buttons != 0) {
             /** @brief Down.
  * @param input_framecount Parameter `input_framecount`.
  * @return Function result.
  */
             /* Auto-repeat if button held down (matching original) */
             if (input_framecount2 + INPUT_REPEAT_INTERVAL < input_framecount) {
-                if (mouse_butstate & 1) {
-                    mousebutinputcode = 32; /* Space */
-                }
-                else if (mouse_butstate & 2) {
-                    mousebutinputcode = 13; /* Enter */
-                }
+                mousebutinputcode = mouse_buttons_to_keycode(mouse_buttons);
 
                 if (mousebutinputcode != 0) {
                     input_framecount2 = input_framecount;
@@ -1137,12 +1091,12 @@ input_checking(unsigned short delta) {
         }
 
         /* Set button flags for kbjoyflags */
-        if (mouse_butstate != 0) {
-            if (mouse_butstate & 1) {
-                kbjoyflags |= 32;
+        if (mouse_buttons != 0) {
+            if ((mouse_buttons & MOUSE_BUTTON_PRIMARY) != 0) {
+                kbjoyflags |= KB_INPUT_FLAG_SECONDARY_ACTION;
             }
-            else if (mouse_butstate & 2) {
-                kbjoyflags |= 16;
+            else if ((mouse_buttons & MOUSE_BUTTON_SECONDARY) != 0) {
+                kbjoyflags |= KB_INPUT_FLAG_PRIMARY_ACTION;
             }
         }
     }
@@ -1158,12 +1112,12 @@ input_checking(unsigned short delta) {
         return key_code;
     }
 
-    if (mousebutinputcode != 0 && kbormouse) {
+    if (mousebutinputcode != 0 && mouse_input_active) {
         key_code = mousebutinputcode;
         mousebutinputcode = 0;
         return key_code;
     }
-    if (!kbormouse) {
+    if (!mouse_input_active) {
         mousebutinputcode = 0;
     }
 
@@ -1387,7 +1341,7 @@ do_joy_restext(void) {
     } /* end else: dialog was accepted */
 
     kb_check();
-    mouse_motion_state_flag = false;
+    mouse_control_enabled = false;
     audio_enable_flag2();
     game_startup_flag = false;
     input_pop_status();
@@ -1802,10 +1756,10 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
                 button_count, button_x_start, button_x_end, button_y_start, button_y_end);
             if (hit_button_index != 255) {
                 if (coords_array == 0 || coords_array[(ptrdiff_t)(hit_button_index * 2)] != 0) {
-                    if (kbormouse && selected_button != hit_button_index) {
+                    if (mouse_input_active && selected_button != hit_button_index) {
                         selected_button = hit_button_index;
                     }
-                    if (kbormouse && UI_IS_CONFIRM(input_code)) {
+                    if (mouse_input_active && UI_IS_CONFIRM(input_code)) {
                         dialog_loop_active = false;
                         continue;
                     }
@@ -2163,7 +2117,7 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
                                                                   row_y_start, row_y_end);
             {
                 unsigned short mouse_release_click = 0;
-                if (kbormouse && UI_IS_CONFIRM(nav_input_code)) {
+                if (mouse_input_active && UI_IS_CONFIRM(nav_input_code)) {
                     mouse_release_click = 1;
                 }
 
@@ -2449,6 +2403,6 @@ ensure_file_exists(int file_idx) {
         }
 
         mouse_draw_opaque_check();
-        kbormouse = false;
+        mouse_input_active = false;
     }
 }

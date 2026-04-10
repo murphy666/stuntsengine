@@ -558,7 +558,7 @@ hiscore_on_event(UIScreen *self, const UIEvent *ev) {
                                                 st->button_x2, st->button_y1, st->button_y2);
         if (hit != HIGHSCORE_UI_INDEX_NONE) {
             st->sel_button = hit;
-            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse) {
+            if (ev->type == UI_EVENT_MOUSE_DOWN && mouse_input_active) {
                 return (int)st->sel_button + 1;
             }
         }

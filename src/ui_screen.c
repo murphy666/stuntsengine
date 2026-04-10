@@ -121,7 +121,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
     /* --- keyboard events --- */
     key = kb_get_char();
     if (key != 0) {
-        kbormouse = false;
+        mouse_input_active = false;
         memset(&ev, 0, sizeof(ev));
         ev.type = UI_EVENT_KEY_DOWN;
         ev.key = key;
@@ -135,7 +135,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
     mouse_get_state(&mbut, &mx, &my);
 
     if (mx != prev_mx || my != prev_my) {
-        kbormouse = true;
+        mouse_input_active = true;
         prev_mx = mx;
         prev_my = my;
         memset(&ev, 0, sizeof(ev));
@@ -155,7 +155,7 @@ dispatch_events(UIScreen *scr, unsigned short delta) {
         prev_mbut = mbut;
 
         if (pressed) {
-            kbormouse = true;
+            mouse_input_active = true;
             memset(&ev, 0, sizeof(ev));
             ev.type = UI_EVENT_MOUSE_DOWN;
             ev.mouse_x = mx;
@@ -202,7 +202,7 @@ ui_screen_run(void) {
         int result;
 
         /* 1. Pump SDL events into the DOS-compat input layer */
-        kb_poll_sdl_input();
+        kb_poll_input();
 
         /* 2. Get frame timing */
         delta = (unsigned short)timer_get_delta_alt();
@@ -218,11 +218,11 @@ ui_screen_run(void) {
             continue;
         }
 
-        /* 4. Render (screen is responsible for calling video_refresh,
-         *    typically via mouse_update_menu_blink) */
+        /* 4. Render and present */
         if (top->on_render) {
             top->on_render(top);
         }
+        video_refresh();
     }
 }
 
@@ -238,7 +238,7 @@ ui_screen_run_modal(UIScreen *scr) {
         unsigned short delta;
         int result;
 
-        kb_poll_sdl_input();
+        kb_poll_input();
 
         delta = (unsigned short)timer_get_delta_alt();
         if (delta == 0)
@@ -258,6 +258,7 @@ ui_screen_run_modal(UIScreen *scr) {
         if (top->on_render) {
             top->on_render(top);
         }
+        video_refresh();
     }
 
     return 0;
@@ -371,10 +372,10 @@ btnmenu_on_event(UIScreen *self, const UIEvent *ev) {
     if (ev->type == UI_EVENT_MOUSE_DOWN || ev->type == UI_EVENT_MOUSE_MOVE) {
         short hit = mouse_multi_hittest((short)m->count, m->x1, m->x2, m->y1, m->y2);
         if (hit >= 0 && hit < (short)m->count) {
-            if (kbormouse) {
+            if (mouse_input_active) {
                 st->selected = (unsigned char)hit;
             }
-            if (ev->type == UI_EVENT_MOUSE_DOWN && kbormouse) {
+            if (ev->type == UI_EVENT_MOUSE_DOWN && mouse_input_active) {
                 return (int)st->selected + 1;
             }
         }

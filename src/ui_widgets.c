@@ -96,6 +96,8 @@ ui_button_menu_run(UIButtonMenu *menu) {
             }
         }
 
+        video_refresh();
+
         if (key_code == 0) {
             /* ----- idle timeout ----- */
             if (menu->idle_timeout != 0) {
@@ -113,10 +115,10 @@ ui_button_menu_run(UIButtonMenu *menu) {
             /* ----- mouse hit test ----- */
             hit = mouse_multi_hittest((short)menu->count, menu->x1, menu->x2, menu->y1, menu->y2);
             if (hit >= 0 && hit < (short)menu->count) {
-                if (kbormouse) {
+                if (mouse_input_active) {
                     selected = (unsigned char)hit;
                 }
-                if (kbormouse && UI_IS_CONFIRM(key_code)) {
+                if (mouse_input_active && UI_IS_CONFIRM(key_code)) {
                     return selected;
                 }
             }

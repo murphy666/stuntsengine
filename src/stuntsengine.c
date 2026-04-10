@@ -435,7 +435,7 @@ stn_persist_load(void) {
     gameconfig = cfg.gameconfig;
     memcpy(track_highscore_path_buffer, cfg.track_path, STN_PERSIST_PATH_LEN);
     memcpy(replay_file_path_buffer, cfg.replay_path, STN_PERSIST_PATH_LEN);
-    mouse_motion_state_flag = cfg.mouse_mode;
+    mouse_control_enabled = cfg.mouse_mode;
     joystick_assigned_flags = cfg.joystick_mode;
     if (cfg.video_scale >= 1 && cfg.video_scale <= 3) {
         video_set_scale(cfg.video_scale);
@@ -459,7 +459,7 @@ stn_persist_save(void) {
     cfg.gameconfig = gameconfig;
     memcpy(cfg.track_path, track_highscore_path_buffer, STN_PERSIST_PATH_LEN);
     memcpy(cfg.replay_path, replay_file_path_buffer, STN_PERSIST_PATH_LEN);
-    cfg.mouse_mode = (char)mouse_motion_state_flag;
+    cfg.mouse_mode = (char)mouse_control_enabled;
     cfg.joystick_mode = (char)joystick_assigned_flags;
     cfg.video_scale = (char)video_get_scale();
 
@@ -1165,8 +1165,8 @@ audio_unload(void) {
 void
 input_push_status(void) {
     int idx = (unsigned char)input_status_stack_index;
-    sprite_buffer_x_coords[idx] = (char)mouse_motion_detected_flag;
-    sprite_buffer_y_coords[idx] = (char)kbormouse;
+    sprite_buffer_x_coords[idx] = (char)mouse_cursor_enabled;
+    sprite_buffer_y_coords[idx] = (char)mouse_input_active;
     input_status_stack_index++;
 }
 
@@ -1180,9 +1180,9 @@ input_pop_status(void) {
     }
     input_status_stack_index--;
     idx = (unsigned char)input_status_stack_index;
-    mouse_motion_detected_flag = sprite_buffer_x_coords[idx];
-    kbormouse = sprite_buffer_y_coords[idx];
-    if (!kbormouse) {
+    mouse_cursor_enabled = sprite_buffer_x_coords[idx];
+    mouse_input_active = sprite_buffer_y_coords[idx];
+    if (!mouse_input_active) {
         mouse_draw_opaque_check();
     }
 }
@@ -1279,7 +1279,7 @@ check_input(void) {
         /* Pump SDL events so kbinput key-release events are processed.
 		 * Without this, kbinput[ENTER] stays 1 forever when the first
 		 * branch is taken and the key-up event is never seen. */
-        kb_poll_sdl_input();
+        kb_poll_input();
         flags = get_kb_or_joy_flags();
         if ((flags & 48) != 0) {
             done = true;
@@ -1290,7 +1290,7 @@ check_input(void) {
             if (result) {
                 done = true;
             }
-            else if (kbormouse && (mouse_butstate & 3) != 0) {
+            else if (mouse_input_active && mouse_has_action_buttons(mouse_buttons)) {
                 done = true;
             }
             else {
@@ -1434,7 +1434,7 @@ do_key_restext(void) {
     ui_dialog_timed(textptr);
 
     joystick_assigned_flags = false;
-    mouse_motion_state_flag = false;
+    mouse_control_enabled = false;
     game_startup_flag = false;
     audio_enable_flag2();
     input_pop_status();
@@ -1450,7 +1450,7 @@ do_mou_restext(void) {
     input_push_status();
     game_startup_flag = true;
     audio_disable_flag2();
-    mouse_motion_state_flag = true;
+    mouse_control_enabled = true;
 
     textptr = locate_text_res(mainresptr, "mou");
     ui_dialog_timed(textptr);
@@ -1954,7 +1954,7 @@ run_game(void) {
         do_mer_restext();
     }
     else {
-        kbormouse = false;
+        mouse_input_active = false;
         screen_shake_intensity = 0;
         game_finish_state = 1;
         set_frame_callback();
@@ -1980,9 +1980,9 @@ run_game(void) {
                 sprite_animation_frame_counter = 0;
                 lap_completion_trigger_flag = false;
                 game_pause_counter = STN_REPLAY_PAUSE_STATE_ROTATING;
-                mouse_minmax_position(mouse_motion_state_flag);
+                mouse_minmax_position(mouse_control_enabled);
                 check_input();
-                kbormouse = false;
+                mouse_input_active = false;
                 game_replay_mode = 1;
 
                 state.playerstate.car_posWorld1.lx
@@ -2015,7 +2015,7 @@ run_game(void) {
             (void)timer_get_counter(); /* drive timer ISR: frame_callback → replay_capture_frame_input → replay_frame_counter++ */
 
             if (state.game_frame != replay_frame_counter) {
-                if ((mouse_motion_state_flag || joystick_assigned_flags) && game_replay_mode == 0) {
+                if ((mouse_control_enabled || joystick_assigned_flags) && game_replay_mode == 0) {
                     replay_apply_steering_correction();
                 }
                 update_gamestate();
@@ -2221,7 +2221,7 @@ run_game(void) {
                         is_in_replay = true;
                         audio_sync_car_audio();
                         /* Re-queue ESC so loop_game(3,...) sees it */
-                        kb_sdl_requeue_key(UI_KEY_ESCAPE_EXT);
+                        kb_requeue_key(UI_KEY_ESCAPE_EXT);
                         break;
                     }
 
@@ -2229,8 +2229,9 @@ run_game(void) {
                          || input_key == UI_KEY_RIGHT || input_key == UI_KEY_DOWN);
 
                 if (game_replay_mode == 1) {
-                    mouse_get_state(&mouse_butstate, &mouse_xpos, &mouse_ypos);
-                    if (((mouse_butstate & 3) != 0) || ((get_kb_or_joy_flags() & 48) != 0)) {
+                    mouse_poll_input();
+                    if (mouse_has_action_buttons(mouse_buttons)
+                        || ((get_kb_or_joy_flags() & KB_INPUT_FLAG_ACTION_MASK) != 0)) {
                         game_replay_mode = 0;
                         game_pause_counter = 0;
                         framespersec = framespersec2;
@@ -2570,7 +2571,7 @@ main(int argc, char *argv[]) {
     input_do_checking(1);
     mouse_draw_opaque_check();
 
-    kbormouse = false;
+    mouse_input_active = false;
     passed_security = true; // set to 0 for the original copy protection
     set_default_car();
     if (!stn_persist_load()) {
@@ -2607,7 +2608,7 @@ main(int argc, char *argv[]) {
             mousebutinputcode = 0;
             joyinputcode = 0;
             newjoyflags = 0;
-            mouse_oldbut = mouse_butstate;
+            mouse_oldbut = mouse_buttons;
             ensure_file_exists(2);
             if (!is_audioloaded) {
                 file_load_audiores("skidslct", "skidms", "SLCT");

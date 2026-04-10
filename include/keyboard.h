@@ -35,6 +35,19 @@ extern unsigned char kbinput[];
 extern unsigned short kbjoyflags;
 extern char mouse_button_press_state[];
 
+enum {
+    KB_INPUT_FLAG_UP = 0x01,
+    KB_INPUT_FLAG_DOWN = 0x02,
+    KB_INPUT_FLAG_RIGHT = 0x04,
+    KB_INPUT_FLAG_LEFT = 0x08,
+    KB_INPUT_FLAG_PRIMARY_ACTION = 0x10,
+    KB_INPUT_FLAG_SECONDARY_ACTION = 0x20,
+    KB_INPUT_FLAG_ACTION_MASK = KB_INPUT_FLAG_PRIMARY_ACTION | KB_INPUT_FLAG_SECONDARY_ACTION,
+    KB_KEYSTATE_CTRL = 29,
+    KB_KEYSTATE_A = 30,
+    KB_KEYSTATE_Z = 44
+};
+
 void kb_init_interrupt(void);
 void kb_exit_handler(void);
 void kb_int16_handler(unsigned bp, unsigned di, unsigned si, unsigned ds, unsigned es, unsigned dx,
@@ -46,12 +59,9 @@ int kb_read_char(void);
 int kb_checking(void);
 int kb_check(void);
 unsigned short kb_read_key_or_joy(void);
-void kb_poll_sdl_input(void);
-void kb_sdl_requeue_key(unsigned short key);
-void kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x,
-                             unsigned short max_y);
-void kb_sdl_set_mouse_position(unsigned short x, unsigned short y);
-void kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned short *y);
+void kb_poll_input(void);
+void kb_requeue_key(unsigned short key);
+unsigned short kb_input_flags_to_keycode(unsigned short input_flags);
 
 /* Extended keyboard/input functions */
 int kb_get_char(void);

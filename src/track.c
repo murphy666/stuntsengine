@@ -2086,12 +2086,12 @@ load_tracks_menu_shapes(void) {
                 blink_timer += (unsigned short)delta;
                 input_code = input_checking((unsigned short)delta);
                 if (input_code == 0
-                    && (((unsigned short)mouse_xpos != last_mouse_x)
-                        || ((unsigned short)mouse_ypos != last_mouse_y))) {
+                    && (((unsigned short)mouse_x != last_mouse_x)
+                        || ((unsigned short)mouse_y != last_mouse_y))) {
                     input_code = 1;
                 }
-                last_mouse_x = (unsigned short)mouse_xpos;
-                last_mouse_y = (unsigned short)mouse_ypos;
+                last_mouse_x = (unsigned short)mouse_x;
+                last_mouse_y = (unsigned short)mouse_y;
             }
 
             /* Mouse button hit testing */
@@ -2100,7 +2100,7 @@ load_tracks_menu_shapes(void) {
 
             if (mouse_hit_index != TRACK_U8_INVALID) {
                 if (mouse_hit_index == 0) {
-                    if ((mouse_butstate & 3) != 0) {
+                    if (mouse_has_action_buttons(mouse_buttons)) {
                         picker_mode = 0;
                         mouse_track_value = mouse_track_op(1, 9, 192, 181, 5, map_scroll_x,
                                                            TRACK_MAP_VISIBLE_COLS, TRACK_SIZE);
@@ -2112,7 +2112,7 @@ load_tracks_menu_shapes(void) {
                     }
                 }
                 else if (mouse_hit_index == 1) {
-                    if ((mouse_butstate & 3) != 0) {
+                    if (mouse_has_action_buttons(mouse_buttons)) {
                         picker_mode = 0;
                         mouse_track_value = mouse_track_op(1, 202, 5, 4, 176, map_scroll_y,
                                                            TRACK_MAP_VISIBLE_ROWS, TRACK_SIZE);
@@ -2129,7 +2129,7 @@ load_tracks_menu_shapes(void) {
                         picker_row = 6;
                         input_code = 1;
                     }
-                    if ((mouse_butstate & 3) != 0) {
+                    if (mouse_has_action_buttons(mouse_buttons)) {
                         unsigned short cat_track_value
                             = (current_category == 0) ? 0 : (unsigned short)(current_category - 1);
                         mouse_track_value = mouse_track_op(1, 221, 95, 133, 5, cat_track_value, 1,
@@ -2139,8 +2139,8 @@ load_tracks_menu_shapes(void) {
                     }
                 }
                 else if (mouse_hit_index == 3) {
-                    temp_col = (mouse_xpos - TRACK_MAP_TILE_OFFSET_X) / TRACK_TILE_PIXELS;
-                    temp_row = (mouse_ypos - TRACK_MAP_TILE_OFFSET_Y) / TRACK_TILE_PIXELS;
+                    temp_col = (mouse_x - TRACK_MAP_TILE_OFFSET_X) / TRACK_TILE_PIXELS;
+                    temp_row = (mouse_y - TRACK_MAP_TILE_OFFSET_Y) / TRACK_TILE_PIXELS;
                     if (current_category != 0) {
                         multiflag = TRKOBJ_MULTI_TILE_FLAG(selected_element);
                         if (temp_row == (TRACK_MAP_VISIBLE_ROWS - 1) && (multiflag & 1) != 0)
@@ -2160,8 +2160,8 @@ load_tracks_menu_shapes(void) {
                         input_code = 13;
                 }
                 else if (mouse_hit_index == 4) {
-                    temp_col = (mouse_xpos - TRACK_MENU_X) / TRACK_TILE_PIXELS;
-                    temp_row = (mouse_ypos - TRACK_MENU_Y) / TRACK_TILE_PIXELS;
+                    temp_col = (mouse_x - TRACK_MENU_X) / TRACK_TILE_PIXELS;
+                    temp_row = (mouse_y - TRACK_MENU_Y) / TRACK_TILE_PIXELS;
                     if (temp_row < 6) {
                         unsigned int pbox_idx;
                         unsigned char pbox_val;
@@ -2196,7 +2196,7 @@ load_tracks_menu_shapes(void) {
                             temp_col--;
                     }
                     else {
-                        temp_row = (mouse_ypos - 28) / TRACK_TILE_PIXELS;
+                        temp_row = (mouse_y - 28) / TRACK_TILE_PIXELS;
                         if (temp_row == 7)
                             temp_col = 0;
                         else if (temp_col >= 3)

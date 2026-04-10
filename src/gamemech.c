@@ -253,7 +253,7 @@ handle_ingame_kb_shortcuts(int command) {
 
     if (command == 77 || command == 109) { /* 'M' or 'm' */
         do_mou_restext();
-        mouse_minmax_position((char)mouse_motion_state_flag);
+        mouse_minmax_position((char)mouse_control_enabled);
         return 1;
     }
 
@@ -455,12 +455,11 @@ replay_capture_frame_input(int command) {
             }
 
             /* read mouse or joystick input */
-            if (mouse_motion_state_flag || joystick_assigned_flags) {
-                if (mouse_motion_state_flag) {
-                    mouse_get_state((unsigned short *)&mouse_butstate,
-                                    (unsigned short *)&mouse_xpos, (unsigned short *)&mouse_ypos);
+            if (mouse_control_enabled || joystick_assigned_flags) {
+                if (mouse_control_enabled) {
+                    mouse_poll_input();
 
-                    di = mouse_xpos - GAMEMECH_MOUSE_STEER_CENTER_X;
+                    di = mouse_x - GAMEMECH_MOUSE_STEER_CENTER_X;
                     if (abs(di) < GAMEMECH_MOUSE_STEER_DEADZONE) {
                         di = 0;
                     }
@@ -472,10 +471,10 @@ replay_capture_frame_input(int command) {
                     }
                     car_track_interaction_state = (unsigned char)di;
 
-                    if (mouse_butstate & GAMEMECH_MOUSE_BUTTON_LEFT) {
+                    if (mouse_buttons & GAMEMECH_MOUSE_BUTTON_LEFT) {
                         si = 2;
                     }
-                    else if (mouse_butstate & GAMEMECH_MOUSE_BUTTON_RIGHT) {
+                    else if (mouse_buttons & GAMEMECH_MOUSE_BUTTON_RIGHT) {
                         si = 1;
                     }
                     else {
@@ -510,11 +509,9 @@ replay_capture_frame_input(int command) {
                 si = get_kb_or_joy_flags();
             }
 
-            /* check 'A' key (scan 30) = flag 16 */
-            if (kb_get_key_state(30))
+            if (kb_get_key_state(KB_KEYSTATE_A))
                 si |= GAMEMECH_INPUT_SHIFT_UP_MASK;
-            /* check 'Z' key (scan 44) = flag 32 */
-            if (kb_get_key_state(44))
+            if (kb_get_key_state(KB_KEYSTATE_Z))
                 si |= GAMEMECH_INPUT_SHIFT_DOWN_MASK;
         } /* end if (command == 0 && not special state) */
     } /* end if (command != 0) else */
@@ -1534,16 +1531,16 @@ loop_game(int command, int context_value, int frame_value) {
                         if (minimum_bump_counter == GAMEMECH_REPLAY_BAR_SLIDER_BUTTON) {
                             /* button 7: up/down slider based on mouse position */
                             int mid = (lighting_intensity_lookup + lap_time_accumulator) / 2;
-                            if (mouse_ypos >= mid)
+                            if (mouse_y >= mid)
                                 inputCode = UI_KEY_DOWN;
                             else
                                 inputCode = UI_KEY_UP;
                         }
                         else {
                             /* button 8+: dial control based on angle */
-                            int dx = mouse_xpos
+                            int dx = mouse_x
                                      - (projection_scale_factor + shadow_depth_table) / 2;
-                            int dy = (dither_pattern_config + race_position_table) / 2 - mouse_ypos;
+                            int dy = (dither_pattern_config + race_position_table) / 2 - mouse_y;
                             int angle = polarAngle(dx, dy);
                             angle = (angle + 128) & 1023;
                             angle >>= 8;
@@ -1585,7 +1582,7 @@ loop_game(int command, int context_value, int frame_value) {
                 /* Flush only the keyboard queue so the menu dialog does not
 			 * see a queued ESC on its first poll. Do NOT call check_input()
 			 * here - that blocks until mouse buttons are released too. */
-                kb_poll_sdl_input();
+                kb_poll_input();
                 while (kb_get_char() != 0) { /* drain */
                 }
             }
@@ -1615,7 +1612,8 @@ loop_game(int command, int context_value, int frame_value) {
 
                 /* Ctrl key check */
                 ctrlModifierActive = false;
-                if (kb_get_key_state(29) || (minimum_bump_counter == 8 && (kbjoyflags & 48)))
+                if (kb_get_key_state(KB_KEYSTATE_CTRL)
+                    || (minimum_bump_counter == 8 && (kbjoyflags & KB_INPUT_FLAG_ACTION_MASK)))
                     ctrlModifierActive = true;
 
                 if (ctrlModifierActive) {
@@ -1865,9 +1863,9 @@ loop_game(int command, int context_value, int frame_value) {
                     screen_shake_intensity = 0;
                     loop_game(2, 3, 0);
                     is_in_replay = false;
-                    mouse_minmax_position((int)(char)mouse_motion_state_flag);
+                    mouse_minmax_position((int)(char)mouse_control_enabled);
                     check_input();
-                    kbormouse = false;
+                    mouse_input_active = false;
                     break;
                 case 2: /* continue */
                     if (replay_mode_state_flag & 2) {
@@ -1896,9 +1894,9 @@ loop_game(int command, int context_value, int frame_value) {
                     screen_shake_intensity = 0;
                     loop_game(2, 3, 0);
                     is_in_replay = false;
-                    mouse_minmax_position((int)(char)mouse_motion_state_flag);
+                    mouse_minmax_position((int)(char)mouse_control_enabled);
                     check_input();
-                    kbormouse = false;
+                    mouse_input_active = false;
                     break;
                 case 3: /* load replay */
                     replay_mode_state_flag = 0;

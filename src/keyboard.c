@@ -24,8 +24,65 @@
 #include "framebuffer.h"
 #include "stunts.h"
 #include <SDL3/SDL.h>
-#include <stdio.h>
 #include <string.h>
+
+enum {
+    KB_KEY_STATE_COUNT = 90,
+    KB_EVENT_QUEUE_SIZE = 128,
+    KB_EVENT_QUEUE_MASK = KB_EVENT_QUEUE_SIZE - 1,
+    KB_CALLBACK_DIRECT_BINDING_COUNT = 128,
+    KB_CALLBACK_EXTENDED_BINDING_COUNT = 134,
+    KB_KEYCODE_SCANCODE_SHIFT = 8,
+    KB_KEYCODE_LOW_BYTE_MASK = 255,
+    KB_ASCII_CR = 13,
+    KB_ASCII_TAB = 9,
+    KB_ASCII_BS = 8,
+    KB_ASCII_ESC = 27,
+    KB_KEYCODE_UP = 0x4800,
+    KB_KEYCODE_DOWN = 0x5000,
+    KB_KEYCODE_LEFT = 0x4B00,
+    KB_KEYCODE_RIGHT = 0x4D00,
+    KB_SHIFTFLAG_NUMLOCK_BIT = 32,
+    KB_SHIFTFLAG_NUMLOCK_CLEAR_MASK = 223,
+    KB_CONTROLLER_AXIS_DEADZONE = 12000,
+    KB_CALLBACK_SLOT_COUNT = 64,
+    KB_CALLBACK_INDEX_BASE = 1,
+    KB_CALLBACK_DIRECT_KEY_MASK = 127,
+    KB_CALLBACK_EXTENDED_SCANCODE_MAX = 132,
+    KB_JOYSTICK_NEUTRAL_POSITION = 80,
+    KB_JOYSTICK_SCALED_CENTER = 31,
+    KB_JOYSTICK_SCALE_SHIFT = 8
+};
+
+typedef struct {
+    unsigned short key_state_index;
+    unsigned short flags;
+} KeyboardDigitalBinding;
+
+typedef struct {
+    unsigned short entries[KB_EVENT_QUEUE_SIZE];
+    unsigned short head;
+    unsigned short tail;
+} KeyboardEventQueue;
+
+typedef struct {
+    void (*slots[KB_CALLBACK_SLOT_COUNT])(void);
+    unsigned char direct_key_bindings[KB_CALLBACK_DIRECT_BINDING_COUNT];
+    unsigned char extended_key_bindings[KB_CALLBACK_EXTENDED_BINDING_COUNT];
+    bool dispatch_in_progress;
+} KeyboardCallbackRegistry;
+
+typedef struct {
+    unsigned short neutral_x;
+    unsigned short raw_x;
+    unsigned short x_scale;
+} JoystickCalibrationState;
+
+typedef struct {
+    bool initialized;
+    KeyboardEventQueue queue;
+    SDL_Gamepad *gamepad;
+} InputBackendState;
 
 unsigned short newjoyflags = 0;
 unsigned short mouse_oldbut = 0;
@@ -48,122 +105,40 @@ unsigned const char g_ascii_props[]
         0,   0,   0,   0,   0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0 };
 bool game_startup_flag = false;
-unsigned char kbinput[90] = { 0 };
+unsigned char kbinput[KB_KEY_STATE_COUNT] = { 0 };
 unsigned short kbjoyflags = 0;
 char mouse_button_press_state[2] = { 0, 0 };
 
-/* Variables moved from data_game.c (private to this translation unit) */
-static void (*callbacks[64])(void) = { 0 };
-static unsigned char callbackflags[128] = { 0 };
-static unsigned char callbackflags2[134] = { 0 };
-static unsigned short camera_rotation_state = 0;
-static unsigned char collision_debug_state[16] = { 0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0 };
-static bool in_kb_parse_key = false;
-static unsigned short joyflag1 = 0;
-static unsigned char joyinput = 0;
-static unsigned short kblastinput = 0;
-static unsigned char kbscancodes[10] = { 57, 28, 71, 72, 73, 77, 81, 80, 79, 75 };
-static unsigned short render_depth_sort = 0;
-static unsigned short rendering_viewport_offset = 80;
-static unsigned short screen_scroll_values = 80;
-static unsigned short viewport_transform_matrix = 0;
+static const KeyboardDigitalBinding g_keyboard_navigation_bindings[] = {
+    { 57, KB_INPUT_FLAG_PRIMARY_ACTION },
+    { 28, KB_INPUT_FLAG_SECONDARY_ACTION },
+    { 71, KB_INPUT_FLAG_LEFT | KB_INPUT_FLAG_UP },
+    { 72, KB_INPUT_FLAG_UP },
+    { 73, KB_INPUT_FLAG_UP | KB_INPUT_FLAG_RIGHT },
+    { 77, KB_INPUT_FLAG_RIGHT },
+    { 81, KB_INPUT_FLAG_RIGHT | KB_INPUT_FLAG_DOWN },
+    { 80, KB_INPUT_FLAG_DOWN },
+    { 79, KB_INPUT_FLAG_LEFT | KB_INPUT_FLAG_DOWN },
+    { 75, KB_INPUT_FLAG_LEFT }
+};
 
+static const unsigned char g_joystick_direction_lookup[16]
+    = { 0, 1, 5, 0, 3, 2, 4, 3, 7, 8, 6, 7, 0, 1, 5, 0 };
 
-typedef void (*voidinterruptfunctype)(void);
-typedef void (*voidfunctype)(void);
+static KeyboardCallbackRegistry g_callback_registry = { { 0 }, { 0 }, { 0 }, false };
+static JoystickCalibrationState g_joystick_calibration = { KB_JOYSTICK_NEUTRAL_POSITION, 0, 0 };
+static InputBackendState g_input_backend = { false, { { 0 }, 0, 0 }, 0 };
+static unsigned short g_last_read_or_joy_flags = 0;
 
 /* Forward declarations */
 unsigned short kb_parse_key(unsigned short key);
 
-voidinterruptfunctype old_kb_int9_handler;
-voidinterruptfunctype old_kb_int16_handler;
-
-
-// these data are local to keyboard.c, but kept in their original slots for convencience:
-
-enum {
-    KB_SDL_DEFAULT_MOUSE_MAX_X = 319,
-    KB_SDL_DEFAULT_MOUSE_MAX_Y = 199,
-    KB_SDL_QUEUE_SIZE = 128,
-    KB_SDL_QUEUE_MASK = KB_SDL_QUEUE_SIZE - 1,
-    KB_KEYCODE_SCANCODE_SHIFT = 8,
-    KB_ASCII_CR = 13,
-    KB_ASCII_TAB = 9,
-    KB_ASCII_BS = 8,
-    KB_ASCII_ESC = 27,
-    KB_MOUSE_BUTTON_LEFT = 1,
-    KB_MOUSE_BUTTON_RIGHT = 2,
-    KB_MOUSE_BUTTON_MIDDLE = 4,
-    KB_KBD_DATA_PORT = 96,
-    KB_KBD_CTRL_PORT = 97,
-    KB_KBD_CTRL_ACK_TOGGLE = 128,
-    KB_PIC1_COMMAND_PORT = 32,
-    KB_PIC_EOI = 32,
-    KB_KEYMAP_LAST_VALID_SCANCODE = 89,
-    KB_KEYMAP_INVALID_SCANCODE = 0,
-    KB_KEY_RELEASE_BIT = 128,
-    KB_EXTENDED_ASCII_LIMIT = 133,
-    KB_EXTENDED_ASCII_MASK = 127,
-    KB_BUFFER_ENTRY_SIZE = 2,
-    KB_INPUTMOD_ALT = 56,
-    KB_INPUTMOD_CTRL = 29,
-    KB_INPUTMOD_LSHIFT = 42,
-    KB_INPUTMOD_RSHIFT = 54,
-    KB_INPUTMOD_CAPS = 58,
-    KB_SHIFTFLAG_NUMLOCK_BIT = 32,
-    KB_SHIFTFLAG_NUMLOCK_CLEAR_MASK = 223,
-    KB_JOY_FLAG_UP = 1,
-    KB_JOY_FLAG_DOWN = 2,
-    KB_JOY_FLAG_RIGHT = 4,
-    KB_JOY_FLAG_LEFT = 8,
-    KB_JOY_FLAG_BUTTON1 = 16,
-    KB_JOY_FLAG_BUTTON2 = 32,
-    KB_JOY_BUTTON_MASK = 48,
-    KB_JOY_ASSIGNED_BIT = 1,
-    KB_CONTROLLER_AXIS_DEADZONE = 12000,
-    KB_CALLBACK_SLOT_COUNT = 64,
-    KB_CALLBACK_INDEX_BASE = 1,
-    KB_CALLBACK_SCANCODE_MASK = 127,
-    KB_CALLBACK_KEY_LOBYTE_MASK = 255,
-    KB_CALLBACK_EXT_SCANCODE_MAX = 132
-};
-
-static bool kb_sdl_inited = false;
-static bool kb_sdl_quit = false;
-static unsigned short kb_sdl_mouse_x = 0;
-static unsigned short kb_sdl_mouse_y = 0;
-static unsigned short kb_sdl_mouse_buttons = 0;
-static unsigned short kb_sdl_mouse_min_x = 0;
-static unsigned short kb_sdl_mouse_min_y = 0;
-static unsigned short kb_sdl_mouse_max_x = KB_SDL_DEFAULT_MOUSE_MAX_X;
-static unsigned short kb_sdl_mouse_max_y = KB_SDL_DEFAULT_MOUSE_MAX_Y;
-static unsigned short kb_sdl_queue[KB_SDL_QUEUE_SIZE];
-static unsigned short kb_sdl_queue_head = 0;
-static unsigned short kb_sdl_queue_tail = 0;
-static SDL_Gamepad *kb_sdl_controller = 0;
-
-#define KBINPUT_SIZE 90u
-
-// --- DOS compatibility stubs (removed) ---
-#define PTR_SEG(x) 0
-#define PTR_OFF(x) 0
-static inline void
-disable(void) {}
-/** @brief Enable.
- * @return Function result.
- */
-static inline void
-enable(void) {}
-typedef int REGS; // Dummy type
-
-// --- Joystick stub globals for portability ---
-
-/** @brief Kb sdl scancode.
+/** @brief Translate an SDL scancode to the engine key-state index.
  * @param sc Parameter `sc`.
  * @return Function result.
  */
 static unsigned char
-kb_sdl_scancode(SDL_Scancode sc) {
+kb_translate_scancode(SDL_Scancode sc) {
     switch (sc) {
     case SDL_SCANCODE_ESCAPE:
         return 1;
@@ -320,13 +295,13 @@ kb_sdl_scancode(SDL_Scancode sc) {
     }
 }
 
-/** @brief Kb sdl ascii.
+/** @brief Translate an SDL key press into the engine's ASCII byte.
  * @param key Parameter `key`.
  * @param mod Parameter `mod`.
  * @return Function result.
  */
 static unsigned char
-kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
+kb_translate_ascii(SDL_Keycode key, Uint16 mod) {
     if (key >= SDLK_A && key <= SDLK_Z) {
         unsigned char ch = (unsigned char)('a' + (key - SDLK_A));
         if ((mod & SDL_KMOD_SHIFT) != 0 || (mod & SDL_KMOD_CAPS) != 0) {
@@ -350,40 +325,72 @@ kb_sdl_ascii(SDL_Keycode key, Uint16 mod) {
     return 0;
 }
 
-/** @brief Kb sdl queue push.
- * @param key Parameter `key`.
- * @return Function result.
- */
-static void
-kb_sdl_queue_push(unsigned short key) {
-    unsigned short next = (unsigned short)((kb_sdl_queue_tail + 1u) & KB_SDL_QUEUE_MASK);
-    if (next == kb_sdl_queue_head) {
-        return;
+static unsigned short
+kb_compose_keycode(unsigned char key_state_index, unsigned char ascii) {
+    unsigned short keycode = (unsigned short)key_state_index << KB_KEYCODE_SCANCODE_SHIFT;
+    if (ascii != 0) {
+        keycode = (unsigned short)(keycode | ascii);
     }
-    kb_sdl_queue[kb_sdl_queue_tail] = key;
-    kb_sdl_queue_tail = next;
+    return keycode;
 }
 
-/** @brief Kb sdl queue pop.
+unsigned short
+kb_input_flags_to_keycode(unsigned short input_flags) {
+    if ((input_flags & KB_INPUT_FLAG_SECONDARY_ACTION) != 0) {
+        return KB_ASCII_CR;
+    }
+    if ((input_flags & KB_INPUT_FLAG_PRIMARY_ACTION) != 0) {
+        return ' ';
+    }
+    if ((input_flags & KB_INPUT_FLAG_UP) != 0) {
+        return KB_KEYCODE_UP;
+    }
+    if ((input_flags & KB_INPUT_FLAG_DOWN) != 0) {
+        return KB_KEYCODE_DOWN;
+    }
+    if ((input_flags & KB_INPUT_FLAG_LEFT) != 0) {
+        return KB_KEYCODE_LEFT;
+    }
+    if ((input_flags & KB_INPUT_FLAG_RIGHT) != 0) {
+        return KB_KEYCODE_RIGHT;
+    }
+    return 0;
+}
+
+/** @brief Push a key event into the buffered input queue.
+ * @param key Parameter `key`.
+ */
+static void
+kb_queue_push(unsigned short key) {
+    unsigned short next = (unsigned short)((g_input_backend.queue.tail + 1u) & KB_EVENT_QUEUE_MASK);
+    if (next == g_input_backend.queue.head) {
+        return;
+    }
+    g_input_backend.queue.entries[g_input_backend.queue.tail] = key;
+    g_input_backend.queue.tail = next;
+}
+
+/** @brief Pop the next buffered input keycode.
  * @return Function result.
  */
 static unsigned short
-kb_sdl_queue_pop(void) {
+kb_queue_pop(void) {
     unsigned short key;
-    if (kb_sdl_queue_head == kb_sdl_queue_tail) {
+    if (g_input_backend.queue.head == g_input_backend.queue.tail) {
         return 0;
     }
-    key = kb_sdl_queue[kb_sdl_queue_head];
-    kb_sdl_queue_head = (unsigned short)((kb_sdl_queue_head + 1u) & KB_SDL_QUEUE_MASK);
+    key = g_input_backend.queue.entries[g_input_backend.queue.head];
+    g_input_backend.queue.head
+        = (unsigned short)((g_input_backend.queue.head + 1u) & KB_EVENT_QUEUE_MASK);
     return key;
 }
 
-/** @brief Kb sdl requeue key.
+/** @brief Requeue a keycode for later processing.
  * @param key Parameter `key`.
  */
 void
-kb_sdl_requeue_key(unsigned short key) {
-    kb_sdl_queue_push(key);
+kb_requeue_key(unsigned short key) {
+    kb_queue_push(key);
 }
 
 /** @brief Kb has pending input.
@@ -391,201 +398,98 @@ kb_sdl_requeue_key(unsigned short key) {
  */
 static int
 kb_has_pending_input(void) {
-    return (kb_sdl_queue_head != kb_sdl_queue_tail) ? 1 : 0;
+    return (g_input_backend.queue.head != g_input_backend.queue.tail) ? 1 : 0;
 }
 
-/** @brief Kb sdl update mouse from system.
- * @return Function result.
- */
-static void
-kb_sdl_update_mouse_from_system(void) {
-    float sxf = 0.0f;
-    float syf = 0.0f;
-    int sx;
-    int sy;
-    int win_w = 0;
-    int win_h = 0;
-    SDL_Window *mouse_win;
-    int range_x;
-    int range_y;
-    SDL_MouseButtonFlags mstate = SDL_GetMouseState(&sxf, &syf);
+static bool
+kb_handle_host_shortcut(const SDL_KeyboardEvent *event) {
+    SDL_Keycode key;
+    SDL_Keymod modifiers;
 
-    sx = (int)sxf;
-    sy = (int)syf;
-
-    /* Convert from actual window coordinates to current game mouse range. */
-    mouse_win = SDL_GetMouseFocus();
-    if (mouse_win != 0) {
-        SDL_GetWindowSize(mouse_win, &win_w, &win_h);
+    if (event->repeat != 0) {
+        return false;
     }
 
-    range_x = (int)kb_sdl_mouse_max_x - (int)kb_sdl_mouse_min_x;
-    range_y = (int)kb_sdl_mouse_max_y - (int)kb_sdl_mouse_min_y;
-    if (win_w > 1 && range_x > 0) {
-        sx = (int)kb_sdl_mouse_min_x + (sx * range_x) / (win_w - 1);
+    key = event->key;
+    modifiers = event->mod;
+    if ((key == SDLK_RETURN || key == SDLK_RETURN2) && (modifiers & SDL_KMOD_ALT) != 0) {
+        video_toggle_fullscreen();
+        return true;
     }
-    if (win_h > 1 && range_y > 0) {
-        sy = (int)kb_sdl_mouse_min_y + (sy * range_y) / (win_h - 1);
+    if (key == SDLK_PLUS || key == SDLK_EQUALS || key == SDLK_KP_PLUS) {
+        video_scale_up();
+        return true;
     }
-
-    if (sx < (int)kb_sdl_mouse_min_x)
-        sx = kb_sdl_mouse_min_x;
-    if (sy < (int)kb_sdl_mouse_min_y)
-        sy = kb_sdl_mouse_min_y;
-    if (sx > (int)kb_sdl_mouse_max_x)
-        sx = kb_sdl_mouse_max_x;
-    if (sy > (int)kb_sdl_mouse_max_y)
-        sy = kb_sdl_mouse_max_y;
-
-    kb_sdl_mouse_x = (unsigned short)sx;
-    kb_sdl_mouse_y = (unsigned short)sy;
-    kb_sdl_mouse_buttons = 0;
-    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) != 0u)
-        kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_LEFT;
-    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)) != 0u)
-        kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_RIGHT;
-    if ((mstate & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0u)
-        kb_sdl_mouse_buttons |= KB_MOUSE_BUTTON_MIDDLE;
+    if (key == SDLK_MINUS || key == SDLK_KP_MINUS) {
+        video_scale_down();
+        return true;
+    }
+    return false;
 }
 
-/** @brief Kb poll sdl input.
+/** @brief Poll the active SDL input sources and update buffered state.
  */
 void
-kb_poll_sdl_input(void) {
+kb_poll_input(void) {
     SDL_Event ev;
-    if (!kb_sdl_inited) {
+    if (!g_input_backend.initialized) {
         return;
     }
 
     while (SDL_PollEvent(&ev)) {
         if (ev.type == SDL_EVENT_QUIT) {
-            kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
 
         if (ev.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-            kb_sdl_quit = true;
             call_exitlist2();
             return;
         }
 
         if (ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_KEY_UP) {
-            /* Host-only keys: intercept before the game sees them */
-            if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.repeat == 0) {
-                SDL_Keycode sym = ev.key.key;
-                SDL_Keymod mod = ev.key.mod;
-                if ((sym == SDLK_RETURN || sym == SDLK_RETURN2) && (mod & SDL_KMOD_ALT)) {
-                    video_toggle_fullscreen();
-                    continue;
-                }
-                if (sym == SDLK_PLUS || sym == SDLK_EQUALS || sym == SDLK_KP_PLUS) {
-                    video_scale_up();
-                    continue;
-                }
-                if (sym == SDLK_MINUS || sym == SDLK_KP_MINUS) {
-                    video_scale_down();
-                    continue;
-                }
+            unsigned char key_state_index = kb_translate_scancode(ev.key.scancode);
+            if (ev.type == SDL_EVENT_KEY_DOWN && kb_handle_host_shortcut(&ev.key)) {
+                continue;
             }
-            unsigned char dos_sc = kb_sdl_scancode(ev.key.scancode);
-            if (dos_sc != 0 && dos_sc < KBINPUT_SIZE) {
-                kbinput[dos_sc] = (ev.type == SDL_EVENT_KEY_DOWN) ? 1u : 0u;
-                kblastinput = dos_sc;
+            if (key_state_index != 0 && key_state_index < KB_KEY_STATE_COUNT) {
+                unsigned char ascii = kb_translate_ascii(ev.key.key, ev.key.mod);
+                kbinput[key_state_index] = (ev.type == SDL_EVENT_KEY_DOWN) ? 1u : 0u;
                 if (ev.type == SDL_EVENT_KEY_DOWN && ev.key.repeat == 0) {
-                    unsigned char ascii = kb_sdl_ascii(ev.key.key, ev.key.mod);
-                    unsigned short key
-                        = (unsigned short)(((unsigned short)dos_sc << KB_KEYCODE_SCANCODE_SHIFT)
-                                           | ascii);
-                    if (ascii == 0) {
-                        key = (unsigned short)(dos_sc << KB_KEYCODE_SCANCODE_SHIFT);
-                    }
-                    kb_sdl_queue_push(key);
+                    kb_queue_push(kb_compose_keycode(key_state_index, ascii));
                 }
             }
             continue;
         }
 
-        if (ev.type == SDL_EVENT_GAMEPAD_ADDED && kb_sdl_controller == 0) {
+        if (ev.type == SDL_EVENT_GAMEPAD_ADDED && g_input_backend.gamepad == 0) {
             if (SDL_IsGamepad(ev.gdevice.which)) {
-                kb_sdl_controller = SDL_OpenGamepad(ev.gdevice.which);
+                g_input_backend.gamepad = SDL_OpenGamepad(ev.gdevice.which);
             }
             continue;
         }
 
-        if (ev.type == SDL_EVENT_GAMEPAD_REMOVED && kb_sdl_controller != 0) {
-            SDL_JoystickID jid = SDL_GetGamepadID(kb_sdl_controller);
+        if (ev.type == SDL_EVENT_GAMEPAD_REMOVED && g_input_backend.gamepad != 0) {
+            SDL_JoystickID jid = SDL_GetGamepadID(g_input_backend.gamepad);
             if (jid == ev.gdevice.which) {
-                SDL_CloseGamepad(kb_sdl_controller);
-                kb_sdl_controller = 0;
+                SDL_CloseGamepad(g_input_backend.gamepad);
+                g_input_backend.gamepad = 0;
             }
             continue;
         }
     }
 
-    kb_sdl_update_mouse_from_system();
-}
-
-/** @brief Kb sdl set mouse limits.
- * @param min_x Parameter `min_x`.
- * @param min_y Parameter `min_y`.
- * @param max_x Parameter `max_x`.
- * @param max_y Parameter `max_y`.
- */
-void
-kb_sdl_set_mouse_limits(unsigned short min_x, unsigned short min_y, unsigned short max_x,
-                        unsigned short max_y) {
-    kb_sdl_mouse_min_x = min_x;
-    kb_sdl_mouse_min_y = min_y;
-    kb_sdl_mouse_max_x = max_x;
-    kb_sdl_mouse_max_y = max_y;
-    if (kb_sdl_mouse_x < kb_sdl_mouse_min_x)
-        kb_sdl_mouse_x = kb_sdl_mouse_min_x;
-    if (kb_sdl_mouse_y < kb_sdl_mouse_min_y)
-        kb_sdl_mouse_y = kb_sdl_mouse_min_y;
-    if (kb_sdl_mouse_x > kb_sdl_mouse_max_x)
-        kb_sdl_mouse_x = kb_sdl_mouse_max_x;
-    if (kb_sdl_mouse_y > kb_sdl_mouse_max_y)
-        kb_sdl_mouse_y = kb_sdl_mouse_max_y;
-}
-
-/** @brief Kb sdl set mouse position.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- */
-void
-kb_sdl_set_mouse_position(unsigned short x, unsigned short y) {
-    kb_sdl_mouse_x = x;
-    kb_sdl_mouse_y = y;
-    kb_sdl_set_mouse_limits(kb_sdl_mouse_min_x, kb_sdl_mouse_min_y, kb_sdl_mouse_max_x,
-                            kb_sdl_mouse_max_y);
-}
-
-/** @brief Kb sdl get mouse state.
- * @param buttons Parameter `buttons`.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- */
-void
-kb_sdl_get_mouse_state(unsigned short *buttons, unsigned short *x, unsigned short *y) {
-    kb_poll_sdl_input();
-    if (buttons)
-        *buttons = kb_sdl_mouse_buttons;
-    if (x)
-        *x = kb_sdl_mouse_x;
-    if (y)
-        *y = kb_sdl_mouse_y;
 }
 
 /** @brief Initialize keyboard input state and SDL input backends.
  */
 void
 kb_init_interrupt(void) {
-    memset(kbinput, 0, KBINPUT_SIZE);
-    kb_sdl_queue_head = 0;
-    kb_sdl_queue_tail = 0;
-    kb_sdl_quit = false;
-    kb_sdl_inited = true;
+    memset(kbinput, 0, sizeof(kbinput));
+    g_input_backend.queue.head = 0;
+    g_input_backend.queue.tail = 0;
+    g_input_backend.initialized = true;
+    g_last_read_or_joy_flags = 0;
     if ((SDL_WasInit(SDL_INIT_GAMEPAD) & SDL_INIT_GAMEPAD) == 0) {
         (void)SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     }
@@ -593,7 +497,7 @@ kb_init_interrupt(void) {
         int gamepad_count = 0;
         SDL_JoystickID *gamepads = SDL_GetGamepads(&gamepad_count);
         if (gamepads != 0 && gamepad_count > 0) {
-            kb_sdl_controller = SDL_OpenGamepad(gamepads[0]);
+            g_input_backend.gamepad = SDL_OpenGamepad(gamepads[0]);
         }
         SDL_free(gamepads);
     }
@@ -605,11 +509,11 @@ kb_init_interrupt(void) {
 void
 kb_exit_handler(void) {
 
-    if (kb_sdl_controller != 0) {
-        SDL_CloseGamepad(kb_sdl_controller);
-        kb_sdl_controller = 0;
+    if (g_input_backend.gamepad != 0) {
+        SDL_CloseGamepad(g_input_backend.gamepad);
+        g_input_backend.gamepad = 0;
     }
-    kb_sdl_inited = false;
+    g_input_backend.initialized = false;
 }
 
 /** @brief Return pressed-state information for a DOS scancode.
@@ -619,7 +523,7 @@ kb_exit_handler(void) {
 int
 kb_get_key_state(int key) {
 
-    if (key < 0 || (unsigned int)key >= KBINPUT_SIZE) {
+    if (key < 0 || (unsigned int)key >= KB_KEY_STATE_COUNT) {
         return 0;
     }
     return kbinput[key];
@@ -643,13 +547,13 @@ int
 kb_read_char(void) {
 
     unsigned short key;
-    kb_poll_sdl_input();
-    key = kb_sdl_queue_pop();
+    kb_poll_input();
+    key = kb_queue_pop();
     if (key == 0) {
         return 0;
     }
     kb_parse_key(key);
-    return (int)(key & KB_CALLBACK_KEY_LOBYTE_MASK);
+    return (int)(key & KB_KEYCODE_LOW_BYTE_MASK);
 }
 
 /** @brief Check whether keyboard input is currently available.
@@ -658,7 +562,7 @@ kb_read_char(void) {
 int
 kb_checking(void) {
 
-    kb_poll_sdl_input();
+    kb_poll_input();
     return kb_has_pending_input();
 }
 
@@ -690,7 +594,7 @@ kb_shift_checking2(void) {
 int
 kb_check(void) {
 
-    kb_poll_sdl_input();
+    kb_poll_input();
     return kb_has_pending_input();
 }
 
@@ -704,9 +608,19 @@ kb_check(void) {
  */
 unsigned short
 kb_read_key_or_joy(void) {
-    // DOS BIOS keyboard and joystick read removed for portability
-    // Implement SDL-based key reading if needed
-    return 0;
+    unsigned short keycode;
+    unsigned short current_flags;
+    unsigned short newly_pressed_flags;
+
+    keycode = (unsigned short)kb_read_char();
+    if (keycode != 0) {
+        return keycode;
+    }
+
+    current_flags = (unsigned short)get_joy_flags();
+    newly_pressed_flags = (unsigned short)(current_flags & (unsigned short)~g_last_read_or_joy_flags);
+    g_last_read_or_joy_flags = current_flags;
+    return kb_input_flags_to_keycode(newly_pressed_flags);
 }
 
 /**
@@ -717,10 +631,9 @@ kb_read_key_or_joy(void) {
 void
 joystick_init_calibration(void) {
     joystick_assigned_flags = true;
-    screen_scroll_values = 80;
-    camera_rotation_state = 0;
-    rendering_viewport_offset = 80;
-    render_depth_sort = 0;
+    g_joystick_calibration.neutral_x = KB_JOYSTICK_NEUTRAL_POSITION;
+    g_joystick_calibration.raw_x = 0;
+    g_joystick_calibration.x_scale = 0;
 }
 
 /**
@@ -733,7 +646,7 @@ joystick_init_calibration(void) {
  */
 short
 joystick_direction_lookup(unsigned short joy_flags) {
-    return (short)collision_debug_state[joy_flags & 15];
+    return (short)g_joystick_direction_lookup[joy_flags & 15];
 }
 
 /**
@@ -748,13 +661,13 @@ joystick_get_scaled_x(void) {
     short ax;
     unsigned long result;
 
-    ax = (short)joyflag1 - screen_scroll_values;
+    ax = (short)g_joystick_calibration.raw_x - g_joystick_calibration.neutral_x;
     if (ax < 0)
         ax = 0;
 
-    result = (unsigned long)ax * viewport_transform_matrix;
-    ax = (short)(result >> 8);
-    return (short)ax - 31;
+    result = (unsigned long)ax * g_joystick_calibration.x_scale;
+    ax = (short)(result >> KB_JOYSTICK_SCALE_SHIFT);
+    return (short)ax - KB_JOYSTICK_SCALED_CENTER;
 }
 
 /* Keyboard scan code and input globals */
@@ -771,29 +684,17 @@ joystick_get_scaled_x(void) {
  */
 short
 get_kb_or_joy_flags(void) {
+    size_t binding_index;
     short flags = 0;
 
-    /* Check each keyboard scancode against input array */
-    if (kbinput[kbscancodes[0]])
-        flags |= 16;
-    if (kbinput[kbscancodes[1]])
-        flags |= 32;
-    if (kbinput[kbscancodes[2]])
-        flags |= 9;
-    if (kbinput[kbscancodes[3]])
-        flags |= 1;
-    if (kbinput[kbscancodes[4]])
-        flags |= 5;
-    if (kbinput[kbscancodes[5]])
-        flags |= 4;
-    if (kbinput[kbscancodes[6]])
-        flags |= 6;
-    if (kbinput[kbscancodes[7]])
-        flags |= 2;
-    if (kbinput[kbscancodes[8]])
-        flags |= 10;
-    if (kbinput[kbscancodes[9]])
-        flags |= 8;
+    for (binding_index = 0;
+         binding_index < sizeof(g_keyboard_navigation_bindings) / sizeof(g_keyboard_navigation_bindings[0]);
+         ++binding_index) {
+        const KeyboardDigitalBinding *binding = &g_keyboard_navigation_bindings[binding_index];
+        if (kbinput[binding->key_state_index] != 0) {
+            flags |= (short)binding->flags;
+        }
+    }
 
     /* If no keyboard input, check joystick */
     if (flags == 0) {
@@ -814,8 +715,8 @@ int
 kb_get_char(void) {
     unsigned short key_ax;
 
-    kb_poll_sdl_input();
-    key_ax = kb_sdl_queue_pop();
+    kb_poll_input();
+    key_ax = kb_queue_pop();
     if (key_ax == 0) {
         return 0;
     }
@@ -837,40 +738,40 @@ get_joy_flags(void) {
     unsigned short joy = 0;
     const bool *state;
 
-    kb_poll_sdl_input();
+    kb_poll_input();
 
     state = SDL_GetKeyboardState(0);
     if (state[SDL_SCANCODE_UP])
-        joy |= 1;
+        joy |= KB_INPUT_FLAG_UP;
     if (state[SDL_SCANCODE_DOWN])
-        joy |= 2;
+        joy |= KB_INPUT_FLAG_DOWN;
     if (state[SDL_SCANCODE_RIGHT])
-        joy |= 4;
+        joy |= KB_INPUT_FLAG_RIGHT;
     if (state[SDL_SCANCODE_LEFT])
-        joy |= 8;
+        joy |= KB_INPUT_FLAG_LEFT;
     if (state[SDL_SCANCODE_RETURN] || state[SDL_SCANCODE_SPACE])
-        joy |= 16;
+        joy |= KB_INPUT_FLAG_PRIMARY_ACTION;
     if (state[SDL_SCANCODE_RCTRL] || state[SDL_SCANCODE_LCTRL])
-        joy |= 32;
+        joy |= KB_INPUT_FLAG_SECONDARY_ACTION;
 
-    if (kb_sdl_controller != 0) {
-        Sint16 lx = SDL_GetGamepadAxis(kb_sdl_controller, SDL_GAMEPAD_AXIS_LEFTX);
-        Sint16 ly = SDL_GetGamepadAxis(kb_sdl_controller, SDL_GAMEPAD_AXIS_LEFTY);
+    if (g_input_backend.gamepad != 0) {
+        Sint16 lx = SDL_GetGamepadAxis(g_input_backend.gamepad, SDL_GAMEPAD_AXIS_LEFTX);
+        Sint16 ly = SDL_GetGamepadAxis(g_input_backend.gamepad, SDL_GAMEPAD_AXIS_LEFTY);
+        g_joystick_calibration.raw_x = (unsigned short)(lx + 32768);
         if (lx < -KB_CONTROLLER_AXIS_DEADZONE)
-            joy |= KB_JOY_FLAG_LEFT;
+            joy |= KB_INPUT_FLAG_LEFT;
         if (lx > KB_CONTROLLER_AXIS_DEADZONE)
-            joy |= KB_JOY_FLAG_RIGHT;
+            joy |= KB_INPUT_FLAG_RIGHT;
         if (ly < -KB_CONTROLLER_AXIS_DEADZONE)
-            joy |= KB_JOY_FLAG_UP;
+            joy |= KB_INPUT_FLAG_UP;
         if (ly > KB_CONTROLLER_AXIS_DEADZONE)
-            joy |= KB_JOY_FLAG_DOWN;
-        if (SDL_GetGamepadButton(kb_sdl_controller, SDL_GAMEPAD_BUTTON_SOUTH))
-            joy |= KB_JOY_FLAG_BUTTON1;
-        if (SDL_GetGamepadButton(kb_sdl_controller, SDL_GAMEPAD_BUTTON_EAST))
-            joy |= KB_JOY_FLAG_BUTTON2;
+            joy |= KB_INPUT_FLAG_DOWN;
+        if (SDL_GetGamepadButton(g_input_backend.gamepad, SDL_GAMEPAD_BUTTON_SOUTH))
+            joy |= KB_INPUT_FLAG_PRIMARY_ACTION;
+        if (SDL_GetGamepadButton(g_input_backend.gamepad, SDL_GAMEPAD_BUTTON_EAST))
+            joy |= KB_INPUT_FLAG_SECONDARY_ACTION;
     }
 
-    joyinput = (unsigned char)joy;
     return (short)joy;
 }
 
@@ -887,18 +788,16 @@ static void
 kb_set_callback_flag(unsigned short key, unsigned char slot_index) {
     unsigned short scancode;
 
-    if ((key & KB_CALLBACK_KEY_LOBYTE_MASK) != 0) {
-        /* Normal scancode - use low byte, mask to 0-127 */
-        scancode = key & KB_CALLBACK_SCANCODE_MASK;
-        callbackflags[scancode] = slot_index;
+    if ((key & KB_KEYCODE_LOW_BYTE_MASK) != 0) {
+        scancode = key & KB_CALLBACK_DIRECT_KEY_MASK;
+        g_callback_registry.direct_key_bindings[scancode] = slot_index;
     }
     else {
-        /* Extended scancode - use high byte */
-        scancode = (key >> KB_KEYCODE_SCANCODE_SHIFT) & KB_CALLBACK_KEY_LOBYTE_MASK;
-        if (scancode > KB_CALLBACK_EXT_SCANCODE_MAX) {
-            scancode = KB_CALLBACK_EXT_SCANCODE_MAX;
+        scancode = (key >> KB_KEYCODE_SCANCODE_SHIFT) & KB_KEYCODE_LOW_BYTE_MASK;
+        if (scancode > KB_CALLBACK_EXTENDED_SCANCODE_MAX) {
+            scancode = KB_CALLBACK_EXTENDED_SCANCODE_MAX;
         }
-        callbackflags2[scancode] = slot_index;
+        g_callback_registry.extended_key_bindings[scancode] = slot_index;
     }
 }
 
@@ -913,42 +812,32 @@ kb_parse_key(unsigned short key) {
     unsigned char slot_index;
     int callback_idx;
 
-    /* Reentrancy guard */
-    disable();
-    if (in_kb_parse_key) {
-        enable();
+    if (g_callback_registry.dispatch_in_progress) {
         return key;
     }
-    in_kb_parse_key = true;
-    enable();
+    g_callback_registry.dispatch_in_progress = true;
 
-    /* Get callback slot index from the appropriate flags array */
-    if ((key & KB_CALLBACK_KEY_LOBYTE_MASK) != 0) {
-        /* Normal scancode */
-        scancode = key & KB_CALLBACK_SCANCODE_MASK;
-        slot_index = callbackflags[scancode];
+    if ((key & KB_KEYCODE_LOW_BYTE_MASK) != 0) {
+        scancode = key & KB_CALLBACK_DIRECT_KEY_MASK;
+        slot_index = g_callback_registry.direct_key_bindings[scancode];
     }
     else {
-        /* Extended scancode */
-        scancode = (key >> KB_KEYCODE_SCANCODE_SHIFT) & KB_CALLBACK_KEY_LOBYTE_MASK;
-        if (scancode >= KB_CALLBACK_EXT_SCANCODE_MAX) {
-            scancode = KB_CALLBACK_EXT_SCANCODE_MAX;
+        scancode = (key >> KB_KEYCODE_SCANCODE_SHIFT) & KB_KEYCODE_LOW_BYTE_MASK;
+        if (scancode >= KB_CALLBACK_EXTENDED_SCANCODE_MAX) {
+            scancode = KB_CALLBACK_EXTENDED_SCANCODE_MAX;
         }
-        slot_index = callbackflags2[scancode];
+        slot_index = g_callback_registry.extended_key_bindings[scancode];
     }
 
-    /* slot_index is 1-based, 0 means no callback */
     callback_idx = (int)slot_index - KB_CALLBACK_INDEX_BASE;
 
     if (callback_idx >= 0) {
-        /* Call the callback */
-        callbacks[callback_idx]();
-        in_kb_parse_key = false;
+        g_callback_registry.slots[callback_idx]();
+        g_callback_registry.dispatch_in_progress = false;
         return 0;
     }
 
-    /* No callback - return key code */
-    in_kb_parse_key = false;
+    g_callback_registry.dispatch_in_progress = false;
     return key;
 }
 
@@ -961,22 +850,16 @@ kb_parse_key(unsigned short key) {
 void
 kb_reg_callback(unsigned short key, void (*callback)(void)) {
     int i;
-    const unsigned short cb_ofs = PTR_OFF(callback);
-    const unsigned short cb_seg = PTR_SEG(callback);
 
-    /* Search for existing entry or empty slot */
     for (i = 0; i < KB_CALLBACK_SLOT_COUNT; i++) {
-        if (PTR_OFF(callbacks[i]) == cb_ofs && PTR_SEG(callbacks[i]) == cb_seg) {
-            /* Already registered - just set the flag */
+        if (g_callback_registry.slots[i] == callback) {
             kb_set_callback_flag(key, (unsigned char)(i + KB_CALLBACK_INDEX_BASE));
             return;
         }
-        if (PTR_SEG(callbacks[i]) == 0) {
-            /* Empty slot - register new callback */
-            callbacks[i] = callback;
+        if (g_callback_registry.slots[i] == 0) {
+            g_callback_registry.slots[i] = callback;
             kb_set_callback_flag(key, (unsigned char)(i + KB_CALLBACK_INDEX_BASE));
             return;
         }
     }
-    /* No free slots - silently fail (matches original ASM behavior) */
 }

@@ -130,7 +130,7 @@ int ui_screen_depth(void);
  * Run the screen loop until the stack is empty.
  *
  * Each iteration:
- *   1. Poll SDL events via kb_poll_sdl_input()
+ *   1. Poll input events via kb_poll_input()
  *   2. Convert to UIEvent and dispatch to the top screen's on_event
  *   3. Send a UI_EVENT_TICK with the frame delta
  *   4. Call on_render on the top screen

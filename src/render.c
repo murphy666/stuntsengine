@@ -1803,7 +1803,7 @@ setup_intro(void) {
     /* Main intro loop */
     for (;;) {
         /* Poll SDL events first to prevent blocking on timer when events are pending */
-        kb_poll_sdl_input();
+        kb_poll_input();
 
         frame_delta = (short)timer_get_delta();
         if (inverse_fps_hundredths == 0) {
