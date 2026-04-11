@@ -207,7 +207,6 @@ font_draw_text(char *str, unsigned short x, unsigned short y) {
         unsigned short char_width_bytes;
         unsigned short char_height;
         unsigned short char_pixel_width;
-        unsigned short bx;
         unsigned char *src;
         unsigned short i, j, k;
 
@@ -247,8 +246,6 @@ font_draw_text(char *str, unsigned short x, unsigned short y) {
         char_height = font_height;
         char_y = *(unsigned short *)(fontdef + 10);
         src = fontdef + char_ptr;
-        bx = char_y << 1;
-        (void)bx;
 
         for (i = 0; i < char_height; i++) {
             unsigned short di = lineofs[char_y + i] + char_x;

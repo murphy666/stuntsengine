@@ -36,16 +36,16 @@
 #include "ui_widgets.h"
 
 /* Variables moved from data_game.c */
-static unsigned char game_security_flag = 0;
-static unsigned char sprite_render_state = 0;
+static unsigned char track_start_row = 0;
+static unsigned char track_start_col = 0;
 
 /* Variables moved from data_game.c (private to this translation unit) */
-static unsigned short boundary_check_limits = 1;
+static unsigned short bevel_highlight_color = 1;
 static unsigned char lap_checkpoint_counter = 0;
-static unsigned short obstacle_collision_table = 12;
+static unsigned short cursor_outline_color = 12;
 static unsigned char *pboxshape = 0;
-static unsigned short segment_height_lookup = 9;
-static unsigned short track_curve_data = 11;
+static unsigned short bevel_shadow_color = 9;
+static unsigned short bevel_face_color = 11;
 
 
 /* file-local data (moved from data_global.c) */
@@ -1656,8 +1656,8 @@ load_tracks_menu_shapes(void) {
     last_scroll_y = TRACK_U8_INVALID; /* Initialize to invalid value to force first update */
     last_named_element = 0;
     validation_result = 0;
-    cursor_col = sprite_render_state; /* Start cursor X */
-    cursor_row = game_security_flag;  /* Start cursor Y */
+    cursor_col = track_start_col; /* Start cursor X */
+    cursor_row = track_start_row;  /* Start cursor Y */
     picker_row = 7;
     cursor_blink_toggle = false;
     blink_timer = TRACK_CURSOR_BLINK_START;
@@ -1683,10 +1683,10 @@ load_tracks_menu_shapes(void) {
                 button_shadow_color, button_highlight_color, 0);
 
     /* Draw line decorations */
-    draw_beveled_border(5, 0, 206, 190, track_curve_data, segment_height_lookup,
-                        boundary_check_limits);
-    draw_beveled_border(217, 32, 102, 158, track_curve_data, segment_height_lookup,
-                        boundary_check_limits);
+    draw_beveled_border(5, 0, 206, 190, bevel_face_color, bevel_shadow_color,
+                        bevel_highlight_color);
+    draw_beveled_border(217, 32, 102, 158, bevel_face_color, bevel_shadow_color,
+                        bevel_highlight_color);
 
     /* Draw SCENERY button */
     draw_button(locate_text_res(tedit_res, "bsc"), 221, 140, 94, 14, button_text_color,
@@ -2090,7 +2090,7 @@ load_tracks_menu_shapes(void) {
                         cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
                         (unsigned short)(cursor_screen_x + cursor_draw_width),
                         (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
-                        obstacle_collision_table);
+                        cursor_outline_color);
                 }
 
                 mouse_draw_transparent_check();
@@ -2300,7 +2300,7 @@ load_tracks_menu_shapes(void) {
                 sprite_draw_rect_outline(cursor_screen_x, (unsigned short)(cursor_screen_y - 1),
                                          (unsigned short)(cursor_screen_x + cursor_draw_width),
                                          (unsigned short)(cursor_screen_y + cursor_draw_height - 1),
-                                         obstacle_collision_table);
+                                         cursor_outline_color);
             }
 
             mouse_draw_transparent_check();
@@ -2360,8 +2360,8 @@ load_tracks_menu_shapes(void) {
             if (si > 1) {
                 picker_mode = 0;
                 if (track_pieces_counter == 0) {
-                    cursor_col = sprite_render_state;
-                    cursor_row = game_security_flag;
+                    cursor_col = track_start_col;
+                    cursor_row = track_start_row;
                 }
                 else {
                     cursor_col = ((unsigned char *)path_col)[0];
@@ -2729,8 +2729,8 @@ load_tracks_menu_shapes(void) {
                             file_read_fatal(g_path_buf, (char *)track_elem_map);
                             track_setup();
                             picker_mode = 0;
-                            cursor_row = game_security_flag;
-                            cursor_col = sprite_render_state;
+                            cursor_row = track_start_row;
+                            cursor_col = track_start_col;
                             track_modified = false;
                             redraw_map = true;
                         }
@@ -2977,8 +2977,8 @@ track_setup_error_return(unsigned char trackErrorCode, unsigned char trkColIndex
         trkRowIndex = 0;
     else if (trkRowIndex == TRACK_SIZE)
         trkRowIndex = TRACK_LAST_INDEX;
-    sprite_render_state = trkColIndex;
-    game_security_flag = trkRowIndex;
+    track_start_col = trkColIndex;
+    track_start_row = trkRowIndex;
     mmgr_release((char *)tcompArr);
     return (signed char)trackErrorCode;
 }
@@ -3741,8 +3741,8 @@ track_setup(void) {
     }
 
     /* Set error position variables */
-    sprite_render_state = startcol2;
-    game_security_flag = startrow2;
+    track_start_col = startcol2;
+    track_start_row = startrow2;
 
     /* Compute checkpoint limit = min(track_pieces_counter / 3, 64) */
     si = track_pieces_counter / 3;

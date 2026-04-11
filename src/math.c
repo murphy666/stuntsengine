@@ -43,10 +43,6 @@ static unsigned short f36f40_whlData = 9999;
 static unsigned short sine_lookup_cache_key = 9999;
 
 
-/** @brief Data.
- * @param end Parameter `end`.
- * @return Function result.
- */
 /* file-local data (moved from data_global.c) */
 
 /** @brief Sift-down a node in a min-heap to restore heap order.
@@ -90,9 +86,8 @@ heapify(int *heap, int *data, int start, int end) {
 /** @brief Sort parallel key/data arrays in ascending order via heapsort.
  *
  * @param n     Number of elements.
-/** @brief Array.
- * @param data Parameter `data`.
- * @return Function result.
+ * @param heap  Key array used for ordering.
+ * @param data  Satellite data array reordered alongside keys.
  */
 void
 heapsort_by_order(int n, int *heap, int *data) {
@@ -192,9 +187,8 @@ static unsigned char atantable[258]
 
 /** @brief Fast sine lookup using the pre-computed table.
  *
-/** @brief Unit.
- * @param s Parameter `s`.
- * @return Function result.
+ * @param s  Angle in the engine's fixed-point unit.
+ * @return Sine value in 14-bit fixed point.
  */
 short
 sin_fast(unsigned short s) {
@@ -212,10 +206,6 @@ sin_fast(unsigned short s) {
     return 0;
 }
 
-/** @brief Lookup.
- * @param s Parameter `s`.
- * @return Function result.
- */
 /** @brief Fast cosine lookup (delegates to sin_fast with a quarter-turn offset).
  *
  * @param s  Angle in the engine's fixed-point unit.
@@ -226,10 +216,6 @@ cos_fast(unsigned short s) {
     return sin_fast(s + ANGLE_QUADRANT);
 }
 
-/** @brief Angle.
- * @param y Parameter `y`.
- * @return Function result.
- */
 /** @brief Compute the polar angle (atan2-equivalent) of a 2-D vector.
  *
  * @param z  Horizontal component.
@@ -294,10 +280,6 @@ polarAngle(int z, int y) {
     return result;
 }
 
-/** @brief Radius.
- * @param y Parameter `y`.
- * @return Function result.
- */
 /** @brief Compute the 2-D polar radius (magnitude) of a vector.
  *
  * @param z  Horizontal component.
@@ -332,10 +314,6 @@ polarRadius2D(int z, int y) {
     }
 }
 
-/** @brief Radius.
- * @param vec Parameter `vec`.
- * @return Function result.
- */
 /** @brief Compute the 3-D polar radius (magnitude) of a vector.
  *
  * @param vec  Pointer to the input vector.
@@ -346,10 +324,6 @@ polarRadius3D(struct VECTOR *vec) {
     return polarRadius2D(polarRadius2D(vec->x, vec->y), vec->z);
 }
 
-/** @brief Rectangle.
- * @param pt Parameter `pt`.
- * @return Function result.
- */
 /** @brief Classify a point relative to the selection rectangle (Cohen-Sutherland style).
  *
  * @param pt  Pointer to the point to test.
@@ -372,10 +346,6 @@ rect_compare_point(struct POINT2D *pt) {
     return flag;
 }
 
-/** @brief Matrix.
- * @param outvec Parameter `outvec`.
- * @return Function result.
- */
 /** @brief Multiply a vector by a matrix (outvec = mat * invec).
  *
  * Zero-element short-circuit avoids unnecessary multiplications.
@@ -423,10 +393,6 @@ mat_mul_vector(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec) 
         outvec->z = (short)(outvec->z + (((long)mat->m._33 * invec->z) >> FIXED_POINT_SHIFT));
 }
 
-/** @brief Matrix.
- * @param outvec Parameter `outvec`.
- * @return Function result.
- */
 /** @brief Multiply a vector by a matrix (safe copy variant).
  *
  * Copies the matrix first so that mat and outvec may alias.
@@ -442,10 +408,6 @@ mat_mul_vector2(struct VECTOR *invec, struct MATRIX *mat, struct VECTOR *outvec)
     mat_mul_vector(invec, &tmpmat, outvec);
 }
 
-/** @brief Matrices.
- * @param outmat Parameter `outmat`.
- * @return Function result.
- */
 /** @brief Multiply two 3x3 matrices (outmat = rmat * lmat).
  *
  * @param rmat    Right-hand matrix.
@@ -486,10 +448,6 @@ mat_multiply(struct MATRIX *rmat, struct MATRIX *lmat, struct MATRIX *outmat) {
     }
 }
 
-/** @brief Transpose.
- * @param outmat Parameter `outmat`.
- * @return Function result.
- */
 /** @brief Transpose (invert) an orthonormal 3x3 matrix.
  *
  * Supports in-place operation when inmat == outmat.
@@ -659,10 +617,6 @@ rect_adjust_from_point(struct POINT2D *pt, struct RECTANGLE *rc) {
     }
 }
 
-/** @brief Union.
- * @param outrc Parameter `outrc`.
- * @return Function result.
- */
 /** @brief Compute the union (bounding box) of two rectangles.
  *
  * @param r1     First rectangle.
@@ -708,10 +662,9 @@ rect_union(struct RECTANGLE *r1, struct RECTANGLE *r2, struct RECTANGLE *outrc) 
 
 /** @brief Clip r1 to the intersection with r2.
  *
-/** @brief Clip.
- * @param unchanged Parameter `unchanged`.
- * @param r2 Parameter `r2`.
- * @return Function result.
+ * @param r1  Rectangle to clip in place.
+ * @param r2  Clipping boundary.
+ * @return 1 if the result is empty, 0 otherwise.
  */
 int
 rect_intersect(struct RECTANGLE *r1, struct RECTANGLE *r2) {
@@ -798,11 +751,6 @@ rect_is_overlapping(struct RECTANGLE *r1, struct RECTANGLE *r2) {
     return 1;
 }
 
-/** @brief Adjacent.
- * @param adjacent Parameter `adjacent`.
- * @param r2 Parameter `r2`.
- * @return Function result.
- */
 /** @brief Test whether two rectangles are adjacent (share an edge).
  *
  * @param r1  First rectangle.
@@ -975,10 +923,7 @@ rectlist_add_rect(char *rect_count_ptr, struct RECTANGLE *rect_array_ptr, struct
 
 /** @brief Add dirty rectangles from paired rect arrays into a rect-list.
  *
- * @param rect_count               Number of entries in the input arrays.
-/** @brief Source.
- * @param rect_array_ptr Parameter `rect_array_ptr`.
- * @return Function result.
+ * @param rect_count  Number of entries in the input arrays.
  */
 void
 rectlist_add_rects(char rect_count, char *rect_source_flags, struct RECTANGLE *rect_array_a,
@@ -1071,9 +1016,7 @@ rect_array_sort_by_top(char array_length, struct RECTANGLE *rect_array, short *a
 /** @brief Classify a 3-D vector into one of 32 discrete direction buckets.
  *
  * @param vec  Pointer to the input vector.
-/** @brief Index.
- * @param vec Parameter `vec`.
- * @return Function result.
+ * @return Direction bucket index (0-31).
  */
 int
 vector_direction_bucket32(struct VECTOR *vec) {
@@ -1144,16 +1087,15 @@ vector_direction_bucket32(struct VECTOR *vec) {
 
 /** @brief Project a 3-D vector to a 2-D screen point using perspective projection.
  *
-/** @brief Position.
- * @param outpt Parameter `outpt`.
- * @return Function result.
+ * @param vec    Input 3-D vector.
+ * @param outpt  Output 2-D screen point.
  */
 void
 vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     unsigned short z;
     unsigned long proj;
-    unsigned short ax;
-    unsigned short bx;
+    unsigned short proj_lo;
+    unsigned short proj_hi;
     short value;
     int sum;
 
@@ -1168,14 +1110,14 @@ vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     if (vec->x >= 0) {
         proj = (unsigned long)(unsigned short)vec->x
                * (unsigned long)(unsigned short)projectiondata9;
-        ax = (unsigned short)proj;
-        bx = (unsigned short)(proj >> 16);
-        bx = (unsigned short)(bx << 1);
-        if ((short)ax < 0) {
-            bx++;
+        proj_lo = (unsigned short)proj;
+        proj_hi = (unsigned short)(proj >> 16);
+        proj_hi = (unsigned short)(proj_hi << 1);
+        if ((short)proj_lo < 0) {
+            proj_hi++;
         }
 
-        if (z <= bx) {
+        if (z <= proj_hi) {
             outpt->px = PROJECTED_CLAMP_MIN;
         }
         else {
@@ -1198,14 +1140,14 @@ vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     else {
         proj = (unsigned long)(unsigned short)(-vec->x)
                * (unsigned long)(unsigned short)projectiondata9;
-        ax = (unsigned short)proj;
-        bx = (unsigned short)(proj >> 16);
-        bx = (unsigned short)(bx << 1);
-        if ((short)ax < 0) {
-            bx++;
+        proj_lo = (unsigned short)proj;
+        proj_hi = (unsigned short)(proj >> 16);
+        proj_hi = (unsigned short)(proj_hi << 1);
+        if ((short)proj_lo < 0) {
+            proj_hi++;
         }
 
-        if (z <= bx) {
+        if (z <= proj_hi) {
             outpt->px = PROJECTED_CLAMP_MAX;
         }
         else {
@@ -1230,14 +1172,14 @@ vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     if (vec->y >= 0) {
         proj = (unsigned long)(unsigned short)vec->y
                * (unsigned long)(unsigned short)projectiondata10;
-        ax = (unsigned short)proj;
-        bx = (unsigned short)(proj >> 16);
-        bx = (unsigned short)(bx << 1);
-        if ((short)ax < 0) {
-            bx++;
+        proj_lo = (unsigned short)proj;
+        proj_hi = (unsigned short)(proj >> 16);
+        proj_hi = (unsigned short)(proj_hi << 1);
+        if ((short)proj_lo < 0) {
+            proj_hi++;
         }
 
-        if (z <= bx) {
+        if (z <= proj_hi) {
             outpt->py = PROJECTED_CLAMP_MAX;
         }
         else {
@@ -1261,14 +1203,14 @@ vector_to_point(struct VECTOR *vec, struct POINT2D *outpt) {
     else {
         proj = (unsigned long)(unsigned short)(-vec->y)
                * (unsigned long)(unsigned short)projectiondata10;
-        ax = (unsigned short)proj;
-        bx = (unsigned short)(proj >> 16);
-        bx = (unsigned short)(bx << 1);
-        if ((short)ax < 0) {
-            bx++;
+        proj_lo = (unsigned short)proj;
+        proj_hi = (unsigned short)(proj >> 16);
+        proj_hi = (unsigned short)(proj_hi << 1);
+        if ((short)proj_lo < 0) {
+            proj_hi++;
         }
 
-        if (z <= bx) {
+        if (z <= proj_hi) {
             outpt->py = PROJECTED_CLAMP_MIN;
         }
         else {
@@ -1329,13 +1271,6 @@ multiply_and_scale(short a1, short a2) {
 }
 
 
-/** @brief Of.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @param normal Parameter `normal`.
- * @param normal Parameter `normal`.
- * @return Function result.
- */
 /** @brief Compute the dot product of (x,y,z) with a plane normal, scaled down.
  *
  * @param x       X component.
@@ -1356,9 +1291,7 @@ vec_normalInnerProduct(int x, int y, int z, struct VECTOR *normal) {
  * @param x              World X coordinate.
  * @param y              World Y coordinate.
  * @param z              World Z coordinate.
-/** @brief Distance.
- * @param z Parameter `z`.
- * @return Function result.
+ * @return Signed distance to the plane.
  */
 int
 plane_get_collision_point(int plane_index, int x, int y, int z) {
@@ -1401,31 +1334,31 @@ plane_apply_rotation_matrix(void) {
     struct MATRIX inv_rotation;
     struct MATRIX plane_rot_copy;
     struct VECTOR transformed_vec;
-    int si;
+    int yaw_offset;
 
     if (planindex_copy != -1) {
         plane = &planptr[planindex_copy];
         if (plane->plane_xy == pState_minusRotate_x_2
             && plane->plane_yz == pState_minusRotate_z_2) {
-            si = pState_minusRotate_y_2;
+            yaw_offset = pState_minusRotate_y_2;
         }
         else {
             mat_mul_vector(&vec_movement_local, &mat_car_orientation, &transformed_vec);
             plane_rot_copy = plane->plane_rotation;
             mat_invert(&plane_rot_copy, &inv_rotation);
             mat_mul_vector(&transformed_vec, &inv_rotation, &rotated_vec);
-            si = polarAngle(-rotated_vec.x, rotated_vec.z);
+            yaw_offset = polarAngle(-rotated_vec.x, rotated_vec.z);
         }
 
-        si += pState_f36Mminf40sar2;
-        if (si == 0) {
+        yaw_offset += pState_f36Mminf40sar2;
+        if (yaw_offset == 0) {
             mat_mul_vector2(&vec_movement_local, &plane->plane_rotation, &vec_planerotopresult);
             return;
         }
 
-        if (sine_lookup_cache_key != si) {
-            mat_rot_y(&mat_planetmp, -si);
-            sine_lookup_cache_key = si;
+        if (sine_lookup_cache_key != yaw_offset) {
+            mat_rot_y(&mat_planetmp, -yaw_offset);
+            sine_lookup_cache_key = yaw_offset;
         }
 
         mat_mul_vector(&vec_movement_local, &mat_planetmp, &rotated_vec);
@@ -1447,12 +1380,6 @@ plane_apply_rotation_matrix(void) {
     mat_mul_vector(&rotated_vec, &mat_car_orientation, &vec_planerotopresult);
 }
 
-/**
-/** @brief Parse shape2d helper.
- * @param low Parameter `low`.
- * @param high Parameter `high`.
- * @return Function result.
- */
 unsigned long
 parse_shape2d_helper(unsigned int low, unsigned int high) {
     unsigned long result;
@@ -1460,12 +1387,6 @@ parse_shape2d_helper(unsigned int low, unsigned int high) {
     return result;
 }
 
-/**
-/** @brief Parse shape2d helper2.
- * @param low Parameter `low`.
- * @param high Parameter `high`.
- * @return Function result.
- */
 unsigned long
 parse_shape2d_helper2(unsigned int low, unsigned int high) {
     unsigned long combined;
@@ -1480,12 +1401,6 @@ parse_shape2d_helper2(unsigned int low, unsigned int high) {
     return ((unsigned long)shifted << 16) | remainder;
 }
 
-/**
-/** @brief Equal.
- * @param stub Parameter `stub`.
- * @param compare_ds_ss Parameter `compare_ds_ss`.
- * @return Function result.
- */
 int
 compare_ds_ss(void) {
     return 1;
@@ -1532,10 +1447,7 @@ mul_by_proj_data10(unsigned int arg) {
  *
  * @param multiplicand  Multiplicand.
  * @param divisor  Divisor.
-/** @brief Mul div proj data10.
- * @param multiplicand Parameter `multiplicand`.
- * @param divisor Parameter `divisor`.
- * @return Function result.
+ * @return Scaled quotient.
  */
 unsigned int
 mul_div_proj_data10(unsigned int multiplicand, unsigned int divisor) {

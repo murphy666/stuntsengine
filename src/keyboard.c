@@ -134,8 +134,6 @@ static unsigned short g_last_read_or_joy_flags = 0;
 unsigned short kb_parse_key(unsigned short key);
 
 /** @brief Translate an SDL scancode to the engine key-state index.
- * @param sc Parameter `sc`.
- * @return Function result.
  */
 static unsigned char
 kb_translate_scancode(SDL_Scancode sc) {
@@ -296,9 +294,6 @@ kb_translate_scancode(SDL_Scancode sc) {
 }
 
 /** @brief Translate an SDL key press into the engine's ASCII byte.
- * @param key Parameter `key`.
- * @param mod Parameter `mod`.
- * @return Function result.
  */
 static unsigned char
 kb_translate_ascii(SDL_Keycode key, Uint16 mod) {
@@ -358,7 +353,6 @@ kb_input_flags_to_keycode(unsigned short input_flags) {
 }
 
 /** @brief Push a key event into the buffered input queue.
- * @param key Parameter `key`.
  */
 static void
 kb_queue_push(unsigned short key) {
@@ -371,7 +365,6 @@ kb_queue_push(unsigned short key) {
 }
 
 /** @brief Pop the next buffered input keycode.
- * @return Function result.
  */
 static unsigned short
 kb_queue_pop(void) {
@@ -386,16 +379,12 @@ kb_queue_pop(void) {
 }
 
 /** @brief Requeue a keycode for later processing.
- * @param key Parameter `key`.
  */
 void
 kb_requeue_key(unsigned short key) {
     kb_queue_push(key);
 }
 
-/** @brief Kb has pending input.
- * @return Function result.
- */
 static int
 kb_has_pending_input(void) {
     return (g_input_backend.queue.head != g_input_backend.queue.tail) ? 1 : 0;
@@ -517,8 +506,6 @@ kb_exit_handler(void) {
 }
 
 /** @brief Return pressed-state information for a DOS scancode.
- * @param key Parameter `key`.
- * @return Function result.
  */
 int
 kb_get_key_state(int key) {
@@ -530,7 +517,6 @@ kb_get_key_state(int key) {
 }
 
 /** @brief Invoke the installed read-char callback, if present.
- * @return Function result.
  */
 int
 kb_call_readchar_callback(void) {
@@ -541,7 +527,6 @@ kb_call_readchar_callback(void) {
 }
 
 /** @brief Read one key code from SDL queue or DOS callback fallback.
- * @return Function result.
  */
 int
 kb_read_char(void) {
@@ -557,7 +542,6 @@ kb_read_char(void) {
 }
 
 /** @brief Check whether keyboard input is currently available.
- * @return Function result.
  */
 int
 kb_checking(void) {
@@ -589,7 +573,6 @@ kb_shift_checking2(void) {
 }
 
 /** @brief Return a non-zero value when a key event is pending.
- * @return Function result.
  */
 int
 kb_check(void) {
@@ -640,9 +623,6 @@ joystick_init_calibration(void) {
  * joystick_direction_lookup - Joystick direction lookup
  * 
  * Parameters:
-/** @brief Flags.
- * @param joy_flags Parameter `joy_flags`.
- * @return Function result.
  */
 short
 joystick_direction_lookup(unsigned short joy_flags) {
@@ -653,21 +633,19 @@ joystick_direction_lookup(unsigned short joy_flags) {
  * joystick_get_scaled_x - Calculate joystick X axis position
  * 
  * Returns scaled joystick X position based on calibration.
-/** @brief Joystick get scaled x.
- * @return Function result.
  */
 short
 joystick_get_scaled_x(void) {
-    short ax;
+    short scaled_x;
     unsigned long result;
 
-    ax = (short)g_joystick_calibration.raw_x - g_joystick_calibration.neutral_x;
-    if (ax < 0)
-        ax = 0;
+    scaled_x = (short)g_joystick_calibration.raw_x - g_joystick_calibration.neutral_x;
+    if (scaled_x < 0)
+        scaled_x = 0;
 
-    result = (unsigned long)ax * g_joystick_calibration.x_scale;
-    ax = (short)(result >> KB_JOYSTICK_SCALE_SHIFT);
-    return (short)ax - KB_JOYSTICK_SCALED_CENTER;
+    result = (unsigned long)scaled_x * g_joystick_calibration.x_scale;
+    scaled_x = (short)(result >> KB_JOYSTICK_SCALE_SHIFT);
+    return (short)scaled_x - KB_JOYSTICK_SCALED_CENTER;
 }
 
 /* Keyboard scan code and input globals */
@@ -679,8 +657,6 @@ joystick_get_scaled_x(void) {
  * a bitmask of active inputs. If no keyboard input, checks joystick.
  * 
  * Bit flags:
-/** @brief Get kb or joy flags.
- * @return Function result.
  */
 short
 get_kb_or_joy_flags(void) {
@@ -708,8 +684,6 @@ get_kb_or_joy_flags(void) {
  * kb_get_char - Read a key from BIOS and update key state
  *
  * Returns 0 if no key is available; otherwise returns AX from BIOS
-/** @brief Kb get char.
- * @return Function result.
  */
 int
 kb_get_char(void) {
@@ -729,9 +703,6 @@ kb_get_char(void) {
  * get_joy_flags - Poll joystick port and compute calibrated flags
  *
  * Returns a bitmask of joystick state using the original calibration logic:
-/** @brief Port.
- * @param get_joy_flags Parameter `get_joy_flags`.
- * @return Function result.
  */
 short
 get_joy_flags(void) {
@@ -779,10 +750,6 @@ get_joy_flags(void) {
  * kb_set_callback_flag - Internal helper to set callback flag for a key
  * 
  * Sets the callback index for the given key scancode.
-/** @brief Callbackflags.
- * @param zero Parameter `zero`.
- * @param slot_index Parameter `slot_index`.
- * @return Function result.
  */
 static void
 kb_set_callback_flag(unsigned short key, unsigned char slot_index) {
