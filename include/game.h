@@ -192,14 +192,6 @@ int get_super_random(void);
 
 /* Global state — defined in src/gamemech.c */
 
-#ifdef GAME_IMPL
-#define _GAME_
-#else
-#define _GAME_ extern
-#endif
-
-_GAME_ void *g_dast_shape_ptr;
-
-#undef _GAME_
+extern void *g_dast_shape_ptr;
 
 #endif /* GAME_H */

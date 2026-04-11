@@ -21,7 +21,6 @@
  */
 
 /* font.c — Font rendering extracted from stunts.c */
-#define FONT_IMPL
 #include "stunts.h"
 #include "shape2d.h"
 #include "font.h"

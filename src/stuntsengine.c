@@ -347,7 +347,45 @@ enum {
     STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX = 228,
     STN_REPLAY_PAUSE_SLOW_SPEED_THRESHOLD = 1280,
     STN_REPLAY_RESTORE_ROTATION = 500,
-    STN_REPLAY_RENDER_LAG_MAX = 2
+    STN_REPLAY_RENDER_LAG_MAX = 2,
+
+    /* Exit handler table */
+    STN_EXIT_HANDLER_SLOTS = 10,
+    STN_EXIT_HANDLER_ARRAY_SIZE = 11,
+
+    /* Persist config magic */
+    STN_PERSIST_MAGIC_LEN = 8,
+
+    /* init_trackdata buffer strides */
+    STN_TRACKDATA_OBS_ROT_SIZE = 96,
+    STN_TRACKDATA_WAYPOINT_POS_SIZE = 384,
+    STN_TRACKDATA_OBS_WORLD_POS_SIZE = 288,
+    STN_TRACKDATA_HIGHSCORE_SIZE = 364,
+    STN_TRACKDATA_WINDOW_SAVE_SIZE = 240,
+    STN_TRACKDATA_REPLAY_HEADER_SIZE = 26,
+    STN_TRACKDATA_REPLAY_BUF_SIZE = 12000,
+    STN_TRACKDATA_TRACK_APPEND_SIZE = 1964,
+
+    /* Car physics */
+    STN_CAR_INITIAL_Y_OFFSET = 512,
+    STN_CAR_GRIP_INITIAL = 1000,
+    STN_CAR_POS_TO_WHEEL_SHIFT = 6,
+    STN_GEAR_RATIO_SHIFT = 8,
+    STN_AERO_TABLE_SIZE = 64,
+    STN_AERO_DRAG_SHIFT = 9,
+
+    /* Sprite/video */
+    STN_BLIT_TRANSITION_REPEATS = 8,
+    STN_BLIT_MODE_IMMEDIATE = 65534,
+    STN_SPRITE_WND_MEMORY_BUDGET = 64000,
+    STN_TIMING_CLIP_HEIGHT = 120,
+
+    /* FPS fallback */
+    STN_FPS_FALLBACK = 20,
+
+    /* Opponent track init */
+    STN_OPPONENT_START_OFFSET = 302,
+    STN_OPPONENT_SPAWN_X = 96000
 };
 
 
@@ -428,7 +466,7 @@ stn_persist_load(void) {
 
     (void)fclose(fp);
 
-    if (memcmp(cfg.magic, "STNCFG01", 8) != 0 || cfg.version != STN_PERSIST_VERSION) {
+    if (memcmp(cfg.magic, "STNCFG01", STN_PERSIST_MAGIC_LEN) != 0 || cfg.version != STN_PERSIST_VERSION) {
         return 0;
     }
 
@@ -454,7 +492,7 @@ stn_persist_save(void) {
 
     stn_persist_sanitize_runtime_state();
 
-    memcpy(cfg.magic, "STNCFG01", 8);
+    memcpy(cfg.magic, "STNCFG01", STN_PERSIST_MAGIC_LEN);
     cfg.version = STN_PERSIST_VERSION;
     cfg.gameconfig = gameconfig;
     memcpy(cfg.track_path, track_highscore_path_buffer, STN_PERSIST_PATH_LEN);
@@ -490,15 +528,11 @@ void
 add_exit_handler(exit_handler_func handler) {
     int i;
 
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < STN_EXIT_HANDLER_SLOTS; i++) {
         /* Check if already registered */
         if (exitlistfuncs[i] == handler) {
             return;
         }
-        /** @brief Slot.
- * @param exit_handler_func Parameter `exit_handler_func`.
- * @return Function result.
- */
         /* Check for empty slot (NULL pointer) */
         if (exitlistfuncs[i] == (exit_handler_func)0) {
             exitlistfuncs[i] = handler;
@@ -512,16 +546,12 @@ add_exit_handler(exit_handler_func handler) {
 
 /**
  * @brief Call all registered exit handlers
- * 
-/** @brief Order.
- * @param call_exitlist Parameter `call_exitlist`.
- * @return Function result.
  */
 void
 call_exitlist(void) {
     int i;
 
-    for (i = 10; i >= 0; i--) {
+    for (i = STN_EXIT_HANDLER_SLOTS; i >= 0; i--) {
         if (exitlistfuncs[i] != (exit_handler_func)0) {
             exitlistfuncs[i]();
         }
@@ -625,22 +655,22 @@ init_trackdata(void) {
     trkptr += STN_TRACKDATA_BLOCK_SMALL;
     obstacle_rot_z = (short *)trkptr;
 
-    trkptr += 96;
+    trkptr += STN_TRACKDATA_OBS_ROT_SIZE;
     waypoint_world_pos = (short *)trkptr;
 
-    trkptr += 384;
+    trkptr += STN_TRACKDATA_WAYPOINT_POS_SIZE;
     obstacle_world_pos = (short *)trkptr;
 
-    trkptr += 288;
+    trkptr += STN_TRACKDATA_OBS_WORLD_POS_SIZE;
     highscore_data = (char *)trkptr;
 
-    trkptr += 364;
+    trkptr += STN_TRACKDATA_HIGHSCORE_SIZE;
     window_save_buf = (char *)trkptr;
 
-    trkptr += 240;
+    trkptr += STN_TRACKDATA_WINDOW_SAVE_SIZE;
     replay_header = (char *)trkptr;
 
-    trkptr += 26;
+    trkptr += STN_TRACKDATA_REPLAY_HEADER_SIZE;
     track_elem_map = trkptr;
 
     trkptr += STN_TRACKDATA_BLOCK_PATH;
@@ -649,7 +679,7 @@ init_trackdata(void) {
     trkptr += STN_TRACKDATA_BLOCK_PATH;
     replay_buffer = (char *)trkptr;
 
-    trkptr += 12000;
+    trkptr += STN_TRACKDATA_REPLAY_BUF_SIZE;
     track_elem_ordered = (char *)trkptr;
 
     trkptr += STN_TRACKDATA_BLOCK_PATH;
@@ -661,13 +691,13 @@ init_trackdata(void) {
     trkptr += STN_TRACKDATA_BLOCK_PATH;
     track_file_append = (char *)trkptr;
 
-    trkptr += 1964;
+    trkptr += STN_TRACKDATA_TRACK_APPEND_SIZE;
     path_col = (char *)trkptr;
 
     trkptr += STN_TRACKDATA_BLOCK_PATH;
     path_row = (char *)trkptr;
 
-    trkptr += 901;
+    trkptr += STN_TRACKDATA_BLOCK_PATH;
     obstacle_scene_index = trkptr;
 
 }
@@ -707,7 +737,7 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
 
     playerstate->car_posWorld1.lx = (int)posX;
     playerstate->car_posWorld2.lx = (int)posX;
-    playerstate->car_posWorld1.ly = (int)posY + 512;
+    playerstate->car_posWorld1.ly = (int)posY + STN_CAR_INITIAL_Y_OFFSET;
     playerstate->car_posWorld2.ly = (int)posY;
     playerstate->car_posWorld1.lz = (int)posZ;
     playerstate->car_posWorld2.lz = (int)posZ;
@@ -729,7 +759,7 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_speed2 = 0;
     playerstate->car_lastspeed = 0;
     playerstate->car_gearratio = simd->gear_ratios[1];
-    playerstate->car_gearratioshr8 = playerstate->car_gearratio >> 8;
+    playerstate->car_gearratioshr8 = playerstate->car_gearratio >> STN_GEAR_RATIO_SHIFT;
     playerstate->car_gearknob_cur_x = simd->knob_points[1].px;
     playerstate->car_gearknob_target_x = playerstate->car_gearknob_cur_x;
     playerstate->car_gearknob_cur_y = simd->knob_points[1].py;
@@ -743,11 +773,11 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
     playerstate->car_sumSurfRearWheels = 2;
     playerstate->car_sumSurfAllWheels = 4;
     playerstate->car_demandedGrip = 0;
-    playerstate->car_surfacegrip_sum = 1000;
+    playerstate->car_surfacegrip_sum = STN_CAR_GRIP_INITIAL;
 
-    whlPos.x = (short)posX / 64;
-    whlPos.y = (short)posY / 64;
-    whlPos.z = (short)posZ / 64;
+    whlPos.x = (short)posX / (1 << STN_CAR_POS_TO_WHEEL_SHIFT);
+    whlPos.y = (short)posY / (1 << STN_CAR_POS_TO_WHEEL_SHIFT);
+    whlPos.z = (short)posZ / (1 << STN_CAR_POS_TO_WHEEL_SHIFT);
 
     for (i = 0; i < 4; ++i) {
         playerstate->car_surfaceWhl[i] = 1;
@@ -774,11 +804,6 @@ init_carstate_from_simd(struct CARSTATE *playerstate, struct SIMD *simd, char tr
 }
 
 /** @brief Initialize or reset the full game state
-/** @brief Mode.
- * @param init Parameter `init`.
- * @param init Parameter `init`.
- * @param arg Parameter `arg`.
- * @return Function result.
  */
 void
 init_game_state(short arg) {
@@ -1033,10 +1058,10 @@ update_gamestate() {
             if (game_pause_counter == STN_REPLAY_PAUSE_STATE_RECOVERING) {
                 if (multiply_and_scale(cos_fast(track_angle),
                                        (short)trackcenterpos[startrow2]
-                                           - (state.playerstate.car_posWorld1.lz >> 6))
+                                           - (state.playerstate.car_posWorld1.lz >> STN_WORLD_SCALE_SHIFT))
                         + multiply_and_scale(sin_fast(track_angle),
                                              (short)trackcenterpos2[startcol2]
-                                                 - (state.playerstate.car_posWorld1.lx >> 6))
+                                                 - (state.playerstate.car_posWorld1.lx >> STN_WORLD_SCALE_SHIFT))
                     <= STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX) {
                     if (state.playerstate.car_speed != 0) {
                         update_player_car_state(2);
@@ -1248,7 +1273,7 @@ format_frame_as_string(char *dest, unsigned short frames, unsigned short showFra
 
     fps = framespersec;
     if (fps == 0) {
-        fps = 20;
+        fps = STN_FPS_FALLBACK;
     }
 
     framesPerMinute = (unsigned short)(60 * fps);
@@ -1348,18 +1373,13 @@ input_repeat_check(unsigned short timeout) {
 
 /** @brief Blit sprite to screen with dithered transition animation
  * @param sprite Sprite to display
-/** @brief Mode.
- * @param immediate Parameter `immediate`.
- * @param interrupted Parameter `interrupted`.
- * @param mode Parameter `mode`.
- * @return Function result.
  */
 unsigned short
 sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) {
     short i;
     unsigned short delta;
     unsigned short input;
-    const unsigned short transition_present_repeats = 8;
+    const unsigned short transition_present_repeats = STN_BLIT_TRANSITION_REPEATS;
     if (sprite == 0 || sprite->sprite_bitmapptr == 0) {
         return 0;
     }
@@ -1367,7 +1387,7 @@ sprite_blit_to_video(struct SPRITE *sprite, unsigned short mode) {
     sprite_copy_2_to_1();
     mouse_draw_opaque_check();
 
-    if (mode == 65534) {
+    if (mode == STN_BLIT_MODE_IMMEDIATE) {
         sprite_putimage(sprite->sprite_bitmapptr);
         mouse_draw_transparent_check();
         video_refresh();
@@ -1589,11 +1609,6 @@ do_dea_textres(void) {
 }
 
 /** @brief Read a file with disk error retry support
-/** @brief Code.
- * @param retry Parameter `retry`.
- * @param data Parameter `data`.
- * @param buffer Parameter `buffer`.
- * @return Function result.
  */
 void *
 file_read_with_mode(unsigned short op, const char *filename, void *buffer) {
@@ -1678,8 +1693,8 @@ setup_aero_trackdata(void *carresptr, int is_opponent) {
         // Maximum speed is 40h
         // Division by 2^9.
         // 2^8 shifts one fullbyte, and it is known there is a 1/2 factor in FDrag.
-        for (i = 0; i < 64; i++) {
-            aero_table_player[i] = (short)((long)simd_player.aero_resistance * (long)i * (long)i) >> 9;
+        for (i = 0; i < STN_AERO_TABLE_SIZE; i++) {
+            aero_table_player[i] = (short)((long)simd_player.aero_resistance * (long)i * (long)i) >> STN_AERO_DRAG_SHIFT;
         }
 
         copy_string(gnam_string, locate_shape_alt(carresptr, "gnam"));
@@ -1691,9 +1706,9 @@ setup_aero_trackdata(void *carresptr, int is_opponent) {
         }
         simd_opponent_rt.aerorestable = (uintptr_t)aero_table_opponent;
 
-        for (i = 0; i < 64; i++) {
+        for (i = 0; i < STN_AERO_TABLE_SIZE; i++) {
             aero_table_opponent[i] = (short)((long)simd_opponent_rt.aero_resistance * (long)i * (long)i)
-                                     >> 9;
+                                     >> STN_AERO_DRAG_SHIFT;
         }
         copy_string(gsna_string, locate_shape_alt(carresptr, "gsna"));
     }
@@ -1770,9 +1785,9 @@ init_plantrak_(void) {
     opponent_speed_table[0] = STN_PLAN_SPEED_INIT;
 
     // Position and orientation setup for opponent car
-    posZ = ((long)(trackpos[28] + 302)) << 6;
+    posZ = ((long)(trackpos[STN_PLAN_START_ROW] + STN_OPPONENT_START_OFFSET)) << STN_CAR_POS_TO_WHEEL_SHIFT;
     posY = 0;
-    posX = 96000L;
+    posX = STN_OPPONENT_SPAWN_X;
     init_carstate_from_simd(&state.opponentstate, &simd_opponent_rt, 1, posX, posY, posZ, 0);
 
     idx = (unsigned short)state.opponentstate.car_waypoint_seq_index;
@@ -1867,7 +1882,7 @@ setup_player_cars(void) {
 
     if (!video_flag5_is0) {
 
-        sprite_window_memory_threshold = 64000 / (video_flag1_is1 * video_flag4_is1);
+        sprite_window_memory_threshold = STN_SPRITE_WND_MEMORY_BUDGET / (video_flag1_is1 * video_flag4_is1);
         if (mmgr_get_res_ofs_diff_scaled() <= sprite_window_memory_threshold) {
             return 1;
         }
@@ -1916,9 +1931,10 @@ run_game(void) {
     int prev_hud_limit;
     struct RECTANGLE dashboard_dirty_rect;
     int prev_roof_height;
-    int regsi;
+    int dialog_result;
+    int frame_tick;
     rect_windshield.left = 0;
-    rect_windshield.right = 320;
+    rect_windshield.right = STN_SCREEN_WIDTH;
     prev_roof_height = -1;
     timer_tick_counter = -1;
     prev_hud_limit = -1;
@@ -2044,14 +2060,14 @@ run_game(void) {
             if (checkpoint_lap_trigger) {
                 input_push_status();
                 audio_disable_flag2();
-                regsi = ui_dialog_confirm_restext(locate_text_res(gameresptr, "rbf"), 0);
-                if (regsi == -1)
-                    regsi = 0;
+                dialog_result = ui_dialog_confirm_restext(locate_text_res(gameresptr, "rbf"), 0);
+                if (dialog_result == -1)
+                    dialog_result = 0;
 
                 audio_enable_flag2();
                 game_startup_flag = false;
                 input_pop_status();
-                if (regsi != 0) {
+                if (dialog_result != 0) {
                     update_crash_state(4, 0);
                     game_finish_state = 1;
                 }
@@ -2253,7 +2269,7 @@ run_game(void) {
         if (video_flag5_is0) {
             mouse_draw_opaque_check();
             setup_mcgawnd2();
-            sprite_copy_rect_2_to_1(0, 0, 320, 200, 0);
+            sprite_copy_rect_2_to_1(0, 0, STN_SCREEN_WIDTH, STN_SCREEN_HEIGHT, 0);
             setup_mcgawnd1();
             mouse_draw_transparent_check();
         }
@@ -2267,15 +2283,15 @@ run_game(void) {
             ui_dialog_show_restext(3, 0, locate_text_res(gameresptr, "cop"), UI_DIALOG_AUTO_POS, 80,
                                    performGraphColor, dialog_coords, 0);
             lap_completion_trigger_flag = true;
-            regsi = framespersec;
-            regsi--;
+            frame_tick = framespersec;
+            frame_tick--;
 
             while (1) {
                 replay_capture_frame_input(1);
                 update_gamestate();
-                regsi++;
-                if (regsi == framespersec) {
-                    regsi = 0;
+                frame_tick++;
+                if (frame_tick == framespersec) {
+                    frame_tick = 0;
                     format_frame_as_string(resID_byte1, state.game_frame + elapsed_time1, 1);
                     mouse_draw_opaque_check();
                     sprite_draw_text_opaque(resID_byte1, font_get_centered_x(resID_byte1),
@@ -2328,10 +2344,6 @@ copy_material_list_pointers(void *clrlist, void *clrlist2, void *patlist, void *
  * @brief Load palette and mouse cursor sprites
  * 
  * Loads the "sdmain" resource file, extracts the palette and
-/** @brief Sprites.
- * @param smou Parameter `smou`.
- * @param load_palandcursor Parameter `load_palandcursor`.
- * @return Function result.
  */
 void
 load_palandcursor(void) {
@@ -2474,7 +2486,7 @@ init_main(int argc, char *argv[]) {
 
     sprite_copy_2_to_1_clear();
 
-    mouse_init(320, 200);
+    mouse_init(STN_SCREEN_WIDTH, STN_SCREEN_HEIGHT);
 
     // Audio driver.
     if (audio_load_driver(audiodriverstring, 0, 0)) {
@@ -2490,7 +2502,7 @@ init_main(int argc, char *argv[]) {
 
     // Timing measures.
     sprite_copy_2_to_1();
-    sprite_set_1_size(0, 320, 0, 120);
+    sprite_set_1_size(0, STN_SCREEN_WIDTH, 0, STN_TIMING_CLIP_HEIGHT);
 
     (void)timer_get_delta_alt();
     /*
@@ -2508,7 +2520,7 @@ init_main(int argc, char *argv[]) {
     timerdelta3 = 34;
 
     timertestflag = (timerdelta2 <= timerdelta1);
-    framespersec2 = (timerdelta3 >= 75) ? 10 : 20;
+    framespersec2 = (timerdelta3 >= 75) ? STN_FPS_DEFAULT : STN_FPS_FALLBACK;
 
     if (timerdelta3 < 35) {
         timertestflag2 = 0;
@@ -2547,7 +2559,7 @@ int
 main(int argc, char *argv[]) {
 
     int i, result;
-    int regsi;
+    int track_needs_load;
     bool start_in_replay_mode;
 
     //return stuntsmain_(argc, argv);
@@ -2582,12 +2594,12 @@ main(int argc, char *argv[]) {
     }
     video_set_scale_changed_cb(stn_persist_save);
 
-    regsi = 1;
+    track_needs_load = 1;
 
     while (1) {
         ensure_file_exists(2);
 
-        if (regsi != 0) {
+        if (track_needs_load != 0) {
             file_build_path(track_highscore_path_buffer, gameconfig.game_trackname, ".trk",
                             g_path_buf, sizeof(g_path_buf));
             file_read_fatal(g_path_buf, track_elem_map);
@@ -2602,7 +2614,7 @@ main(int argc, char *argv[]) {
 			 * Avoid immediate DOS exit on spurious early ESC during unstable
 			 * startup/input state; continue to menu flow instead.
 			 */
-            regsi = 0;
+            track_needs_load = 0;
             continue;
         }
 
@@ -2619,7 +2631,7 @@ main(int argc, char *argv[]) {
             result = (int)run_menu_();
             if (((unsigned char)result) == 255) {
                 audio_unload();
-                regsi = 0;
+                track_needs_load = 0;
                 break;
             }
             else if (!result) {
@@ -2695,7 +2707,7 @@ main(int argc, char *argv[]) {
             }
             else if (file_find("tedit.*") == 0) {
                 audio_unload();
-                regsi = 0;
+                track_needs_load = 0;
                 break;
             }
 
@@ -2746,7 +2758,7 @@ main(int argc, char *argv[]) {
 
             if (idle_expired != 0) {
                 stn_persist_save();
-                regsi = 0;
+                track_needs_load = 0;
                 break;
             }
         }
@@ -2754,10 +2766,6 @@ main(int argc, char *argv[]) {
 }
 
 
-/** @brief Functions.
- * @param fmt Parameter `fmt`.
- * @return Function result.
- */
 /* ── Utility functions (previously in utils.c) ───────────────────────────── */
 
 _Noreturn void
@@ -2772,12 +2780,6 @@ fatal_error(const char *fmt, ...) {
     abort();
 }
 
-/** @brief Stunts itoa.
- * @param value Parameter `value`.
- * @param str Parameter `str`.
- * @param radix Parameter `radix`.
- * @return Function result.
- */
 char *
 stunts_itoa(int value, char *str, int radix) {
     unsigned int uvalue, digit;
@@ -2810,9 +2812,6 @@ stunts_itoa(int value, char *str, int radix) {
     return str;
 }
 
-/** @brief Initialize kevinrandom.
- * @param seed Parameter `seed`.
- */
 void
 init_kevinrandom(const char *seed) {
     int i;
@@ -2820,9 +2819,6 @@ init_kevinrandom(const char *seed) {
         g_kevinrandom_seed[i] = (unsigned char)seed[i];
 }
 
-/** @brief Get kevinrandom seed.
- * @param seed Parameter `seed`.
- */
 void
 get_kevinrandom_seed(char *seed) {
     int i;
@@ -2858,18 +2854,12 @@ get_kevinrandom(void) {
     return g_kevinrandom_seed[0];
 }
 
-/** @brief Get super random.
- * @return Function result.
- */
 int
 get_super_random(void) {
     int val = rand() + get_kevinrandom() + (int)timer_get_counter() + gState_frame;
     return val < 0 ? -val : val;
 }
 
-/** @brief Random wait.
- * @return Function result.
- */
 int
 random_wait(void) {
     int i = (int)(unsigned char)aMisc_1[0];

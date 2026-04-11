@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "compat_fs.h"
-#define SHAPE2D_IMPL
 #include "stunts.h"
 #include "memmgr.h"
 #include "ressources.h"

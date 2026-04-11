@@ -23,7 +23,6 @@
 /* mouse.c — Mouse management extracted from stunts.c */
 #include <SDL3/SDL.h>
 #include <time.h>
-#define MOUSE_IMPL
 #include "stunts.h"
 #include "shape2d.h"
 #include "timer.h"

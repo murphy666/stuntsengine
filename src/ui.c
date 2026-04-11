@@ -79,10 +79,6 @@ static unsigned char window_stack_depth = 0;
 
 static unsigned char g_window_stack_save[WINDOW_STACK_MAX][sizeof(struct SPRITE) * 2];
 
-/** @brief Window stack get save ptr.
- * @param idx Parameter `idx`.
- * @return Function result.
- */
 static char *
 window_stack_get_save_ptr(unsigned short idx) {
     if (idx >= WINDOW_STACK_MAX) {
@@ -119,9 +115,6 @@ static unsigned short rl_cursor_pos;    /* menu_state_data - cursor position in 
  * Draws the current text buffer content and clears any 
  * remaining space up to the maximum width.
  /*--------------------------------------------------------------*/
-/** @brief Read line helper2.
- * @return Function result.
- */
 static void
 read_line_helper2(void) {
     unsigned short text_len;
@@ -177,10 +170,6 @@ read_line_helper2(void) {
  * read_line_helper - Draw/update cursor
  *
  * XOR draws the cursor at the current position if cursor is
-/** @brief Visible.
- * @param read_line_helper Parameter `read_line_helper`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 static void
 read_line_helper(void) {
@@ -224,11 +213,6 @@ read_line_helper(void) {
  * read_line - Interactive text input
  *
  * Displays an interactive text input field with cursor, supporting:
-/** @brief Keys.
- * @param x Parameter `x`.
- * @param timeout Parameter `timeout`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 unsigned short
 read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned short width,
@@ -438,10 +422,6 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
             continue;
         }
 
-        /** @brief Input.
- * @param key_code Parameter `key_code`.
- * @return Function result.
- */
         /* Printable character input (32-122) */
         if (key_code < 32 || key_code > 122) {
             first_key = 0;
@@ -501,13 +481,6 @@ read_line(char *buffer, unsigned char flags, unsigned short max_chars, unsigned 
  *   1 if window created successfully
  *   0 if insufficient memory
  /*--------------------------------------------------------------*/
-/** @brief Ui window push modal.
- * @param x1 Parameter `x1`.
- * @param y1 Parameter `y1`.
- * @param x2 Parameter `x2`.
- * @param y2 Parameter `y2`.
- * @return Function result.
- */
 unsigned char
 ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2) {
     struct SPRITE saved_sprites[2];
@@ -578,8 +551,6 @@ ui_window_push_modal(unsigned short x1, unsigned short y1, unsigned short x2, un
  * Closes the topmost modal window and restores the previous
  * screen state from the saved sprite buffer.
  /*--------------------------------------------------------------*/
-/** @brief Ui window pop modal.
- */
 void
 ui_window_pop_modal(void) {
     struct SPRITE saved_sprites[2];
@@ -633,12 +604,6 @@ ui_window_pop_modal(void) {
  *   fontptr - Pointer to font data
  *
  * Returns:
-/** @brief Read line.
- * @param Enter Parameter `Enter`.
- * @param Escape Parameter `Escape`.
- * @param fontptr Parameter `fontptr`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 unsigned short
 call_read_line(char *buffer, unsigned short max_chars, unsigned short dialog_x,
@@ -670,12 +635,6 @@ call_read_line(char *buffer, unsigned short max_chars, unsigned short dialog_x,
  * Text can contain multiple lines separated by ']' characters.
  *
  * Parameters:
-/** @brief Text.
- * @param x Parameter `x`.
- * @param width Parameter `width`.
- * @param textcolor Parameter `textcolor`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 void
 draw_button(char *buttontext, unsigned short x, unsigned short y, unsigned short width,
@@ -773,11 +732,6 @@ draw_button(char *buttontext, unsigned short x, unsigned short y, unsigned short
  *
  * Parameters:
  *   mode - 0=draw only, 1=interactive
-/** @brief Bounds.
- * @param y1 Parameter `y1`.
- * @param max_value Parameter `max_value`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 unsigned short
 mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsigned short y1,
@@ -790,10 +744,6 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
     unsigned short mouse_pos = 0, mouse_delta = 0, new_pos = 0, prev_pos = 0;
     unsigned short temp_value;
 
-    /** @brief Vertical.
- * @param y2 Parameter `y2`.
- * @return Function result.
- */
     /* Determine orientation: horizontal (x2>y2) or vertical (y2>=x2) */
     if (x2 > y2) {
         is_vertical = false;
@@ -934,10 +884,6 @@ mouse_track_op(unsigned short mode, unsigned short x1, unsigned short x2, unsign
 /*--------------------------------------------------------------
  * input_checking - Main input handler with keyboard, mouse, and joystick
  /*--------------------------------------------------------------*/
-/** @brief Input checking.
- * @param delta Parameter `delta`.
- * @return Function result.
- */
 
 unsigned short
 input_checking(unsigned short delta) {
@@ -1039,12 +985,7 @@ input_checking(unsigned short delta) {
     }
     else {
         /* Mouse timeout for hiding.
-		 * Original DOS threshold: 500 raw 100Hz ticks = 5 seconds.
-/** @brief Units.
- * @param tick Parameter `tick`.
- * @param mouse_input_active Parameter `mouse_input_active`.
- * @return Function result.
- */
+		 * Original DOS threshold: 500 raw 100Hz ticks = 5 seconds. */
         if (mouse_input_active) {
             input_framecounter += delta;
             if (input_framecounter > UI_MOUSE_AUTOHIDE_MS) {
@@ -1063,10 +1004,6 @@ input_checking(unsigned short delta) {
         if (mouse_buttons != mouse_oldbut) {
             mouse_oldbut = mouse_buttons;
 
-            /** @brief Press.
- * @param mouse_buttons Parameter `mouse_buttons`.
- * @return Function result.
- */
             /* Register click on button PRESS (matching original game behavior) */
             mousebutinputcode = mouse_buttons_to_keycode(mouse_buttons);
 
@@ -1076,10 +1013,6 @@ input_checking(unsigned short delta) {
             input_framecounter = 0;
         }
         else if (mouse_buttons != 0) {
-            /** @brief Down.
- * @param input_framecount Parameter `input_framecount`.
- * @return Function result.
- */
             /* Auto-repeat if button held down (matching original) */
             if (input_framecount2 + INPUT_REPEAT_INTERVAL < input_framecount) {
                 mousebutinputcode = mouse_buttons_to_keycode(mouse_buttons);
@@ -1126,17 +1059,7 @@ input_checking(unsigned short delta) {
 /*--------------------------------------------------------------
  * do_savefile_dialog - Save file dialog with filename and extension input
  *
-/** @brief Layout.
- * @param template_ptr Parameter `template_ptr`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
-/** @brief Perform savefile dialog.
- * @param filename Parameter `filename`.
- * @param extension Parameter `extension`.
- * @param template_ptr Parameter `template_ptr`.
- * @return Function result.
- */
 
 short
 do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
@@ -1171,11 +1094,6 @@ do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
     mouse_draw_transparent_check();
     video_refresh(); /* Present the dialog before waiting for input */
 
-    /** @brief Extension.
- * @param name Parameter `name`.
- * @param while Parameter `while`.
- * @return Function result.
- */
     /* Input loop — first read extension (track name), then filename (dir) */
     while (1) {
         /* Get extension input (8 chars) at its display position */
@@ -1217,8 +1135,6 @@ do_savefile_dialog(char *filename, char *extension, void *template_ptr) {
  * Displays joystick calibration interface where user assigns
  * joystick directions/buttons to game functions.
  /*--------------------------------------------------------------*/
-/** @brief Perform joy restext.
- */
 
 void
 do_joy_restext(void) {
@@ -1226,7 +1142,7 @@ do_joy_restext(void) {
     unsigned char joy_assigned[9]; /* 9 bytes, one assignment flag per joystick function */
     unsigned short temp_width, temp_height;
     short current_joy, prev_joy;
-    unsigned short i, ax;
+    unsigned short i, joy_flags;
     unsigned short keycode;
     void *textres_ptr;
     unsigned short dialog_result;
@@ -1302,8 +1218,8 @@ do_joy_restext(void) {
             }
 
             /* Check joystick */
-            ax = get_joy_flags();
-            if (ax & 48) {
+            joy_flags = get_joy_flags();
+            if (joy_flags & 48) {
                 /* Joystick buttons pressed - check if all assigned */
                 for (i = 0; i < 9; i++) {
                     joystick_assigned_flags &= joy_assigned[i];
@@ -1311,7 +1227,7 @@ do_joy_restext(void) {
                 break;
             }
 
-            current_joy = joystick_direction_lookup(ax);
+            current_joy = joystick_direction_lookup(joy_flags);
             if (current_joy == prev_joy) {
                 continue;
             }
@@ -1358,13 +1274,6 @@ do_joy_restext(void) {
  *
  * Dialog types:
  *   0 - Display only, return immediately with 0
-/** @brief Count.
- * @param x Parameter `x`.
- * @param index Parameter `index`.
- * @param cancel Parameter `cancel`.
- * @param default_button Parameter `default_button`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 short
 show_dialog(unsigned short dialog_type, unsigned short create_window, void *text_res_ptr,
@@ -1393,8 +1302,8 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
     unsigned short button_y_end[10];         /* Button Y end positions */
     unsigned short button_x_end[10];         /* Button X end positions */
     unsigned char coord_write_index;         /* Button coordinate index */
-    unsigned short saved_text_ofs_unused;    /* Saved text pointer offset */
-    unsigned short saved_text_seg_unused;    /* Saved text pointer segment */
+    unsigned short saved_text_ofs_unused;    /* 16-bit segment:offset leftover (dead) */
+    unsigned short saved_text_seg_unused;    /* 16-bit segment:offset leftover (dead) */
     unsigned char button_text_lengths[20];   /* Button text lengths */
     bool dialog_loop_active;                 /* Loop control flag */
     unsigned short line_char_index;          /* Character index in line buffer */
@@ -1841,13 +1750,6 @@ show_dialog(unsigned short dialog_type, unsigned short create_window, void *text
  * in an alphabetically sorted scrollable list.
  *
  * Parameters:
-/** @brief Buffer.
- * @param search Parameter `search`.
- * @param buffer Parameter `buffer`.
- * @param selected Parameter `selected`.
- * @param textresptr Parameter `textresptr`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 unsigned short
 do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *textresptr) {
@@ -2061,21 +1963,10 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
 
                 mouse_draw_opaque_check();
 
-                /** @brief Files.
- * @param si Parameter `si`.
- * @return Function result.
- */
                 /* Draw visible files (up to 7) */
                 for (si = 0; si < 7; si++) {
                     i = scroll_offset + si;
 
-                    /** @brief Item.
- * @param black Parameter `black`.
- * @param black Parameter `black`.
- * @param white Parameter `white`.
- * @param selected_file_index Parameter `selected_file_index`.
- * @return Function result.
- */
                     /* Set highlight color for selected item (ASM parity).
 					   Selected:   fontdef[0]=dialog_text_color(black), fontdef[1]=dialog_fnt_colour(white)
 					              → font_draw_text paints glyph pixels black, cell BG pixels white.
@@ -2152,10 +2043,6 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
                         }
                     }
                     else {
-                        /** @brief Release.
- * @param mouse_release_click Parameter `mouse_release_click`.
- * @return Function result.
- */
                         /* File row selected on mouse-button release (not hover). */
                         if (mouse_release_click != 0) {
                             i = scroll_offset + row_hit_or_index - 2;
@@ -2250,10 +2137,6 @@ do_fileselect_dialog(char *pathbuf, char *defaultName, const char *ext, void *te
  *
  * Displays the machine rating/configuration dialog.
  * Allows user to configure:
-/** @brief Flags.
- * @param do_mrl_textres Parameter `do_mrl_textres`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 void
 do_mrl_textres(void) {
@@ -2361,11 +2244,8 @@ static const char aId4[] = "id4";
 static const char aSetup_exe[] = "setup.exe";
 static const char aSdtitl_[] = "sdtitl.*";
 static const char aTedit_[] = "tedit.*";
-static const char aOpp1_[] = "opp1.*\0\xDE\x33\xE2\x33\xE6\x33\0";
+static const char aOpp1_[] = "opp1.*";
 
-/** @brief Ensure file exists.
- * @param file_idx Parameter `file_idx`.
- */
 void
 ensure_file_exists(int file_idx) {
     char disktext_id[4];

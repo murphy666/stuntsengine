@@ -309,7 +309,20 @@ enum {
     RENDER_INTRO_CAMERA_Y_STEP = 20,
     RENDER_INTRO_CAMERA_Z_RETREAT_STEP = 5,
     RENDER_INTRO_CAMERA_ADJUST_STEP = 10,
-    RENDER_INTRO_LOGO_FLAGS_TRACKED = 12
+    RENDER_INTRO_LOGO_FLAGS_TRACKED = 12,
+
+    /* HUD / in-game text layout */
+    RENDER_FONT_CHAR_WIDTH = 8,
+    RENDER_HUD_DISCLAIMER_Y = 170,
+    RENDER_HUD_BOTTOM_TEXT_Y = 182,
+    RENDER_HUD_WARNING_Y = 93,
+    RENDER_HUD_REPLAY_TEXT_Y = 15,
+    RENDER_HUD_ARROW_X = 148,
+    RENDER_HUD_OPP_ARROW_LEFT_X = 68,
+    RENDER_HUD_OPP_ARROW_RIGHT_X = 228,
+    RENDER_HUD_OPP_ARROW_Y = 113,
+    RENDER_HUD_OPP_TEXT_Y = 116,
+    RENDER_HUD_PENALTY_TEXT_Y = 102
 };
 
 #define DO_SINKING_RECT_PTR ((struct RECTANGLE *)43534)
@@ -420,9 +433,6 @@ static struct RECTANGLE intro_cliprect = { 0, 320, 0, 200 };
 /**
  * @brief Look up a 16-bit material colour by index from the colour list.
  *
-/** @brief Index.
- * @param index Parameter `index`.
- * @return Function result.
  */
 static unsigned short
 render_get_material_color(unsigned short index) {
@@ -719,16 +729,6 @@ draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
 /*--------------------------------------------------------------
  * skybox_op
  /*--------------------------------------------------------------*/
-/** @brief Render skybox layer.
- * @param view_index Parameter `view_index`.
- * @param clip_rect Parameter `clip_rect`.
- * @param sky_dir_sign Parameter `sky_dir_sign`.
- * @param camera_matrix Parameter `camera_matrix`.
- * @param view_roll Parameter `view_roll`.
- * @param view_yaw Parameter `view_yaw`.
- * @param camera_y Parameter `camera_y`.
- * @return Function result.
- */
 int
 render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sign,
                     struct MATRIX *camera_matrix, int view_roll, int view_yaw, int camera_y) {
@@ -746,7 +746,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
     int horizon_y_delta;
     struct VECTOR horizon_vec_a_cam, horizon_vec_b_cam;
     int intersectDelta;
-    int di;
+    int dirty_idx;
     int stripIdx;
     int fillHeight;
 
@@ -880,10 +880,7 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
                     int left_y, right_y, py_delta;
 
                     /* Determine horizon height at the left and right screen edges.
-/** @brief Points.
- * @param px Parameter `px`.
- * @return Function result.
- */
+                     */
                     if (horizon_point_a.px != horizon_point_b.px) {
                         left_y = horizon_point_a.py
                                  + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
@@ -979,10 +976,10 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
                         rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices,
                                            rect_buffer_primary, frame_dirty_rects, &slice_rect,
                                            &dirty_rect_count, dirty_rect_array);
-                        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-                            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                                              dirty_rect_array[di].top,
-                                              dirty_rect_array[di].bottom);
+                        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+                            sprite_set_1_size(dirty_rect_array[dirty_idx].left, dirty_rect_array[dirty_idx].right,
+                                              dirty_rect_array[dirty_idx].top,
+                                              dirty_rect_array[dirty_idx].bottom);
                             sprite_clear_sprite1_color(skybox_sky_color);
                         }
                     }
@@ -995,10 +992,10 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
                         rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices,
                                            rect_buffer_primary, frame_dirty_rects, &slice_rect,
                                            &dirty_rect_count, dirty_rect_array);
-                        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-                            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                                              dirty_rect_array[di].top,
-                                              dirty_rect_array[di].bottom);
+                        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+                            sprite_set_1_size(dirty_rect_array[dirty_idx].left, dirty_rect_array[dirty_idx].right,
+                                              dirty_rect_array[dirty_idx].top,
+                                              dirty_rect_array[dirty_idx].bottom);
                             sprite_clear_sprite1_color(skybox_grd_color);
                         }
                     }
@@ -1016,20 +1013,22 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
 
             /* Render skybox strips */
             strip_left = RENDER_SCREEN_LEFT;
-            di = (horizon_y_delta < 0 ? -horizon_y_delta : horizon_y_delta) + 1;
-            if (di > RENDER_MAX_STRIP_COUNT)
-                di = RENDER_MAX_STRIP_COUNT;
+            {
+            int strip_count = (horizon_y_delta < 0 ? -horizon_y_delta : horizon_y_delta) + 1;
+            if (strip_count > RENDER_MAX_STRIP_COUNT)
+                strip_count = RENDER_MAX_STRIP_COUNT;
 
-            for (stripIdx = 0; stripIdx < di; stripIdx++) {
+            for (stripIdx = 0; stripIdx < strip_count; stripIdx++) {
                 slice_rect.left = strip_left;
-                slice_rect.right = ((RENDER_SCREEN_WIDTH * stripIdx + RENDER_SCREEN_WIDTH) / di)
+                slice_rect.right = ((RENDER_SCREEN_WIDTH * stripIdx + RENDER_SCREEN_WIDTH) / strip_count)
                                    & video_flag3_isFFFF;
                 if (slice_rect.left != slice_rect.right) {
-                    sky_height = horizon_y_delta * stripIdx / di + horizon_y_left;
+                    sky_height = horizon_y_delta * stripIdx / strip_count + horizon_y_left;
                     draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
                     strip_left = slice_rect.right;
                 }
             }
+            } /* strip_count scope */
             return skybox_drawn;
         } /* end if (!both_invalid) */
     } /* end if (view_roll != 0) */
@@ -1125,8 +1124,8 @@ render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sig
         rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
                            frame_dirty_rects, clip_rect, &dirty_rect_count, dirty_rect_array);
 
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            draw_skybox_rect_slice(&dirty_rect_array[di], view_yaw, sky_height);
+        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+            draw_skybox_rect_slice(&dirty_rect_array[dirty_idx], view_yaw, sky_height);
         }
         return skybox_drawn;
     }
@@ -1259,21 +1258,16 @@ draw_track_preview(void) {
     for (row = 0; row < RENDER_TRACK_GRID_SIZE; row++) {
         for (col = 0; col < RENDER_TRACK_GRID_SIZE;) {
             /*
-             * di: Y-height offset in track-preview camera units.
+             * height_offset: Y-height offset in track-preview camera units.
              * Use hillHeightConsts[1] for hill elevation.
-             * For non-hill terrain and track elements, di = 0.
+             * For non-hill terrain and track elements, height_offset = 0.
              */
-            int di = 0;
+            int height_offset = 0;
 
             cell_index = (int)col;
             track_elem = elem_map_ptr[trackrows[row] + cell_index];
             terrain_id = terr_map_ptr[terrainrows[row] + cell_index];
 
-            /** @brief Markers.
- * @param element Parameter `element`.
- * @param RENDER_TRACK_MARKER_MIN Parameter `RENDER_TRACK_MARKER_MIN`.
- * @return Function result.
- */
             /* Bridge/fence markers (253-255): suppress element, nothing renders */
             if (track_elem >= RENDER_TRACK_MARKER_MIN) {
                 terrain_id = 0;
@@ -1289,12 +1283,10 @@ draw_track_preview(void) {
             }
 
             /*
-/** @brief Path.
- * @param RENDER_TERRAIN_HILL Parameter `RENDER_TERRAIN_HILL`.
- * @return Function result.
- */
+             * Hill terrain path: elevate the object.
+             */
             if (terrain_id == RENDER_TERRAIN_HILL) {
-                di = hillHeightConsts[1];
+                height_offset = hillHeightConsts[1];
                 if (track_elem != 0) {
                     terrain_id = 0;
                 }
@@ -1305,7 +1297,7 @@ draw_track_preview(void) {
                         = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
                     transformed_shape.pos.x = (short)(trackcenterpos2[(int)col] - angle_sine_table_start)
                                               >> 1;
-                    transformed_shape.pos.y = (short)(di - angle_sine_table_offset) >> 1;
+                    transformed_shape.pos.y = (short)(height_offset - angle_sine_table_offset) >> 1;
                     /* DOS: sub ax, word_3C10C (62736) / sar ax,1 — must wrap at 16 bits */
                     transformed_shape.pos.z
                         = (short)((uint16_t)trackcenterpos[row]
@@ -1323,10 +1315,6 @@ draw_track_preview(void) {
                 }
             }
             else {
-                /** @brief Path.
- * @param RENDER_TRACK_BRIDGE_MAX Parameter `RENDER_TRACK_BRIDGE_MAX`.
- * @return Function result.
- */
                 /* Non-hill terrain path (loc_1CE04 in original ASM) */
                 if (track_elem >= RENDER_TRACK_BRIDGE_MIN
                     && track_elem <= RENDER_TRACK_BRIDGE_MAX) {
@@ -1420,10 +1408,6 @@ draw_track_preview(void) {
                 {
                     const unsigned char *tobj = trkobj_entry(trkObjectList, (unsigned)object_index);
 
-                    /** @brief Position.
- * @param tobj Parameter `tobj`.
- * @return Function result.
- */
                     /* Z position (row axis) */
                     if (trkobj_multi(tobj) & 1) {
                         element_world_z = trackpos[row];
@@ -1431,10 +1415,6 @@ draw_track_preview(void) {
                     else {
                         element_world_z = trackcenterpos[row];
                     }
-                    /** @brief Position.
- * @param tobj Parameter `tobj`.
- * @return Function result.
- */
                     /* X position (column axis) */
                     if (trkobj_multi(tobj) & 2) {
                         trackX = (short)trackpos2[col + 1];
@@ -1444,7 +1424,7 @@ draw_track_preview(void) {
                     }
 
                     object_pos.x = (short)(trackX - angle_sine_table_start) >> 1;
-                    object_pos.y = (short)(di - angle_sine_table_offset) >> 1; /* elevated on hills */
+                    object_pos.y = (short)(height_offset - angle_sine_table_offset) >> 1; /* elevated on hills */
                     object_pos.z = (short)((uint16_t)element_world_z
                                            - (uint16_t)(unsigned short)angle_sine_table_stride)
                                    >> 1;
@@ -1503,14 +1483,14 @@ draw_ingame_text(void) {
     if (idle_expired != 0) {
         /* "Professional Driver" + "on Closed Circuit" */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aDm1));
-        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 170,
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_DISCLAIMER_Y,
                                    dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aDm2));
         {
             int x = font_get_centered_x(resID_byte1);
-            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
         return &rect_ingame_text;
@@ -1523,8 +1503,8 @@ draw_ingame_text(void) {
             if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) > (int)frame_mod) {
                 copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
                 {
-                    int x = 312 - (int)strlen(resID_byte1) * 8;
-                    struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 15, dialog_fnt_colour, 0);
+                    int x = 312 - (int)strlen(resID_byte1) * RENDER_FONT_CHAR_WIDTH;
+                    struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_REPLAY_TEXT_Y, dialog_fnt_colour, 0);
                     rect_union(r, &rect_ingame_text, &rect_ingame_text);
                 }
             }
@@ -1537,7 +1517,7 @@ draw_ingame_text(void) {
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPre));
         {
             int x = font_get_centered_x(resID_byte1);
-            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
         return &rect_ingame_text;
@@ -1546,14 +1526,14 @@ draw_ingame_text(void) {
     if (!passed_security) {
         /* Security system warning */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe1));
-        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 93,
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_WARNING_Y,
                                    dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe2));
         {
             int x = font_get_centered_x(resID_byte1);
-            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 182, dialog_fnt_colour, 0);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
         return &rect_ingame_text;
@@ -1570,18 +1550,18 @@ draw_ingame_text(void) {
     switch ((signed char)state.game_collision_type) {
     case 1:
         /* Left arrow */
-        sprite_putimage_transparent(sdgame2shapes[3], 148, 93);
+        sprite_putimage_transparent(sdgame2shapes[3], RENDER_HUD_ARROW_X, RENDER_HUD_WARNING_Y);
         rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
         break;
     case 2:
         /* Right arrow */
-        sprite_putimage_transparent(sdgame2shapes[4], 148, 93);
+        sprite_putimage_transparent(sdgame2shapes[4], RENDER_HUD_ARROW_X, RENDER_HUD_WARNING_Y);
         rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
         break;
     case 3:
         /* "Wrong Way" */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aWww));
-        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 93,
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_WARNING_Y,
                                    dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
         break;
@@ -1592,20 +1572,20 @@ draw_ingame_text(void) {
     switch ((signed char)state.game_flyover_check) {
     case 1:
         /* Opponent near + left arrow */
-        sprite_putimage_transparent(sdgame2shapes[3], 68, 113);
+        sprite_putimage_transparent(sdgame2shapes[3], RENDER_HUD_OPP_ARROW_LEFT_X, RENDER_HUD_OPP_ARROW_Y);
         rect_union(&rect_ingame_text3, &rect_ingame_text, &rect_ingame_text);
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp));
         break;
     case 2:
         /* Opponent near + right arrow */
-        sprite_putimage_transparent(sdgame2shapes[4], 228, 113);
+        sprite_putimage_transparent(sdgame2shapes[4], RENDER_HUD_OPP_ARROW_RIGHT_X, RENDER_HUD_OPP_ARROW_Y);
         rect_union(&rect_ingame_text4, &rect_ingame_text, &rect_ingame_text);
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp_0));
         break;
     }
 
     if (resID_byte1[0] != 0) {
-        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), 116,
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_OPP_TEXT_Y,
                                    dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
     }
@@ -1616,7 +1596,7 @@ draw_ingame_text(void) {
         format_frame_as_string(resID_byte1 + strlen(resID_byte1), penalty_time, 0);
         {
             int x = font_get_centered_x(resID_byte1);
-            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, 102, dialog_fnt_colour, 0);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_PENALTY_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
     }
@@ -1665,8 +1645,8 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
         y2 = crk[segIdx * 4 + 3];
 
         /* Scale to screen size */
-        y1 = (int)((long)y1 * (long)crack_y_scale / 200L);
-        y2 = (int)((long)y2 * (long)crack_y_scale / 200L);
+        y1 = (int)((long)y1 * (long)crack_y_scale / (long)RENDER_SCREEN_HEIGHT);
+        y2 = (int)((long)y2 * (long)crack_y_scale / (long)RENDER_SCREEN_HEIGHT);
 
         /* Draw 3 lines: black outline + colored center */
         preRender_line(x1, y1 + crack_y_offset - 1, x2, y2 + crack_y_offset - 1, 0);
@@ -1773,11 +1753,6 @@ setup_intro(void) {
     init_plantrak_();
     (void)timer_get_delta();
 
-    /** @brief Fps.
- * @param gameplay Parameter `gameplay`.
- * @param framespersec Parameter `framespersec`.
- * @return Function result.
- */
     /* The intro always runs at 20 fps (matching DOS hardware detection default).
      * framespersec is 0 at first launch (only set during gameplay), so initialise
      * it here when needed — same value the DOS speed-detection would have chosen. */
@@ -1974,21 +1949,6 @@ setup_intro(void) {
 /*--------------------------------------------------------------
  * intro_op
  /*--------------------------------------------------------------*/
-/** @brief Intro op.
- * @param camera_x Parameter `camera_x`.
- * @param camera_y Parameter `camera_y`.
- * @param camera_z Parameter `camera_z`.
- * @param camera_pitch Parameter `camera_pitch`.
- * @param camera_yaw Parameter `camera_yaw`.
- * @param draw_opponent Parameter `draw_opponent`.
- * @param use_primary_logo Parameter `use_primary_logo`.
- * @param star_positions Parameter `star_positions`.
- * @param star_screen_points Parameter `star_screen_points`.
- * @param star_count Parameter `star_count`.
- * @param current_rect Parameter `current_rect`.
- * @param clip_rect Parameter `clip_rect`.
- * @param previous_rect_ptr Parameter `previous_rect_ptr`.
- */
 void
 intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
          int draw_opponent, int use_primary_logo, short *star_positions,
@@ -2228,17 +2188,17 @@ build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
     short half_width, half_height, width_three_quarters, height_three_quarters;
     short quarter_width, quarter_height, vertex_index;
     short half_dx, half_dy, dx_three_quarters, dy_three_quarters, quarter_dx, quarter_dy;
-    short si_val, di_val;
+    short center_x, neg_width, neg_height;
 
     /* src offsets: 0=x1, 1=y1, 2=x2, 3=y2, 4=x3, 5=y3 */
-    si_val = src[0];
+    center_x = src[0];
 
     /* d[0] = x2 - x1 = width */
-    d[0] = (short)src[2] - si_val;
+    d[0] = (short)src[2] - center_x;
     /* d[1] = y2 - y1 = height */
     d[1] = (short)src[3] - src[1];
     /* d[16] = x3 - x1 = dx (offset 32) */
-    d[16] = (short)src[4] - si_val;
+    d[16] = (short)src[4] - center_x;
     /* d[17] = y3 - y1 = dy (offset 34) */
     d[17] = (short)src[5] - src[1];
 
@@ -2283,26 +2243,26 @@ build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
                                RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
 
     /* Second half: negative direction calculations */
-    si_val = (short)-d[0];
+    neg_width = (short)-d[0];
 
-    d[24] = multiply_and_scale((short)d[16] + si_val, RENDER_SPHERE_SCALE_FACTOR_COS_45);
-    di_val = (short)-d[1];
-    d[25] = multiply_and_scale((short)d[17] + di_val, RENDER_SPHERE_SCALE_FACTOR_COS_45);
+    d[24] = multiply_and_scale((short)d[16] + neg_width, RENDER_SPHERE_SCALE_FACTOR_COS_45);
+    neg_height = (short)-d[1];
+    d[25] = multiply_and_scale((short)d[17] + neg_height, RENDER_SPHERE_SCALE_FACTOR_COS_45);
 
-    d[28] = multiply_and_scale((short)half_dx + si_val, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
-    d[29] = multiply_and_scale((short)half_dy + di_val, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[28] = multiply_and_scale((short)half_dx + neg_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[29] = multiply_and_scale((short)half_dy + neg_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
     d[20] = multiply_and_scale((short)d[16] - half_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
     d[21] = multiply_and_scale((short)d[17] - half_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
 
-    si_val = (short)-d[0];
-    d[30] = multiply_and_scale((short)quarter_dx + si_val, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
-    di_val = (short)-d[1];
-    d[31] = multiply_and_scale((short)quarter_dy + di_val, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    neg_width = (short)-d[0];
+    d[30] = multiply_and_scale((short)quarter_dx + neg_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    neg_height = (short)-d[1];
+    d[31] = multiply_and_scale((short)quarter_dy + neg_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
     d[18] = multiply_and_scale((short)d[16] - quarter_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
     d[19] = multiply_and_scale((short)d[17] - quarter_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
 
-    d[26] = multiply_and_scale((short)dx_three_quarters + si_val, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
-    d[27] = multiply_and_scale((short)dy_three_quarters + di_val, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[26] = multiply_and_scale((short)dx_three_quarters + neg_width, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[27] = multiply_and_scale((short)dy_three_quarters + neg_height, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
     d[22] = multiply_and_scale((short)d[16] - width_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
     d[23] = multiply_and_scale((short)d[17] - height_three_quarters,
                                RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
@@ -2310,10 +2270,10 @@ build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
     /* Final loop: create mirrored vertices */
     for (vertex_index = 0; vertex_index < 16; vertex_index++) {
         short *si_ptr = d + ((ptrdiff_t)(vertex_index * 2));
-        di_val = src[0];
-        si_ptr[32] = (short)di_val - si_ptr[0];
+        center_x = src[0];
+        si_ptr[32] = (short)center_x - si_ptr[0];
         si_ptr[33] = (short)src[1] - si_ptr[1];
-        si_ptr[0] += (short)di_val;
+        si_ptr[0] += (short)center_x;
         si_ptr[1] += (short)src[1];
     }
 }

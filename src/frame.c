@@ -201,12 +201,6 @@ void format_frame_as_string(char *dest, unsigned short frames, unsigned short sh
 void shape_op_explosion(int a, void *shp, int x, int y);
 void heapsort_by_order(int n, int *heap, int *data);
 
-/** @brief Transformedshape sort desc.
- * @param zvals Parameter `zvals`.
- * @param indices Parameter `indices`.
- * @param count Parameter `count`.
- * @return Function result.
- */
 static void
 transformedshape_sort_desc(short *zvals, short *indices, int count) {
     int i;
@@ -238,20 +232,11 @@ enum {
 };
 enum { TRACKOBJECT_LIST_COUNT = 215, SCENESHAPES2_COUNT = 19, SCENESHAPES3_COUNT = 13 };
 
-/** @brief Trkobj entry.
- * @param table Parameter `table`.
- * @param index Parameter `index`.
- * @return Function result.
- */
 static inline const unsigned char *
 trkobj_entry(const unsigned char *table, unsigned index) {
     return table + (size_t)(index * TRACKOBJECT_RAW_SIZE);
 }
 
-/** @brief Trkobj entry legacy scene index.
- * @param index Parameter `index`.
- * @return Function result.
- */
 static inline const unsigned char *
 trkobj_entry_legacy_scene_index(unsigned index) {
     if (index < TRACKOBJECT_LIST_COUNT) {
@@ -268,43 +253,12 @@ trkobj_entry_legacy_scene_index(unsigned index) {
     return 0;
 }
 
-/** @brief Trkobj u16 field.
- * @param obj Parameter `obj`.
- * @param offset Parameter `offset`.
- * @return Function result.
- */
 static inline unsigned short
 trkobj_u16_field(const unsigned char *obj, unsigned offset) {
     return (unsigned short)obj[offset] | ((unsigned short)obj[offset + 1] << 8);
 }
 
-/** @brief Trkobj u8 field.
- * @param obj Parameter `obj`.
- * @param offset Parameter `offset`.
- * @return Function result.
- */
-static inline unsigned char
-trkobj_u8_field(const unsigned char *obj, unsigned offset) {
-    return obj[offset];
-}
 
-/** @brief Trkobj ofs shape.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
-static inline unsigned short
-trkobj_ofs_shape(const unsigned char *obj) {
-    return trkobj_u16_field(obj, TRACKOBJECT_SHAPE_OFS_OFFSET);
-}
-
-/** @brief Trkobj ofs loshape.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
-static inline unsigned short
-trkobj_ofs_loshape(const unsigned char *obj) {
-    return trkobj_u16_field(obj, TRACKOBJECT_LOSHAPE_OFS_OFFSET);
-}
 
 #define GAME3DSHAPES_DOS_BASE   30284u
 #define GAME3DSHAPES_DOS_STRIDE 22u
@@ -336,10 +290,6 @@ enum {
     FRAME_FLAG_TRACKED_SHAPE = 12
 };
 
-/** @brief Shape3d from dos offset.
- * @param ofs Parameter `ofs`.
- * @return Function result.
- */
 static inline struct SHAPE3D *
 shape3d_from_dos_dseg_offset(unsigned short ofs) {
     int idx;
@@ -359,76 +309,44 @@ shape3d_from_dos_dseg_offset(unsigned short ofs) {
     return &game3dshapes[idx];
 }
 
-/** @brief Trkobj shape.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline struct SHAPE3D *
 trkobj_shape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_shape(obj));
+    return shape3d_from_dos_dseg_offset(trkobj_u16_field(obj, TRACKOBJECT_SHAPE_OFS_OFFSET));
 }
 
-/** @brief Trkobj loshape.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline struct SHAPE3D *
 trkobj_loshape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_loshape(obj));
+    return shape3d_from_dos_dseg_offset(trkobj_u16_field(obj, TRACKOBJECT_LOSHAPE_OFS_OFFSET));
 }
 
-/** @brief Trkobj roty.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline short
 trkobj_roty(const unsigned char *obj) {
     return (short)trkobj_u16_field(obj, TRACKOBJECT_ROT_Y_OFFSET);
 }
 
-/** @brief Trkobj overlay.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline unsigned char
 trkobj_overlay(const unsigned char *obj) {
-    return trkobj_u8_field(obj, TRACKOBJECT_OVERLAY_OFFSET);
+    return obj[TRACKOBJECT_OVERLAY_OFFSET];
 }
 
-/** @brief Trkobj surface.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline signed char
 trkobj_surface(const unsigned char *obj) {
-    return (signed char)trkobj_u8_field(obj, TRACKOBJECT_SURFACE_OFFSET);
+    return (signed char)obj[TRACKOBJECT_SURFACE_OFFSET];
 }
 
-/** @brief Trkobj ignore zbias.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline unsigned char
 trkobj_ignore_zbias(const unsigned char *obj) {
-    return trkobj_u8_field(obj, TRACKOBJECT_IGNORE_ZBIAS_OFFSET);
+    return obj[TRACKOBJECT_IGNORE_ZBIAS_OFFSET];
 }
 
-/** @brief Trkobj multi.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline unsigned char
 trkobj_multi(const unsigned char *obj) {
-    return trkobj_u8_field(obj, TRACKOBJECT_MULTI_OFFSET);
+    return obj[TRACKOBJECT_MULTI_OFFSET];
 }
 
-/** @brief Trkobj physical.
- * @param obj Parameter `obj`.
- * @return Function result.
- */
 static inline unsigned char
 trkobj_physical(const unsigned char *obj) {
-    return trkobj_u8_field(obj, TRACKOBJECT_PHYS_OFFSET);
+    return obj[TRACKOBJECT_PHYS_OFFSET];
 }
 
 static inline int

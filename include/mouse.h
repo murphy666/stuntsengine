@@ -55,20 +55,12 @@ unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short *x1_
 
 /* Global state — defined in src/mouse.c */
 
-#ifdef MOUSE_IMPL
-#define _MO_
-#else
-#define _MO_ extern
-#endif
-
-_MO_ bool mouse_input_active;
-_MO_ unsigned short mouse_buttons;
-_MO_ bool mouse_cursor_dirty;
-_MO_ bool mouse_cursor_enabled;
-_MO_ bool mouse_control_enabled;
-_MO_ unsigned short mouse_x;
-_MO_ unsigned short mouse_y;
-
-#undef _MO_
+extern bool mouse_input_active;
+extern unsigned short mouse_buttons;
+extern bool mouse_cursor_dirty;
+extern bool mouse_cursor_enabled;
+extern bool mouse_control_enabled;
+extern unsigned short mouse_x;
+extern unsigned short mouse_y;
 
 #endif /* MOUSE_H */

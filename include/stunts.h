@@ -67,18 +67,10 @@ struct STN_PERSIST_CONFIG {
 };
 #pragma pack(pop)
 
-#ifdef STUNTS_IMPL
-#define _SE_
-#else
-#define _SE_ extern
-#endif
-
-_SE_ char aDefault_1[];
-_SE_ char replay_file_path_buffer[];
-_SE_ struct SIMD simd_opponent_rt;
-_SE_ char track_highscore_path_buffer[];
-
-#undef _SE_
+extern char aDefault_1[];
+extern char replay_file_path_buffer[];
+extern struct SIMD simd_opponent_rt;
+extern char track_highscore_path_buffer[];
 
 /* Exit handler (defined in stunts.c) */
 void add_exit_handler(void (*handler)(void));

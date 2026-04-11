@@ -33,59 +33,22 @@
 
 bool is_audioloaded = false;
 bool g_is_busy = false;
-unsigned char resources[] = {
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  2,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,
-    32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32,
-    32, 32, 32, 32, 32, 32, 0,  0,  0,  0,  0,  0,  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-    0,  0,  0,  0,  1,  0
-};
 bool joystick_assigned_flags = false;
-unsigned resource_alloc_state_a = 0;
-unsigned resource_alloc_state_b = 0;
-unsigned short resmaxsize = 0;
-unsigned short pspofs = 0;
-unsigned short pspseg = 0;
 #include "memmgr.h"
 #include "shape2d.h"
 #include "stunts.h"
 
+enum {
+    RS_FILE_FIND_MAX_MATCHES = 256,
+    RS_RLE_HEADER_MIN = 10,
+    RS_DECOMPRESS_MAX_PASSES = 8,
+    RS_REPLAY_HEADER_SIZE = 26,
+    RS_REPLAY_TRACK_PATH_COUNT = 901,
+    RS_DOS_83_NAME_LEN = 12
+};
+
 static char g_find_query[FS_PATH_MAX];
-static char g_find_matches[256][FS_PATH_MAX];
+static char g_find_matches[RS_FILE_FIND_MAX_MATCHES][FS_PATH_MAX];
 static int g_find_match_count;
 static int g_find_match_index;
 static int file_resolve_existing_path(const char *filename, char *out, size_t out_size);
@@ -98,6 +61,7 @@ static const char *const g_file_search_prefixes[] = { "", "ressources/", "build/
 #define RS_RLE_ESCLOOKUP_LEN 256
 #define RS_RLE_ESCSEQ_POS    1
 #define RS_VLE_ESC_LEN       16
+
 #define RS_VLE_ALPH_LEN      256
 #define RS_VLE_ESC_WIDTH     64
 #define RS_VLE_NUM_SYMB      128
@@ -207,7 +171,7 @@ file_decomp_rle_gnu(const uint8_t *src, size_t src_len, uint8_t **out, size_t *o
     uint8_t *dst;
     int i;
 
-    if (src_len < 10 || !out || !out_len)
+    if (src_len < RS_RLE_HEADER_MIN || !out || !out_len)
         return 0;
 
     len = file_read_u24_le(&src[1]);
@@ -597,7 +561,7 @@ file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
             int k, n;
             if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0)
                 continue;
-            if (g_find_match_count >= 256)
+            if (g_find_match_count >= RS_FILE_FIND_MAX_MATCHES)
                 break;
 
             if (strcmp(dirpath, ".") == 0)
@@ -646,7 +610,7 @@ file_resolve_wildcard_path(const char *query, char *out, size_t out_size) {
             int k, n;
             if (!file_match_pattern_ci(pattern, ent->d_name))
                 continue;
-            if (g_find_match_count >= 256)
+            if (g_find_match_count >= RS_FILE_FIND_MAX_MATCHES)
                 break;
 
             /* Build resolved path directly into the match slot */
@@ -956,7 +920,7 @@ file_decomp(const char *filename, int fatal) {
 
     if ((src[0] & 128u) != 0u) {
         passes = (uint8_t)(src[0] & 127u);
-        if (passes == 0 || passes > 8 || src_padded_size < 5 || (src[4] != 1 && src[4] != 2)) {
+        if (passes == 0 || passes > RS_DECOMPRESS_MAX_PASSES || src_padded_size < 5 || (src[4] != 1 && src[4] != 2)) {
             free(src);
             if (fatal)
                 (void)fprintf(stderr, "invalid packed data in %s\n", filename);
@@ -1191,7 +1155,7 @@ file_write_replay(const char *filename) {
     *(struct GAMEINFO *)replay_header = gameconfig;
     g_is_busy = true;
     ret = file_write_fatal(filename, replay_header,
-                           (unsigned long)(26 + 901 + 901) + gameconfig.game_recordedframes);
+                           (unsigned long)(RS_REPLAY_HEADER_SIZE + RS_REPLAY_TRACK_PATH_COUNT + RS_REPLAY_TRACK_PATH_COUNT) + gameconfig.game_recordedframes);
     g_is_busy = false;
     return ret;
 }
@@ -1203,7 +1167,7 @@ parse_filepath_separators_dosptr(const char *src_path, void *dst_path_buffer) {
     const char *src = src_path;
     const char *base;
     char *dest = (char *)dst_path_buffer;
-    int remaining = 12;
+    int remaining = RS_DOS_83_NAME_LEN;
     if (!dest || !src)
         return;
 

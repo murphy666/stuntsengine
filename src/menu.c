@@ -287,12 +287,6 @@ input_repeat_check_intro_stable(unsigned short timeout) {
  *
  * @return Non-zero if interrupted by user input.
  */
-
-// Load intro credit resources and handle basic input/animation.
-/** @brief Load intro resources.
- * @return Function result.
- */
-
 unsigned short
 load_intro_resources(void) {
     static const struct {
@@ -402,15 +396,6 @@ load_intro_resources(void) {
 
 // Draw text with shadow effect for intro screens
 // Returns pointer to bounding rectangle (intro_draw_text_rect_left-intro_draw_text_rect_bottom)
-/** @brief Intro draw text.
- * @param str Parameter `str`.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @param colour Parameter `colour`.
- * @param shadowColour Parameter `shadowColour`.
- * @return Function result.
- */
-
 struct RECTANGLE *
 intro_draw_text(char *str, int x, int y, int colour, int shadowColour) {
     unsigned short textWidth;
@@ -437,17 +422,7 @@ intro_draw_text(char *str, int x, int y, int colour, int shadowColour) {
 /* --- security_check --- */
 
 /** @brief Simplified security check stub — always marks security as passed.
- *
-/** @brief Index.
- * @param idx Parameter `idx`.
- * @return Function result.
  */
-
-// Simplified security check: mark security as passed
-/** @brief Security check.
- * @param idx Parameter `idx`.
- */
-
 void
 security_check(unsigned short idx) {
     (void)idx;
@@ -457,10 +432,6 @@ security_check(unsigned short idx) {
 /* --- run_option_menu_ --- */
 
 // Options menu: input device/help/replay selection dialog.
-/** @brief Run option menu.
- * @return Function result.
- */
-
 unsigned short
 run_option_menu_(void) {
     unsigned char should_repeat;
@@ -759,9 +730,6 @@ run_tracks_menu(unsigned short unused) {
 
 /* --- opponent_menu_draw_description --- */
 
-/** @brief Opponent menu draw description.
- * @param textresptr Parameter `textresptr`.
- */
 static void
 opponent_menu_draw_description(char *textresptr) {
     unsigned short text_len = 0;
@@ -1107,10 +1075,6 @@ run_opponent_menu(void) {
 
 /* --- car_menu_draw_description --- */
 
-/** @brief Car menu draw description.
- * @param textresptr Parameter `textresptr`.
- * @param y_start Parameter `y_start`.
- */
 static void
 car_menu_draw_description(char *textresptr, unsigned short y_start) {
 
@@ -1441,7 +1405,7 @@ car_on_render(UIScreen *self) {
         }
 
         select_cliprect_rotate(0, carpos_polar, 0, &carmenu_cliprect, 0);
-        if (*st->materialofs >= game3dshapes[124].shape3d_numpaints) {
+        if (*st->materialofs >= game3dshapes[MENU_CAR_SHAPE_INDEX].shape3d_numpaints) {
             *st->materialofs = 0;
         }
 
@@ -1710,11 +1674,6 @@ run_car_menu(char *caridptr, unsigned char *materialofs, unsigned char *transmis
  *
  * @return Non-zero if interrupted by user input.
  */
-
-// Intro sequence: show "prod" and "titl" screens and wait for input/timeout
-/** @brief Run intro.
- * @return Function result.
- */
 unsigned short
 run_intro_(void) {
 
@@ -1764,11 +1723,6 @@ run_intro_(void) {
 /** @brief Run the full intro loop: title screens, 3-D flyover, credits.
  *
  * @return Non-zero if interrupted by user input.
- */
-
-// Run the intro sequence, loading resources and credit screen as needed
-/** @brief Run intro looped.
- * @return Function result.
  */
 unsigned short
 run_intro_looped_(void) {
@@ -1828,11 +1782,6 @@ main_menu_on_selection(unsigned char sel, void *ctx_ptr) {
 /** @brief Main menu selection loop — returns the chosen menu item.
  *
  * @return Selected menu index, or sentinel on escape.
- */
-
-// Main menu selection loop
-/** @brief Run menu.
- * @return Function result.
  */
 char
 run_menu_(void) {

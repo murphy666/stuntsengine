@@ -24,21 +24,13 @@
 #define FONT_H
 
 
-#ifdef FONT_IMPL
-#define _FO_
-#else
-#define _FO_ extern
-#endif
-
-_FO_ unsigned char *g_fontdef_ptr;
-_FO_ void *fontnptr;
-_FO_ void *fontdefptr;
-_FO_ unsigned short fontdefseg;
-_FO_ void *fontledresptr;
-_FO_ unsigned short fontdef_line_height;
-_FO_ unsigned char font_x_position_base[2];
-
-#undef _FO_
+extern unsigned char *g_fontdef_ptr;
+extern void *fontnptr;
+extern void *fontdefptr;
+extern unsigned short fontdefseg;
+extern void *fontledresptr;
+extern unsigned short fontdef_line_height;
+extern unsigned char font_x_position_base[2];
 
 void font_set_fontdef2(void *data);
 void font_set_fontdef(void);

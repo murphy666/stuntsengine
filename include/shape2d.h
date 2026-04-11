@@ -161,15 +161,7 @@ void shape2d_draw_rle_copy_clipped_at(void *shapeptr, unsigned short x, unsigned
 
 /* Global sprite framebuffers (defined in shape2d.c) */
 
-#ifdef SHAPE2D_IMPL
-#define _S2_
-#else
-#define _S2_ extern
-#endif
-
-_S2_ struct SPRITE sprite1;
-
-#undef _S2_
+extern struct SPRITE sprite1;
 
 /* Shape2D file loading thunks */
 void *file_load_shape2d_fatal_thunk(const char *shapename);
