@@ -87,7 +87,26 @@ extern unsigned char aAlpine[];
 extern unsigned char aCity[];
 extern unsigned char aCountry[];
 
-void loop_game(int command, int context_value, int frame_value);
+typedef enum {
+    GAME_LOOP_LOAD_REPLAY_BAR = 0,
+    GAME_LOOP_UPDATE_REPLAY_BAR = 1,
+    GAME_LOOP_SET_REPLAY_BAR_BUTTON = 2,
+    GAME_LOOP_HANDLE_REPLAY_INPUT = 3
+} GameLoopCommand;
+
+typedef enum {
+    GAME_REPLAY_BAR_BUTTON_FAST_FORWARD = 0,
+    GAME_REPLAY_BAR_BUTTON_REWIND = 1,
+    GAME_REPLAY_BAR_BUTTON_PLAY_FAST = 2,
+    GAME_REPLAY_BAR_BUTTON_PLAY_NORMAL = 3,
+    GAME_REPLAY_BAR_BUTTON_PAUSE = 4,
+    GAME_REPLAY_BAR_BUTTON_RESTART = 5,
+    GAME_REPLAY_BAR_BUTTON_MENU = 6,
+    GAME_REPLAY_BAR_BUTTON_ZOOM_SLIDER = 7,
+    GAME_REPLAY_BAR_BUTTON_PAN_DIAL = 8
+} GameReplayBarButton;
+
+void loop_game(GameLoopCommand command, int context_value, int frame_value);
 void run_game(void);
 
 /* run_game_session - play/hiscore/replay loop (called from main).

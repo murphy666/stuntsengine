@@ -399,8 +399,8 @@ struct LINEINFO {
 /* --- sprite / draw functions --- */
 
 /* --- sphere / track objects --- */
-/* off_3F3C8: sphere LUT offset table (40 little-endian shorts from data_global.c) — private to shape3d */
-static unsigned short off_3F3C8[40] = { 15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
+/* sphere_lut_offsets: sphere LUT offset table (40 little-endian shorts from data_global.c) — private to shape3d */
+static unsigned short sphere_lut_offsets[40] = { 15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
                                         15556, 15564, 15573, 15583, 15594, 15606, 15619, 15633,
                                         15648, 15664, 15681, 15699, 15718, 15738, 15759, 15781,
                                         15804, 15828, 15853, 15879, 15906, 15934, 15963, 15993,
@@ -447,8 +447,8 @@ void preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, 
                      unsigned tread_color);
 void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
                             unsigned variant_flag);
-void generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode);
-void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_border_clip,
+void generate_poly_edges(int16_t *scanline_bounds, int *edge_state, int mode);
+void accumulate_scanline_bounds(int *edge_state, unsigned unused_flag, unsigned apply_border_clip,
                                 int16_t *scanline_bounds);
 void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle,
                                        short *wheel_compression_src, short *wheel_state_cache,
@@ -566,6 +566,21 @@ void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices,
 
 #define EDGE_STATE_WORD_COUNT 14
 
+/* Edge-state array field indices */
+#define EDGE_STATE_X           1   /* current x coordinate (integer part) */
+#define EDGE_STATE_FRAC        2   /* fractional part (Q0.16 fixed-point) */
+#define EDGE_STATE_Y_TOP       3   /* top y coordinate of visible span */
+#define EDGE_STATE_FRAC_INIT   4   /* initial fractional copy */
+#define EDGE_STATE_Y_BOTTOM    5   /* bottom y coordinate of visible span */
+#define EDGE_STATE_STEP        6   /* x or y step per scanline (fixed-point) */
+#define EDGE_STATE_COUNT       7   /* number of pixels/scanline steps */
+#define EDGE_STATE_X_END       8   /* end x coordinate */
+#define EDGE_STATE_MODE        9   /* edge drawing mode (Shape3DEdgeMode) */
+#define EDGE_STATE_CLIP_TOP    10  /* rows clipped at top */
+#define EDGE_STATE_EXTEND_BOTTOM_RIGHT 11  /* bottom extension count (right edges) */
+#define EDGE_STATE_CLIP_BOTTOM 12  /* rows clipped at bottom */
+#define EDGE_STATE_EXTEND_BOTTOM_LEFT  13  /* bottom extension count (left edges) */
+
 #define SHAPE3D_VERTEX_SCAN_LIMIT          8
 #define SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT 4
 
@@ -587,6 +602,8 @@ void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices,
 #define WHEEL_OUTLINE_LAST_POINT_INDEX 17
 #define WHEEL_OUTLINE_ARC_POINT_COUNT  9
 #define WHEEL_QUAD_VERTEX_COUNT        4
+#define WHEEL_RING_VERTEX_PAIRS        8    /* xy-pairs per half-ring */
+#define WHEEL_RING_MIRROR_OFFSET       16   /* int offset to mirrored (back face) ring */
 #define LINE_VERTEX_COUNT              2
 
 #define CAR_WHEEL_VERTEX_BASE_INDEX 8
@@ -636,8 +653,8 @@ enum Shape3DShapeSlot {
  */
 static inline int
 edge_state_start_row_from_count(const int *edge_state, int count) {
-    int start_row = (int)(int16_t)edge_state[3] - count;
-    if ((int16_t)edge_state[2] < 0) {
+    int start_row = (int)(int16_t)edge_state[EDGE_STATE_Y_TOP] - count;
+    if ((int16_t)edge_state[EDGE_STATE_FRAC] < 0) {
         start_row++;
     }
     return start_row;
@@ -1184,17 +1201,17 @@ shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
                        On 32-bit, they stay large and blow up polarRadius2D.
                        Reject if any control point is far outside the screen. */
                     {
-                        int _whi;
+                        int wheel_vert_idx;
                         bool wheel_out_of_bounds = false;
-                        for (_whi = 0; _whi < 4; _whi++) {
-                            int _wax = transshapepolyinfopts[_whi].px;
-                            int _way = transshapepolyinfopts[_whi].py;
-                            if (_wax < 0)
-                                _wax = -_wax;
-                            if (_way < 0)
-                                _way = -_way;
-                            if (_wax > WHEEL_VERTEX_CONTROL_ABS_MAX
-                                || _way > WHEEL_VERTEX_CONTROL_ABS_MAX) {
+                        for (wheel_vert_idx = 0; wheel_vert_idx < 4; wheel_vert_idx++) {
+                            int abs_px = transshapepolyinfopts[wheel_vert_idx].px;
+                            int abs_py = transshapepolyinfopts[wheel_vert_idx].py;
+                            if (abs_px < 0)
+                                abs_px = -abs_px;
+                            if (abs_py < 0)
+                                abs_py = -abs_py;
+                            if (abs_px > WHEEL_VERTEX_CONTROL_ABS_MAX
+                                || abs_py > WHEEL_VERTEX_CONTROL_ABS_MAX) {
                                 wheel_out_of_bounds = true;
                                 break;
                             }
@@ -1448,7 +1465,7 @@ project_radius_by_depth(unsigned radius_3d, int depth_z) {
  */
 unsigned
 polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) {
-    int regdi, regsi, regax;
+    int list_entry, walk_counter, prev_counter;
     unsigned short depth_key;
     unsigned short depth_cur;
 
@@ -1464,12 +1481,10 @@ polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) 
         zorder_current_index = POLYINFO_HEAD_INDEX;
     }
 
-    //return polyinfo_insert_sorted_by_depth_(depth_key_input, search_mode);
-
     if (search_mode == 0) {
-        regdi = zorder_shape_list[zorder_current_index];
-        if (regdi >= POLYINFO_MAX_POLYS) {
-            regdi = -1;
+        list_entry = zorder_shape_list[zorder_current_index];
+        if (list_entry >= POLYINFO_MAX_POLYS) {
+            list_entry = -1;
         }
     }
     else {
@@ -1477,30 +1492,30 @@ polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) 
         if (zorder_current_index > POLYINFO_HEAD_INDEX) {
             zorder_current_index = POLYINFO_HEAD_INDEX;
         }
-        regdi = zorder_shape_list[zorder_next_link];
-        regsi = zorder_tail_counter;
+        list_entry = zorder_shape_list[zorder_next_link];
+        walk_counter = zorder_tail_counter;
 
-        while (regdi >= 0) {
-            if (regdi >= POLYINFO_MAX_POLYS || polyinfoptrs[regdi] == 0) {
-                regdi = -1;
+        while (list_entry >= 0) {
+            if (list_entry >= POLYINFO_MAX_POLYS || polyinfoptrs[list_entry] == 0) {
+                list_entry = -1;
                 break;
             }
-            regax = regsi;
-            regsi--;
-            if (regax == 0)
+            prev_counter = walk_counter;
+            walk_counter--;
+            if (prev_counter == 0)
                 break;
-            depth_cur = polyinfo_depth_at(regdi);
+            depth_cur = polyinfo_depth_at(list_entry);
             if (depth_cur < depth_key)
                 break;
-            zorder_current_index = regdi;
-            regdi = zorder_shape_list[regdi];
+            zorder_current_index = list_entry;
+            list_entry = zorder_shape_list[list_entry];
         }
     }
 
-    zorder_shape_list[polyinfonumpolys] = regdi;
+    zorder_shape_list[polyinfonumpolys] = list_entry;
     zorder_shape_list[zorder_current_index] = polyinfonumpolys;
     zorder_tail_counter++;
-    if (regdi < 0) {
+    if (list_entry < 0) {
         polygon_info_head = polyinfonumpolys;
     }
     zorder_current_index = zorder_shape_list[zorder_current_index];
@@ -1686,12 +1701,12 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
 
     int adjusted_radius;
     int half;
-    int bx_val;
+    int bottom_extent;
     int left_clip, right_clip;
     int y_start, total_lines;
     unsigned char *table_ptr;
     uintptr_t dseg_base;
-    int si_idx, di_idx, bx_ofs;
+    int left_row, right_row, mirror_offset;
     int half_width;
     int x_left, x_right;
     int clip_skip;
@@ -1719,7 +1734,7 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
         return;
     }
 
-    bx_val = adjusted_radius - half;
+    bottom_extent = adjusted_radius - half;
 
     /* Cache sprite1 clip bounds */
     left_clip = sprite1.sprite_left2;
@@ -1733,13 +1748,13 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
     y_start = center_y - half;
 
     /* Check if bottom of sphere is above viewport */
-    if (center_y + bx_val <= (int)sprite1.sprite_top) {
+    if (center_y + bottom_extent <= (int)sprite1.sprite_top) {
         return;
     }
 
     /* Horizontal clipping check */
     {
-        int dx = bx_val + (bx_val >> SPHERE_CLIP_MARGIN_QUARTER_SHIFT);
+        int dx = bottom_extent + (bottom_extent >> SPHERE_CLIP_MARGIN_QUARTER_SHIFT);
         if (center_x - dx > right_clip) {
             return;
         }
@@ -1749,7 +1764,7 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
     }
 
     /* If sphere is large (>= SPHERE_LARGE_RADIUS_MIN), use helper function */
-    if (bx_val >= SPHERE_LARGE_RADIUS_MIN) {
+    if (bottom_extent >= SPHERE_LARGE_RADIUS_MIN) {
         /* Build helper coordinate struct */
         helper_coords[0] = center_x;                          /* x */
         helper_coords[1] = center_x;                          /* wheel_vertices_base_ptr = x */
@@ -1763,15 +1778,15 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
 
     /* Use lookup table for small spheres */
     /* Convert DSEG offset table to flat pointer */
-    dseg_base = (uintptr_t)&off_3F3C8[0] - (uintptr_t)SPHERE_LUT_DSEG_OFFSET;
-    table_ptr = (unsigned char *)(dseg_base + (uintptr_t)off_3F3C8[bx_val]);
+    dseg_base = (uintptr_t)&sphere_lut_offsets[0] - (uintptr_t)SPHERE_LUT_DSEG_OFFSET;
+    table_ptr = (unsigned char *)(dseg_base + (uintptr_t)sphere_lut_offsets[bottom_extent]);
     total_lines = adjusted_radius;
-    bx_ofs = (adjusted_radius - 1) * 2; /* offset for mirror entries */
-    si_idx = 0;
-    di_idx = 0;
+    mirror_offset = (adjusted_radius - 1) * 2; /* offset for mirror entries */
+    left_row = 0;
+    right_row = 0;
 
     /* Build edge arrays from lookup table */
-    while (bx_ofs >= 0) {
+    while (mirror_offset >= 0) {
         half_width = *table_ptr++;
 
         /* Calculate left edge */
@@ -1780,14 +1795,14 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
             /* Line is entirely off right edge - skip it */
             y_start++;
             total_lines -= 2;
-            bx_ofs -= 4;
+            mirror_offset -= 4;
             continue;
         }
         if (x_left < left_clip) {
             x_left = left_clip;
         }
-        left_edge_x[si_idx] = x_left;
-        left_edge_x[si_idx + (bx_ofs >> 1)] = x_left;
+        left_edge_x[left_row] = x_left;
+        left_edge_x[left_row + (mirror_offset >> 1)] = x_left;
 
         /* Calculate right edge */
         x_right = center_x + half_width;
@@ -1795,18 +1810,18 @@ preRender_sphere(int center_x, int center_y, int radius, int color) {
             /* Line is entirely off left edge - should not happen after above check */
             y_start++;
             total_lines -= 2;
-            bx_ofs -= 4;
+            mirror_offset -= 4;
             continue;
         }
         if (x_right > right_clip) {
             x_right = right_clip;
         }
-        right_edge_x[di_idx] = x_right;
-        right_edge_x[di_idx + (bx_ofs >> 1)] = x_right;
+        right_edge_x[right_row] = x_right;
+        right_edge_x[right_row + (mirror_offset >> 1)] = x_right;
 
-        si_idx++;
-        di_idx++;
-        bx_ofs -= 4;
+        left_row++;
+        right_row++;
+        mirror_offset -= 4;
     }
 
     /* Apply vertical clipping */
@@ -1883,11 +1898,11 @@ build_wheel_ring_vertices(int *input_data, int *output_data) {
     output_data[10] = multiply_and_scale((short)output_data[8] - half_delta_x1, WHEEL_SCALE_INNER_Q15);
     output_data[11] = multiply_and_scale((short)output_data[9] - half_delta_y1, WHEEL_SCALE_INNER_Q15);
 
-    /* Now fill remaining entries 16-31 by offsetting with base coords */
-    for (i = 0; i < 8; i++) {
+    /* Now fill remaining entries by offsetting with base coords */
+    for (i = 0; i < WHEEL_RING_VERTEX_PAIRS; i++) {
         int idx = i * 2;
-        output_data[16 + idx] = x1 - output_data[idx];
-        output_data[16 + idx + 1] = input_data[1] - output_data[idx + 1];
+        output_data[WHEEL_RING_MIRROR_OFFSET + idx] = x1 - output_data[idx];
+        output_data[WHEEL_RING_MIRROR_OFFSET + idx + 1] = input_data[1] - output_data[idx + 1];
         output_data[idx] += x1;
         output_data[idx + 1] += input_data[1];
     }
@@ -1983,11 +1998,11 @@ preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsig
         draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
     }
 
-    /* Draw wrap-around quad (i=15 to i=0) */
-    quadVerts[0] = wheel0[15];
+    /* Draw wrap-around quad (last to first) */
+    quadVerts[0] = wheel0[WHEEL_SIDE_QUAD_COUNT];
     quadVerts[1] = wheel0[0];
     quadVerts[2] = wheel1[0];
-    quadVerts[3] = wheel1[15];
+    quadVerts[3] = wheel1[WHEEL_SIDE_QUAD_COUNT];
     draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
 
     /* Find point with minimum Y in wheel0 */
@@ -2142,12 +2157,12 @@ get_a_poly_info(void) {
     int maxcount;
     int matpattern;
     int pattype2;
-    int regdi;
+    int poly_index;
     unsigned char *polyinfoptr;
     int *pdata;
     unsigned counter;
     int j;
-    int polygon_points_xy[256];
+    int polygon_points_xy[VERTEX_CACHE_COUNT];
     const unsigned char *clrlist;
     const unsigned char *clrlist2;
     const unsigned char *patlist;
@@ -2173,16 +2188,16 @@ get_a_poly_info(void) {
         draw_health_validate_links(&draw_health);
     }
 
-    regdi = POLYINFO_HEAD_INDEX;
+    poly_index = POLYINFO_HEAD_INDEX;
     for (counter = 0; counter < polyinfonumpolys; counter++) {
-        regdi = zorder_shape_list[regdi];
-        if (regdi < 0 || regdi >= POLYINFO_MAX_POLYS) {
+        poly_index = zorder_shape_list[poly_index];
+        if (poly_index < 0 || poly_index >= POLYINFO_MAX_POLYS) {
             break;
         }
-        if (polyinfoptrs[regdi] == 0) {
+        if (polyinfoptrs[poly_index] == 0) {
             break;
         }
-        polyinfoptr = (unsigned char *)polyinfoptrs[regdi];
+        polyinfoptr = (unsigned char *)polyinfoptrs[poly_index];
         if (draw_strict_enabled) {
             unsigned short depth_check = *(unsigned short *)polyinfoptr;
             if ((int)depth_check <= 0 || (int)depth_check > draw_strict_max_depth) {
@@ -2411,9 +2426,6 @@ preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned *ver
 }
 
 /** @brief Draw wheel quad.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
 void
 draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D vertex_lines[]) {
@@ -2427,12 +2439,6 @@ draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D 
 
 
 /** @brief Draw two color patterned lines sprite.
- * @param color Parameter value.
- * @param numlines Parameter value.
- * @param y Parameter value.
- * @param x2arr Parameter value.
- * @param x1arr Parameter value.
- * @return Function return value.
  */
 static void
 draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numlines,
@@ -2442,12 +2448,6 @@ draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numli
 }
 
 /** @brief Draw patterned lines sprite.
- * @param color Parameter value.
- * @param numlines Parameter value.
- * @param y Parameter value.
- * @param x2arr Parameter value.
- * @param x1arr Parameter value.
- * @return Function return value.
  */
 static void
 draw_patterned_lines_sprite(unsigned short color, unsigned short numlines, unsigned short y,
@@ -2478,11 +2478,6 @@ preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_color, unsigned 
 }
 
 /** @brief Prerender two color pattern flag1.
- * @param pattern Parameter value.
- * @param alt_color Parameter value.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
 void
 preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color,
@@ -2493,10 +2488,6 @@ preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned
 }
 
 /** @brief Prerender patterned.
- * @param pattern_type Parameter value.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
 void
 preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count,
@@ -2517,8 +2508,6 @@ preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_
  * @param fill_color         Fill colour index.
  * @param vertex_line_count  Number of vertex line entries.
 /** @brief Array.
- * @param variant_flag Parameter value.
- * @return Function return value.
  */
 void
 preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
@@ -2598,9 +2587,6 @@ preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *ver
     if (max_y == min_y) {
         /* Single-scanline polygon: draw as a clipped horizontal fill.
 /** @brief Imagefunc.
- * @param them Parameter value.
- * @param sprite1_sprite_height Parameter value.
- * @return Function return value.
  */
         if (min_y >= sprite1_sprite_top && min_y < sprite1_sprite_height) {
             int cx1 = minx, cx2 = maxx;
@@ -2724,11 +2710,11 @@ preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *ver
  * Also known as preRender_helper in the IDB.
  *
  * @param scanline_bounds  Scanline min/max X buffer.
- * @param regsi            Pointer to polygon edge data.
+ * @param edge_state            Pointer to polygon edge data.
  * @param mode             0 = primary path, 1 = secondary path.
  */
 void
-generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
+generate_poly_edges(int16_t *scanline_bounds, int *edge_state, int mode) {
 
     int sprite1_sprite_left2 = sprite1.sprite_left2;
     int sprite1_sprite_widthsum = sprite1.sprite_widthsum;
@@ -2737,9 +2723,9 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
     unsigned long temp;
 
     if (mode != 1) {
-        count = regsi[10];
+        count = edge_state[EDGE_STATE_CLIP_TOP];
         if (count > 0) {
-            ofs = edge_state_start_row_from_count(regsi, count);
+            ofs = edge_state_start_row_from_count(edge_state, count);
             for (i = 0; i < count; i++) {
                 int idx = ofs + i;
                 if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2749,9 +2735,9 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
             }
         }
 
-        count = regsi[12];
+        count = edge_state[EDGE_STATE_CLIP_BOTTOM];
         if (count > 0) {
-            ofs = edge_state_start_row_from_count(regsi, count);
+            ofs = edge_state_start_row_from_count(edge_state, count);
             for (i = 0; i < count; i++) {
                 int idx = ofs + i;
                 if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2761,9 +2747,9 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
             }
         }
 
-        count = regsi[11];
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_RIGHT];
         if (count > 0) {
-            ofs = regsi[5] + 1;
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 int idx = ofs + i;
                 if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2773,9 +2759,9 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
             }
         }
 
-        count = regsi[13];
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_LEFT];
         if (count > 0) {
-            ofs = regsi[5] + 1;
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 int idx = ofs + i;
                 if (idx >= 0 && idx < SCANLINE_HEIGHT) {
@@ -2786,13 +2772,13 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
         }
     }
 
-    count = regsi[7];
+    count = edge_state[EDGE_STATE_COUNT];
     if (count <= 0)
         return;
 
-    ofs = regsi[3];
+    ofs = edge_state[EDGE_STATE_Y_TOP];
 
-    switch (regsi[9]) {
+    switch (edge_state[EDGE_STATE_MODE]) {
     case 0:
     case 1:
         return;
@@ -2800,8 +2786,8 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)regsi[1];
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)regsi[1];
+                scanline_bounds[idx] = (int16_t)edge_state[EDGE_STATE_X];
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)edge_state[EDGE_STATE_X];
             }
         }
         return;
@@ -2809,8 +2795,8 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)(regsi[1] - i);
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(regsi[1] - i);
+                scanline_bounds[idx] = (int16_t)(edge_state[EDGE_STATE_X] - i);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(edge_state[EDGE_STATE_X] - i);
             }
         }
         return;
@@ -2818,14 +2804,14 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)(regsi[1] + i);
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(regsi[1] + i);
+                scanline_bounds[idx] = (int16_t)(edge_state[EDGE_STATE_X] + i);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(edge_state[EDGE_STATE_X] + i);
             }
         }
         return;
     case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
-        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
-                | (unsigned int)regsi[2];
+        value = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                | (unsigned int)edge_state[EDGE_STATE_FRAC];
         value += FIXED_HALF_16;
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
@@ -2833,12 +2819,12 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
                 scanline_bounds[idx] = (int16_t)(value >> FIXED_SHIFT_16);
                 scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
             }
-            value -= (unsigned int)regsi[6];
+            value -= (unsigned int)edge_state[EDGE_STATE_STEP];
         }
         return;
     case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
-        value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
-                | (unsigned int)regsi[2];
+        value = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                | (unsigned int)edge_state[EDGE_STATE_FRAC];
         value += FIXED_HALF_16;
         for (i = 0; i < count; i++) {
             int idx = ofs + i;
@@ -2847,12 +2833,12 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
                 scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
             }
 
-            value += (unsigned int)regsi[6];
+            value += (unsigned int)edge_state[EDGE_STATE_STEP];
         }
         return;
     case SHAPE3D_EDGE_MODE_STEEP_LEFT:
-        value = (unsigned int)regsi[1];
-        temp = (unsigned int)regsi[2];
+        value = (unsigned int)edge_state[EDGE_STATE_X];
+        temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
         if (temp + FIXED_HALF_16 > USHRT_MAX)
             ofs++;
         temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
@@ -2860,7 +2846,7 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
             scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
         }
         for (i = 0; i < count; i++) {
-            if (temp + (unsigned int)regsi[6] <= USHRT_MAX) {
+            if (temp + (unsigned int)edge_state[EDGE_STATE_STEP] <= USHRT_MAX) {
                 value--;
                 if (i == count - 1) {
                     if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
@@ -2878,13 +2864,13 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
                     scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
                 }
             }
-            temp = (temp + (unsigned int)regsi[6]) & FIXED_FRAC_MASK_16;
+            temp = (temp + (unsigned int)edge_state[EDGE_STATE_STEP]) & FIXED_FRAC_MASK_16;
         }
         return;
 
     case SHAPE3D_EDGE_MODE_STEEP_RIGHT:
-        value = (unsigned int)regsi[1];
-        temp = (unsigned int)regsi[2];
+        value = (unsigned int)edge_state[EDGE_STATE_X];
+        temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
         if (temp + FIXED_HALF_16 > USHRT_MAX)
             ofs++;
         temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
@@ -2892,7 +2878,7 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
             scanline_bounds[ofs] = (int16_t)value;
         }
         for (i = 0; i < count; i++) {
-            if (temp + (unsigned int)regsi[6] <= USHRT_MAX) {
+            if (temp + (unsigned int)edge_state[EDGE_STATE_STEP] <= USHRT_MAX) {
                 value++;
                 if (i == count - 1) {
                     if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
@@ -2910,19 +2896,19 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
                     scanline_bounds[ofs] = (int16_t)value;
                 }
             }
-            temp = (temp + (unsigned int)regsi[6]) & FIXED_FRAC_MASK_16;
+            temp = (temp + (unsigned int)edge_state[EDGE_STATE_STEP]) & FIXED_FRAC_MASK_16;
         }
         return;
 
 
     /*case 8:
-			value = regsi[1];
-			temp = regsi[2] + 32768;
+			value = edge_state[EDGE_STATE_X];
+			temp = edge_state[EDGE_STATE_FRAC] + 32768;
 			if (temp <= 0)
 				ofs++;
             scanline_bounds[ofs] = value;
 			for (i = 0; i < count; i++) {
-				temp += (unsigned int)regsi[6];
+				temp += (unsigned int)edge_state[EDGE_STATE_STEP];
 				if (temp >= 0) {
 					value++;
 				} else {
@@ -2950,14 +2936,9 @@ generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode) {
  * @brief Accumulate edge contributions into scanline min/max bounds.
  *
  * Also known as preRender_helper3 in the IDB.
- *
- * @param regsi              Pointer to polygon edge data.
-/** @brief Unused.
- * @param scanline_bounds Parameter value.
- * @return Function return value.
  */
 void
-accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_border_clip,
+accumulate_scanline_bounds(int *edge_state, unsigned unused_flag, unsigned apply_border_clip,
                            int16_t *scanline_bounds) {
     int count;
     int ofs;
@@ -2979,16 +2960,16 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
         }                                                               \
     } while (0)
 
-    count = regsi[7];
+    count = edge_state[EDGE_STATE_COUNT];
     if (count > 0) {
-        ofs = regsi[3];
-        mode = regsi[9];
+        ofs = edge_state[EDGE_STATE_Y_TOP];
+        mode = edge_state[EDGE_STATE_MODE];
 
         if (mode == SHAPE3D_EDGE_MODE_STEEP_LEFT) {
-            unsigned long temp = (unsigned int)regsi[2];
-            unsigned long step = (unsigned int)regsi[6];
+            unsigned long temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+            unsigned long step = (unsigned int)edge_state[EDGE_STATE_STEP];
             unsigned long sum;
-            int ax = regsi[1];
+            int ax = edge_state[EDGE_STATE_X];
             int row = ofs;
             int rem = count;
 
@@ -3042,10 +3023,10 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
             }
         }
         else if (mode == SHAPE3D_EDGE_MODE_STEEP_RIGHT) {
-            unsigned long temp = (unsigned int)regsi[2];
-            unsigned long step = (unsigned int)regsi[6];
+            unsigned long temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+            unsigned long step = (unsigned int)edge_state[EDGE_STATE_STEP];
             unsigned long sum;
-            int ax = regsi[1];
+            int ax = edge_state[EDGE_STATE_X];
             int row = ofs;
             int rem = count;
 
@@ -3101,28 +3082,28 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
             }
         }
         else {
-            accum = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16)
-                    | (unsigned int)regsi[2];
+            accum = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                    | (unsigned int)edge_state[EDGE_STATE_FRAC];
 
             for (i = 0; i < count; i++) {
                 switch (mode) {
                 case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
-                    x = regsi[1] - i;
+                    x = edge_state[EDGE_STATE_X] - i;
                     break;
                 case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
-                    x = regsi[1] + i;
+                    x = edge_state[EDGE_STATE_X] + i;
                     break;
                 case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
                     x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-                    accum -= (unsigned int)regsi[6];
+                    accum -= (unsigned int)edge_state[EDGE_STATE_STEP];
                     break;
                 case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
                     x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-                    accum += (unsigned int)regsi[6];
+                    accum += (unsigned int)edge_state[EDGE_STATE_STEP];
                     break;
                 case SHAPE3D_EDGE_MODE_VERTICAL:
                 default:
-                    x = regsi[1];
+                    x = edge_state[EDGE_STATE_X];
                     break;
                 }
 
@@ -3142,10 +3123,10 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
 
 
     if (apply_border_clip != 0) {
-        count = regsi[10];
+        count = edge_state[EDGE_STATE_CLIP_TOP];
         if (count > 0) {
-            ofs = regsi[3] - count;
-            if (regsi[2] < 0) {
+            ofs = edge_state[EDGE_STATE_Y_TOP] - count;
+            if (edge_state[EDGE_STATE_FRAC] < 0) {
                 ofs++;
             }
             for (i = 0; i < count; i++) {
@@ -3155,10 +3136,10 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
             }
         }
 
-        count = regsi[12];
+        count = edge_state[EDGE_STATE_CLIP_BOTTOM];
         if (count > 0) {
-            ofs = regsi[3] - count;
-            if (regsi[2] < 0) {
+            ofs = edge_state[EDGE_STATE_Y_TOP] - count;
+            if (edge_state[EDGE_STATE_FRAC] < 0) {
                 ofs++;
             }
             for (i = 0; i < count; i++) {
@@ -3168,9 +3149,9 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
             }
         }
 
-        count = regsi[11];
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_RIGHT];
         if (count > 0) {
-            ofs = regsi[5] + 1;
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
                     scanline_bounds[ofs + i] = (short)sprite1.sprite_left2;
@@ -3178,9 +3159,9 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
             }
         }
 
-        count = regsi[13];
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_LEFT];
         if (count > 0) {
-            ofs = regsi[5] + 1;
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
                     scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (short)sprite1.sprite_widthsum - 1;
@@ -3190,7 +3171,9 @@ accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_bord
     }
 }
 
-unsigned legacy_interp_default_scale = 50;
+#define INTERP_TABLE_COUNT 50
+
+unsigned legacy_interp_default_scale = INTERP_TABLE_COUNT;
 
 static unsigned g_interp_blob[1177] __attribute__((unused)) = {
     2256u,  32768u, 21845u, 43690u, 16384u, 32768u, 49152u, 13107u, 26214u, 39321u, 52428u, 10922u,
@@ -3294,35 +3277,24 @@ static unsigned g_interp_blob[1177] __attribute__((unused)) = {
     64198u,
 };
 
-static unsigned g_interp_offsets_rel[50] __attribute__((unused)) = {
+static unsigned g_interp_offsets_rel[INTERP_TABLE_COUNT] __attribute__((unused)) = {
     0u,    0u,    0u,    2u,    6u,    12u,   20u,   30u,   42u,   56u,   72u,   90u,   110u,
     132u,  156u,  182u,  210u,  240u,  272u,  306u,  342u,  380u,  420u,  462u,  506u,  552u,
     600u,  650u,  702u,  756u,  812u,  870u,  930u,  992u,  1056u, 1122u, 1190u, 1260u, 1332u,
     1406u, 1482u, 1560u, 1640u, 1722u, 1806u, 1892u, 1980u, 2070u, 2162u, 2256u,
 };
 
-unsigned off_2F44A[50] = { 0 };
+unsigned interp_dispatch_table[INTERP_TABLE_COUNT] = { 0 };
 
 unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
                                 int *edge_state, unsigned allow_steep_modes);
 
-/**
-/** @brief Segment.
- * @param edge_state Parameter value.
- * @return Function return value.
- */
 unsigned
 draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
                   int *edge_state) {
-    //return draw_line_related_(start_x, start_y, end_x, end_y, edge_state);
     return draw_line_related_impl(start_x, start_y, end_x, end_y, edge_state, 0);
 }
 
-/**
-/** @brief Segment.
- * @param edge_state Parameter value.
- * @return Function return value.
- */
 unsigned
 draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
                       int *edge_state) {
@@ -3409,11 +3381,11 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
     dx = x1 - x0;
     dy = y1 - y0;
 
-    edge_state[3] = y0;
-    edge_state[5] = y1;
-    edge_state[7] = dy + 1;
-    edge_state[10] = yclip_top;
-    edge_state[12] = yclip_bottom;
+    edge_state[EDGE_STATE_Y_TOP] = y0;
+    edge_state[EDGE_STATE_Y_BOTTOM] = y1;
+    edge_state[EDGE_STATE_COUNT] = dy + 1;
+    edge_state[EDGE_STATE_CLIP_TOP] = yclip_top;
+    edge_state[EDGE_STATE_CLIP_BOTTOM] = yclip_bottom;
 
     if (dy == 0) {
         int xh = x0;
@@ -3423,8 +3395,8 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
         if (xh > right) {
             xh = right;
         }
-        edge_state[1] = xh;
-        edge_state[9] = SHAPE3D_EDGE_MODE_VERTICAL;
+        edge_state[EDGE_STATE_X] = xh;
+        edge_state[EDGE_STATE_MODE] = SHAPE3D_EDGE_MODE_VERTICAL;
         return SHAPE3D_DRAW_LINE_OK;
     }
 
@@ -3433,62 +3405,62 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
 
     if (xstep == 0) {
         mode = SHAPE3D_EDGE_MODE_VERTICAL;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
     else if (xstep == FIXED_ONE_16) {
         mode = SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
     else if (xstep == -FIXED_ONE_16) {
         mode = SHAPE3D_EDGE_MODE_DIAGONAL_LEFT;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
     else if (allow_steep_modes != 0 && xstep > FIXED_ONE_16) {
         /* Steep right: dx > dy → mode 8 (x-major DDA, no y-clip adjustment needed) */
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)dx);
         mode = SHAPE3D_EDGE_MODE_STEEP_RIGHT;
-        edge_state[1] = x0;          /* x = startX */
-        edge_state[2] = 0;           /* yfrac = 0 */
-        edge_state[6] = ystep_steep; /* y step per x advance */
-        edge_state[7] = dx + 1;      /* count = x-pixel steps */
+        edge_state[EDGE_STATE_X] = x0;          /* x = startX */
+        edge_state[EDGE_STATE_FRAC] = 0;           /* yfrac = 0 */
+        edge_state[EDGE_STATE_STEP] = ystep_steep; /* y step per x advance */
+        edge_state[EDGE_STATE_COUNT] = dx + 1;      /* count = x-pixel steps */
     }
     else if (allow_steep_modes != 0 && xstep < -FIXED_ONE_16) {
         /* Steep left: |dx| > dy → mode 7 (x-major DDA, no y-clip adjustment needed) */
         int absdx = -dx;
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)absdx);
         mode = SHAPE3D_EDGE_MODE_STEEP_LEFT;
-        edge_state[1] = x0;          /* x = startX */
-        edge_state[2] = 0;           /* yfrac = 0 */
-        edge_state[6] = ystep_steep; /* y step per x advance */
-        edge_state[7] = absdx + 1;   /* count = x-pixel steps */
+        edge_state[EDGE_STATE_X] = x0;          /* x = startX */
+        edge_state[EDGE_STATE_FRAC] = 0;           /* yfrac = 0 */
+        edge_state[EDGE_STATE_STEP] = ystep_steep; /* y step per x advance */
+        edge_state[EDGE_STATE_COUNT] = absdx + 1;   /* count = x-pixel steps */
     }
     else if (xstep > 0) {
         mode = SHAPE3D_EDGE_MODE_SHALLOW_RIGHT;
-        edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
-        edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
-        edge_state[6] = xstep;
-        edge_state[7] = dy + 1;
+        edge_state[EDGE_STATE_X] = (int)(accum >> FIXED_SHIFT_16);
+        edge_state[EDGE_STATE_FRAC] = (int)(accum & FIXED_FRAC_MASK_16);
+        edge_state[EDGE_STATE_STEP] = xstep;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
     else {
         mode = SHAPE3D_EDGE_MODE_SHALLOW_LEFT;
-        edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
-        edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
-        edge_state[6] = -xstep;
-        edge_state[7] = dy + 1;
+        edge_state[EDGE_STATE_X] = (int)(accum >> FIXED_SHIFT_16);
+        edge_state[EDGE_STATE_FRAC] = (int)(accum & FIXED_FRAC_MASK_16);
+        edge_state[EDGE_STATE_STEP] = -xstep;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
 
-    edge_state[4] = edge_state[2];
-    edge_state[8] = x1;
-    edge_state[9] = mode;
+    edge_state[EDGE_STATE_FRAC_INIT] = edge_state[EDGE_STATE_FRAC];
+    edge_state[EDGE_STATE_X_END] = x1;
+    edge_state[EDGE_STATE_MODE] = mode;
 
     if (allow_steep_modes == 0) {
         /* X clipping when allow_steep_modes == 0 (draw_line_related, not _alt) */
         int x_start = x0;
         int x_end = x1;
-        int count = edge_state[7];
+        int count = edge_state[EDGE_STATE_COUNT];
 
         /* Early-out: line completely outside x bounds */
         if (x_start < left && x_end < left) {
@@ -3502,21 +3474,14 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
         if (mode == SHAPE3D_EDGE_MODE_VERTICAL) {
             /* Vertical line: clip x to bounds */
             if (x0 < left) {
-                edge_state[1] = left;
+                edge_state[EDGE_STATE_X] = left;
             }
             else if (x0 > right) {
-                edge_state[1] = right;
+                edge_state[EDGE_STATE_X] = right;
             }
         }
         else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT
                  || mode == SHAPE3D_EDGE_MODE_SHALLOW_LEFT) {
-            /** @brief Left.
- * @param high Parameter value.
- * @param left Parameter value.
- * @param right Parameter value.
- * @param xstep Parameter value.
- * @return Function return value.
- */
             /* Line going left (x decreasing as y increases):
              * Start x = x0 (high), End x = x1 (low)
              * Clip: if x_end < left, reduce count from bottom
@@ -3527,10 +3492,10 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
                 int rows_outside = (left - x_end);
                 if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
                     /* dx/dy = -1, so 1 pixel per row */
-                    edge_state[12] += rows_outside; /* yclip_bottom */
-                    edge_state[7] -= rows_outside;
-                    edge_state[5] -= rows_outside;
-                    if (edge_state[7] <= 0)
+                    edge_state[EDGE_STATE_CLIP_BOTTOM] += rows_outside; /* yclip_bottom */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_BOTTOM] -= rows_outside;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
                         return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
@@ -3538,24 +3503,17 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
                 /* Start of line is right of viewport - clip top */
                 int rows_outside = (x_start - right);
                 if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
-                    edge_state[10] += rows_outside; /* yclip_top */
-                    edge_state[7] -= rows_outside;
-                    edge_state[3] += rows_outside;
-                    edge_state[1] = right;
-                    if (edge_state[7] <= 0)
+                    edge_state[EDGE_STATE_CLIP_TOP] += rows_outside; /* yclip_top */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_TOP] += rows_outside;
+                    edge_state[EDGE_STATE_X] = right;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
                         return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
         }
         else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT
                  || mode == SHAPE3D_EDGE_MODE_SHALLOW_RIGHT) {
-            /** @brief Right.
- * @param low Parameter value.
- * @param left Parameter value.
- * @param right Parameter value.
- * @param xstep Parameter value.
- * @return Function return value.
- */
             /* Line going right (x increasing as y increases):
              * Start x = x0 (low), End x = x1 (high)
              * Clip: if x_start < left, reduce count from top
@@ -3565,11 +3523,11 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
                 /* Start of line is left of viewport - clip top */
                 int rows_outside = (left - x_start);
                 if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
-                    edge_state[10] += rows_outside; /* yclip_top */
-                    edge_state[7] -= rows_outside;
-                    edge_state[3] += rows_outside;
-                    edge_state[1] = left;
-                    if (edge_state[7] <= 0)
+                    edge_state[EDGE_STATE_CLIP_TOP] += rows_outside; /* yclip_top */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_TOP] += rows_outside;
+                    edge_state[EDGE_STATE_X] = left;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
                         return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
@@ -3577,10 +3535,10 @@ draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsig
                 /* End of line is right of viewport - clip bottom */
                 int rows_outside = (x_end - right);
                 if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
-                    edge_state[12] += rows_outside; /* yclip_bottom */
-                    edge_state[7] -= rows_outside;
-                    edge_state[5] -= rows_outside;
-                    if (edge_state[7] <= 0)
+                    edge_state[EDGE_STATE_CLIP_BOTTOM] += rows_outside; /* yclip_bottom */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_BOTTOM] -= rows_outside;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
                         return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
@@ -3836,11 +3794,6 @@ shape3d_free_car_shapes() {
 
 // Draw a line from (startX, startY) to (endX, endY) with specified color
 /** @brief Prerender line.
- * @param startX Parameter value.
- * @param startY Parameter value.
- * @param endX Parameter value.
- * @param endY Parameter value.
- * @param color Parameter value.
  */
 void
 preRender_line(unsigned short startX, unsigned short startY, unsigned short endX,

@@ -25,7 +25,6 @@
 #include "math.h"
 #include <stddef.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 /* file-local data (moved from data_global.c) */
 static unsigned char breakable_obstacle_collision_box[8] = { 5, 0, 40, 0, 5, 0, 10, 0 };
@@ -516,7 +515,6 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
 #include "math.h"
 #include "track.h"
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -2683,7 +2681,6 @@ car_car_detect_collision(short *pColl, short *pWorld, short *oColl, short *oWorl
 /* ===== BEGIN MERGED FROM src/stateply.c ===== */
 #include "stunts.h"
 #include "math.h"
-#include <stdio.h>
 #include <stdlib.h>
 /* Variables moved from data_game.c (private to this translation unit) */
 static short gState_oEndFrame = 0;

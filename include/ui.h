@@ -23,6 +23,11 @@
 #ifndef UI_H
 #define UI_H
 
+typedef enum {
+    MOUSE_BOUNDS_FULL_SCREEN = 0,
+    MOUSE_BOUNDS_GAMEPLAY = 1
+} MouseBoundsMode;
+
 extern char *window_save_buf;
 
 /* Text input */
@@ -51,7 +56,7 @@ void draw_button(char *text, unsigned short x, unsigned short y, unsigned short 
 #define draw_button draw_button
 
 /* Mouse position helper */
-void mouse_minmax_position(int);
+void mouse_minmax_position(MouseBoundsMode mode);
 
 /* Text resource handlers (called to populate in-game text resources) */
 void do_mrl_textres(void);

@@ -69,6 +69,18 @@ static unsigned char phys_model_0x21_points[12] = { 136, 1, 0, 0, 0, 0, 120, 2, 
 static unsigned char phys_model_0x22_points[24]
     = { 23, 0, 0, 0, 1, 255, 97, 0, 0, 0, 1, 255, 159, 255, 0, 0, 255, 0, 233, 255, 0, 0, 255, 0 };
 
+typedef struct {
+    unsigned char source_element;
+    unsigned char hill_element;
+} BtoHillRoadSubstitution;
+
+static const BtoHillRoadSubstitution hillroad_substitutions[][6] = {
+    { { 4, 182 }, { 14, 186 }, { 24, 190 }, { 39, 194 }, { 59, 194 }, { 98, 194 } },
+    { { 5, 183 }, { 15, 187 }, { 25, 191 }, { 36, 195 }, { 56, 195 }, { 95, 195 } },
+    { { 4, 184 }, { 14, 188 }, { 24, 192 }, { 38, 196 }, { 58, 196 }, { 97, 196 } },
+    { { 5, 185 }, { 15, 189 }, { 25, 193 }, { 37, 197 }, { 57, 197 }, { 96, 197 } },
+};
+
 /* Grass=4, Water=5, from structs.inc */
 #define SURF_GRASS 4
 #define SURF_WATER 5
@@ -87,6 +99,7 @@ enum {
     BTO_ORIENT_180 = 512,
     BTO_ORIENT_270 = 768,
     BTO_ORIENT_MASK = 1023,
+    BTO_ORIENT_QUADRANT_SHIFT = 8,
     BTO_PHYS_MODEL_MAX = 74,
     BTO_PHYSMODEL_START_FINISH = 0,
     BTO_PHYSMODEL_ROAD = 1,
@@ -207,6 +220,10 @@ enum {
     BTO_WALLIDX_ELEVCORNER_OUTER = 123,
     BTO_BANK_ENTRY_PLAN_BASE_B = 25,
     BTO_BANK_ENTRY_PLAN_BASE_A = 35,
+    BTO_BANK_ENTRY_SEGMENT_LEFT = 0,
+    BTO_BANK_ENTRY_SEGMENT_RIGHT_LOWER = 1,
+    BTO_BANK_ENTRY_SEGMENT_RIGHT_MIDDLE = 2,
+    BTO_BANK_ENTRY_SEGMENT_RIGHT_UPPER = 3,
     BTO_BANK_ENTRY_ANGLE_B = 160,
     BTO_BANK_ENTRY_ANGLE_A = (short)64864,
     BTO_BANK_ENTRY_Z_MIN = (short)65202,
@@ -214,6 +231,12 @@ enum {
     BTO_BANK_ENTRY_Z_SEG_2 = 0,
     BTO_BANK_ENTRY_Z_SEG_3 = 168,
     BTO_BANK_ENTRY_Z_SEG_4 = 334,
+    BTO_BANK_ENTRY_PLAN_OFFSET_FLAT = 0,
+    BTO_BANK_ENTRY_PLAN_OFFSET_LOWER = 1,
+    BTO_BANK_ENTRY_PLAN_OFFSET_LOWER_MID = 3,
+    BTO_BANK_ENTRY_PLAN_OFFSET_UPPER_MID = 5,
+    BTO_BANK_ENTRY_PLAN_OFFSET_UPPER = 7,
+    BTO_BANK_ENTRY_PLAN_OFFSET_EXIT = 9,
     BTO_BANK_CORNER_RADIUS_MIN = (short)65416,
     BTO_BANK_CORNER_RADIUS_MAX = 126,
     BTO_BANK_CORNER_WALL_MIN = 102,
@@ -263,6 +286,8 @@ enum {
     BTO_TERRAIN_COAST_C = 4,
     BTO_TERRAIN_COAST_D = 5,
     BTO_TERRAIN_HILL_RAISED = 6,
+    BTO_HILL_SUBSTITUTION_TERRAIN_COUNT = BTO_TERRAIN_HILL_MAX_EXCL - BTO_TERRAIN_HILL_MIN,
+    BTO_HILL_SUBSTITUTION_ENTRIES_PER_TERRAIN = 6,
     BTO_HILL_HEIGHT_INDEX = 1,
     BTO_COAST_ANGLE_A = 128,
     BTO_COAST_ANGLE_B = (short)64896,
@@ -272,6 +297,7 @@ enum {
     BTO_SLOPE_ORIENT_TABLE_COUNT = 12,
     BTO_SLOPE_PLAN_DEFAULT = 3,
     BTO_CORK_ANGLE_BASE = 256,
+    BTO_CORK_PLAN_SEGMENT_OFFSET = 1,
     BTO_CORK_PLAN_UD_LH = 79,
     BTO_CORK_PLAN_UD_RH = 105,
     BTO_CORK_WALL_BASE_INNER_LH = 50,
@@ -373,6 +399,16 @@ enum {
     BTO_WALLIDX_SLALOM_B2_NX = 144,
     BTO_CORKLR_BUCKET_RIGHT_OUTER = 10,
     BTO_CORKLR_BUCKET_RIGHT_INNER = 11,
+    BTO_OPP_FILENAME_SIZE = 5,
+    BTO_OPP_SPEED_TABLE_SIZE = 16,
+    BTO_OPP_SPEED_TABLE_LAST_INDEX = BTO_OPP_SPEED_TABLE_SIZE - 1,
+    BTO_OPP_SEARCH_STACK_CAPACITY = 256,
+    BTO_OPP_SEARCH_INITIAL_COST = 999999,
+    BTO_OPP_PATH_RESERVED_TAIL = 2,
+    BTO_PATH_NODE_DEAD_END = -1,
+    BTO_PATH_NODE_FINISH = 0,
+    BTO_PATH_NODE_TERMINATOR = 1,
+    BTO_PATH_BRANCH_NONE = -1,
     BTO_WALLIDX_BARN_NZ = 161,
     BTO_WALLIDX_BARN_PZ = 162,
     BTO_WALLIDX_BARN_PX = 163,
@@ -407,10 +443,12 @@ enum {
 /* Externs for globals written/read by this function */
 
 
-/** @brief Bto trackobj decode.
- * @param elem Parameter `elem`.
- * @param out Parameter `out`.
- * @return Function result.
+/**
+ * @brief Decode a raw track-object table entry.
+ *
+ * @param elem Track element id.
+ * @param out Decoded output structure.
+ * @return Non-zero on success.
  */
 static int
 bto_trackobj_decode(unsigned char elem, state_trackobject_raw *out) {
@@ -418,18 +456,22 @@ bto_trackobj_decode(unsigned char elem, state_trackobject_raw *out) {
                                         out);
 }
 
-/** @brief Bto abs int.
- * @param value Parameter `value`.
- * @return Function result.
+/**
+ * @brief Return the absolute value of an integer.
+ *
+ * @param value Input value.
+ * @return Absolute value.
  */
 static int
 bto_abs_int(int value) {
     return value < 0 ? -value : value;
 }
 
-/** @brief Bto trackobj multi.
- * @param elem Parameter `elem`.
- * @return Function result.
+/**
+ * @brief Return the multi-tile flags for a track element.
+ *
+ * @param elem Track element id.
+ * @return Multi-tile bitmask, or 0 when decoding fails.
  */
 static unsigned char
 bto_trackobj_multi(unsigned char elem) {
@@ -442,9 +484,11 @@ bto_trackobj_multi(unsigned char elem) {
     return obj.multi_tile_flag;
 }
 
-/** @brief Bto trackobj surface.
- * @param elem Parameter `elem`.
- * @return Function result.
+/**
+ * @brief Return the surface type for a track element.
+ *
+ * @param elem Track element id.
+ * @return Signed surface type value, or 0 when decoding fails.
  */
 static signed char
 bto_trackobj_surface(unsigned char elem) {
@@ -457,9 +501,11 @@ bto_trackobj_surface(unsigned char elem) {
     return (signed char)obj.surface_type;
 }
 
-/** @brief Bto trackobj phys.
- * @param elem Parameter `elem`.
- * @return Function result.
+/**
+ * @brief Return the physical model for a track element.
+ *
+ * @param elem Track element id.
+ * @return Signed physical model value, or 0 when decoding fails.
  */
 static signed char
 bto_trackobj_phys(unsigned char elem) {
@@ -472,9 +518,11 @@ bto_trackobj_phys(unsigned char elem) {
     return (signed char)obj.physical_model;
 }
 
-/** @brief Bto trackobj roty.
- * @param elem Parameter `elem`.
- * @return Function result.
+/**
+ * @brief Return the Y rotation for a track element.
+ *
+ * @param elem Track element id.
+ * @return Rotation in the engine's angle units, or 0 when decoding fails.
  */
 static short
 bto_trackobj_roty(unsigned char elem) {
@@ -487,18 +535,118 @@ bto_trackobj_roty(unsigned char elem) {
     return (short)obj.rot_y;
 }
 
+static void
+bto_initialize_waypoint_order(void) {
+    short *waypointOrder = (short *)track_waypoint_order;
+    int waypointIndex;
+
+    waypointOrder[0] = BTO_PATH_NODE_FINISH;
+    waypointOrder[1] = BTO_PATH_NODE_TERMINATOR;
+    for (waypointIndex = BTO_OPP_PATH_RESERVED_TAIL;
+         waypointIndex < BTO_TRACK_WAYPOINT_ORDER_CAPACITY;
+         waypointIndex++) {
+        waypointOrder[waypointIndex] = 0;
+    }
+}
+
+static void
+bto_store_waypoint_path(const short *pathNodes, int nodeCount) {
+    short *waypointOrder = (short *)track_waypoint_order;
+    int waypointIndex;
+
+    for (waypointIndex = 0; waypointIndex < nodeCount; waypointIndex++) {
+        waypointOrder[waypointIndex] = pathNodes[waypointIndex];
+    }
+    waypointOrder[nodeCount] = BTO_PATH_NODE_FINISH;
+    waypointOrder[nodeCount + 1] = BTO_PATH_NODE_TERMINATOR;
+}
+
+static bool
+bto_restore_search_branch(int *stackDepth, int *tileIndex, int *nodeCount, long *runningCost,
+                          const short tileIndexStack[BTO_OPP_SEARCH_STACK_CAPACITY],
+                          const short nodeCountStack[BTO_OPP_SEARCH_STACK_CAPACITY],
+                          const long costStack[BTO_OPP_SEARCH_STACK_CAPACITY]) {
+    if (*stackDepth == 0) {
+        return false;
+    }
+
+    (*stackDepth)--;
+    *tileIndex = tileIndexStack[*stackDepth];
+    *nodeCount = nodeCountStack[*stackDepth];
+    *runningCost = costStack[*stackDepth];
+    return true;
+}
+
+static void
+bto_rotate_local_vector(struct VECTOR *vector, int orientation) {
+    int tmp;
+
+    switch (orientation) {
+    case BTO_ORIENT_270:
+        tmp = vector->x;
+        vector->x = vector->z;
+        vector->z = (short)-tmp;
+        break;
+    case BTO_ORIENT_180:
+        vector->x = (short)-vector->x;
+        vector->z = (short)-vector->z;
+        break;
+    case BTO_ORIENT_90:
+        tmp = vector->x;
+        vector->x = (short)-vector->z;
+        vector->z = (short)tmp;
+        break;
+    default:
+        break;
+    }
+}
+
+static int
+bto_apply_plan_orientation(int basePlanIndex, int orientation) {
+    if (basePlanIndex <= 0) {
+        return basePlanIndex;
+    }
+
+    return (basePlanIndex << BTO_PLANINDEX_SHIFT)
+           + ((4 - (orientation >> BTO_ORIENT_QUADRANT_SHIFT)) & 3);
+}
+
+static void
+bto_get_rotated_wall_start(const short *wallEntry, int orientation, int *wallStartXOut,
+                           int *wallStartZOut) {
+    switch (orientation) {
+    case BTO_ORIENT_270:
+        *wallStartXOut = -wallEntry[2];
+        *wallStartZOut = wallEntry[1];
+        break;
+    case BTO_ORIENT_180:
+        *wallStartXOut = -wallEntry[1];
+        *wallStartZOut = -wallEntry[2];
+        break;
+    case BTO_ORIENT_90:
+        *wallStartXOut = wallEntry[2];
+        *wallStartZOut = -wallEntry[1];
+        break;
+    default:
+        *wallStartXOut = wallEntry[1];
+        *wallStartZOut = wallEntry[2];
+        break;
+    }
+}
+
 /* Lookup tables */
 
 
 /* Functions */
 
-/** @brief Build track object.
- * @param world_pos Parameter `world_pos`.
- * @param next_world_pos Parameter `next_world_pos`.
+/**
+ * @brief Build collision and surface state for the current track object.
+ *
+ * @param world_pos Current object-relative world position.
+ * @param next_world_pos Predicted next world position used for wall selection.
  */
 void
 build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
-    short *currentWallPtrUnused;
     int wallOrientationOffset;
     char terrainTile = 0;
     int absElemX;
@@ -529,8 +677,6 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
     int si;
     int di;
     int ax;
-
-    (void)currentWallPtrUnused;
 
     planindex = 0;
     wallindex = BTO_WALL_NONE;
@@ -705,39 +851,8 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
             }
 
             /* Rotate element coordinates based on orientation */
-            /** @brief Degrees.
- * @param x Parameter `x`.
- * @param BTO_ORIENT_270 Parameter `BTO_ORIENT_270`.
- * @return Function result.
- */
-            /* Orientation 768: rotate 270 degrees (x,z) -> (z, -x) */
-            if (elementOrientation == BTO_ORIENT_270) {
-                int tmp;
-                tmp = elemPos.x;
-                elemPos.x = elemPos.z;
-                elemPos.z = (short)-tmp;
-                tmp = nextElemPos.x;
-                nextElemPos.x = nextElemPos.z;
-                nextElemPos.z = (short)-tmp;
-            }
-            else if (elementOrientation == BTO_ORIENT_180) {
-                /* Rotate 180 degrees: negate both */
-                elemPos.z = (short)-elemPos.z;
-                elemPos.x = (short)-elemPos.x;
-                nextElemPos.z = (short)-nextElemPos.z;
-                nextElemPos.x = (short)-nextElemPos.x;
-            }
-            else if (elementOrientation == BTO_ORIENT_90) {
-                /* Rotate 90 degrees: (x,z) -> (-z, x) */
-                int tmp;
-                tmp = elemPos.x;
-                elemPos.x = (short)-elemPos.z;
-                elemPos.z = (short)tmp;
-                tmp = nextElemPos.x;
-                nextElemPos.x = (short)-nextElemPos.z;
-                nextElemPos.z = (short)tmp;
-            }
-            /* else orientation 0: no rotation */
+            bto_rotate_local_vector(&elemPos, elementOrientation);
+            bto_rotate_local_vector(&nextElemPos, elementOrientation);
 
             /* Compute surface type and absolute element coordinates */
             {
@@ -1243,18 +1358,18 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 case BTO_PHYSMODEL_BANK_ENTRANCE_A: /* code_bto_bankEntranceA */
                     if (physModel == BTO_PHYSMODEL_BANK_ENTRANCE_B) {
                         bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_B;
-                        bankEntrySegmentIndex = BTO_PLAN_ROAD;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_RIGHT_LOWER;
                         si = BTO_BANK_ENTRY_ANGLE_B;
                     }
                     else {
                         bankEntryPlanBase = BTO_BANK_ENTRY_PLAN_BASE_A;
-                        bankEntrySegmentIndex = 0;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_LEFT;
                         si = BTO_BANK_ENTRY_ANGLE_A;
                     }
                     if (absElemX > BTO_ROAD_HALF_WIDTH)
                         break;
 
-                    if (bankEntrySegmentIndex == 0) {
+                    if (bankEntrySegmentIndex == BTO_BANK_ENTRY_SEGMENT_LEFT) {
                         if (nextElemPos.x <= BTO_NEG_ROAD_HALF_WIDTH) {
                             wallHeight = BTO_WALL_HEIGHT_RAIL;
                             elRdWallRelated = BTO_ELRD_WALL_SHORT;
@@ -1263,7 +1378,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                         }
                     }
 
-                    if (bankEntrySegmentIndex != 0) {
+                    if (bankEntrySegmentIndex != BTO_BANK_ENTRY_SEGMENT_LEFT) {
                         if (nextElemPos.x >= BTO_ROAD_HALF_WIDTH) {
                             wallHeight = BTO_WALL_HEIGHT_RAIL;
                             elRdWallRelated = BTO_ELRD_WALL_SHORT;
@@ -1275,29 +1390,29 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                     current_surf_type = surfaceType;
 
                     if (elemPos.z < BTO_BANK_ENTRY_Z_MIN) {
-                        planindex = (short)bankEntryPlanBase;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_FLAT;
                         break;
                     }
                     if (elemPos.z >= BTO_BANK_ENTRY_Z_SEG_4) {
-                        planindex = (short)bankEntryPlanBase + 9;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_EXIT;
                         break;
                     }
 
                     if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_1) {
-                        planindex = (short)bankEntryPlanBase + 1;
-                        bankEntrySegmentIndex = 0;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_LOWER;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_LEFT;
                     }
                     else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_2) {
-                        planindex = (short)bankEntryPlanBase + 3;
-                        bankEntrySegmentIndex = BTO_PLAN_ROAD;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_LOWER_MID;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_RIGHT_LOWER;
                     }
                     else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_3) {
-                        planindex = (short)bankEntryPlanBase + 5;
-                        bankEntrySegmentIndex = 2;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_UPPER_MID;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_RIGHT_MIDDLE;
                     }
                     else if (elemPos.z < BTO_BANK_ENTRY_Z_SEG_4) {
-                        planindex = (short)bankEntryPlanBase + 7;
-                        bankEntrySegmentIndex = 3;
+                        planindex = (short)bankEntryPlanBase + BTO_BANK_ENTRY_PLAN_OFFSET_UPPER;
+                        bankEntrySegmentIndex = BTO_BANK_ENTRY_SEGMENT_RIGHT_UPPER;
                     }
                     int zAdj = elemPos.z - bkRdEntr_triang_zAdjust[bankEntrySegmentIndex];
                     short sinVal = sin_fast((unsigned short)si);
@@ -1852,7 +1967,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                         angle &= BTO_ORIENT_MASK; /* and ah, 3 */
                         si = (angle * BTO_CORK_SEGMENT_COUNT) >> BTO_WORLD_TO_TILE_SHIFT;
 
-                        planindex = (short)corkUDPlanBase + si + 1;
+                        planindex = (short)corkUDPlanBase + si + BTO_CORK_PLAN_SEGMENT_OFFSET;
                         current_surf_type = surfaceType;
                         track_object_render_enabled = false;
 
@@ -2205,16 +2320,12 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 /* no orientation adjustment */
             }
             else {
-                /* off_1F87E jump table: 12 entries, pattern: 0,1,2,3 repeated 3 times */
-                switch (terrIdx) {
-                case 0: /* loc_1F82A */
-                case 4:
-                case 8:
-                    elementOrientation = 0;
+                /* off_1F87E jump table: 12 entries, pattern 0,1,2,3 repeated 3 times. */
+                switch (terrIdx & 3U) {
+                case 0:
+                    elementOrientation = BTO_ORIENT_0;
                     break;
-                case 1: /* loc_1F832 */
-                case 5:
-                case 9:
+                case 1:
                     elementOrientation = BTO_ORIENT_270;
                     {
                         int tmp = elemPos.x;
@@ -2222,16 +2333,12 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                         elemPos.z = (short)-tmp;
                     }
                     break;
-                case 2: /* loc_1F84E */
-                case 6:
-                case 10:
+                case 2:
                     elementOrientation = BTO_ORIENT_180;
                     elemPos.z = (short)-elemPos.z;
                     elemPos.x = (short)-elemPos.x;
                     break;
-                case 3: /* loc_1F866 */
-                case 7:
-                case 11:
+                case 3:
                     elementOrientation = BTO_ORIENT_90;
                     {
                         int tmp = elemPos.x;
@@ -2251,10 +2358,6 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
                 break;
 
             if (terrVal <= BTO_TERRAIN_HILL_MAX) {
-                /** @brief Slope.
- * @param planindex Parameter `planindex`.
- * @return Function result.
- */
                 /* Simple hill slope (terrain 7-10) */
                 if (planindex == 0) {
                     planindex = BTO_SLOPE_PLAN_DEFAULT;
@@ -2310,19 +2413,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
 
     /* ===== Finalize planindex with orientation offset ===== */
     {
-        if (planindex > 0) {
-            planindex <<= BTO_PLANINDEX_SHIFT;
-            if (elementOrientation == BTO_ORIENT_270) {
-                planindex += 1;
-            }
-            else if (elementOrientation == BTO_ORIENT_180) {
-                planindex += 2;
-            }
-            else if (elementOrientation == BTO_ORIENT_90) {
-                planindex += 3;
-            }
-            /* else orient 0: no offset */
-        }
+        planindex = bto_apply_plan_orientation(planindex, elementOrientation);
     }
 
     /* Compute current_planptr = planptr + planindex * sizeof(PLANE) */
@@ -2357,22 +2448,7 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
         }
 
         /* Rotate wall position based on element orientation */
-        if (elementOrientation == 0) {
-            wallStartX = wEntry[1];
-            wallStartZ = wEntry[2];
-        }
-        else if (elementOrientation == BTO_ORIENT_270) {
-            wallStartX = -wEntry[2];
-            wallStartZ = wEntry[1];
-        }
-        else if (elementOrientation == BTO_ORIENT_180) {
-            wallStartX = -wEntry[1];
-            wallStartZ = -wEntry[2];
-        }
-        else if (elementOrientation == BTO_ORIENT_90) {
-            wallStartX = wEntry[2];
-            wallStartZ = -wEntry[1];
-        }
+        bto_get_rotated_wall_start(wEntry, elementOrientation, &wallStartX, &wallStartZ);
 
         /* Convert from element-relative to world coordinates */
         wallStartX += elem_xCenter;
@@ -2387,88 +2463,48 @@ build_track_object(struct VECTOR *world_pos, struct VECTOR *next_world_pos) {
  * Given a terrain direction and track element ID, returns the
  * substituted hill-road element ID, or 0 if no substitution.
  */
-/** @brief Subst hillroad track.
- * @param terr Parameter `terr`.
- * @param elem Parameter `elem`.
- * @return Function result.
+/**
+ * @brief Replace flat-road elements with hill-road variants.
+ *
+ * @param terr Terrain id.
+ * @param elem Base track element id.
+ * @return Substituted hill-road element id, or 0 when no substitution exists.
  */
 char
 subst_hillroad_track(int terr, int elem) {
-    switch (terr) {
-    case 7:
-        switch (elem) {
-        case 4:
-            return (char)182;
-        case 14:
-            return (char)186;
-        case 24:
-            return (char)190;
-        case 39:
-        case 59:
-        case 98:
-            return (char)194;
-        }
-        break;
-    case 8:
-        switch (elem) {
-        case 5:
-            return (char)183;
-        case 15:
-            return (char)187;
-        case 25:
-            return (char)191;
-        case 36:
-        case 56:
-        case 95:
-            return (char)195;
-        }
-        break;
-    case 9:
-        switch (elem) {
-        case 4:
-            return (char)184;
-        case 14:
-            return (char)188;
-        case 24:
-            return (char)192;
-        case 38:
-        case 58:
-        case 97:
-            return (char)196;
-        }
-        break;
-    case 10:
-        switch (elem) {
-        case 5:
-            return (char)185;
-        case 15:
-            return (char)189;
-        case 25:
-            return (char)193;
-        case 37:
-        case 57:
-        case 96:
-            return (char)197;
-        }
-        break;
+    int terrainIndex;
+    int substitutionIndex;
+
+    terrainIndex = terr - BTO_TERRAIN_HILL_MIN;
+    if (terrainIndex < 0 || terrainIndex >= BTO_HILL_SUBSTITUTION_TERRAIN_COUNT) {
+        return 0;
     }
+
+    for (substitutionIndex = 0;
+         substitutionIndex < BTO_HILL_SUBSTITUTION_ENTRIES_PER_TERRAIN;
+         substitutionIndex++) {
+        if (hillroad_substitutions[terrainIndex][substitutionIndex].source_element
+            == (unsigned char)elem) {
+            return (char)hillroad_substitutions[terrainIndex][substitutionIndex].hill_element;
+        }
+    }
+
     return 0;
 }
 
 /*
  * bto_auxiliary1 - Track dependency point lookup
- * Ported from seg004.asm lines 2756-3182
- *
-/** @brief At.
- * @param col Parameter `col`.
- * @param row Parameter `row`.
- * @param fillers Parameter `fillers`.
- * @param type Parameter `type`.
- * @param out_points Parameter `out_points`.
- * @return Function result.
- */
+ * Ported from seg004.asm lines 2756-3182.
 /* Data tables in dseg - arrays of VECTOR (3 shorts = 6 bytes per entry) */
 
+/**
+ * @brief Return dependency points for a track tile.
+ *
+ * @param tile_col Track tile column.
+ * @param tile_row Track tile row.
+ * @param out_points Output point buffer.
+ * @return Number of dependency points written.
+ */
 int
 bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     unsigned char tileElement;
@@ -2484,7 +2520,7 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     int ptIdx;      /* loop index */
 
     /* Look up tile element at (col, row) */
-    tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row] + tile_col));
+    tileElement = ((unsigned char *)track_elem_map)[trackrows[tile_row] + tile_col];
     if (tileElement == 0)
         return 0;
 
@@ -2492,17 +2528,12 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     tileCenterX = trackcenterpos2[tile_col];
     tileCenterZ = trackcenterpos[tile_row];
 
-    /** @brief Elements.
- * @param BTO_MARKER_CORNER Parameter `BTO_MARKER_CORNER`.
- * @return Function result.
- */
     /* Handle multi-tile filler elements (253, 254, 255) */
     if (tileElement >= BTO_MARKER_CORNER) {
         switch (tileElement) {
         case BTO_MARKER_CORNER:
             /* Filler: look up tile at (col-1, row-1) using trackrows[row-1] */
-            tileElement
-                = *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col - 1));
+            tileElement = ((unsigned char *)track_elem_map)[trackrows[tile_row - 1] + tile_col - 1];
             multiTileFlags = bto_trackobj_multi(tileElement);
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row + 1];
@@ -2514,7 +2545,7 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
 
         case BTO_MARKER_VERTICAL:
             /* Filler: look up tile at (col, row-1) using trackrows[row-1] */
-            tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row - 1] + tile_col));
+            tileElement = ((unsigned char *)track_elem_map)[trackrows[tile_row - 1] + tile_col];
             multiTileFlags = bto_trackobj_multi(tileElement);
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row + 1];
@@ -2526,7 +2557,7 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
 
         case BTO_MARKER_HORIZONTAL:
             /* Filler: look up tile at (col-1, row) */
-            tileElement = *((unsigned char *)(track_elem_map + trackrows[tile_row] + tile_col - 1));
+            tileElement = ((unsigned char *)track_elem_map)[trackrows[tile_row] + tile_col - 1];
             multiTileFlags = bto_trackobj_multi(tileElement);
             if (multiTileFlags & 1) {
                 tileCenterZ = trackpos[tile_row];
@@ -2559,32 +2590,32 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
     physModel = (int)bto_trackobj_phys(tileElement);
 
     switch (physModel) {
-    case 11:
+    case BTO_PHYSMODEL_HIGHWAY:
         pointCount = 1;
         dependencyTable = (struct VECTOR *)phys_model_0B_points;
         break;
-    case 18:
+    case BTO_PHYSMODEL_ELEVATED_ROAD:
         pointCount = 8;
         dependencyTable = (struct VECTOR *)phys_model_0x12_points;
         break;
-    case 32:
+    case BTO_PHYSMODEL_CORKSCREW_UD_LH:
         pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x20_points;
         break;
-    case 33:
+    case BTO_PHYSMODEL_CORKSCREW_UD_RH:
         pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x21_points;
         break;
-    case 34:
+    case BTO_PHYSMODEL_SLALOM:
         pointCount = 4;
         dependencyTable = (struct VECTOR *)phys_model_0x22_points;
         break;
-    case 35:
+    case BTO_PHYSMODEL_CORKSCREW_LR:
         pointCount = 2;
         dependencyTable = (struct VECTOR *)phys_model_0x23_points;
         break;
     default:
-        if (physModel >= 71 && physModel <= 74) {
+        if (physModel >= BTO_PHYSMODEL_CACTUS && physModel <= BTO_PHYSMODEL_EXTRA) {
             pointCount = 1;
             dependencyTable = (struct VECTOR *)phys_model_0B_points;
         }
@@ -2595,9 +2626,9 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
         return 0;
 
     /* Get terrain type and hill height */
-    terrainByte = *((unsigned char *)(track_terrain_map + terrainrows[tile_row] + tile_col));
-    if (terrainByte == 6) {
-        hillHeightOffset = hillHeightConsts[1];
+    terrainByte = ((unsigned char *)track_terrain_map)[terrainrows[tile_row] + tile_col];
+    if (terrainByte == BTO_TERRAIN_HILL_RAISED) {
+        hillHeightOffset = hillHeightConsts[BTO_HILL_HEIGHT_INDEX];
     }
     else {
         hillHeightOffset = 0;
@@ -2647,42 +2678,38 @@ bto_auxiliary1(int tile_col, int tile_row, struct VECTOR *out_points) {
  * extracts name/path/speed data, and performs branch-and-bound
  * shortest path search through the track for the opponent AI.
  */
-/** @brief Load opponent data.
+/**
+ * @brief Load AI opponent speed data and build its waypoint order.
  */
 void
 load_opponent_data(void) {
     /* Stack arrays matching ASM layout */
-    short pathNodes[905]; /* bp-2848: path node indices */
-    short siArr[256];     /* bp-522: branch si (tile index) stack */
-    short cntArr[256];    /* bp-1038: branch node count stack */
-    long costArr[256];    /* bp-3886: branch running cost stack */
+    short pathNodes[BTO_TRACK_WAYPOINT_ORDER_CAPACITY]; /* bp-2848: path node indices */
+    short siArr[BTO_OPP_SEARCH_STACK_CAPACITY];  /* bp-522: branch si (tile index) stack */
+    short cntArr[BTO_OPP_SEARCH_STACK_CAPACITY]; /* bp-1038: branch node count stack */
+    long costArr[BTO_OPP_SEARCH_STACK_CAPACITY]; /* bp-3886: branch running cost stack */
 
     char *resourcePtr;
     char *speedDataPtr;
-    short bestCostLow;
-    short bestCostHigh;
     int stackDepth;    /* branch stack depth */
     int nodeCount;     /* current path node count */
     short currentNode; /* current graph node */
-    short nextNode;    /* next graph node */
-    short isEndNode;   /* end-of-path flag */
+    bool terminalPath;
+    bool reachedFinish;
     long runningCost;  /* running path cost (long) */
     short branchNode;  /* branch target node */
+    long bestCost;
 
     int si;
     int visitIdx; /* inner loop index for visited-node duplicate check */
 
     /* Build "oppN" filename from opponent type */
-    char oppname[5] = "opp1";
+    char oppname[BTO_OPP_FILENAME_SIZE] = "opp1";
     oppname[3] = (char)gameconfig.game_opponenttype + '0';
 
     /* Default to a minimal valid route so stale memory is never consumed if
        the search fails to produce a better path. */
-    ((short *)track_waypoint_order)[0] = 0;
-    ((short *)track_waypoint_order)[1] = 1;
-    for (si = 2; si < BTO_TRACK_WAYPOINT_ORDER_CAPACITY; si++) {
-        ((short *)track_waypoint_order)[si] = 0;
-    }
+    bto_initialize_waypoint_order();
 
     /* Load resource file */
     resourcePtr = (char *)file_load_resfile(oppname);
@@ -2700,14 +2727,13 @@ load_opponent_data(void) {
         return;
     }
 
-    /* Copy 16 bytes of speed data */
-    for (si = 0; si < 16; si++) {
+    /* Copy speed table. */
+    for (si = 0; si < BTO_OPP_SPEED_TABLE_SIZE; si++) {
         opponent_speed_table[si] = ((unsigned char *)speedDataPtr)[si];
     }
 
     /* Initialize shortest path search */
-    bestCostLow = 16959;
-    bestCostHigh = 15;
+    bestCost = BTO_OPP_SEARCH_INITIAL_COST;
     nodeCount = 0;
     runningCost = 0L;
     stackDepth = 0;
@@ -2716,51 +2742,42 @@ load_opponent_data(void) {
     /* Branch-and-bound path search loop */
     for (;;) {
         if (si < 0 || si >= BTO_TRACKDATA_PATH_COUNT) {
-            if (stackDepth == 0) {
+            if (!bto_restore_search_branch(&stackDepth, &si, &nodeCount, &runningCost, siArr,
+                                           cntArr, costArr)) {
                 unload_resource(resourcePtr);
                 return;
             }
-
-            stackDepth--;
-            si = siArr[stackDepth];
-            nodeCount = cntArr[stackDepth];
-            runningCost = costArr[stackDepth];
             continue;
         }
 
-        if (nodeCount >= BTO_TRACK_WAYPOINT_ORDER_CAPACITY - 2) {
-            if (stackDepth == 0) {
+        if (nodeCount >= BTO_TRACK_WAYPOINT_ORDER_CAPACITY - BTO_OPP_PATH_RESERVED_TAIL) {
+            if (!bto_restore_search_branch(&stackDepth, &si, &nodeCount, &runningCost, siArr,
+                                           cntArr, costArr)) {
                 unload_resource(resourcePtr);
                 return;
             }
-
-            stackDepth--;
-            si = siArr[stackDepth];
-            nodeCount = cntArr[stackDepth];
-            runningCost = costArr[stackDepth];
             continue;
         }
 
-        isEndNode = 0;
+        terminalPath = false;
+        reachedFinish = false;
         currentNode = track_waypoint_next[si];
 
-        if (currentNode == 0) {
+        if (currentNode == BTO_PATH_NODE_FINISH) {
             /* End of track: finish node */
-            nextNode = 1;
-            isEndNode = 1;
+            reachedFinish = true;
+            terminalPath = true;
         }
-        else if (currentNode == -1) {
+        else if (currentNode == BTO_PATH_NODE_DEAD_END) {
             /* Dead end */
-            nextNode = 0;
-            isEndNode = 1;
+            terminalPath = true;
         }
         else {
             /* Check if this tile was already visited in current path */
             if (nodeCount > 0) {
                 for (visitIdx = 0; visitIdx < nodeCount; visitIdx++) {
                     if (pathNodes[visitIdx] == si) {
-                        nextNode = 0;
-                        isEndNode = 1;
+                        terminalPath = true;
                         break;
                     }
                 }
@@ -2777,17 +2794,18 @@ load_opponent_data(void) {
             /* sped chunk has 16 entries; clamp elemIdx to stay in bounds.
              * Raw track element codes > 15 (jumps, loops, etc.) are mapped
              * to the last speed category, matching DOS flat-memory behaviour. */
-            if (elemIdx >= 16)
-                elemIdx = 15;
+            if (elemIdx >= BTO_OPP_SPEED_TABLE_SIZE)
+                elemIdx = BTO_OPP_SPEED_TABLE_LAST_INDEX;
             unsigned char speed = opponent_speed_table[elemIdx];
             runningCost += (long)((unsigned short)speed + 1);
         }
 
-        if (!isEndNode) {
+        if (!terminalPath) {
             /* Not at end: check for branch point */
             branchNode = track_waypoint_alt[si];
-            if (branchNode != -1 && branchNode >= 0 && branchNode < BTO_TRACKDATA_PATH_COUNT
-                && stackDepth < (int)(sizeof(siArr) / sizeof(siArr[0]))) {
+            if (branchNode != BTO_PATH_BRANCH_NONE && branchNode >= 0
+                && branchNode < BTO_TRACKDATA_PATH_COUNT
+                && stackDepth < BTO_OPP_SEARCH_STACK_CAPACITY) {
                 /* Push branch state onto stack */
                 siArr[stackDepth] = branchNode;
                 cntArr[stackDepth] = (short)nodeCount;
@@ -2800,38 +2818,27 @@ load_opponent_data(void) {
         }
 
         /* At end: check if this path is the best */
-        if (nextNode != 0) {
-            long bestCost = (long)((long)(unsigned short)bestCostHigh << 16)
-                            | (unsigned long)(unsigned short)bestCostLow;
-            if (runningCost < bestCost && nodeCount + 1 < BTO_TRACK_WAYPOINT_ORDER_CAPACITY) {
+        if (reachedFinish) {
+            if (runningCost < bestCost
+                && nodeCount + BTO_OPP_PATH_RESERVED_TAIL <= BTO_TRACK_WAYPOINT_ORDER_CAPACITY) {
                 /* Record termination marker */
-                pathNodes[nodeCount] = 0;
+                pathNodes[nodeCount] = BTO_PATH_NODE_FINISH;
                 nodeCount++;
 
                 /* Save best cost */
-                bestCostLow = (short)(unsigned short)runningCost;
-                bestCostHigh = (short)(unsigned short)((unsigned long)runningCost >> 16);
+                bestCost = runningCost;
 
                 /* Copy path to track_waypoint_order */
-                for (visitIdx = 0; visitIdx < nodeCount; visitIdx++) {
-                    ((short *)track_waypoint_order)[visitIdx] = pathNodes[visitIdx];
-                }
-                /* Write terminator pair */
-                ((short *)track_waypoint_order)[nodeCount] = 0;
-                ((short *)track_waypoint_order)[nodeCount + 1] = 1;
+                bto_store_waypoint_path(pathNodes, nodeCount);
             }
         }
 
         /* Backtrack: pop from branch stack */
-        if (stackDepth == 0) {
+        if (!bto_restore_search_branch(&stackDepth, &si, &nodeCount, &runningCost, siArr,
+                                       cntArr, costArr)) {
             /* No more branches: done */
             unload_resource(resourcePtr);
             return;
         }
-
-        stackDepth--;
-        si = siArr[stackDepth];
-        nodeCount = cntArr[stackDepth];
-        runningCost = costArr[stackDepth];
     }
 }

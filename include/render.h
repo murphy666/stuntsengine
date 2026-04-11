@@ -91,6 +91,13 @@ extern unsigned short rotation_x_angle;
 extern unsigned short rotation_z_angle;
 extern unsigned short rotation_y_angle;
 
+typedef enum {
+    GAME_DASHBOARD_LOAD_RESOURCES = 0,
+    GAME_DASHBOARD_ENTER_DRIVING_MODE = 1,
+    GAME_DASHBOARD_UPDATE = 2,
+    GAME_DASHBOARD_FREE_RESOURCES = 3
+} GameDashboardCommand;
+
 /* Video mode control */
 void video_set_mode4(void);
 void video_set_mode7(void);
@@ -104,7 +111,7 @@ int video_is_sdl_active(void);
 int video_get_status(void);
 
 /* Frame / render cycle */
-void setup_car_shapes(int);
+void setup_car_shapes(GameDashboardCommand command);
 void update_frame(int, struct RECTANGLE *rc);
 void set_frame_callback(void);
 void remove_frame_callback(void);

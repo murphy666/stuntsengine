@@ -51,14 +51,14 @@ static unsigned short track_curve_data = 11;
 /* file-local data (moved from data_global.c) */
 static unsigned char animation_state_advance_table[6] = { 0, 0, 1, 0, 1, 0 };
 static unsigned char animation_frame_transition_table[6] = { 0, 1, 0, 0, 1, 0 };
-static unsigned char terrConnDataEtoW[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
-                                              0, 2, 3, 0, 0, 1, 1, 3, 2, 0 };
-static unsigned char terrConnDataWtoE[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
-                                              1, 0, 0, 3, 2, 2, 3, 1, 1, 0 };
-static unsigned char terrConnDataNtoS[20] = { 0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
-                                              4, 5, 0, 0, 4, 1, 5, 4, 1, 0 };
-static unsigned char terrConnDataStoN[19] = { 0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
-                                              4, 0, 5, 4, 0, 5, 1, 1, 4 };
+static unsigned char terrain_conn_from_west[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
+                                                     0, 2, 3, 0, 0, 1, 1, 3, 2, 0 };
+static unsigned char terrain_conn_to_east[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
+                                                   1, 0, 0, 3, 2, 2, 3, 1, 1, 0 };
+static unsigned char terrain_conn_from_north[20] = { 0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
+                                                      4, 5, 0, 0, 4, 1, 5, 4, 1, 0 };
+static unsigned char terrain_conn_to_south[19] = { 0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
+                                                    4, 0, 5, 4, 0, 5, 1, 1, 4 };
 
 /*
  * trkmenu.c - Track Menu Functions
@@ -154,9 +154,32 @@ enum {
     TRACK_DIALOG_RELEASE_GUARD_MAX = 6000
 };
 
-/** @brief Track consume dialog click.
- * @return Function result.
- */
+enum {
+    TRACK_MULTI_TILE_NONE = 0,
+    TRACK_MULTI_TILE_EXTENDS_DOWN = 1,
+    TRACK_MULTI_TILE_EXTENDS_RIGHT = 2,
+    TRACK_MULTI_TILE_EXTENDS_DOWN_RIGHT
+        = TRACK_MULTI_TILE_EXTENDS_DOWN | TRACK_MULTI_TILE_EXTENDS_RIGHT,
+    TRACK_HEADING_NORTH = 0,
+    TRACK_HEADING_EAST = 256,
+    TRACK_HEADING_SOUTH = 512,
+    TRACK_HEADING_WEST = 768,
+    TRACK_HEADING_HALF_TURN = 512,
+    TRACK_POINT_NONE = 0,
+    TRACK_POINT_NORTH = 1,
+    TRACK_POINT_SOUTH = 2,
+    TRACK_POINT_EAST = 3,
+    TRACK_POINT_WEST = 4,
+    TRACK_POINT_NORTH_EAST = 5,
+    TRACK_POINT_SOUTH_WEST = 6,
+    TRACK_POINT_SOUTH_EAST_VIA_EAST = 7,
+    TRACK_POINT_DOUBLE_EAST = 8,
+    TRACK_POINT_DOUBLE_EAST_SOUTH = 9,
+    TRACK_POINT_SOUTH_EAST = 10,
+    TRACK_POINT_DOUBLE_SOUTH = 11,
+    TRACK_POINT_DOUBLE_SOUTH_EAST = 12
+};
+
 static void
 track_consume_dialog_click(void) {
     unsigned short buttons;
@@ -707,12 +730,9 @@ enum {
     SCENESHAPES3_COUNT = 13
 };
 
-/** @brief Trkobj multi flag legacy.
- * @param elem Parameter `elem`.
- * @return Function result.
- */
+/* Resolve the element multi-tile flags across the track and scenery tables. */
 static unsigned char
-trkobj_multi_flag_legacy(unsigned elem) {
+track_editor_multitile_flag(unsigned elem) {
     if (elem < TRACKOBJECT_LIST_COUNT) {
         return trkObjectList[elem * TRACKOBJECT_RAW_SIZE + 11u];
     }
@@ -727,12 +747,8 @@ trkobj_multi_flag_legacy(unsigned elem) {
     return 0;
 }
 
-#define TRKOBJ_MULTI_TILE_FLAG(elem) trkobj_multi_flag_legacy((unsigned)(elem))
+#define TRKOBJ_MULTI_TILE_FLAG(elem) track_editor_multitile_flag((unsigned)(elem))
 
-/** @brief Track row ofs safe.
- * @param row Parameter `row`.
- * @return Function result.
- */
 static int
 track_row_ofs_safe(int row) {
     if (row < 0) {
@@ -744,11 +760,6 @@ track_row_ofs_safe(int row) {
     return trackrows[row];
 }
 
-
-/** @brief Terrain row ofs safe.
- * @param row Parameter `row`.
- * @return Function result.
- */
 static int
 terrain_row_ofs_safe(int row) {
     if (row < 0) {
@@ -760,12 +771,6 @@ terrain_row_ofs_safe(int row) {
     return terrainrows[row];
 }
 
-
-/** @brief Terrain at safe.
- * @param row Parameter `row`.
- * @param col Parameter `col`.
- * @return Function result.
- */
 static unsigned char
 terrain_at_safe(int row, int col) {
     if (row < 0) {
@@ -785,15 +790,112 @@ terrain_at_safe(int row, int col) {
     return track_terrain_map[terrainrows[row] + col];
 }
 
+static int
+track_map_screen_x(int col) {
+    return col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+}
+
+static int
+track_map_screen_y(int row) {
+    return row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
+}
+
+static void
+track_get_cursor_shape_dimensions(unsigned char multi_tile_flag, unsigned char *height_tiles,
+                                  unsigned char *width_tiles, unsigned char *shape_index) {
+    static const unsigned char cursor_height_by_flag[] = { 1, 2, 1, 2 };
+    static const unsigned char cursor_width_by_flag[] = { 1, 1, 2, 2 };
+    static const unsigned char cursor_shape_by_flag[] = { 0, 1, 2, 3 };
+    unsigned int flag_index = multi_tile_flag;
+
+    if (flag_index > TRACK_MULTI_TILE_EXTENDS_DOWN_RIGHT) {
+        flag_index = TRACK_MULTI_TILE_NONE;
+    }
+
+    *height_tiles = cursor_height_by_flag[flag_index];
+    *width_tiles = cursor_width_by_flag[flag_index];
+    *shape_index = cursor_shape_by_flag[flag_index];
+}
+
+static void
+track_place_multi_tile_markers(unsigned char *elem_map, unsigned char row, unsigned char col,
+                               unsigned char multi_tile_flag) {
+    if ((multi_tile_flag & TRACK_MULTI_TILE_EXTENDS_RIGHT) != 0) {
+        elem_map[trackrows[row] + col + 1] = TRACK_MARKER_HORIZONTAL;
+    }
+    if ((multi_tile_flag & TRACK_MULTI_TILE_EXTENDS_DOWN) != 0) {
+        elem_map[trackrows[row + 1] + col] = TRACK_MARKER_VERTICAL;
+    }
+    if (multi_tile_flag == TRACK_MULTI_TILE_EXTENDS_DOWN_RIGHT) {
+        elem_map[trackrows[row + 1] + col + 1] = TRACK_MARKER_CORNER;
+    }
+}
+
+static unsigned char
+track_validate_terrain_connectivity(const unsigned char *incoming_codes,
+                                    const unsigned char *outgoing_codes,
+                                    unsigned char iterate_rows_first,
+                                    unsigned char *error_col,
+                                    unsigned char *error_row) {
+    unsigned char outer;
+
+    for (outer = 0; outer < TRACK_SIZE; outer++) {
+        unsigned char inner;
+        unsigned char prev_conn_code = TRACK_CONN_CODE_SENTINEL;
+
+        for (inner = 0; inner < TRACK_SIZE; inner++) {
+            unsigned char row = iterate_rows_first ? outer : inner;
+            unsigned char col = iterate_rows_first ? inner : outer;
+            unsigned char tile_terrain = track_terrain_map[terrainrows[row] + col];
+
+            if (incoming_codes[tile_terrain] != prev_conn_code
+                && prev_conn_code != TRACK_CONN_CODE_SENTINEL) {
+                *error_col = col;
+                *error_row = row;
+                return 11;
+            }
+
+            prev_conn_code = outgoing_codes[tile_terrain];
+        }
+    }
+
+    *error_col = 0;
+    *error_row = 0;
+    return 0;
+}
+
+static unsigned char
+track_find_start_finish_heading(unsigned char tile_elem, short *heading) {
+    switch ((unsigned int)tile_elem) {
+    case 1:
+    case 134:
+    case 147:
+        *heading = TRACK_HEADING_NORTH;
+        return 1;
+    case 135:
+    case 148:
+    case 179:
+        *heading = TRACK_HEADING_SOUTH;
+        return 1;
+    case 136:
+    case 149:
+    case 180:
+        *heading = TRACK_HEADING_EAST;
+        return 1;
+    case 137:
+    case 150:
+    case 181:
+        *heading = TRACK_HEADING_WEST;
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /*--------------------------------------------------------------
  * track_cleanup_multitile_markers - Track Map Multi-Tile Cleanup
  *
  * This function processes the track map to handle multi-tile
-/** @brief Direction.
- * @param g Parameter `g`.
- * @param track_cleanup_multitile_markers Parameter `track_cleanup_multitile_markers`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 void
 track_cleanup_multitile_markers(void) {
@@ -809,10 +911,6 @@ track_cleanup_multitile_markers(void) {
         flags_384[i] = 0;
     }
 
-    /** @brief Order.
- * @param row Parameter `row`.
- * @return Function result.
- */
     /* Process rows in forward order (0→29), matching original behavior. */
     for (row = 0; row < TRACK_SIZE; row++) {
         row_ofs = trackrows[row];
@@ -828,10 +926,6 @@ track_cleanup_multitile_markers(void) {
                 continue;
             }
 
-            /** @brief Tiles.
- * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
- * @return Function result.
- */
             /* Skip special marker tiles (253, 254, 255) - they are secondary tiles */
             if (elem_id >= TRACK_MARKER_CORNER) {
                 /* If not already flagged, clear it */
@@ -844,7 +938,7 @@ track_cleanup_multitile_markers(void) {
             /* Get multi-tile flag for this element type */
             multiflag = TRKOBJ_MULTI_TILE_FLAG(elem_id);
 
-            if (multiflag == 1) {
+            if (multiflag == TRACK_MULTI_TILE_EXTENDS_DOWN) {
                 /* Type 1: secondary marker must be in next row */
                 if (flags_384[row_ofs_next + col] != 0) {
                     /* Clear the current row position */
@@ -862,7 +956,7 @@ track_cleanup_multitile_markers(void) {
                     track_elem_map[row_ofs + col] = 0;
                 }
             }
-            else if (multiflag == 2) {
+            else if (multiflag == TRACK_MULTI_TILE_EXTENDS_RIGHT) {
                 /* Type 2: Check next column flag */
                 if (flags_384[row_ofs + col + 1] != 0) {
                     track_elem_map[row_ofs + col] = 0;
@@ -878,7 +972,7 @@ track_cleanup_multitile_markers(void) {
                     flags_384[row_ofs + col + 1] = 1;
                 }
             }
-            else if (multiflag == 3) {
+            else if (multiflag == TRACK_MULTI_TILE_EXTENDS_DOWN_RIGHT) {
                 /* Type 3: Corner piece - check multiple conditions */
                 int sum = (int)flags_384[row_ofs_next + col + 1] + (int)flags_384[row_ofs + col + 1]
                           + (int)flags_384[row_ofs_next + col];
@@ -919,14 +1013,6 @@ track_cleanup_multitile_markers(void) {
  * It iterates through the 30x30 track grid and:
  * 1. Calls track_cleanup_multitile_markers first to cleanup multi-tile markers
  * 2. For each cell, checks if the element is valid for the terrain
-/** @brief Markers.
- * @param left Parameter `left`.
- * @param above Parameter `above`.
- * @param made Parameter `made`.
- * @param changes Parameter `changes`.
- * @param track_validate_elements_for_terrain Parameter `track_validate_elements_for_terrain`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 int
 track_validate_elements_for_terrain(void) {
@@ -1045,11 +1131,6 @@ track_validate_elements_for_terrain(void) {
  * preRender_icons - Pre-render track editor icons
  *
  * This function renders the track element icons in the track editor
-/** @brief Grid.
- * @param elements Parameter `elements`.
- * @param icon_page Parameter `icon_page`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 void
 preRender_icons(unsigned char icon_page) {
@@ -1121,10 +1202,6 @@ preRender_icons(unsigned char icon_page) {
  * The function:
  * 1. Iterates through 11 rows x 12 columns
  * 2. For each cell, looks up element and terrain from maps
-/** @brief Markers.
- * @param render_flags_2 Parameter `render_flags_2`.
- * @return Function result.
- */
 /*--------------------------------------------------------------*/
 void
 draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned char *render_flags_1,
@@ -1179,10 +1256,6 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
             /* Calculate buffer position */
             buffer_index = buffer_row_ofs + colIdx;
 
-            /** @brief Markers.
- * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
- * @return Function result.
- */
             /* Check for special markers (multi-tile) */
             if (element_type >= TRACK_MARKER_CORNER) {
                 /* Interior marker tiles are continuation cells; do not render
@@ -1196,10 +1269,6 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                 /* Mark buffer position */
                 render_flags_1[buffer_index] = TRACK_U8_INVALID;
 
-                /** @brief Marker.
- * @param TRACK_MARKER_HORIZONTAL Parameter `TRACK_MARKER_HORIZONTAL`.
- * @return Function result.
- */
                 /* Handle 255 marker (horizontal extension) */
                 if (element_type == TRACK_MARKER_HORIZONTAL) {
                     int elemSrc;
@@ -1210,13 +1279,12 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     }
 
                     /* Terrain at current cell and one cell below. */
-                    screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    screenY = track_map_screen_y(row);
+                    screenX = track_map_screen_x(colIdx);
                     terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_row + 1 < TRACK_SIZE) {
-                        screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
-                                  + TRACK_TILE_PIXELS;
+                        screenY = track_map_screen_y(row + 1);
                         terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                                   colIdx + (int)col_offset);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
@@ -1227,8 +1295,8 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                               + (int)col_offset - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
-                        screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                        screenX = colIdx * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
+                        screenY = track_map_screen_y(row);
+                        screenX = track_map_screen_x(colIdx - 1);
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,
@@ -1237,10 +1305,6 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     continue;
                 }
 
-                /** @brief Marker.
- * @param TRACK_MARKER_VERTICAL Parameter `TRACK_MARKER_VERTICAL`.
- * @return Function result.
- */
                 /* Handle 254 marker (vertical extension) */
                 if (element_type == TRACK_MARKER_VERTICAL) {
                     int elemSrc;
@@ -1251,13 +1315,12 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     }
 
                     /* Terrain at current cell and one cell to the right. */
-                    screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    screenY = track_map_screen_y(row);
+                    screenX = track_map_screen_x(colIdx);
                     terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
                     if (map_col + 1 < TRACK_SIZE) {
-                        screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
-                                  + TRACK_TILE_PIXELS;
+                        screenX = track_map_screen_x(colIdx + 1);
                         terrVal = terrain_at_safe((int)row + (int)row_offset,
                                                   colIdx + (int)col_offset + 1);
                         sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
@@ -1268,9 +1331,8 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                               + (int)col_offset;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
-                        screenY = (int)row * TRACK_TILE_PIXELS
-                                  - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
-                        screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                        screenY = track_map_screen_y(row - 1);
+                        screenX = track_map_screen_x(colIdx);
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,
@@ -1279,10 +1341,6 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     continue;
                 }
 
-                /** @brief Marker.
- * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
- * @return Function result.
- */
                 /* Handle 253 marker (corner extension) */
                 if (element_type == TRACK_MARKER_CORNER) {
                     int elemSrc;
@@ -1293,8 +1351,8 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                     }
 
                     /* Only terrain at current corner cell. */
-                    screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                    screenX = colIdx * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                    screenY = track_map_screen_y(row);
+                    screenX = track_map_screen_x(colIdx);
                     terrVal = terrain_at_safe((int)row + (int)row_offset, colIdx + (int)col_offset);
                     sprite_putimage_and_alt(tracksmenushapes1[terrVal], screenX, screenY);
 
@@ -1303,9 +1361,8 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
                               + (int)col_offset - 1;
                     if (elemSrc >= 0 && elemSrc < TRACK_TILE_COUNT) {
                         elemVal = track_elem_map[elemSrc];
-                        screenY = (int)row * TRACK_TILE_PIXELS
-                                  - (TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_Y);
-                        screenX = colIdx * TRACK_TILE_PIXELS - TRACK_MAP_TILE_OFFSET_X;
+                        screenY = track_map_screen_y(row - 1);
+                        screenX = track_map_screen_x(colIdx - 1);
                         sprite_putimage_and((struct SHAPE2D *)tracksmenushape2dunk2[elemVal],
                                             screenX, screenY);
                         sprite_putimage_or((struct SHAPE2D *)tracksmenushape2dunk[elemVal], screenX,
@@ -1327,14 +1384,10 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
             render_flags_2[buffer_index] = TRACK_U8_INVALID;
 
             /* Render terrain sprite */
-            screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-            screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+            screenY = track_map_screen_y(row);
+            screenX = track_map_screen_x(col);
             sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrain_type], screenX, screenY);
 
-            /** @brief Only.
- * @param element_type Parameter `element_type`.
- * @return Function result.
- */
             /* Empty cell: terrain only (no element mask/fill overlay). */
             if (element_type == 0) {
                 continue;
@@ -1343,68 +1396,62 @@ draw_2DtrackMap(unsigned char col_offset, unsigned char row_offset, unsigned cha
             /* Get multi-tile flag */
             multiflag = TRKOBJ_MULTI_TILE_FLAG(element_type);
 
-            if (multiflag == 0) {
+            if (multiflag == TRACK_MULTI_TILE_NONE) {
                 /* Single tile element */
                 putpixel_iconMask(tracksmenushape2dunk2[element_type], screenX, screenY);
                 putpixel_iconFillings(tracksmenushape2dunk[element_type], screenX, screenY);
             }
-            else if (multiflag == 1) {
+            else if (multiflag == TRACK_MULTI_TILE_EXTENDS_DOWN) {
                 /* Vertical 2-tile element */
                 /* Render terrain for next row */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
-                          + TRACK_TILE_PIXELS;
+                screenY = track_map_screen_y(row + 1);
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
                 /* Render element mask and filling */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
+                screenY = track_map_screen_y(row);
                 putpixel_iconMask(tracksmenushape2dunk2[element_type], screenX, screenY);
                 putpixel_iconFillings(tracksmenushape2dunk[element_type], screenX, screenY);
             }
-            else if (multiflag == 2) {
+            else if (multiflag == TRACK_MULTI_TILE_EXTENDS_RIGHT) {
                 /* Horizontal 2-tile element */
                 /* Render terrain for next column */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
-                          + TRACK_TILE_PIXELS;
+                screenY = track_map_screen_y(row);
+                screenX = track_map_screen_x(col + 1);
                 terrVal = terrain_at_safe((int)row + (int)row_offset,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
                 /* Render element mask and filling */
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                screenX = track_map_screen_x(col);
                 putpixel_iconMask(tracksmenushape2dunk2[element_type], screenX, screenY);
                 putpixel_iconFillings(tracksmenushape2dunk[element_type], screenX, screenY);
             }
-            else if (multiflag == 3) {
+            else if (multiflag == TRACK_MULTI_TILE_EXTENDS_DOWN_RIGHT) {
                 /* Corner 4-tile element */
                 /* Render terrain for additional tiles */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
-                          + TRACK_TILE_PIXELS;
+                screenY = track_map_screen_y(row);
+                screenX = track_map_screen_x(col + 1);
                 terrVal = terrain_at_safe((int)row + (int)row_offset,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
-                          + TRACK_TILE_PIXELS;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                screenY = track_map_screen_y(row + 1);
+                screenX = track_map_screen_x(col);
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y
-                          + TRACK_TILE_PIXELS;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X
-                          + TRACK_TILE_PIXELS;
+                screenY = track_map_screen_y(row + 1);
+                screenX = track_map_screen_x(col + 1);
                 terrVal = terrain_at_safe((int)row + (int)row_offset + 1,
                                           (int)col + (int)col_offset + 1);
                 sprite_shape_to_1((struct SHAPE2D *)tracksmenushapes1[terrVal], screenX, screenY);
 
                 /* Render element mask and filling */
-                screenY = (int)row * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_Y;
-                screenX = (int)col * TRACK_TILE_PIXELS + TRACK_MAP_TILE_OFFSET_X;
+                screenY = track_map_screen_y(row);
+                screenX = track_map_screen_x(col);
                 putpixel_iconMask(tracksmenushape2dunk2[element_type], screenX, screenY);
                 putpixel_iconFillings(tracksmenushape2dunk[element_type], screenX, screenY);
             }
@@ -1447,8 +1494,6 @@ track_editor_copy_window_bitmap(struct SPRITE *dst, const struct SPRITE *src) {
 /*--------------------------------------------------------------
  * load_tracks_menu_shapes - Main Track Editor Menu Function
  /*--------------------------------------------------------------*/
-/** @brief Load tracks menu shapes.
- */
 void
 load_tracks_menu_shapes(void) {
     /* Far pointers */
@@ -1573,10 +1618,6 @@ load_tracks_menu_shapes(void) {
         terr_dirty_flags[i] = TRACK_U8_INVALID;
     }
 
-    /** @brief Shapes.
- * @param i Parameter `i`.
- * @return Function result.
- */
     /* Load element icon shapes (186 elements) */
     for (i = 0; i < TRACK_ELEMENT_ICON_COUNT; i++) {
         /* Get 4-char name from snam and load mask shape */
@@ -1689,22 +1730,8 @@ load_tracks_menu_shapes(void) {
             if (current_category != 0) {
                 /* Check multi-tile flag for selected element */
                 multiflag = TRKOBJ_MULTI_TILE_FLAG(selected_element);
-                if (multiflag == 1) {
-                    /* 2x1 element (wide) */
-                    cursor_width_tiles = 2;
-                    cursor_shape_index = 1;
-                }
-                else if (multiflag == 2) {
-                    /* 1x2 element (tall) */
-                    cursor_height_tiles = 2;
-                    cursor_shape_index = 2;
-                }
-                else if (multiflag == 3) {
-                    /* 2x2 element */
-                    cursor_height_tiles = 2;
-                    cursor_width_tiles = 2;
-                    cursor_shape_index = 3;
-                }
+                track_get_cursor_shape_dimensions(multiflag, &cursor_height_tiles,
+                                                  &cursor_width_tiles, &cursor_shape_index);
             }
         }
 
@@ -2280,11 +2307,8 @@ load_tracks_menu_shapes(void) {
         }
 
         /*----------------------------------------
-/** @brief Mode.
- * @param anim_index Parameter `anim_index`.
- * @return Function result.
- */
-        /*--------------------------------------------------------------*/
+         * Advance the map-animation preview one step.
+         *--------------------------------------------------------------*/
         if (anim_index != 0) {
             if (input_code == 1 && picker_mode == 0) {
                 /* Continue animation */
@@ -2312,11 +2336,8 @@ load_tracks_menu_shapes(void) {
         anim_index = 0;
 
         /*----------------------------------------
-/** @brief Keys.
- * @param si Parameter `si`.
- * @return Function result.
- */
-        /*--------------------------------------------------------------*/
+         * Map keyboard shortcuts to picker categories.
+         *--------------------------------------------------------------*/
         for (si = 0; si < 10; si++) {
             if (track_segment_offset_table[si] == input_code) {
                 current_category = si + 1;
@@ -2739,10 +2760,6 @@ load_tracks_menu_shapes(void) {
                 }
             }
             else {
-                /** @brief Exit.
- * @param picker_col Parameter `picker_col`.
- * @return Function result.
- */
                 /* picker_row > 8: SAVE (picker_col==0) or EXIT (picker_col!=0) */
                 if (picker_col == 0) {
                     /* SAVE track */
@@ -2786,10 +2803,6 @@ load_tracks_menu_shapes(void) {
                     g_is_busy = false;
                 }
                 else {
-                    /** @brief Editor.
- * @param track_modified Parameter `track_modified`.
- * @return Function result.
- */
                     /* EXIT editor (with confirmation if modified) */
                     if (track_modified) {
                         track_consume_dialog_click();
@@ -2871,19 +2884,9 @@ load_tracks_menu_shapes(void) {
             redraw_map = true;
 
             /* Handle multi-tile elements */
-            if (multiflag == 1) {
-                /* 2x1 - mark row below */
-                elem_map[trackrows[last_place_row + 1] + last_place_col] = TRACK_MARKER_VERTICAL;
-            }
-            else if (multiflag == 2) {
-                /* 1x2 - mark col right */
-                elem_map[trackrows[last_place_row] + last_place_col + 1] = TRACK_MARKER_HORIZONTAL;
-            }
-            else if (multiflag == 3) {
-                /* 2x2 - mark all adjacent */
-                elem_map[trackrows[last_place_row] + last_place_col + 1] = TRACK_MARKER_HORIZONTAL;
-                elem_map[trackrows[last_place_row + 1] + last_place_col] = TRACK_MARKER_VERTICAL;
-                elem_map[trackrows[last_place_row + 1] + last_place_col + 1] = TRACK_MARKER_CORNER;
+            if (multiflag != TRACK_MULTI_TILE_NONE) {
+                track_place_multi_tile_markers(elem_map, last_place_row, last_place_col,
+                                               multiflag);
             }
         }
         check_input();
@@ -2914,19 +2917,11 @@ load_tracks_menu_shapes(void) {
 /* Extern globals (declared in data_game.h) */
 
 
-/** @brief Trkobject raw entry.
- * @param elem Parameter `elem`.
- * @return Function result.
- */
 static unsigned char *
 trkobject_raw_entry(unsigned char elem) {
     return ((unsigned char *)trkObjectList) + ((size_t)((unsigned int)elem * 14U));
 }
 
-/** @brief Trk resolve ofs.
- * @param ofs Parameter `ofs`.
- * @return Function result.
- */
 static unsigned char *
 trk_resolve_ofs(unsigned short ofs) {
     enum { TRKINFO_OFS_BASE = 6664, CAMERA_DATA_OFS_BASE = 3220 };
@@ -2946,10 +2941,6 @@ trk_resolve_ofs(unsigned short ofs) {
     return (unsigned char *)0;
 }
 
-/** @brief Trkobject info ptr.
- * @param elem Parameter `elem`.
- * @return Function result.
- */
 static unsigned char *
 trkobject_info_ptr(unsigned char elem) {
     unsigned char *raw = trkobject_raw_entry(elem);
@@ -2960,29 +2951,16 @@ trkobject_info_ptr(unsigned char elem) {
     return trk_resolve_ofs(off);
 }
 
-/** @brief Trkobjinfo block.
- * @param base Parameter `base`.
- * @param block Parameter `block`.
- * @return Function result.
- */
 static struct TRKOBJINFO_RAW *
 trkobjinfo_block(unsigned char *base, unsigned char block) {
     return (struct TRKOBJINFO_RAW *)(base + ((size_t)((unsigned int)block * 14u)));
 }
 
-/** @brief Trkobjinfo camera ptr.
- * @param info Parameter `info`.
- * @return Function result.
- */
 static short *
 trkobjinfo_camera_ptr(const struct TRKOBJINFO_RAW *info) {
     return (short *)trk_resolve_ofs((unsigned short)info->si_cameraDataOffset);
 }
 
-/** @brief Trkobject multitile flag.
- * @param elem Parameter `elem`.
- * @return Function result.
- */
 static unsigned char
 trkobject_multitile_flag(unsigned char elem) {
     return trkobject_raw_entry(elem)[11];
@@ -3005,9 +2983,6 @@ track_setup_error_return(unsigned char trackErrorCode, unsigned char trkColIndex
     return (signed char)trackErrorCode;
 }
 
-/** @brief Track setup.
- * @return Function result.
- */
 int
 track_setup(void) {
     /* Snapshot td15 at entry to detect runtime overwrites */
@@ -3046,8 +3021,6 @@ track_setup(void) {
     int prevPieceIdx;   /* var_3AC */
     int tempColExt;     /* var_AEA */
     int tempRowIdx2;    /* var_AEC */
-    int tempSwap;       /* var_3A2 */
-
     int checkX, checkY, checkZ; /* var_ADA, var_AD8, var_AD6 */
 
     /* Pointers */
@@ -3083,49 +3056,17 @@ track_setup(void) {
     }
 
     /* ===== PHASE 3: West-to-East terrain connectivity ===== */
-    trkRowIndex = 0;
-    while (trackErrorCode == 0 && (signed char)trkRowIndex < TRACK_SIZE) {
-        prevConnCode = TRACK_CONN_CODE_SENTINEL;
-        trkColIndex = 0;
-        while (trackErrorCode == 0 && (signed char)trkColIndex < TRACK_SIZE) {
-            tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
-                                         + (signed char)trkColIndex];
-            if (terrConnDataEtoW[(unsigned char)tileTerr] != prevConnCode
-                && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
-                trackErrorCode = 11; /* terr_mism */
-            }
-            else {
-                prevConnCode = terrConnDataWtoE[(unsigned char)tileTerr];
-                trkColIndex++;
-            }
-        }
-        if (trackErrorCode == 0)
-            trkRowIndex++;
-    }
+    trackErrorCode = track_validate_terrain_connectivity(terrain_conn_from_west,
+                                                         terrain_conn_to_east, 1,
+                                                         &trkColIndex, &trkRowIndex);
     if (trackErrorCode != 0) {
         return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
     }
 
     /* ===== PHASE 4: North-to-South terrain connectivity ===== */
-    trkColIndex = 0;
-    while (trackErrorCode == 0 && (signed char)trkColIndex < TRACK_SIZE) {
-        prevConnCode = TRACK_CONN_CODE_SENTINEL;
-        trkRowIndex = 0;
-        while (trackErrorCode == 0 && (signed char)trkRowIndex < TRACK_SIZE) {
-            tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex]
-                                         + (signed char)trkColIndex];
-            if (terrConnDataNtoS[(unsigned char)tileTerr] != prevConnCode
-                && prevConnCode != TRACK_CONN_CODE_SENTINEL) {
-                trackErrorCode = 11; /* terr_mism */
-            }
-            else {
-                prevConnCode = terrConnDataStoN[(unsigned char)tileTerr];
-                trkRowIndex++;
-            }
-        }
-        if (trackErrorCode == 0)
-            trkColIndex++;
-    }
+    trackErrorCode = track_validate_terrain_connectivity(terrain_conn_from_north,
+                                                         terrain_conn_to_south, 0,
+                                                         &trkColIndex, &trkRowIndex);
     if (trackErrorCode != 0) {
         return track_setup_error_return(trackErrorCode, trkColIndex, trkRowIndex, tcompArr);
     }
@@ -3149,43 +3090,8 @@ track_setup(void) {
                 track_elem_map[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex] = 4;
             }
 
-            /* Check for start/finish tile elements */
-            /* Check for start/finish tile elements */
             {
-                unsigned char is_sf = 0;
-                switch ((unsigned int)tileElem) {
-                case 1:
-                case 134:
-                case 147:
-                    track_angle = 0;
-                    is_sf = 1;
-                    break;
-
-                case 135:
-                case 148:
-                case 179:
-                    track_angle = 512;
-                    is_sf = 1;
-                    break;
-
-                case 136:
-                case 149:
-                case 180:
-                    track_angle = 256;
-                    is_sf = 1;
-                    break;
-
-                case 137:
-                case 150:
-                case 181:
-                    track_angle = 768;
-                    is_sf = 1;
-                    break;
-
-                default:
-                    break;
-                }
-                if (is_sf) {
+                if (track_find_start_finish_heading(tileElem, &track_angle)) {
                     if (sfCount != 0) {
                         trackErrorCode = 3; /* many_sf */
                     }
@@ -3261,19 +3167,11 @@ track_setup(void) {
             /* Read tileTerr */
             tileTerr = track_terrain_map[terrainrows[(signed char)trkRowIndex] + tempColExt];
 
-            /** @brief Hill.
- * @param tileTerr Parameter `tileTerr`.
- * @return Function result.
- */
             /* subst_hillroad_track if terrain is hill (7-10) and element is non-zero */
             if (tileElem != 0 && tileTerr != 0 && tileTerr >= 7 && tileTerr < 11) {
                 tileElem = subst_hillroad_track((unsigned char)tileTerr, (unsigned char)tileElem);
             }
 
-            /** @brief Elements.
- * @param TRACK_MARKER_CORNER Parameter `TRACK_MARKER_CORNER`.
- * @return Function result.
- */
             /* Handle filler elements (253, 254, 255) */
             if (tileElem >= TRACK_MARKER_CORNER) {
                 switch ((unsigned int)tileElem) {
@@ -3282,17 +3180,15 @@ track_setup(void) {
                     trkColIndex--;
                     trkRowIndex--;
                     switch (trackDirection) {
-                    case 0:
-                        tileEntryPoint = 12;
+                    case TRACK_HEADING_NORTH:
+                        tileEntryPoint = TRACK_POINT_DOUBLE_SOUTH_EAST;
                         break;
-                    case 256:
-                        tileEntryPoint = 0;
+                    case TRACK_HEADING_EAST:
+                    case TRACK_HEADING_SOUTH:
+                        tileEntryPoint = TRACK_POINT_NONE;
                         break;
-                    case 512:
-                        tileEntryPoint = 0;
-                        break;
-                    case 768:
-                        tileEntryPoint = 9;
+                    case TRACK_HEADING_WEST:
+                        tileEntryPoint = TRACK_POINT_DOUBLE_EAST_SOUTH;
                         break;
                     default:
                         break;
@@ -3303,17 +3199,17 @@ track_setup(void) {
                     /* N side filler - adjust row only */
                     trkRowIndex--;
                     switch (trackDirection) {
-                    case 0:
-                        tileEntryPoint = 11;
+                    case TRACK_HEADING_NORTH:
+                        tileEntryPoint = TRACK_POINT_DOUBLE_SOUTH;
                         break;
-                    case 256:
-                        tileEntryPoint = 6;
+                    case TRACK_HEADING_EAST:
+                        tileEntryPoint = TRACK_POINT_SOUTH_WEST;
                         break;
-                    case 512:
-                        tileEntryPoint = 0;
+                    case TRACK_HEADING_SOUTH:
+                        tileEntryPoint = TRACK_POINT_NONE;
                         break;
-                    case 768:
-                        tileEntryPoint = 7;
+                    case TRACK_HEADING_WEST:
+                        tileEntryPoint = TRACK_POINT_SOUTH_EAST_VIA_EAST;
                         break;
                     default:
                         break;
@@ -3324,17 +3220,17 @@ track_setup(void) {
                     /* W side filler - adjust col only */
                     trkColIndex--;
                     switch (trackDirection) {
-                    case 0:
-                        tileEntryPoint = 10;
+                    case TRACK_HEADING_NORTH:
+                        tileEntryPoint = TRACK_POINT_SOUTH_EAST;
                         break;
-                    case 256:
-                        tileEntryPoint = 0;
+                    case TRACK_HEADING_EAST:
+                        tileEntryPoint = TRACK_POINT_NONE;
                         break;
-                    case 512:
-                        tileEntryPoint = 5;
+                    case TRACK_HEADING_SOUTH:
+                        tileEntryPoint = TRACK_POINT_NORTH_EAST;
                         break;
-                    case 768:
-                        tileEntryPoint = 8;
+                    case TRACK_HEADING_WEST:
+                        tileEntryPoint = TRACK_POINT_DOUBLE_EAST;
                         break;
                     default:
                         break;
@@ -3350,24 +3246,24 @@ track_setup(void) {
             else {
                 /* Non-filler: compute entry point from trackDirection */
                 switch (trackDirection) {
-                case 0:
-                    tileEntryPoint = 2;
+                case TRACK_HEADING_NORTH:
+                    tileEntryPoint = TRACK_POINT_SOUTH;
                     break;
-                case 256:
-                    tileEntryPoint = 4;
+                case TRACK_HEADING_EAST:
+                    tileEntryPoint = TRACK_POINT_WEST;
                     break;
-                case 512:
-                    tileEntryPoint = 1;
+                case TRACK_HEADING_SOUTH:
+                    tileEntryPoint = TRACK_POINT_NORTH;
                     break;
-                case 768:
-                    tileEntryPoint = 3;
+                case TRACK_HEADING_WEST:
+                    tileEntryPoint = TRACK_POINT_EAST;
                     break;
                 default:
                     break;
                 }
             }
             /* Validate: if sfPassCount==0 and entryPoint==0 -> int_err */
-            if (sfPassCount == 0 && tileEntryPoint == 0) {
+            if (sfPassCount == 0 && tileEntryPoint == TRACK_POINT_NONE) {
                 trackErrorCode = 2; /* int_err */
                 break;              /* exit while(1) */
             }
@@ -3393,10 +3289,6 @@ track_setup(void) {
                         }
                     }
                     else {
-                        /** @brief Match.
- * @param tileEntryPoint Parameter `tileEntryPoint`.
- * @return Function result.
- */
                         /* Try exit point match (reverse direction) */
                         if (ptrCurrTOInfo->si_exitPoint == tileEntryPoint) {
                             if (ptrCurrTOInfo->si_exitType == prevConnCode) {
@@ -3506,21 +3398,21 @@ track_setup(void) {
                     distCount++;
                     sfPassCount++;
                     switch (trackDirection) {
-                    case 0: /* North */
+                    case TRACK_HEADING_NORTH:
                         trkColIndex = MprevColIndex;
-                        trkRowIndex = MprevRowIndex - sfPassCount - 1;
+                        trkRowIndex = (unsigned char)(MprevRowIndex - sfPassCount - 1);
                         continue;
-                    case 512: /* South */
+                    case TRACK_HEADING_SOUTH:
                         trkColIndex = MprevColIndex;
-                        trkRowIndex = MprevRowIndex + sfPassCount + 1;
+                        trkRowIndex = (unsigned char)(MprevRowIndex + sfPassCount + 1);
                         continue;
-                    case 256: /* East */
+                    case TRACK_HEADING_EAST:
                         trkRowIndex = MprevRowIndex;
-                        trkColIndex = MprevColIndex + sfPassCount + 1;
+                        trkColIndex = (unsigned char)(MprevColIndex + sfPassCount + 1);
                         continue;
-                    case 768: /* West */
+                    case TRACK_HEADING_WEST:
                         trkRowIndex = MprevRowIndex;
-                        trkColIndex = MprevColIndex - sfPassCount - 1;
+                        trkColIndex = (unsigned char)(MprevColIndex - sfPassCount - 1);
                         continue;
                     default:
                         continue;
@@ -3669,20 +3561,17 @@ track_setup(void) {
                     trackDirection = prevTOI->si_arrowOrient;
 
                     /* Rotate camera data based on trackDirection */
-                    if (trackDirection == 768) {
-                        /* Rotate 270 deg: swap X<->Z, negate new X */
-                        tempSwap = checkX;
+                    if (trackDirection == TRACK_HEADING_WEST) {
+                        int tempSwap = checkX;
                         checkX = -checkZ;
                         checkZ = tempSwap;
                     }
-                    else if (trackDirection == 512) {
-                        /* Rotate 180 deg: negate both X and Z */
+                    else if (trackDirection == TRACK_HEADING_SOUTH) {
                         checkZ = -checkZ;
                         checkX = -checkX;
                     }
-                    else if (trackDirection == 256) {
-                        /* Rotate 90 deg: swap X<->Z, negate new Z */
-                        tempSwap = checkX;
+                    else if (trackDirection == TRACK_HEADING_EAST) {
+                        int tempSwap = checkX;
                         checkX = checkZ;
                         checkZ = -tempSwap;
                     }
@@ -3690,7 +3579,8 @@ track_setup(void) {
                     /* Store direction in td08 */
                     if (MprevConnStatus != 0) {
                         /* Reverse direction: XOR high byte with 2 */
-                        obstacle_rot_z[(signed char)lap_checkpoint_counter] = (short)trackDirection ^ 512;
+                        obstacle_rot_z[(signed char)lap_checkpoint_counter]
+                            = (short)trackDirection ^ TRACK_HEADING_HALF_TURN;
                     }
                     else {
                         obstacle_rot_z[(signed char)lap_checkpoint_counter] = (short)trackDirection;
@@ -3713,7 +3603,8 @@ track_setup(void) {
                         obstacle_world_pos[chkIdx6 + 1] = (short)checkY;
 
                         /* Compute Z position */
-                        if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 1) {
+                        if (trkobject_multitile_flag((unsigned char)MprevTileElem)
+                            & TRACK_MULTI_TILE_EXTENDS_DOWN) {
                             /* Multi-tile (flag bit 0): use trackpos */
                             checkZ += trackpos[(signed char)MprevRowIndex];
                         }
@@ -3724,7 +3615,8 @@ track_setup(void) {
                         obstacle_world_pos[chkIdx6 + 2] = (short)checkZ;
 
                         /* Compute X position */
-                        if (trkobject_multitile_flag((unsigned char)MprevTileElem) & 2) {
+                        if (trkobject_multitile_flag((unsigned char)MprevTileElem)
+                            & TRACK_MULTI_TILE_EXTENDS_RIGHT) {
                             /* Multi-tile (flag bit 1): use trackpos2+1 */
                             checkX += trackpos2[(signed char)MprevColIndex + 1];
                         }
@@ -3777,65 +3669,61 @@ track_setup(void) {
         prevSubBlock = subTOIBlock;
         MprevTileElem = tileElem;
 
-        /** @brief Point.
- * @param McurrExitPoint Parameter `McurrExitPoint`.
- * @return Function result.
- */
         /* Dispatch on exit point (1-12) */
         switch (McurrExitPoint) {
-        case 1: /* N */
+        case TRACK_POINT_NORTH:
             trkRowIndex--;
-            trackDirection = 0;
+            trackDirection = TRACK_HEADING_NORTH;
             break;
-        case 2: /* S */
+        case TRACK_POINT_SOUTH:
             trkRowIndex++;
-            trackDirection = 512;
+            trackDirection = TRACK_HEADING_SOUTH;
             break;
-        case 3: /* E */
+        case TRACK_POINT_EAST:
             trkColIndex++;
-            trackDirection = 256;
+            trackDirection = TRACK_HEADING_EAST;
             break;
-        case 4: /* W */
+        case TRACK_POINT_WEST:
             trkColIndex--;
-            trackDirection = 768;
+            trackDirection = TRACK_HEADING_WEST;
             break;
-        case 5: /* NE */
+        case TRACK_POINT_NORTH_EAST:
             trkRowIndex--;
             trkColIndex++;
-            trackDirection = 0;
+            trackDirection = TRACK_HEADING_NORTH;
             break;
-        case 6: /* SW */
+        case TRACK_POINT_SOUTH_WEST:
             trkRowIndex++;
             trkColIndex--;
-            trackDirection = 768;
+            trackDirection = TRACK_HEADING_WEST;
             break;
-        case 7: /* SE via E */
+        case TRACK_POINT_SOUTH_EAST_VIA_EAST:
             trkColIndex++;
             trkRowIndex++;
-            trackDirection = 256;
+            trackDirection = TRACK_HEADING_EAST;
             break;
-        case 8: /* E+col=2 */
-            trkColIndex += 2;
-            trackDirection = 256;
+        case TRACK_POINT_DOUBLE_EAST:
+            trkColIndex = (unsigned char)(trkColIndex + 2);
+            trackDirection = TRACK_HEADING_EAST;
             break;
-        case 9: /* E+col=2, S */
-            trkColIndex += 2;
+        case TRACK_POINT_DOUBLE_EAST_SOUTH:
+            trkColIndex = (unsigned char)(trkColIndex + 2);
             trkRowIndex++;
-            trackDirection = 256;
+            trackDirection = TRACK_HEADING_EAST;
             break;
-        case 10: /* SE */
+        case TRACK_POINT_SOUTH_EAST:
             trkColIndex++;
             trkRowIndex++;
-            trackDirection = 512;
+            trackDirection = TRACK_HEADING_SOUTH;
             break;
-        case 11: /* S, row+=2 */
-            trkRowIndex += 2;
-            trackDirection = 512;
+        case TRACK_POINT_DOUBLE_SOUTH:
+            trkRowIndex = (unsigned char)(trkRowIndex + 2);
+            trackDirection = TRACK_HEADING_SOUTH;
             break;
-        case 12: /* SE, row+=2 */
+        case TRACK_POINT_DOUBLE_SOUTH_EAST:
             trkColIndex++;
-            trkRowIndex += 2;
-            trackDirection = 512;
+            trkRowIndex = (unsigned char)(trkRowIndex + 2);
+            trackDirection = TRACK_HEADING_SOUTH;
             break;
         default:
             break;
@@ -3943,17 +3831,17 @@ track_setup(void) {
             camDir = subBlockInfo->si_arrowOrient;
 
             /* Rotate camera data based on arrowOrient */
-            if (camDir == 768) {
-                tempSwap = checkX;
+            if (camDir == TRACK_HEADING_WEST) {
+                int tempSwap = checkX;
                 checkX = -checkZ;
                 checkZ = tempSwap;
             }
-            else if (camDir == 512) {
+            else if (camDir == TRACK_HEADING_SOUTH) {
                 checkZ = -checkZ;
                 checkX = -checkX;
             }
-            else if (camDir == 256) {
-                tempSwap = checkX;
+            else if (camDir == TRACK_HEADING_EAST) {
+                int tempSwap = checkX;
                 checkX = checkZ;
                 checkZ = -tempSwap;
             }
@@ -3975,12 +3863,9 @@ track_setup(void) {
             /* waypoint_world_pos[di*3 + 1] = track_element_height_ofs[di] + camData[1] */
             waypoint_world_pos[di * 3 + 1] = (short)((short *)track_element_height_ofs)[di] + checkY;
 
-            /** @brief Position.
- * @param chkTileElem Parameter `chkTileElem`.
- * @return Function result.
- */
             /* Compute Z position (waypoint_world_pos[di*3 + 2]) */
-            if (trkobject_multitile_flag((unsigned char)chkTileElem) & 1) {
+            if (trkobject_multitile_flag((unsigned char)chkTileElem)
+                & TRACK_MULTI_TILE_EXTENDS_DOWN) {
                 /* Multi-tile */
                 waypoint_world_pos[di * 3 + 2] = (short)trackpos[(signed char)trkRowIndex] + checkZ;
             }
@@ -3989,12 +3874,9 @@ track_setup(void) {
                 waypoint_world_pos[di * 3 + 2] = (short)trackcenterpos[(signed char)trkRowIndex] + checkZ;
             }
 
-            /** @brief Position.
- * @param chkTileElem Parameter `chkTileElem`.
- * @return Function result.
- */
             /* Compute X position (waypoint_world_pos[di*3]) */
-            if (trkobject_multitile_flag((unsigned char)chkTileElem) & 2) {
+            if (trkobject_multitile_flag((unsigned char)chkTileElem)
+                & TRACK_MULTI_TILE_EXTENDS_RIGHT) {
                 /* Multi-tile */
                 waypoint_world_pos[(ptrdiff_t)(di * 3)] = (short)trackpos2[(signed char)trkColIndex + 1] + checkX;
             }
@@ -4015,10 +3897,6 @@ track_setup(void) {
     return 0;
 }
 
-/** @brief Read u16.
- * @param p Parameter `p`.
- * @return Function result.
- */
 static uint16_t
 read_u16(const unsigned char *p) {
     return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
@@ -4026,12 +3904,6 @@ read_u16(const unsigned char *p) {
 
 enum { STATE_TRACKOBJECT_RAW_COUNT = 215u };
 
-/** @brief State trackobject raw decode.
- * @param table Parameter `table`.
- * @param index Parameter `index`.
- * @param out Parameter `out`.
- * @return Function result.
- */
 int
 state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
                              state_trackobject_raw *out) {
@@ -4055,12 +3927,6 @@ state_trackobject_raw_decode(const unsigned char *table, unsigned int index,
     return 1;
 }
 
-/** @brief State trkobjinfo raw decode.
- * @param table Parameter `table`.
- * @param index Parameter `index`.
- * @param out Parameter `out`.
- * @return Function result.
- */
 int
 state_trkobjinfo_raw_decode(const unsigned char *table, unsigned int index,
                             state_trkobjinfo_raw *out) {

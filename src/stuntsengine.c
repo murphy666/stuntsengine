@@ -1848,12 +1848,12 @@ setup_player_cars(void) {
     timertestflag_copy = timertestflag;
     init_rect_arrays();
     if (idle_expired == 0) {
-        setup_car_shapes(0);
+        setup_car_shapes(GAME_DASHBOARD_LOAD_RESOURCES);
     }
 
     if (idle_expired == 0) {
         sdgameresptr = file_load_resource(3, "sdgame"); //aSdgame); // "sdgame"
-        loop_game(0, 0, 0);
+        loop_game(GAME_LOOP_LOAD_REPLAY_BAR, 0, 0);
     }
 
     gameresptr = file_load_resfile("game");
@@ -1895,7 +1895,7 @@ free_player_cars(void) {
     unload_resource(gameresptr);
     if (idle_expired == 0) {
         mmgr_free(sdgameresptr);
-        setup_car_shapes(3);
+        setup_car_shapes(GAME_DASHBOARD_FREE_RESOURCES);
     }
 
     mmgr_free(fontledresptr);
@@ -1980,7 +1980,8 @@ run_game(void) {
                 sprite_animation_frame_counter = 0;
                 lap_completion_trigger_flag = false;
                 game_pause_counter = STN_REPLAY_PAUSE_STATE_ROTATING;
-                mouse_minmax_position(mouse_control_enabled);
+                mouse_minmax_position(mouse_control_enabled ? MOUSE_BOUNDS_GAMEPLAY
+                                                            : MOUSE_BOUNDS_FULL_SCREEN);
                 check_input();
                 mouse_input_active = false;
                 game_replay_mode = 1;
@@ -2126,12 +2127,12 @@ run_game(void) {
                 mouse_button_press_state[screen_display_toggle_flag] = 0;
                 if (game_input_keyboard_state) {
                     sprite_set_1_size(0, STN_SCREEN_WIDTH, dashbmp_y_copy, height_above_replaybar);
-                    setup_car_shapes(1);
+                    setup_car_shapes(GAME_DASHBOARD_ENTER_DRIVING_MODE);
                 }
 
                 if (replaybar_enabled) {
                     sprite_set_1_size(0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT);
-                    loop_game(1, state.game_frame, state.game_frame);
+                    loop_game(GAME_LOOP_UPDATE_REPLAY_BAR, state.game_frame, state.game_frame);
                 }
             }
             else {
@@ -2160,7 +2161,7 @@ run_game(void) {
             render_present_ingame_view(&rect_windshield);
             if (game_input_keyboard_state) {
                 sprite_set_1_size(0, STN_SCREEN_WIDTH, dashbmp_y_copy, height_above_replaybar);
-                setup_car_shapes(2);
+                setup_car_shapes(GAME_DASHBOARD_UPDATE);
                 sprite_set_1_size(0, STN_SCREEN_WIDTH, 0, STN_SCREEN_HEIGHT);
             }
 
@@ -2189,9 +2190,10 @@ run_game(void) {
                         && game_finish_state != 2) {
                         game_finish_state = 0;
                         game_replay_mode = 2;
-                        mouse_minmax_position(0);
-                        loop_game(0, 0, 0);
-                        loop_game(2, 4, 0);
+                        mouse_minmax_position(MOUSE_BOUNDS_FULL_SCREEN);
+                        loop_game(GAME_LOOP_LOAD_REPLAY_BAR, 0, 0);
+                        loop_game(GAME_LOOP_SET_REPLAY_BAR_BUTTON,
+                                  GAME_REPLAY_BAR_BUTTON_PAUSE, 0);
                         is_in_replay = true;
                         audio_sync_car_audio();
                     }
@@ -2201,7 +2203,7 @@ run_game(void) {
                 }
 
                 if (game_replay_mode == 2) {
-                    loop_game(3, 0, 0);
+                    loop_game(GAME_LOOP_HANDLE_REPLAY_INPUT, 0, 0);
                     continue;
                 }
 
@@ -2213,14 +2215,15 @@ run_game(void) {
                     }
                     if (input_key == UI_KEY_ESCAPE_EXT || input_key == UI_KEY_ESCAPE) {
                         /* ESC during driving: switch to replay mode.
-						 * loop_game(3,...) will handle the menu on next iteration. */
+                         * loop_game(GAME_LOOP_HANDLE_REPLAY_INPUT, ...) will handle the menu on next iteration. */
                         game_replay_mode = 2;
-                        mouse_minmax_position(0);
-                        loop_game(0, 0, 0);
-                        loop_game(2, 4, 0);
+                        mouse_minmax_position(MOUSE_BOUNDS_FULL_SCREEN);
+                        loop_game(GAME_LOOP_LOAD_REPLAY_BAR, 0, 0);
+                        loop_game(GAME_LOOP_SET_REPLAY_BAR_BUTTON,
+                                  GAME_REPLAY_BAR_BUTTON_PAUSE, 0);
                         is_in_replay = true;
                         audio_sync_car_audio();
-                        /* Re-queue ESC so loop_game(3,...) sees it */
+                        /* Re-queue ESC so loop_game(GAME_LOOP_HANDLE_REPLAY_INPUT, ...) sees it */
                         kb_requeue_key(UI_KEY_ESCAPE_EXT);
                         break;
                     }
@@ -2290,7 +2293,7 @@ run_game(void) {
         }
 
         lap_completion_trigger_flag = false;
-        mouse_minmax_position(0);
+        mouse_minmax_position(MOUSE_BOUNDS_FULL_SCREEN);
         remove_frame_callback();
         free_player_cars();
     }

@@ -110,7 +110,12 @@ enum {
     SHAPE2D_PAGE_ROUNDING_BIAS_BYTES = 32,
     SHAPE2D_PALETTE_ENTRY_COUNT = 16,
     SHAPE2D_FONT_DEFAULT_GLYPH_DIMENSION = 8,
-    SHAPE2D_FONT_LINE_GAP = 2
+    SHAPE2D_FONT_LINE_GAP = 2,
+
+    /* Pattern bit-rotation */
+    SHAPE2D_PATTERN_BITS = 8,
+    SHAPE2D_PATTERN_BIT_MASK = SHAPE2D_PATTERN_BITS - 1,
+    SHAPE2D_PATTERN_MSB_SHIFT = SHAPE2D_PATTERN_BITS - 1
 };
 
 static const unsigned long SHAPE2D_FIXED_ONE_16_16 = 65536UL;
@@ -159,10 +164,6 @@ static size_t g_wnd_stack_count = 0;
  * @param dst       Destination bitmap buffer.
  * @param dst_size  Size of the destination buffer in bytes.
  * @param destofs   Byte offset into @p dst for the first row.
-/** @brief Data.
- * @param success Parameter `success`.
- * @param pitch Parameter `pitch`.
- * @return Function result.
  */
 int
 shape2d_blit_rows(unsigned char *dst, size_t dst_size, unsigned int destofs,
@@ -203,10 +204,6 @@ shape2d_lineofs_flat(unsigned int *stored_lineofs) {
  * @param base        Base of the wnd_defs buffer.
  * @param capacity    Total capacity of the buffer in bytes.
  * @param next        In/out pointer to the next free position.
-/** @brief Sprite.
- * @param success Parameter `success`.
- * @param out_lineofs Parameter `out_lineofs`.
- * @return Function result.
  */
 int
 sprite_wnd_stack_reserve(unsigned char *base, size_t capacity, unsigned char **next,
@@ -243,10 +240,6 @@ sprite_wnd_stack_reserve(unsigned char *base, size_t capacity, unsigned char **n
  *
  * @param base       Base of the wnd_defs buffer.
  * @param next       In/out pointer to the next free position.
-/** @brief Release.
- * @param success Parameter `success`.
- * @param wndsprite Parameter `wndsprite`.
- * @return Function result.
  */
 int
 sprite_wnd_stack_release(unsigned char *base, unsigned char **next, struct SPRITE *wndsprite) {
@@ -447,11 +440,6 @@ sprite_make_wnd(unsigned int width, unsigned int height, unsigned int unk) {
     return farwnd;
 }
 
-/**
-/** @brief Sprite make wnd.
- * @param wndsprite Parameter `wndsprite`.
- * @return Function result.
- */
 void
 sprite_free_wnd(struct SPRITE *wndsprite) {
     unsigned char *base;
@@ -572,11 +560,6 @@ sprite_copy_arg_to_both(struct SPRITE *argsprite) {
     shape2d_sanitize_sprite(&sprite2);
 }
 
-/**
-/** @brief Color.
- * @param color Parameter `color`.
- * @return Function result.
- */
 void
 sprite_fill_rect(unsigned short x, unsigned short y, unsigned short width, unsigned short height,
                  unsigned char color) {
@@ -618,12 +601,6 @@ sprite_fill_rect(unsigned short x, unsigned short y, unsigned short width, unsig
     }
 }
 
-/**
-/** @brief Color.
- * @param bounds Parameter `bounds`.
- * @param color Parameter `color`.
- * @return Function result.
- */
 void
 sprite_fill_rect_clipped(unsigned short x, unsigned short y, unsigned short width,
                          unsigned short height, unsigned char color) {
@@ -820,12 +797,6 @@ sprite_putimage(struct SHAPE2D *shape) {
     }
 }
 
-/**
-/** @brief Explicit.
- * @param x Parameter `x`.
- * @param shapey Parameter `shapey`.
- * @return Function result.
- */
 void
 sprite_putimage_at(struct SHAPE2D *shape, int shapex, int shapey) {
     unsigned int *lineofs;
@@ -892,12 +863,6 @@ sprite_putimage_at(struct SHAPE2D *shape, int shapex, int shapey) {
     }
 }
 
-/**
-/** @brief Sprite1.
- * @param sprite1 Parameter `sprite1`.
- * @param b Parameter `b`.
- * @return Function result.
- */
 void
 sprite_putimage_and(struct SHAPE2D *shape, unsigned short a, unsigned short b) {
     unsigned int *lineofs;
@@ -985,12 +950,6 @@ sprite_putimage_and(struct SHAPE2D *shape, unsigned short a, unsigned short b) {
     }
 }
 
-/**
-/** @brief Sprite1.
- * @param sprite1 Parameter `sprite1`.
- * @param b Parameter `b`.
- * @return Function result.
- */
 void
 sprite_putimage_or(struct SHAPE2D *shape, unsigned short a, unsigned short b) {
     unsigned int *lineofs;
@@ -1078,14 +1037,6 @@ sprite_putimage_or(struct SHAPE2D *shape, unsigned short a, unsigned short b) {
     }
 }
 
-/**
-/** @brief Explicit.
- * @param x Parameter `x`.
- * @param engineering Parameter `engineering`.
- * @param movsb Parameter `movsb`.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 sprite_putimage_and_alt(void *shapeptr, unsigned short x, unsigned short y) {
     struct SHAPE2D *shape = (struct SHAPE2D *)shapeptr;
@@ -1094,14 +1045,6 @@ sprite_putimage_and_alt(void *shapeptr, unsigned short x, unsigned short y) {
     sprite_putimage_at(shape, shapex, shapey);
 }
 
-/**
-/** @brief At.
- * @param x Parameter `x`.
- * @param framebuffer Parameter `framebuffer`.
- * @param ANDing Parameter `ANDing`.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 sprite_putimage_copy_at(void *shapeptr, unsigned short x, unsigned short y) {
     struct SHAPE2D *shape = (struct SHAPE2D *)shapeptr;
@@ -1198,21 +1141,11 @@ sprite_putimage_or_at_shape_origin(void *shapeptr, unsigned short x, unsigned sh
     sprite_putimage_or(shape, draw_x, draw_y);
 }
 
-/**
-/** @brief Sprite putimage and at shape origin.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 sprite_putimage_and_alt2(void *shapeptr, unsigned short x, unsigned short y) {
     sprite_putimage_and_at_shape_origin(shapeptr, x, y);
 }
 
-/**
-/** @brief Sprite putimage or at shape origin.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 sprite_putimage_or_alt(void *shapeptr, unsigned short x, unsigned short y) {
     sprite_putimage_or_at_shape_origin(shapeptr, x, y);
@@ -1250,10 +1183,6 @@ setup_mcgawnd2(void) {
 // like locate_resource_by_index()
 /**
  * @brief Return a shape at index from a resource chunk.
- *
-/** @brief Shape2d resource get shape.
- * @param index Parameter `index`.
- * @return Function result.
  */
 struct SHAPE2D *
 file_get_shape2d(unsigned char *memchunk, int index) {
@@ -1271,11 +1200,6 @@ file_get_res_shape_count(void *memchunk) {
     return shape2d_resource_shape_count((const unsigned char *)memchunk);
 }
 
-/**
-/** @brief Transpose.
- * @param mempages Parameter `mempages`.
- * @return Function result.
- */
 void
 file_unflip_shape2d(unsigned char *memchunk, char *mempages) {
 
@@ -1341,11 +1265,6 @@ file_unflip_shape2d(unsigned char *memchunk, char *mempages) {
     } while (shapecount > 0);
 }
 
-/**
-/** @brief Transpose.
- * @param mempages Parameter `mempages`.
- * @return Function result.
- */
 void
 file_unflip_shape2d_pes(unsigned char *memchunk, char *mempages) {
     int shapecount, width, height, i, j, x, y;
@@ -1477,11 +1396,6 @@ file_load_shape2d_expand(unsigned char *memchunk, char *mempages) {
                                        + nextoffset);
 }
 
-/**
-/** @brief Size.
- * @param memchunk Parameter `memchunk`.
- * @return Function result.
- */
 unsigned short
 file_get_unflip_size(unsigned char *memchunk) {
     unsigned short i, shapecount, size, maxsize;
@@ -1502,11 +1416,6 @@ file_get_unflip_size(unsigned char *memchunk) {
     return maxsize;
 }
 
-/**
-/** @brief Size.
- * @param memchunk Parameter `memchunk`.
- * @return Function result.
- */
 unsigned short
 file_load_shape2d_expandedsize(void *memchunk) {
     unsigned short shapecount, i;
@@ -1531,10 +1440,6 @@ file_load_shape2d_expandedsize(void *memchunk) {
 
 /**
  * @brief Initialise the palette remap table from a 16-byte palette array.
- *
-/** @brief Array.
- * @param pal Parameter `pal`.
- * @return Function result.
  */
 void
 file_load_shape2d_palmap_init(unsigned char *pal) {
@@ -1549,9 +1454,6 @@ file_load_shape2d_palmap_init(unsigned char *pal) {
  * @brief Apply the palette remap table to all shapes in a resource chunk.
  *
  * @param memchunk  Pointer to the loaded shape resource.
-/** @brief Table.
- * @param palmap Parameter `palmap`.
- * @return Function result.
  */
 void
 file_load_shape2d_palmap_apply(unsigned char *memchunk, unsigned char palmap[]) {
@@ -1614,11 +1516,6 @@ file_load_shape2d_esh(void *memchunk, const char *str) {
  *
  * Tries .PVS, .XVS, and .PES extensions. Applies un-flip and expansion
  * as needed. If @p fatal is set, aborts on failure.
- *
-/** @brief File.
- * @param chunk Parameter `chunk`.
- * @param fatal Parameter `fatal`.
- * @return Function result.
  */
 void *
 file_load_shape2d(char *shapename, int fatal) {
@@ -1824,11 +1721,6 @@ parse_shape2d(void *memchunk_arg, void *mempages_arg) {
             scanleft = (skipcount < pixelsleft) ? (unsigned short)(pixelsleft - skipcount) : 0;
             runlen = (scanleft > 0) ? shape2d_count_matching_prefix_bytes(runptr, scanleft) : 0;
 
-            /** @brief Skip.
- * @param matching Parameter `matching`.
- * @param scanleft Parameter `scanleft`.
- * @return Function result.
- */
             /* Check for short skip (3 or fewer matching, and more pixels left) */
             if (runlen <= SHAPE2D_RLE_LITERAL_MAX && scanleft > 0) {
                 /* Accumulate skip count */
@@ -1940,33 +1832,16 @@ file_load_shape2d_res_nofatal(char *resname) {
     return file_load_shape2d_res(resname, 0);
 }
 
-/**
-/** @brief File load shape2d res nofatal.
- * @param chunk Parameter `chunk`.
- * @param resname Parameter `resname`.
- * @return Function result.
- */
 void *
 file_load_shape2d_res_nofatal_thunk(const char *resname) {
     return file_load_shape2d_res_nofatal((char *)resname);
 }
 
-/**
-/** @brief File load shape2d fatal.
- * @param shapename Parameter `shapename`.
- * @return Function result.
- */
 void *
 file_load_shape2d_fatal_thunk(const char *shapename) {
     return file_load_shape2d_fatal((char *)shapename);
 }
 
-/**
-/** @brief File load shape2d nofatal.
- * @param chunk Parameter `chunk`.
- * @param shapename Parameter `shapename`.
- * @return Function result.
- */
 void *
 file_load_shape2d_nofatal_thunk(const char *shapename) {
     return file_load_shape2d_nofatal(shapename);
@@ -1976,10 +1851,6 @@ file_load_shape2d_nofatal_thunk(const char *shapename) {
  * putpixel_single_clipped - Draw a single pixel with bounds checking
  * 
  * Checks if (x,y) is within sprite1 bounds before drawing.
- * 
-/** @brief Value.
- * @param x Parameter `x`.
- * @return Function result.
  */
 void
 putpixel_single_clipped(int color, unsigned short y, unsigned short x) {
@@ -2011,10 +1882,6 @@ putpixel_single_clipped(int color, unsigned short y, unsigned short x) {
  * 
  * Fills a series of horizontal line segments with a solid color.
  * Uses optimized word writes when possible.
- * 
-/** @brief Value.
- * @param x1arr Parameter `x1arr`.
- * @return Function result.
  */
 void
 draw_filled_lines(unsigned short color, unsigned short numlines, unsigned short y,
@@ -2080,25 +1947,7 @@ draw_filled_lines(unsigned short color, unsigned short numlines, unsigned short 
  * sprite_draw_line_from_info - Draw a line using pre-computed line info
  *
  * This function draws lines using various optimized modes based on
- * the line slope and direction. The LINEINFO struct is populated
-/** @brief Draw line related.
- * @param field_12 Parameter `field_12`.
- * @param line Parameter `line`.
- * @param increasing Parameter `increasing`.
- * @param diagonal Parameter `diagonal`.
- * @param increasing Parameter `increasing`.
- * @param diagonal Parameter `diagonal`.
- * @param increasing Parameter `increasing`.
- * @param Diagonal Parameter `Diagonal`.
- * @param increasing Parameter `increasing`.
- * @param Diagonal Parameter `Diagonal`.
- * @param increasing Parameter `increasing`.
- * @param diagonal Parameter `diagonal`.
- * @param decreasing Parameter `decreasing`.
- * @param diagonal Parameter `diagonal`.
- * @param increasing Parameter `increasing`.
- * @param info Parameter `info`.
- * @return Function result.
+ * the line slope and direction.
  */
 void
 sprite_draw_line_from_info(unsigned short *info) {
@@ -2271,10 +2120,6 @@ static const unsigned char dither_step_table[SHAPE2D_DITHER_PHASE_COUNT] = { 3, 
  * Note: The ASM code appears to access the passed pointer directly as SHAPE2D,
  * but the C extern declares it as SPRITE*. We access sprite->sprite_bitmapptr
  * to match the expected behavior.
- *
-/** @brief Index.
- * @param sprite Parameter `sprite`.
- * @return Function result.
  */
 void
 sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
@@ -2292,10 +2137,10 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
     int dst_y_cursor;            /* current destination row */
     int saved_src_offset = 0;    /* saved source pointer */
     unsigned short dither_phase; /* dither phase counter */
-    int cx;                      /* pixel counter */
-    int di;                      /* destination offset */
-    int si;                      /* source offset */
-    unsigned short bx;           /* dither index */
+    int pixels_left;             /* pixel counter */
+    int dst_offset;              /* destination offset */
+    int src_offset;              /* source offset */
+    unsigned short phase_index;  /* dither index */
     unsigned char skip, step;
     int row_order;
     int src_height;
@@ -2356,58 +2201,58 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
         dst_y_cursor = dst_y_start + row_order;
 
         /* Source pointer offset for this row */
-        si = src_row_offset;
+        src_offset = src_row_offset;
 
         /* Initialize dither phase from idx */
         dither_phase = idx;
 
         /* Process each scanline (every 12th line in destination) */
-        saved_src_offset = si;
+        saved_src_offset = src_offset;
         while (dst_y_cursor < dst_y_end) {
             dst_y = dst_y_cursor;
             if (dst_y < 0 || dst_y >= (int)sprite1.sprite_height) {
                 dither_phase++;
                 dst_y_cursor += SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
-                si = saved_src_offset + src_row_stride;
+                src_offset = saved_src_offset + src_row_stride;
                 continue;
             }
 
             /* Get destination line offset from sprite1 */
-            di = (int)lineofs1[dst_y_cursor] + dst_x;
+            dst_offset = (int)lineofs1[dst_y_cursor] + dst_x;
 
             /* Copy pixels with dithering */
-            cx = src_width;
-            saved_src_offset = si;
+            pixels_left = src_width;
+            saved_src_offset = src_offset;
 
-            bx = dither_phase;
-            while (cx > 0) {
+            phase_index = dither_phase;
+            while (pixels_left > 0) {
                 /* Get skip and step values based on dither phase */
-                bx = bx & SHAPE2D_DITHER_PHASE_MASK;
-                skip = dither_skip_table[bx];
+                phase_index = phase_index & SHAPE2D_DITHER_PHASE_MASK;
+                skip = dither_skip_table[phase_index];
 
-                if (cx <= skip)
+                if (pixels_left <= skip)
                     break;
-                cx -= skip;
-                si += skip;
-                di += skip;
+                pixels_left -= skip;
+                src_offset += skip;
+                dst_offset += skip;
 
                 /* Copy one pixel */
-                if (si < 0 || si >= src_size) {
+                if (src_offset < 0 || src_offset >= src_size) {
                     break;
                 }
-                if (di >= 0 && di < dst_size) {
-                    bitmapptr1[di] = src_data[si];
+                if (dst_offset >= 0 && dst_offset < dst_size) {
+                    bitmapptr1[dst_offset] = src_data[src_offset];
                 }
 
                 /* Advance by step */
-                step = dither_step_table[bx];
-                if (cx <= step)
+                step = dither_step_table[phase_index];
+                if (pixels_left <= step)
                     break;
-                si += step;
-                di += step;
-                cx -= step;
+                src_offset += step;
+                dst_offset += step;
+                pixels_left -= step;
 
-                bx++;
+                phase_index++;
             }
 
             /* Next dither phase */
@@ -2415,7 +2260,7 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
 
             /* Advance to next row (12 rows ahead in destination) */
             dst_y_cursor += SHAPE2D_DITHER_ROW_STRIDE_FACTOR;
-            si = saved_src_offset + src_row_stride;
+            src_offset = saved_src_offset + src_row_stride;
         }
 
         /* Advance idx for next pass */
@@ -2427,19 +2272,17 @@ sprite_draw_dithered_pass(int idx, struct SPRITE *sprite) {
  * draw_patterned_lines - Draw lines with pattern masking
  * 
  * Draws horizontal lines where pixels are only drawn when the
-/** @brief Pattern.
- * @param x1arr Parameter `x1arr`.
- * @return Function result.
+ * corresponding bit in the pattern is set.
  */
 void
 draw_patterned_lines(unsigned char color, unsigned short numlines, unsigned short y,
                      unsigned short *x2arr, unsigned short *x1arr) {
     unsigned int *lineofs;
     unsigned char *bitmapptr;
-    unsigned int si, ofs;
-    int cx, x1, x2;
+    unsigned int row_y, pixel_ofs;
+    int pixel_count, x1, x2;
     int sx1, sx2;
-    unsigned char pattern, cl;
+    unsigned char pattern, rotate_amount;
     int sprite_left = sprite1.sprite_left2;
     int sprite_right = sprite1.sprite_widthsum - 1;
 
@@ -2453,7 +2296,7 @@ draw_patterned_lines(unsigned char color, unsigned short numlines, unsigned shor
     lineofs = shape2d_lineofs_flat((unsigned int *)sprite1.sprite_lineofs);
     bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
 
-    for (si = y; numlines > 0; numlines--, si++) {
+    for (row_y = y; numlines > 0; numlines--, row_y++) {
         sx1 = (int)(int16_t)(*x1arr);
         sx2 = (int)(int16_t)(*x2arr);
 
@@ -2475,22 +2318,22 @@ draw_patterned_lines(unsigned char color, unsigned short numlines, unsigned shor
 
         /* Get pattern byte and rotate by x1 position */
         pattern = (unsigned char)(polygon_pattern_type & SHAPE2D_BYTE_MASK);
-        cl = x1 & 7;
-        pattern = (pattern << cl) | (pattern >> (8 - cl)); /* ROL */
+        rotate_amount = x1 & SHAPE2D_PATTERN_BIT_MASK;
+        pattern = (pattern << rotate_amount) | (pattern >> (SHAPE2D_PATTERN_BITS - rotate_amount)); /* ROL */
 
-        cx = x2 - x1 + 1;
-        if (cx > 0) {
-            ofs = lineofs[si] + x1;
-            while (cx-- > 0) {
+        pixel_count = x2 - x1 + 1;
+        if (pixel_count > 0) {
+            pixel_ofs = lineofs[row_y] + x1;
+            while (pixel_count-- > 0) {
                 /* ROL pattern, 1 */
-                unsigned char newcarry = (pattern >> 7) & 1;
+                unsigned char newcarry = (pattern >> SHAPE2D_PATTERN_MSB_SHIFT) & 1;
                 pattern = (pattern << 1) | newcarry;
 
                 if (newcarry) {
                     /* Bit was set - draw pixel */
-                    bitmapptr[ofs] = color;
+                    bitmapptr[pixel_ofs] = color;
                 }
-                ofs++;
+                pixel_ofs++;
             }
         }
 
@@ -2507,20 +2350,17 @@ draw_patterned_lines(unsigned char color, unsigned short numlines, unsigned shor
 /**
  * draw_two_color_patterned_lines - Draw patterned lines with alternate color
  * 
- * Similar to draw_patterned_lines but uses two colors:
-/** @brief Color.
- * @param x1arr Parameter `x1arr`.
- * @return Function result.
+ * Similar to draw_patterned_lines but uses two colors.
  */
 void
 draw_two_color_patterned_lines(unsigned char color, unsigned short numlines, unsigned short y,
                                unsigned short *x2arr, unsigned short *x1arr) {
     unsigned int *lineofs;
     unsigned char *bitmapptr;
-    unsigned int si, ofs;
-    int cx, x1, x2;
+    unsigned int row_y, pixel_ofs;
+    int pixel_count, x1, x2;
     int sx1, sx2;
-    unsigned char pattern, cl, altcolor;
+    unsigned char pattern, rotate_amount, altcolor;
     int sprite_left = sprite1.sprite_left2;
     int sprite_right = sprite1.sprite_widthsum - 1;
 
@@ -2535,7 +2375,7 @@ draw_two_color_patterned_lines(unsigned char color, unsigned short numlines, uns
     bitmapptr = (unsigned char *)sprite1.sprite_bitmapptr;
     altcolor = (unsigned char)(polygon_alternate_color & SHAPE2D_BYTE_MASK);
 
-    for (si = y; numlines > 0; numlines--, si++) {
+    for (row_y = y; numlines > 0; numlines--, row_y++) {
         sx1 = (int)(int16_t)(*x1arr);
         sx2 = (int)(int16_t)(*x2arr);
 
@@ -2557,26 +2397,26 @@ draw_two_color_patterned_lines(unsigned char color, unsigned short numlines, uns
 
         /* Get pattern byte and rotate by x1 position */
         pattern = (unsigned char)(polygon_pattern_type & SHAPE2D_BYTE_MASK);
-        cl = x1 & 7;
-        pattern = (pattern << cl) | (pattern >> (8 - cl)); /* ROL */
+        rotate_amount = x1 & SHAPE2D_PATTERN_BIT_MASK;
+        pattern = (pattern << rotate_amount) | (pattern >> (SHAPE2D_PATTERN_BITS - rotate_amount)); /* ROL */
 
-        cx = x2 - x1 + 1;
-        if (cx > 0) {
-            ofs = lineofs[si] + x1;
-            while (cx-- > 0) {
+        pixel_count = x2 - x1 + 1;
+        if (pixel_count > 0) {
+            pixel_ofs = lineofs[row_y] + x1;
+            while (pixel_count-- > 0) {
                 /* ROL pattern, 1 */
-                unsigned char newcarry = (pattern >> 7) & 1;
+                unsigned char newcarry = (pattern >> SHAPE2D_PATTERN_MSB_SHIFT) & 1;
                 pattern = (pattern << 1) | newcarry;
 
                 if (newcarry) {
                     /* Bit was set - draw alternate color */
-                    bitmapptr[ofs] = altcolor;
+                    bitmapptr[pixel_ofs] = altcolor;
                 }
                 else {
                     /* Bit was clear - draw primary color */
-                    bitmapptr[ofs] = color;
+                    bitmapptr[pixel_ofs] = color;
                 }
-                ofs++;
+                pixel_ofs++;
             }
         }
 
@@ -2599,9 +2439,6 @@ draw_two_color_patterned_lines(unsigned char color, unsigned short numlines, uns
  * @param left    Left boundary
  * @param right   Right boundary
  * @param top     Top boundary
-/** @brief Boundary.
- * @param height Parameter `height`.
- * @return Function result.
  */
 void
 sprite_set_1_size(unsigned short left, unsigned short right, unsigned short top,
@@ -2951,11 +2788,6 @@ shape2d_draw_rle_or(struct SHAPE2D *shape) {
     }
 }
 
-/**
-/** @brief Copy.
- * @param shapeptr Parameter `shapeptr`.
- * @return Function result.
- */
 void
 shape2d_draw_rle_copy(void *shapeptr) {
     struct SHAPE2D *shape = (struct SHAPE2D *)shapeptr;
@@ -3780,12 +3612,6 @@ sprite_clear_shape_alt(void *shapeptr, unsigned short x, unsigned short y) {
  * [16+] = pixel data
  */
 
-/**
-/** @brief Operation.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 putpixel_iconMask(void *icon, unsigned short x, unsigned short y) {
     unsigned short *icondata = (unsigned short *)icon;
@@ -3871,12 +3697,6 @@ putpixel_iconMask(void *icon, unsigned short x, unsigned short y) {
     }
 }
 
-/**
-/** @brief Operation.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @return Function result.
- */
 void
 putpixel_iconFillings(void *icon, unsigned short x, unsigned short y) {
     unsigned short *icondata = (unsigned short *)icon;
@@ -4061,10 +3881,6 @@ sprite_putimage_transparent(void *shape, unsigned short x, unsigned short y) {
     /* Calculate initial destination offset */
     destofs = lineofs[pos_y] + pos_x;
 
-    /** @brief Transparency.
- * @param row Parameter `row`.
- * @return Function result.
- */
     /* Render with transparency (255 is transparent) */
     for (row = 0; row < rows_visible; row++) {
         unsigned char *destrow = bitmapptr + destofs;
@@ -4082,11 +3898,6 @@ sprite_putimage_transparent(void *shape, unsigned short x, unsigned short y) {
 /**
  * shape_op_explosion - Render scaled sprite with transparency
  * 
- * Parameters:
-/** @brief Factor.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @return Function result.
  */
 void
 shape_op_explosion(int scale, void *shp, int x, int y) {
@@ -4272,9 +4083,6 @@ shape_op_explosion(int scale, void *shp, int x, int y) {
  * @param top     Y position in the source.
  * @param width   Width of the rectangle.
  * @param height  Height of the rectangle.
-/** @brief Destination.
- * @param xofs Parameter `xofs`.
- * @return Function result.
  */
 void
 sprite_copy_rect_2_to_1(int left, int top, int width, int height, int xofs) {
@@ -4348,13 +4156,6 @@ sprite_copy_rect_2_to_1(int left, int top, int width, int height, int xofs) {
  *   height - height of rectangle
  *   color - color byte to XOR
  */
-/** @brief Sprite xor fill rect.
- * @param x Parameter `x`.
- * @param y Parameter `y`.
- * @param width Parameter `width`.
- * @param height Parameter `height`.
- * @param color Parameter `color`.
- */
 
 void
 sprite_xor_fill_rect(int x, int y, int width, int height, unsigned char color) {
@@ -4418,16 +4219,7 @@ sprite_xor_fill_rect(int x, int y, int width, int height, unsigned char color) {
     }
 }
 
-/*
-/** @brief Lookup.
- * @param pixel Parameter `pixel`.
- * @param shape Parameter `shape`.
- * @return Function result.
- */
-/** @brief Sprite draw shape with palmap.
- * @param shape Parameter `shape`.
- */
-
+/**/
 void
 sprite_draw_shape_with_palmap(void *shape) {
     unsigned char *es_ptr;
@@ -4525,11 +4317,6 @@ sprite_draw_shape_with_palmap(void *shape) {
  */
 /* Font data structure in fontdefseg:
  *   [8] = cursor x
-/** @brief Offset.
- * @param fontdef Parameter `fontdef`.
- * @param y Parameter `y`.
- * @return Function result.
- */
 
 /** sprite_draw_text_opaque in ASM is its own opaque renderer proc: it paints BOTH fg pixels
  * (bit=1 → al=fontdef[0]) and bg pixels (bit=0 → ah=fontdef[2]), giving a
@@ -4613,10 +4400,6 @@ sprite_draw_text_opaque(char *text, int x, int y) {
  * All of these are pure functions with no VGA or global state.
  * ============================================================ */
 
-/** @brief Helpers.
- * @param period Parameter `period`.
- * @return Function result.
- */
 /* ---- animation phase helpers (ex shape2d_anim.c) ---- */
 
 /**
@@ -4650,11 +4433,6 @@ sprite_pick_blink_frame(unsigned short phase, unsigned short threshold, unsigned
     return sprite_lo;
 }
 
-/** @brief Point.
- * @param px Parameter `px`.
- * @param y2_array Parameter `y2_array`.
- * @return Function result.
- */
 /* ---- point-in-rectangle hit-testing (ex shape2d_hit.c) ---- */
 
 /**
@@ -4685,10 +4463,6 @@ sprite_hittest_point(unsigned short px, unsigned short py, short count,
     return -1;
 }
 
-/** @brief Interrogation.
- * @param memchunk Parameter `memchunk`.
- * @return Function result.
- */
 /* ---- resource-chunk interrogation (ex shape2d_res.c) ---- */
 
 unsigned short
@@ -4701,11 +4475,6 @@ shape2d_resource_shape_count(const unsigned char *memchunk) {
                                << SHAPE2D_BYTE_SHIFT_8));
 }
 
-/** @brief Shape2d resource get shape.
- * @param memchunk Parameter `memchunk`.
- * @param index Parameter `index`.
- * @return Function result.
- */
 struct SHAPE2D *
 shape2d_resource_get_shape(unsigned char *memchunk, int index) {
     unsigned short shapecount;
@@ -4735,10 +4504,6 @@ shape2d_resource_get_shape(unsigned char *memchunk, int index) {
     return (struct SHAPE2D *)(memchunk + dataofs + chunkofs);
 }
 
-/** @brief Copy.
- * @param src Parameter `src`.
- * @return Function result.
- */
 /* ---- sprite clear-plan and struct copy (ex shape2d_sprite_plan.c) ---- */
 
 void
@@ -4749,15 +4514,6 @@ sprite_copy_assign(struct SPRITE *dst, const struct SPRITE *src) {
     memcpy(dst, src, sizeof(struct SPRITE));
 }
 
-/** @brief Sprite compute clear plan.
- * @param sprite Parameter `sprite`.
- * @param lineofs Parameter `lineofs`.
- * @param out_ofs Parameter `out_ofs`.
- * @param out_lines Parameter `out_lines`.
- * @param out_width Parameter `out_width`.
- * @param out_widthdiff Parameter `out_widthdiff`.
- * @return Function result.
- */
 int
 sprite_compute_clear_plan(const struct SPRITE *sprite, const unsigned int *lineofs,
                           unsigned int *out_ofs, int *out_lines, int *out_width,
@@ -4796,14 +4552,6 @@ sprite_compute_clear_plan(const struct SPRITE *sprite, const unsigned int *lineo
     return 1;
 }
 
-/** @brief Sprite execute clear plan.
- * @param bitmap Parameter `bitmap`.
- * @param ofs Parameter `ofs`.
- * @param lines Parameter `lines`.
- * @param width Parameter `width`.
- * @param widthdiff Parameter `widthdiff`.
- * @param color Parameter `color`.
- */
 void
 sprite_execute_clear_plan(unsigned char *bitmap, unsigned int ofs, int lines, int width,
                           int widthdiff, unsigned char color) {
