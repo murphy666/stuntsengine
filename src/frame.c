@@ -435,6 +435,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
     crash_overlay_drawn[0] = false;
     crash_overlay_drawn[1] = false;
+
+    /* Double Buffering Setup: Set primary/secondary frame rect bounds pointer */
     if (!video_flag5_is0 || view_index == 0) {
         rect_buffer_primary = rect_buffer_front;
         rect_buffer_secondary = rect_buffer_back;
@@ -444,8 +446,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         rect_buffer_primary = rect_buffer_back;
     }
 
+    /* Screen Dirty Rects Initialization: Clear arrays to invalid bounds if tracking is active */
     if (timertestflag_copy) {
-        base_ts_flags = 8;
+        base_ts_flags = 8; /* Set dirty rect comparison flag */
         active_rect_ptr = frame_dirty_rects;
         for (si = 0; si < FRAME_RECT_ARRAY_COUNT; si++) {
             *active_rect_ptr = rect_invalid;
@@ -456,7 +459,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         base_ts_flags = 0;
     }
 
+    /* Locate tracking target coordinates: player car vs opponent car */
     if (!followOpponentFlag) {
+        /* Scale fixed-point positions downward from physics space (Q16.16 shift by 6) */
         car_pos.x = state.playerstate.car_posWorld1.lx >> 6;
         car_pos.y = state.playerstate.car_posWorld1.ly >> 6;
         car_pos.z = state.playerstate.car_posWorld1.lz >> 6;
@@ -476,26 +481,33 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
     view_yaw = -1;
     view_roll_raw = 0;
 
+    /* Camera Mode Positioning Logic */
     if (cameramode == 0) {
+        /* Cockpit View: Camera rotates exactly with the vehicle body */
         view_yaw = car_yaw_raw & FRAME_ANGLE_MASK;
         view_pitch = car_pitch_raw & FRAME_ANGLE_MASK;
         view_roll_raw = car_roll_raw & FRAME_ANGLE_MASK;
         rot_mat_ptr = mat_rot_zxy(-car_roll_raw, -car_pitch_raw, -car_yaw_raw, 0);
+
+        /* Set local eye offsets relative to the cockpit driver seat */
         temp_vec_a.x = 0;
         temp_vec_a.z = 0;
         temp_vec_a.y = (short)simd_player.car_height - 6;
 
+        /* Transform eye offset to world coordinate space */
         mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_b);
         camera_pos.x = (short)car_pos.x + temp_vec_b.x;
         camera_pos.y = (short)car_pos.y + temp_vec_b.y;
         camera_pos.z = (short)car_pos.z + temp_vec_b.z;
     }
     else if (cameramode == 1) {
+        /* Chase View: Camera occupies predefined following coordinates */
         camera_pos.x = state.game_camera_pos[(unsigned char)followOpponentFlag].x;
         camera_pos.z = state.game_camera_pos[(unsigned char)followOpponentFlag].z;
         camera_pos.y = state.game_camera_pos[(unsigned char)followOpponentFlag].y;
     }
     else if (cameramode == 2) {
+        /* Polar/Rotate View: Camera orbits target car based on user rotation angles */
         temp_vec_a.x = 0;
         temp_vec_a.y = 0;
         temp_vec_a.z = FRAME_CAMERA_LONG_Z;
@@ -514,6 +526,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         camera_pos.z = (short)car_pos.z + temp_vec_b.z;
     }
     else if (cameramode == 3) {
+        /* Fixed Trackside Camera View: Position is locked to the nearest track waypoint */
         camera_pos.x
             = waypoint_world_pos[state.game_track_indices[(unsigned char)followOpponentFlag] * 3
                                  + 0];
@@ -526,12 +539,15 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                                  + 2];
     }
 
+    /* Target Tracking angles evaluation for non-cockpit cameras */
     if (view_yaw == -1) {
+        /* Keep camera above ground level by checking terrain height at coordinates */
         build_track_object(&camera_pos, &camera_pos);
         if (camera_pos.y < terrainHeight) {
             camera_pos.y = (short)terrainHeight;
         }
 
+        /* Prevent camera from clipping through track scenery structure planes */
         if (track_object_render_enabled) {
             si = plane_get_collision_point(planindex, camera_pos.x, camera_pos.y, camera_pos.z);
             if (si < FRAME_TRACK_BORDER_LEVEL) {
@@ -550,6 +566,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
+        /* Calculate look-at angles from camera to vehicle position */
         view_yaw = (-polarAngle(car_pos.x - camera_pos.x, car_pos.z - camera_pos.z))
                    & FRAME_ANGLE_MASK;
         camera_distance_xz = polarRadius2D(car_pos.x - camera_pos.x, car_pos.z - camera_pos.z);
@@ -558,6 +575,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                      & FRAME_ANGLE_MASK;
     }
 
+    /* Assign camera roll values if tilting limits allow */
     if (view_roll_raw > 1 && view_roll_raw < FRAME_ANGLE_MASK) {
         view_roll = view_roll_raw;
     }
@@ -565,6 +583,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         view_roll = 0;
     }
 
+    /* Material/Color selection: Pick drawing patterns based on current game frame timing */
     if (state.game_frame == 0) {
         default_material = (char)polygon_edge_direction_table[game_mode_state_register & 15];
     }
@@ -572,6 +591,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         default_material = (char)polygon_edge_direction_table[state.game_frame & 15];
     }
 
+    /* Determine camera octant viewing path and retrieve visible lookahead grid tiles footprint */
     clip_heading = (int)select_cliprect_rotate(view_roll, view_pitch, view_yaw, clip_rect, 0);
     {
         static char *lookahead_tiles_tables[8]
@@ -581,6 +601,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         lookahead_tiles = lookahead_tiles_tables[(clip_heading & FRAME_ANGLE_MASK) >> 7];
     }
 
+    /* Build camera view rotation matrix */
     view_rot_mat = *mat_rot_zxy(view_roll, view_pitch, 0, 1);
     temp_vec_a.x = 0;
     temp_vec_a.y = 0;
@@ -593,6 +614,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         sky_dir_sign = -1;
     }
 
+    /* Draw Far Starfield Skybox Elements */
     if (timertestflag2 == 0) {
         currenttransshape[0].rectptr = &sky_starfield_rect;
         currenttransshape[0].ts_flags = base_ts_flags | 7;
@@ -608,9 +630,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 mat_rot_y(&y_rot_mat, si);
                 temp_vec_a.x = 0;
                 temp_vec_a.y = (short)2790 - camera_pos.y;
-                temp_vec_a.z = FRAME_STARFIELD_Z; //15000
+                temp_vec_a.z = FRAME_STARFIELD_Z;
                 mat_mul_vector(&temp_vec_a, &y_rot_mat, &temp_vec_b);
-                temp_vec_b.z = FRAME_STARFIELD_Z; //15000
+                temp_vec_b.z = FRAME_STARFIELD_Z;
                 mat_mul_vector(&temp_vec_b, &view_rot_mat, &currenttransshape[0].pos);
                 if (currenttransshape[0].pos.z > FRAME_SCREEN_HEIGHT) {
                     currenttransshape[0].shapeptr
@@ -621,6 +643,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
     }
+
+    /* Translate coordinates: Convert camera position relative to 30x30 track tile bounds */
     tile_col_bias = camera_pos.x >> 10;
     tile_row_bias = -((camera_pos.z >> 10) - FRAME_TILE_MAX_INDEX);
     player_tile_col = state.playerstate.car_posWorld1.lx >> 16;
@@ -634,46 +658,49 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         focus_tile_row = FRAME_TILE_MAX_INDEX - (state.opponentstate.car_posWorld1.lz >> 16);
     }
 
+    /* Initialize tile scan visibility state mapping buffer */
     for (si = 0; si < FRAME_TILE_SCAN_COUNT; si++) {
         tile_scan_state[si] = 0;
     }
 
     clip_region_limit = (char)sprite_clip_region_selector[timertestflag2];
 
+    /* Phase 1: Visible Track Cell Gathering and Redirection Analysis Loop (runs back-to-front) */
     for (si = FRAME_TILE_SCAN_LAST; si >= 0; si--) {
         if (tile_scan_state[si] != 0)
             continue;
 
+        /* Ignore tiles that fall beyond the screen view clipping frustum limit */
         if (lookahead_tiles[si * 3 + 2] <= clip_region_limit) {
             tile_col = lookahead_tiles[(ptrdiff_t)(si * 3)] + tile_col_bias;
             tile_row = lookahead_tiles[si * 3 + 1] + tile_row_bias;
+
+            /* Verify coordinates reside within track bounds */
             if (tile_col >= 0 && tile_col <= FRAME_TILE_MAX_INDEX && tile_row >= 0
                 && tile_row <= FRAME_TILE_MAX_INDEX) {
                 elem_map_value = track_elem_map[tile_col + trackrows[tile_row]];
                 terr_map_value = track_terrain_map[tile_col + terrainrows[tile_row]];
 
                 if (elem_map_value != 0) {
-
+                    /* If tile represents hill terrain heights, override references to elevated parts */
                     if (terr_map_value >= 7 && terr_map_value < 11) {
                         elem_map_value = subst_hillroad_track(terr_map_value, elem_map_value);
                         terr_map_value = 0;
                     }
 
+                    /* Handle Multi-tile relative coordinate redirects (0xFD, 0xFE, 0xFF markers) */
                     if (elem_map_value == 253) {
-                        // the item on the top left needs this space
                         tile_col--;
                         tile_row--;
                         elem_map_value = track_elem_map[tile_col + trackrows[tile_row]];
                         terr_map_value = track_terrain_map[tile_col + terrainrows[tile_row]];
                     }
                     else if (elem_map_value == 254) {
-                        // the item on the top needs this space
                         tile_row--;
                         elem_map_value = track_elem_map[tile_col + trackrows[tile_row]];
                         terr_map_value = track_terrain_map[tile_col + terrainrows[tile_row]];
                     }
                     else if (elem_map_value == 255) {
-                        // the item on the left needs this space
                         tile_col--;
                         elem_map_value = track_elem_map[tile_col + trackrows[tile_row]];
                         terr_map_value = track_terrain_map[tile_col + terrainrows[tile_row]];
@@ -683,6 +710,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 tile_terrain_ids[si] = terr_map_value;
                 tile_detail_levels[si] = lookahead_tiles[si * 3 + 2];
 
+                /* Hide cells if they represent far physical components and detail caps are active */
                 if (elem_map_value != 0 && timertestflag2 != 0) {
                     const unsigned char *elem_obj = trkobj_entry_legacy_scene_index(elem_map_value);
                     if (elem_obj != 0 && trkobj_physical(elem_obj) >= 64
@@ -694,22 +722,25 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 tile_col_table[si] = (char)tile_col;
                 tile_row_table[si] = (char)tile_row;
                 tile_element_ids[si] = elem_map_value;
+
+                /* Handle scan marking for multi-tile components (sizes 1x2, 2x1, or 2x2) */
                 if (elem_map_value != 0) {
                     const unsigned char *tile_obj = trkobj_entry_legacy_scene_index(elem_map_value);
                     if (tile_obj != 0) {
                         multi_tile_value = trkobj_multi(tile_obj);
                         if (multi_tile_value != 0
                             && frame_multitile_contains_tile(tile_col, tile_row,
-                                                             (unsigned char)multi_tile_value,
-                                                             focus_tile_col, focus_tile_row)) {
+                                                              (unsigned char)multi_tile_value,
+                                                              focus_tile_col, focus_tile_row)) {
                             tile_detail_levels[si] = 0;
                         }
                     }
                     else {
                         multi_tile_value = 0;
                     }
-                    if (multi_tile_value != 0) {
 
+                    /* Set scan mask states for cells occupied by multi-tile components to save CPU cycles */
+                    if (multi_tile_value != 0) {
                         tile_col_adj = tile_col - tile_col_bias;
                         tile_row_adj = tile_row - tile_row_bias;
                         if (multi_tile_value == 1) {
@@ -744,32 +775,30 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
             }
             else {
-                tile_scan_state[si] = 2;
+                tile_scan_state[si] = 2; /* Mark out-of-bounds tiles as culled */
             }
         }
         else {
-            tile_scan_state[si] = 2;
+            tile_scan_state[si] = 2; /* Mark offscreen tiles as culled */
         }
     }
 
-    //; -----------------------------------------------------------------------------
-
+    /* Rigid-Body Vehicle Ground Contact Sorting Bias Calculations: Player Car */
     player_contact_col = -1;
     player_sort_bias = 0;
     if (cameramode != 0 || followOpponentFlag) {
-
         if (state.playerstate.car_crashBmpFlag != 2) {
-
             rot_mat_ptr = mat_rot_zxy(-state.playerstate.car_rotate.z,
                                       -state.playerstate.car_rotate.y,
                                       -state.playerstate.car_rotate.x, 0);
             multi_tile_value = -1;
             di = -1;
+
+            /* Project each of the 4 tires to world grid systems to locate vehicle cell overlap */
             for (wheel_index = 0; wheel_index < 4; wheel_index++) {
                 temp_vec_a = simd_player.wheel_coords[wheel_index];
-                mat_mul_vector(&temp_vec_a, rot_mat_ptr,
-                               &temp_vec_c); //; rotating car wheels, maybe?
-                tile_col = (temp_vec_c.x + state.playerstate.car_posWorld1.lx) >> 16; // bits 16-24
+                mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_c);
+                tile_col = (temp_vec_c.x + state.playerstate.car_posWorld1.lx) >> 16;
                 tile_row = -(((temp_vec_c.z + state.playerstate.car_posWorld1.lz) >> 16) - 29);
 
                 for (si = 44; si > multi_tile_value; si--) {
@@ -784,6 +813,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
             }
 
+            /* Resolve vertical Z-sort depth corrections if car is touching track structures */
             if (di != -1) {
                 if (state.playerstate.car_surfaceWhl[0] != 4
                     || state.playerstate.car_surfaceWhl[1] != 4
@@ -795,20 +825,20 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_c);
                     mat_mul_vector(&temp_vec_c, &mat_temp, &temp_vec_a);
                     if (temp_vec_a.z <= 0) {
-                        player_sort_bias = -2048;
+                        player_sort_bias = -2048; /* Force rendering behind overhead structures */
                     }
                     else {
-                        player_sort_bias = 2048;
+                        player_sort_bias = 2048;  /* Force rendering in front of structures */
                     }
                 }
             }
         }
     }
 
+    /* Rigid-Body Vehicle Ground Contact Sorting Bias Calculations: Opponent Car */
     opponent_contact_col = -1;
     opponent_sort_bias = 0;
     if (gameconfig.game_opponenttype != 0) {
-
         if (cameramode != 0 || !followOpponentFlag) {
             if (state.opponentstate.car_crashBmpFlag != 2) {
                 rot_mat_ptr = mat_rot_zxy(-state.opponentstate.car_rotate.z,
@@ -817,14 +847,12 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 multi_tile_value = -1;
                 di = -1;
 
+                /* Project opponent tires to world grid coordinate cells */
                 for (wheel_index = 0; wheel_index < 4; wheel_index++) {
                     temp_vec_a = simd_opponent_rt.wheel_coords[wheel_index];
-                    mat_mul_vector(&temp_vec_a, rot_mat_ptr,
-                                   &temp_vec_c); //; rotating car wheels, maybe?
-                    tile_col = (temp_vec_c.x + state.opponentstate.car_posWorld1.lx)
-                               >> 16; // bits 16-24
-                    tile_row
-                        = -(((temp_vec_c.z + state.opponentstate.car_posWorld1.lz) >> 16) - 29);
+                    mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_c);
+                    tile_col = (temp_vec_c.x + state.opponentstate.car_posWorld1.lx) >> 16;
+                    tile_row = -(((temp_vec_c.z + state.opponentstate.car_posWorld1.lz) >> 16) - 29);
 
                     for (si = 44; si > multi_tile_value; si--) {
                         if (tile_scan_state[si] != 2
@@ -838,8 +866,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     }
                 }
 
+                /* Resolve opponent depth sorting offsets */
                 if (di != -1) {
-
                     if (state.opponentstate.car_surfaceWhl[0] != 4
                         || state.opponentstate.car_surfaceWhl[1] != 4
                         || state.opponentstate.car_surfaceWhl[2] != 4
@@ -850,16 +878,10 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         mat_mul_vector(&temp_vec_a, rot_mat_ptr, &temp_vec_c);
                         mat_mul_vector(&temp_vec_c, &mat_temp, &temp_vec_a);
                         if (temp_vec_a.z <= 0) {
-                            opponent_sort_bias = -2048; //63488; // signed number!
+                            opponent_sort_bias = -2048; /* Behind overhead structures */
                         }
                         else {
-                            /* Original DOS uses +0x800 here. That works when the
-							 * camera follows this car, but from the player's chase
-							 * camera it pushes the opponent behind ramp-overlay
-							 * walls and similar vertical track borders. Keep a
-							 * small front bias in the normal chase-camera case,
-							 * while preserving the original value for the other
-							 * camera modes. */
+                            /* Keep small front bias in normal chase view to avoid border clipping */
                             opponent_sort_bias = (cameramode == 0 && !followOpponentFlag)
                                                      ? -FRAME_SORT_BIAS_OVERLAY
                                                      : FRAME_SORT_BIAS;
@@ -869,14 +891,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
     }
-    //; -----------------------------------------------------------------------------
-
 
     pending_overlay_shape = false;
 
+    /* Phase 2: Drawing and Queueing Loop (Runs Front-to-Back for each visible tile) */
     for (si = 0; si < FRAME_TILE_SCAN_COUNT; si++) {
         if (tile_scan_state[si] != 0) {
-            continue;
+            continue; /* Skip culled/unmapped tiles */
         }
         tile_col = (unsigned char)tile_col_table[si];
         tile_row = (unsigned char)tile_row_table[si];
@@ -886,6 +907,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         start_tile_sort_mask = 0;
         loop_count = 1;
         terrain_offset_table = terrain_offset_type2;
+
+        /* Classify object sizes to configure coordinate search boundaries */
         if (elem_map_value == 0) {
             loop_count = 1;
             terrain_offset_table = terrain_offset_type2;
@@ -915,6 +938,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
+        /* Check border outer cells to draw surrounding track fences */
         for (multi_tile_value = 0; multi_tile_value < loop_count; multi_tile_value++) {
             tile_col_adj = terrain_offset_table[(ptrdiff_t)(multi_tile_value * 2)] + tile_col;
             tile_row_adj = terrain_offset_table[multi_tile_value * 2 + 1] + tile_row;
@@ -922,39 +946,22 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             if (timertestflag2 < 3
                 || (tile_col_adj == player_tile_col && tile_row_adj == player_tile_row)) {
                 if (tile_col_adj == 0) {
-                    if (tile_row_adj == 0) {
-                        di = 7;
-                    }
-                    else if (tile_row_adj == 29) {
-                        di = 5;
-                    }
-                    else {
-                        di = 6;
-                    }
+                    if (tile_row_adj == 0) { di = 7; }
+                    else if (tile_row_adj == 29) { di = 5; }
+                    else { di = 6; }
                 }
                 else if (tile_col_adj == 29) {
-                    if (tile_row_adj == 0) {
-                        di = 1;
-                    }
-                    else if (tile_row_adj == 29) {
-                        di = 3;
-                    }
-                    else {
-                        di = 2;
-                    }
+                    if (tile_row_adj == 0) { di = 1; }
+                    else if (tile_row_adj == 29) { di = 3; }
+                    else { di = 2; }
                 }
                 else {
-                    if (tile_row_adj == 0) {
-                        di = 0;
-                    }
-                    else if (tile_row_adj == 29) {
-                        di = 4;
-                    }
-                    else {
-                        di = -1;
-                    }
+                    if (tile_row_adj == 0) { di = 0; }
+                    else if (tile_row_adj == 29) { di = 4; }
+                    else { di = -1; }
                 }
 
+                /* Render border fence meshes directly using 3D transformation matrices */
                 if (di != -1) {
                     trk_object_ptr = trkobj_entry_legacy_scene_index(fence_TrkObjCodes[di]);
                     if (trk_object_ptr != 0) {
@@ -970,7 +977,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].pos.z = (short)trackcenterpos[tile_row_adj] - camera_pos.z;
                         currenttransshape[0].rectptr = &terrain_rect;
                         currenttransshape[0].ts_flags = base_ts_flags | 5
-                                                        | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                                                         | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
                         currenttransshape[0].rotvec.x = 0;
                         currenttransshape[0].rotvec.y = 0;
                         currenttransshape[0].rotvec.z = (short)animation_frame_lookup[di];
@@ -979,16 +986,16 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].material = 0;
                         render_result = (int)shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
-                            break; /* clipped: exit fence border for-loop */
+                            break; /* Viewport clipping limit reached: halt rendering */
                         }
                     }
                 }
             }
         }
         if (render_result > 0)
-            break; /* clipped: exit tile loop */
+            break; /* Viewport clipping limit reached: halt rendering */
 
-        // terrain type 6: a flat piece of land at an elevated level
+        /* Render background terrain heights */
         if (terr_map_value != 6) {
             tile_hill_height = 0;
             if (elem_map_value >= 105 && elem_map_value <= 108) {
@@ -1018,7 +1025,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].pos.z = (short)trackcenterpos[tile_row_adj] - camera_pos.z;
                         currenttransshape[0].rectptr = &terrain_rect;
                         currenttransshape[0].ts_flags = base_ts_flags | 5
-                                                        | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                                                         | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
                         currenttransshape[0].rotvec.x = 0;
                         currenttransshape[0].rotvec.y = 0;
                         currenttransshape[0].rotvec.z = trkobj_roty(trk_object_entry);
@@ -1027,23 +1034,25 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         currenttransshape[0].material = 0;
                         render_result = (int)shape3d_render_transformed(&currenttransshape[0]);
                         if (render_result > 0) {
-                            break; /* clipped: exit terrain multi-tile for-loop */
+                            break;
                         }
                     }
                 }
                 if (render_result > 0)
-                    break; /* clipped: exit tile loop */
+                    break;
 
                 terr_map_value = 0;
             }
         }
         else {
+            /* Handle elevated elements height values */
             tile_hill_height = hillHeightConsts[1];
             if (elem_map_value != 0) {
-                terr_map_value = 0;
+                terr_map_value = 0; /* Clear flag: road model will replace soil visually */
             }
         }
 
+        /* Render non-flat terrain surfaces directly */
         if (terr_map_value != 0) {
             trk_object_entry = trkobj_entry(sceneshapes2, terr_map_value);
             currenttransshape[0].shapeptr = trkobj_shape(trk_object_entry);
@@ -1071,6 +1080,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
         transformedshape_counter = 0;
         curtransshape_ptr = currenttransshape;
+
+        /* Process track elements inside the active tile cell */
         if (elem_map_value == 0) {
             tile_col_adj = tile_col;
             tile_row_adj = tile_row;
@@ -1080,6 +1091,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             if (trk_object_entry == 0) {
                 continue;
             }
+            /* Resolve physical centers based on object sizes */
             if ((trkobj_multi(trk_object_entry) & 1) != 0) {
                 object_center_z = trackpos[tile_row];
                 tile_row_adj = tile_row + 1;
@@ -1101,6 +1113,8 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             temp_vec_c.x = (short)object_center_x - camera_pos.x;
             temp_vec_c.y = (short)tile_hill_height - camera_pos.y;
             temp_vec_c.z = (short)object_center_z - camera_pos.z;
+
+            /* Render support pillars/scaffolding blocks under elevated hill road components */
             if (tile_hill_height != 0) {
                 di = 1;
                 hill_multitile_offsets = terrain_multitile_type1;
@@ -1138,12 +1152,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     currenttransshape[0].material = 0;
                     render_result = (int)shape3d_render_transformed(&currenttransshape[0]);
                     if (render_result > 0)
-                        break; /* clipped: exit hill multi-tile for-loop */
+                        break;
                 }
             }
             if (render_result > 0)
-                break; /* clipped: exit tile loop */
+                break;
 
+            /* Handle Overlay/Decal Shapes (like road paint details, hazard stripes) */
             if (trkobj_overlay(trk_object_entry) != 0) {
                 trk_object_ptr = trkobj_entry_legacy_scene_index(trkobj_overlay(trk_object_entry));
                 if (trk_object_ptr != 0) {
@@ -1176,7 +1191,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                         }
 
                         currenttransshape[1].ts_flags = trkobj_ignore_zbias(trk_object_ptr)
-                                                        | base_ts_flags | 4;
+                                                         | base_ts_flags | 4;
                         if ((currenttransshape[1].ts_flags & 1) != 0) {
                             currenttransshape[1].rectptr = &terrain_rect;
                             render_result = (int)shape3d_render_transformed(&currenttransshape[1]);
@@ -1191,6 +1206,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
             }
 
+            /* Configure main 3D track object settings */
             if (tile_detail_level != 0) {
                 currenttransshape[0].shapeptr = trkobj_loshape(trk_object_entry);
             }
@@ -1198,7 +1214,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 currenttransshape[0].shapeptr = trkobj_shape(trk_object_entry);
             }
 
-            currenttransshape[0].pos = temp_vec_c; // whatever
+            currenttransshape[0].pos = temp_vec_c;
             currenttransshape[0].rotvec.x = 0;
             currenttransshape[0].rotvec.y = 0;
             currenttransshape[0].rotvec.z = trkobj_roty(trk_object_entry);
@@ -1220,15 +1236,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 currenttransshape[0].material = default_material;
             }
 
+            /* Draw flat roads directly. Otherwise, queue them up for depth sorting */
             if ((trkobj_ignore_zbias(trk_object_entry) & 1) != 0) {
                 currenttransshape[0].rectptr = &terrain_rect;
                 render_result = (int)shape3d_render_transformed(&currenttransshape[0]);
                 if (render_result > 0)
                     break;
 
-                /* If overlay was queued as pending, flush it here too.
-				   Otherwise this tile loses its markings when main shape
-				   uses the immediate terrain-render path. */
                 if (pending_overlay_shape) {
                     pending_overlay_shape = false;
                     render_result = (int)shape3d_render_transformed(&currenttransshape[1]);
@@ -1241,11 +1255,10 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 transformed_shape_add_for_sort(0, 0);
                 if (pending_overlay_shape) {
                     pending_overlay_shape = false;
-                    transformed_shape_add_for_sort(-FRAME_SORT_BIAS /*63488*/, 0);
+                    transformed_shape_add_for_sort(-FRAME_SORT_BIAS, 0);
                     if (player_sort_bias != 0) {
-                        player_sort_bias = -FRAME_SORT_BIAS_OVERLAY; //64512;
+                        player_sort_bias = -FRAME_SORT_BIAS_OVERLAY;
                     }
-
                     if (opponent_sort_bias != 0) {
                         opponent_sort_bias -= FRAME_SORT_BIAS_OVERLAY;
                     }
@@ -1259,9 +1272,11 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
             }
 
+            /* Render dynamic obstacles / breaking track side components (like fences) */
             obstacle_slot = tile_obstacle_map[tile_col + trackrows[tile_row]];
             if (obstacle_slot != 255) {
                 if (state.game_obstacle_flags[obstacle_slot] == 0) {
+                    /* Rest state: Queue intact obstacle mesh */
                     trk_object_entry = trkobj_entry_legacy_scene_index(
                         212 + (unsigned)obstacle_scene_index[obstacle_slot]);
                     if (trk_object_entry == 0) {
@@ -1285,11 +1300,12 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     transformed_shape_add_for_sort(0, 0);
                 }
                 else if (state.game_obstacle_count != 0) {
+                    /* Exploded debris state: Queue individual flying pieces */
                     for (di = 0; di < 24; di++) {
                         if (state.game_obstacle_active[di] != 0
                             && obstacle_slot + 2 == state.game_obstacle_status[di]) {
                             trk_object_entry = trkobj_entry(sceneshapes3,
-                                                            state.game_obstacle_shape[di]);
+                                                             state.game_obstacle_shape[di]);
                             curtransshape_ptr->pos.x = (short)(state.game_debris_dx[di] >> 6)
                                                        + obstacle_world_pos[obstacle_slot * 3 + 0]
                                                        - camera_pos.x;
@@ -1306,7 +1322,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                             curtransshape_ptr->rotvec.y = (short)-state.game_obstacle_roty[di];
                             curtransshape_ptr->rotvec.z = (short)-state.game_obstacle_rotz[di];
                             curtransshape_ptr->shape_visibility_threshold = FRAME_VISIBILITY_FAR
-                                                                            * REND_DIST_MULT;
+                                                                             * REND_DIST_MULT;
                             curtransshape_ptr->material = 0;
                             transformed_shape_add_for_sort(0, 0);
                         }
@@ -1315,14 +1331,17 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
+        /* Queue Car models inside active tile cells: Player Vehicle */
         if ((player_contact_col == tile_col || player_contact_col == tile_col_adj)
             && (player_contact_row == tile_row || player_contact_row == tile_row_adj)) {
+            
+            /* Render spark debris if crash status is active */
             if (state.game_obstacle_count != 0) {
                 for (di = 0; di < 24; di++) {
                     if (state.game_obstacle_active[di] != 0
                         && state.game_obstacle_status[di] == 0) {
                         trk_object_entry = trkobj_entry(sceneshapes3,
-                                                        state.game_obstacle_shape[di]);
+                                                         state.game_obstacle_shape[di]);
                         curtransshape_ptr->pos.x
                             = (short)((state.game_debris_dx[di] + state.playerstate.car_posWorld1.lx) >> 6)
                               - camera_pos.x;
@@ -1351,11 +1370,13 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             curtransshape_ptr->pos.y = (short)(state.playerstate.car_posWorld1.ly >> 6) - camera_pos.y;
             curtransshape_ptr->pos.z = (short)(state.playerstate.car_posWorld1.lz >> 6) - camera_pos.z;
 
+            /* Level-of-Detail (LOD): select lo-shape mesh if vehicle is distant */
             if (tile_detail_level != 0 || timertestflag2 > 2) {
                 curtransshape_ptr->shapeptr = trkobj_loshape(trk_object_entry);
             }
             else {
                 curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
+                /* Animate wheel rotation angles and suspension compressions directly */
                 shape3d_update_car_wheel_vertices(
                     &game3dshapes[2772 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8],
                     state.playerstate.car_steeringAngle, state.playerstate.car_wheel_susp_compress,
@@ -1384,6 +1405,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             transformed_shape_add_for_sort(player_sort_bias & start_tile_sort_mask, 2);
         }
 
+        /* Queue Car models inside active tile cells: Opponent Vehicle */
         if ((opponent_contact_col == tile_col) || (opponent_contact_col == tile_col_adj)) {
             if ((opponent_contact_row == tile_row) || (opponent_contact_row == tile_row_adj)) {
                 if (state.game_obstacle_count != 0) {
@@ -1427,6 +1449,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 curtransshape_ptr->pos.z = (short)(state.opponentstate.car_posWorld1.lz >> 6)
                                            - camera_pos.z;
 
+                /* LOD Select check for distant opponent vehicle */
                 if (tile_detail_level != 0 || timertestflag2 > 2) {
                     curtransshape_ptr->shapeptr = trkobj_loshape(trk_object_entry);
                 }
@@ -1464,6 +1487,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
 
+        /* Render Start Line blinking Arrow Indicator overlays */
         if (state.game_inputmode == 0) {
             if ((tile_col == startcol2 || tile_col_adj == startcol2)
                 && (tile_row == startrow2 || tile_row_adj == startrow2)) {
@@ -1509,11 +1533,11 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 }
 
                 curtransshape_ptr->material = multi_tile_value;
-                transformed_shape_add_for_sort(start_tile_sort_mask & -FRAME_SORT_BIAS /*63488*/,
-                                               0);
+                transformed_shape_add_for_sort(start_tile_sort_mask & -FRAME_SORT_BIAS, 0);
             }
         }
 
+        /* Flush elements inside current tile (executes Painter's Algorithm back-to-front) */
         if (transformedshape_counter != 0) {
             if (transformedshape_counter > 1) {
                 transformedshape_sort_desc(transformedshape_zarray, transformedshape_indices,
@@ -1521,14 +1545,15 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
             for (multi_tile_value = 0; multi_tile_value < transformedshape_counter;
                  multi_tile_value++) {
-                // di is used for index into currenttransshape elsewhere
                 di = transformedshape_indices[multi_tile_value];
+                
+                /* Override brake/tail light colors based on current vehicle status */
                 if (transformedshape_arg2array[di] == 2) {
                     if (state.playerstate.car_is_braking) {
-                        backlights_paint_override = 47;
+                        backlights_paint_override = 47; /* Bright Red Lights */
                     }
                     else {
-                        backlights_paint_override = 46;
+                        backlights_paint_override = 46; /* Dull Tail Lights */
                     }
                 }
                 else if (transformedshape_arg2array[di] == 3) {
@@ -1542,7 +1567,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 render_result = (int)shape3d_render_transformed(&currenttransshape[di]);
                 if (render_result > 0) {
-                    break; /* clipped: exit shape render for-loop */
+                    break; /* Viewport clipping limit reached: halt rendering */
                 }
 
                 if (render_result == 0) {
@@ -1560,15 +1585,19 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
         if (render_result > 0)
-            break; /* clipped: exit tile loop */
+            break; /* Viewport clipping limit reached: halt rendering */
     }
 
+    /* Render the Skybox background texture behind everything */
     skybox_result = render_skybox_layer(view_index, clip_rect, sky_dir_sign, &view_rot_mat,
                                         view_roll, view_yaw, camera_pos.y);
 
     sprite_set_1_size(0, FRAME_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
 
+    /* Final software rasterizer flush to palette framebuffer */
     get_a_poly_info();
+
+    /* Render Animated explosion particle shapes if vehicle is wrecked */
     for (si = 0; si < 2; si++) {
         if (!crash_overlay_drawn[si]) {
             continue;
@@ -1607,13 +1636,9 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         }
     }
 
-    /*
-; --------------------------------------------------------
-*/
-
+    /* Compile HUD cracking windshield spiderweb layers and sinking screen effects */
     sprite_set_1_size(0, FRAME_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
     if (cameramode == 0) {
-
         if (followOpponentFlag) {
             follow_state_ptr = &state.opponentstate;
             si = state.game_oEndFrame;
@@ -1624,6 +1649,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         }
 
         if (follow_state_ptr->car_crashBmpFlag == 1) {
+            /* Crash Stage 1: Render Shattered glass cracks */
             if (timertestflag_copy) {
                 rect_union(init_crak(state.game_frame - si, clip_rect->top,
                                      clip_rect->bottom - clip_rect->top),
@@ -1635,6 +1661,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             }
         }
         else if (follow_state_ptr->car_crashBmpFlag == 2) {
+            /* Crash Stage 2: Sinking / Blacking out windshield perspective */
             if (timertestflag_copy) {
                 rect_union(do_sinking(state.game_frame - si, clip_rect->top,
                                       clip_rect->bottom - clip_rect->top),
@@ -1647,6 +1674,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         }
     }
 
+    /* Render HUD digital LED Clock values */
     if (game_replay_mode == 0) {
         if (state.game_inputmode != 0) {
             format_frame_as_string(resID_byte1, elapsed_time1 + replay_frame_counter, 0);
@@ -1663,6 +1691,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
         }
     }
 
+    /* Consolidate dirty screen sectors for final SDL presentation blitting */
     if (timertestflag_copy) {
         rect_union(draw_ingame_text(), frame_dirty_rects, frame_dirty_rects);
         if (skybox_result != 0) {

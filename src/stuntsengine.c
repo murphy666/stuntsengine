@@ -1003,59 +1003,78 @@ void
 update_gamestate() {
     char replay_input_flags;
 
+    /* Replay Buffer Inputs: Read keys/controls inputs at the current simulation frame index */
     replay_input_flags = replay_buffer[state.game_frame];
     if (replay_input_flags != 0) {
-        state.game_inputmode = 1;
+        state.game_inputmode = 1; /* Force playback input mode if recorded controls exist */
     }
 
+    /* Regular Snapshot capture: Save full GAMESTATE checkpoint at fixed intervals (approx. 30 seconds) */
     if ((state.game_frame % fps_times_thirty) == 0) {
-        get_kevinrandom_seed(state.kevinseed);
+        get_kevinrandom_seed(state.kevinseed); /* Sync randomizer seed to prevent replay divergence */
 
+        /* Copy full struct state to snapshot array for rewinds and load states */
         memcpy(&cvxptr[state.game_frame / fps_times_thirty], &state, sizeof(struct GAMESTATE));
     }
 
+    /* Advance the game simulation frame count */
     state.game_frame++;
+
+    /* Crash Sequence evaluation: Manage timer and transition flags once car crashes */
     if (state.game_crash_eval_type != 0 && state.game_frame_in_sec < state.game_frames_per_sec) {
         state.game_frame_in_sec++;
         if (state.game_frame_in_sec == state.game_frames_per_sec && game_finish_state == 0) {
+            /* Edge case: If car is sliding while exploding, stretch the animation frame limit */
             if (state.playerstate.car_crashBmpFlag == 1 && state.playerstate.car_speed2 != 0) {
                 state.game_frames_per_sec++;
             }
             else if (game_replay_mode == 0) {
-                game_finish_state = 1;
+                game_finish_state = 1; /* Complete crash sequence: Set game finish flag */
             }
         }
     }
 
+    /* Active Simulation Update Path */
     if (state.game_inputmode != 0) {
-
+        /* 1. Calculate player physics: Drivetrain, suspension coordinates, and sliding grip */
         update_player_car_state(replay_input_flags);
 
+        /* 2. Process AI opponent if configured */
         if (gameconfig.game_opponenttype != 0) {
             update_opponent_car_state();
         }
 
+        /* 3. Re-align follow camera target coordinates */
         update_follow_camera_vectors();
+
+        /* 4. Update coordinates of active world obstacle fragments */
         if (state.game_obstacle_count != 0) {
             update_world_debris_particles();
         }
 
+        /* 5. Update engine RPM pitch and tyre squeal audio synthesizers */
         audio_sync_car_audio();
     }
+    /* Paused Replay Mode Update Path */
     else if (game_replay_mode == 1) {
-        // if paused
-        audio_sync_car_audio();
+        audio_sync_car_audio(); /* Synced RPM engine sound in menus/rewinds list */
+        
+        /* Manage Replay pause dynamic orbiting camera animations */
         if (game_pause_counter != 0) {
+            /* Orbit the camera around the car */
             if (current_rotation_angle_value < STN_REPLAY_PAUSE_ROTATION_TARGET) {
                 current_rotation_angle_value += STN_REPLAY_PAUSE_ROTATION_STEP;
             }
 
+            /* Phase transition check: Rotating state to Release state */
             if (game_pause_counter == STN_REPLAY_PAUSE_STATE_ROTATING
                 && current_rotation_angle_value > STN_REPLAY_PAUSE_ROTATION_RELEASE) {
                 game_pause_counter++;
             }
 
+            /* Phase transition: Recover camera coordinates, locking onto the car once more */
             if (game_pause_counter == STN_REPLAY_PAUSE_STATE_RECOVERING) {
+                /* Scale player positions to check centering proximity distance limits */
                 if (multiply_and_scale(cos_fast(track_angle),
                                        (short)trackcenterpos[startrow2]
                                            - (state.playerstate.car_posWorld1.lz >> STN_WORLD_SCALE_SHIFT))
@@ -1064,17 +1083,17 @@ update_gamestate() {
                                                  - (state.playerstate.car_posWorld1.lx >> STN_WORLD_SCALE_SHIFT))
                     <= STN_REPLAY_PAUSE_RECENTER_DISTANCE_MAX) {
                     if (state.playerstate.car_speed != 0) {
-                        update_player_car_state(2);
+                        update_player_car_state(2); /* Slow recenter update pass */
                     }
                     else {
-                        game_pause_counter = 0;
+                        game_pause_counter = 0; /* Finish camera centering */
                     }
                 }
                 else if (state.playerstate.car_speed < STN_REPLAY_PAUSE_SLOW_SPEED_THRESHOLD) {
-                    update_player_car_state(1);
+                    update_player_car_state(1); /* Moderate speed correction */
                 }
                 else {
-                    update_player_car_state(0);
+                    update_player_car_state(0); /* Standard update pass */
                 }
             }
         }

@@ -212,39 +212,39 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
     unsigned char currentTorque;
     short *aeroTable;
 
-    /* ---- frame-rate dependent gear-shift step ---- */
+    /* ---- Frame-rate dependent gear-shift transition speed step ---- */
     gearShiftStep = (framespersec >= STATECAR_FPS_30)   ? STATECAR_GEARSHIFT_STEP_30FPS
                     : (framespersec == STATECAR_FPS_20) ? STATECAR_GEARSHIFT_STEP_20FPS
                                                         : STATECAR_GEARSHIFT_STEP_DEFAULT;
 
-    /* ---- engine limiter countdown ---- */
+    /* ---- Engine oscillation limiter timer countdown (stabilizes traction after landing) ---- */
     if (carState->car_engineLimiterTimer != 0)
         carState->car_engineLimiterTimer--;
 
-    /* ---- capture previous-frame values ---- */
+    /* ---- Save previous-frame telemetry parameters for derivative calculations ---- */
     carState->car_speeddiff = (short)carState->car_speed2 - carState->car_lastspeed;
     carState->car_lastspeed = carState->car_speed2;
     carState->car_lastrpm = carState->car_currpm;
 
     /* ================================================================
 	 * GEAR SELECTION
-	 * Determine whether to shift up, shift down, or keep the current gear.
+	 * Determine whether to shift up, shift down, or preserve current gear.
 	 * ================================================================ */
     {
         bool want_upshift = false;
         bool want_downshift = false;
 
+        /* Manual Transmission Settings */
         if (carState->car_transmission == 0 && !carState->car_changing_gear) {
-            /* Manual / no-shift-in-progress: check driver input buttons. */
+            /* Check driver button inputs (Mask 16 = Shift Up, Mask 32 = Shift Down) */
             if (carInputFlags & STATECAR_INPUT_SHIFT_UP_MASK)
                 want_upshift = true;
             else if (carInputFlags & STATECAR_INPUT_SHIFT_DOWN_MASK)
                 want_downshift = true;
         }
+        /* Auto Transmission Settings */
         else {
-            /* Auto-transmission or a shift animation already playing:
-			 * only auto-shift once the animation is idle, we are in gear,
-			 * and the rear wheels are on the ground. */
+            /* Shift only when shifter animation is idle, in gear, and rear wheels are grounded */
             if (carState->car_current_gear != 0 && !carState->car_changing_gear
                 && carState->car_sumSurfRearWheels != 0) {
                 if (carState->car_currpm > simdData->upshift_rpm)
@@ -254,6 +254,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
             }
         }
 
+        /* Register Up-shift Target Knobs */
         if (want_upshift && carState->car_current_gear < simdData->num_gears) {
             carState->car_current_gear++;
             carState->car_changing_gear = true;
@@ -263,6 +264,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
             carState->car_gearknob_target_y
                 = simdData->knob_points[(int)carState->car_current_gear].py;
         }
+        /* Register Down-shift Target Knobs */
         else if (want_downshift && carState->car_current_gear > 1) {
             carState->car_current_gear--;
             carState->car_changing_gear = true;
@@ -275,14 +277,14 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
     }
 
     /* ================================================================
-	 * GEAR KNOB ANIMATION
-	 * Animate the gear-stick knob one step toward its target position.
+	 * GEAR KNOB SHIFTER ANIMATION (H-Pattern simulation)
+	 * Interpolate shifter coordinates coordinates step-by-step.
 	 * ================================================================ */
     if (carState->car_changing_gear) {
         if (carState->car_gearknob_cur_x != carState->car_gearknob_target_x) {
-            /* x not yet at target – first bring y to neutral, then slide x. */
+            /* If X is not at target: first guide Y to neutral rail, then translate X. */
             if (carState->car_gearknob_cur_y != simdData->knob_points[0].py) {
-                /* Move y toward neutral. */
+                /* Pull Y to neutral center */
                 deltaValue = simdData->knob_points[0].py - carState->car_gearknob_cur_y;
                 if (abs(deltaValue) <= gearShiftStep) {
                     carState->car_gearknob_cur_y = simdData->knob_points[0].py;
@@ -295,7 +297,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                 }
             }
             else {
-                /* y is at neutral: slide x toward x2. */
+                /* Slide X gate coordinates along the neutral rail */
                 deltaValue = carState->car_gearknob_target_x - carState->car_gearknob_cur_x;
                 if (abs(deltaValue) <= gearShiftStep) {
                     carState->car_gearknob_cur_x = carState->car_gearknob_target_x;
@@ -309,10 +311,10 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
             }
         }
         else {
-            /* x is at target: move y toward y2. */
+            /* X is at target column: push Y into gear socket target */
             deltaValue = carState->car_gearknob_target_y - carState->car_gearknob_cur_y;
             if (deltaValue == 0) {
-                /* Arrived: commit gear ratio. */
+                /* Knobs aligned: lock new gear ratio and disengage changes */
                 carState->car_changing_gear = false;
                 carState->car_gearratio = simdData->gear_ratios[(int)carState->car_current_gear];
                 carState->car_gearratioshr8 = carState->car_gearratio >> 8;
@@ -329,19 +331,21 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
         }
     }
     else {
-        /* Not shifting: count down the transmission engagement timer. */
+        /* Count down transmission clutch engagement delay */
         if (carState->car_fpsmul2 != 0)
             carState->car_fpsmul2--;
     }
 
     /* ================================================================
-	 * SPEED DELTA BASE: gravity minus aerodynamic drag
+	 * COORDINATES / HEADING PHYSICS: Calculate baseline speed updates
+	 * Calculates physics: speedDelta = gravity force - aerodynamic drag
 	 * ================================================================ */
     updatedSpeed = carState->car_speed;
     aeroIndex = updatedSpeed >> STATECAR_AERO_INDEX_SHIFT;
     if (aeroIndex > STATECAR_AERO_INDEX_MAX)
         aeroIndex = STATECAR_AERO_INDEX_MAX;
 
+    /* Aero coefficients index resolution */
     aeroTable = (short *)(uintptr_t)simdData->aerorestable;
     if (aeroTable == NULL) {
         aeroTable = (simdData == &simd_opponent_rt) ? aero_table_opponent : aero_table_player;
@@ -350,10 +354,11 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                                      : carState->car_pseudoGravity;
 
     /* ================================================================
-	 * THROTTLE / BRAKE INPUT → adjust speedDelta
+	 * ENGINE TORQUE / INPUTS PROCESSING
+	 * Check throttle, limits, braking resistance, and modify speedDelta
 	 * ================================================================ */
     if (carState->car_currpm > simdData->max_rpm) {
-        /* Over rev limit: hard brake regardless of input. */
+        /* Hard Engine Limit Triggered: Drop torque and apply engine braking */
         carState->car_currpm = (short)simdData->max_rpm - 1;
         speedDelta -= simdData->braking_eff;
     }
@@ -361,12 +366,12 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
         int inputCmd = carInputFlags & 3;
 
         if (inputCmd == 1) {
-            /* ---- Accelerating ---- */
+            /* ---- CASE 1: ACCELERATING ---- */
             carState->car_is_braking = false;
             carState->car_is_accelerating = true;
 
             if (carState->car_changing_gear) {
-                /* Rev-matching during shift: drop rpm, no torque contribution. */
+                /* Rev drop matching while clutch is disengaged */
                 carState->car_engineLimiterTimer = 0;
                 if (framespersec == STATECAR_FPS_10)
                     carState->car_currpm -= STATECAR_RPM_DROP_SHIFT_10FPS;
@@ -376,34 +381,35 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                     carState->car_currpm -= STATECAR_RPM_DROP_SHIFT_DEFAULT;
             }
             else if (carState->car_sumSurfRearWheels == 0) {
-                /* Airborne: tiny rpm boost but limited by speed cap. */
+                /* Airborne Accel: Slight rev boost, capped to prevent infinite wheel spin */
                 if (carState->car_currpm < simdData->max_rpm
                     && updatedSpeed < STATECAR_ACCEL_AIRBORNE_SPEED_MAX) {
                     speedDelta += STATECAR_ACCEL_AIRBORNE_BOOST;
                 }
             }
             else {
-                /* On ground: compute torque and apply to speedDelta. */
+                /* Grounded: Extract motor torque based on current RPM curve */
                 if (carState->car_current_gear <= 1
                     && carState->car_currpm < STATECAR_RPM_IDLE_TORQUE_THRESHOLD) {
-                    currentTorque = simdData->idle_torque;
+                    currentTorque = simdData->idle_torque; /* Boost torque if starting from stop */
                 }
                 else {
                     currentTorque = simdData->torque_curve[carState->car_currpm >> 7];
                 }
 
-                /* Blend toward idle torque while limiter is active. */
+                /* Engine oscillation limiter blend: damp engine output if active */
                 if (carState->car_engineLimiterTimer != 0
                     && carState->car_currpm < STATECAR_RPM_LIMITER_BLEND_MAX) {
                     currentTorque = ((int)simdData->idle_torque + currentTorque) >> 1;
                 }
 
+                /* Apply gear ratio multipliers and scale speed delta by the vehicle mass */
                 speedDelta += (carState->car_gearratioshr8 * currentTorque) >> 4;
-                speedDelta
-                    = (int)(((long)speedDelta * STATECAR_SPEEDDELTA_MASS_SCALE) / simdData->car_mass)
-                      >> 1;
+                speedDelta = (int)(((long)speedDelta * STATECAR_SPEEDDELTA_MASS_SCALE)
+                                   / simdData->car_mass)
+                             >> 1;
 
-                /* Opponent AI speed correction. */
+                /* Opponent AI speed dampers adjustments */
                 if (isOpponentCar != 0) {
                     currentTorque = -((int)*opponent_speed_table - STATECAR_OPPONENT_SPEED_BASE)
                                     >> 1;
@@ -412,35 +418,36 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                                       / STATECAR_OPPONENT_SPEED_BASE;
                 }
 
+                /* If sudden acceleration spike triggers, set short ignition limiter to protect drivetrain */
                 if (speedDelta > STATECAR_SPEEDDELTA_LIMIT)
                     carState->car_engineLimiterTimer = STATECAR_ENGINE_LIMITER_SHORT;
             }
         }
         else if (inputCmd == 2) {
-            /* ---- Braking ---- */
+            /* ---- CASE 2: BRAKING ---- */
             carState->car_is_accelerating = false;
             carState->car_engineLimiterTimer = 0;
             carState->car_is_braking = true;
             if (isOpponentCar == 0)
                 speedDelta -= simdData->braking_eff;
             else
-                speedDelta -= simdData->braking_eff << 1;
+                speedDelta -= simdData->braking_eff << 1; /* Double braking power for AI cars */
         }
         else {
-            /* ---- Coasting ---- */
+            /* ---- CASE 3: COASTING ---- */
             carState->car_is_accelerating = false;
             carState->car_is_braking = false;
         }
     }
 
-    /* FPS scaling: adjust speedDelta to compensate for tick rate differences. */
+    /* Scaling: Adjust physics speed step to compensate for 10Hz/20Hz/30Hz compiler frame targets */
     if (framespersec == STATECAR_FPS_10)
         speedDelta += speedDelta;
     else if (framespersec >= STATECAR_FPS_30)
         speedDelta = speedDelta * 2 / 3;
 
     /* ================================================================
-	 * APPLY speedDelta TO updatedSpeed
+	 * INTEGRATION: Commit speedDelta to speed values
 	 * ================================================================ */
     if (speedDelta >= 0) {
         if (updatedSpeed < STATECAR_SPEED_CLAMP_LO) {
@@ -460,19 +467,20 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
     }
 
     /* ================================================================
-	 * COMMIT SPEED
+	 * COMMIT PHYSICAL VELOCITY SETTINGS
 	 * ================================================================ */
     if (carState->car_sumSurfRearWheels == 0) {
-        /* Airborne: only update car_speed (not car_speed2). */
+        /* Airborne: update only aerial inertia speed, bypass wheel-locked values */
         carState->car_speed = updatedSpeed;
     }
     else {
+        /* Grounded: Check divergence between speed channels */
         deltaValue = (int)carState->car_speed2 - (int)updatedSpeed;
         if (deltaValue < 0)
             deltaValue = -deltaValue;
 
         if (deltaValue > STATECAR_SPEED_SYNC_THRESHOLD) {
-            /* Large divergence: average the two speeds and flag limiter. */
+            /* High divergence (e.g. wall slam, loop exits): Average and flag limiter */
             carState->car_speed = ((long)carState->car_speed + carState->car_speed2) >> 1;
             carState->car_speed2 = carState->car_speed;
             carState->car_engineLimiterTimer = STATECAR_ENGINE_LIMITER_SHORT;
@@ -484,12 +492,13 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
     }
 
     /* ================================================================
-	 * RPM UPDATE AND ENGINE OSCILLATION LIMITER
+	 * VELOCITY TO RPM TRANSLATION
 	 * ================================================================ */
-    carState->car_currpm = (short)update_rpm_from_speed(carState->car_currpm, carState->car_speed,
-                                                 carState->car_gearratio,
-                                                 carState->car_changing_gear, simdData->idle_rpm);
+    carState->car_currpm = (short)update_rpm_from_speed(
+        carState->car_currpm, carState->car_speed, carState->car_gearratio,
+        carState->car_changing_gear, simdData->idle_rpm);
 
+    /* Check severe rotational drop: Activate limiter if wheels lock/stall */
     if (carState->car_sumSurfAllWheels != 0 && carState->car_lastrpm > carState->car_currpm) {
         unsigned int rpmDrop = carState->car_lastrpm - carState->car_currpm;
         if (rpmDrop > (unsigned int)STATECAR_RPM_SWING_THRESHOLD) {
@@ -498,7 +507,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
                 carState->car_engineLimiterTimer = STATECAR_ENGINE_LIMITER_LONG;
         }
         else {
-            /* NOTE: signed comparison */
+            /* Penalty: downshift spike oscillation dampener adjusts speed2 */
             if (carState->car_currpm - carState->car_lastrpm > STATECAR_RPM_SWING_THRESHOLD) {
                 carState->car_engineLimiterTimer = STATECAR_ENGINE_LIMITER_MED;
                 carState->car_speed2 -= STATECAR_SPEED2_LIMITER_PENALTY;
@@ -506,7 +515,7 @@ update_car_speed(char carInputFlags, int isOpponentCar, struct CARSTATE *carStat
         }
     }
 
-    /* ---- track top speed ---- */
+    /* Save race top speed settings */
     if (carState->car_speed2 > state.game_topSpeed)
         state.game_topSpeed = carState->car_speed2;
 }
@@ -813,9 +822,9 @@ update_player_car_state(char carInputFlags) {
                     d.x = (short)state.playerstate.car_waypoint_target.x
                           - (state.playerstate.car_posWorld1.lx >> 6);
                     d.y = (short)((state.playerstate.car_waypoint_target.y != -1)
-                              ? state.playerstate.car_waypoint_target.y
-                                    - (state.playerstate.car_posWorld1.ly >> 6)
-                              : 0);
+                                      ? state.playerstate.car_waypoint_target.y
+                                            - (state.playerstate.car_posWorld1.ly >> 6)
+                                      : 0);
                     d.z = (short)state.playerstate.car_waypoint_target.z
                           - (state.playerstate.car_posWorld1.lz >> 6);
                     mat_mul_vector(&d, carRotationMatrix, &waypointLocalVec);
@@ -1157,8 +1166,8 @@ update_grip(struct CARSTATE *carstate, struct SIMD *simd, int isPlayerFlag) {
                 carstate->car_angle_z = (short)(carstate->car_angle_z / 2);
                 if (carstate->car_angle_z == 0) {
                     cosval = cos_fast(carstate->car_body_slip_angle);
-                    carstate->car_speed2 = (unsigned short)multiply_and_scale((short)cosval,
-                                                                              (short)carstate->car_speed2);
+                    carstate->car_speed2 = (unsigned short)multiply_and_scale(
+                        (short)cosval, (short)carstate->car_speed2);
                     cosval = cos_fast(carstate->car_body_slip_angle);
                     if (cosval < 0) {
                         carstate->car_speed2 = 0;
@@ -2292,12 +2301,12 @@ audio_sync_car_audio(void) {
     /* Keep engine tone volume/pitch in sync during live gameplay. The replay
 	 * path already reconstructs these fields and forwards them through
 	 * audio_replay_update_engine_sounds(). */
-    audio_update_engine_sound((short)crash_sound_handle, bx[15], bx[3], bx[4], bx[5], bx[6], bx[7], bx[8],
-                              1);
+    audio_update_engine_sound((short)crash_sound_handle, bx[15], bx[3], bx[4], bx[5], bx[6], bx[7],
+                              bx[8], 1);
 
     if (gameconfig.game_opponenttype) {
-        audio_update_engine_sound((short)audio_opponent_engine_handle, bx[16], bx[9], bx[10], bx[11],
-                                  bx[12], bx[13], bx[14], 1);
+        audio_update_engine_sound((short)audio_opponent_engine_handle, bx[16], bx[9], bx[10],
+                                  bx[11], bx[12], bx[13], bx[14], 1);
     }
 
     /* Process sound effects for each car */
@@ -2834,8 +2843,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
 
     for (wheelIndex = 0; wheelIndex < 4; wheelIndex++, wheelPos2Ptr++, wheelPos1Ptr++) {
         vec_1C6 = playerSimd->wheel_coords[wheelIndex];
-        vec_1C6.y
-            = (short)-(playerState->car_wheel_susp_compress[wheelIndex] + STATECAR_WHEEL_BASE_HEIGHT);
+        vec_1C6.y = (short)-(playerState->car_wheel_susp_compress[wheelIndex]
+                             + STATECAR_WHEEL_BASE_HEIGHT);
         if (wheelYAdjust < 0)
             vec_1C6.y -= (short)wheelYAdjust;
 
@@ -2910,8 +2919,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
             if (state.game_inputmode == 2)
                 nextPosAndNormalIP = vec_1C6.y;
             else
-                nextPosAndNormalIP = (short)plane_get_collision_point(planindex, vec_1C6.x, vec_1C6.y,
-                                                               vec_1C6.z);
+                nextPosAndNormalIP = (short)plane_get_collision_point(planindex, vec_1C6.x,
+                                                                      vec_1C6.y, vec_1C6.z);
 
             /* -- Wall collision check -- */
             if (wallindex != -1 && nextPosAndNormalIP > elRdWallRelated
@@ -3057,8 +3066,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         if (state.game_inputmode == 2)
                             nextPosAndNormalIP = vec_1C6.y;
                         else
-                            nextPosAndNormalIP = (short)plane_get_collision_point(planindex, vec_1C6.x,
-                                                                           vec_1C6.y, vec_1C6.z);
+                            nextPosAndNormalIP = (short)plane_get_collision_point(
+                                planindex, vec_1C6.x, vec_1C6.y, vec_1C6.z);
 
                         if (nextPosAndNormalIP > STATECAR_TERRAIN_SURFACE_THRESH)
                             playerState->car_surfaceWhl[wheelIndex] = 0;
@@ -3108,8 +3117,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                         vec_1C6.x = wheelPos2Ptr->lx >> 6;
                         vec_1C6.y = wheelPos2Ptr->ly >> 6;
                         vec_1C6.z = wheelPos2Ptr->lz >> 6;
-                        nextPosAndNormalIP = (short)plane_get_collision_point(0, vec_1C6.x, vec_1C6.y,
-                                                                       vec_1C6.z);
+                        nextPosAndNormalIP = (short)plane_get_collision_point(0, vec_1C6.x,
+                                                                              vec_1C6.y, vec_1C6.z);
                         continue; /* second depth pass */
                     }
                     update_crash_state(5, isOpponentCar);
@@ -3186,12 +3195,13 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     vec_1C6.x = wheelPos2Ptr->lx >> 6;
                     vec_1C6.y = wheelPos2Ptr->ly >> 6;
                     vec_1C6.z = wheelPos2Ptr->lz >> 6;
-                    nextPosAndNormalIP = (short)plane_get_collision_point(planindex, vec_1C6.x, vec_1C6.y,
-                                                                   vec_1C6.z);
+                    nextPosAndNormalIP = (short)plane_get_collision_point(planindex, vec_1C6.x,
+                                                                          vec_1C6.y, vec_1C6.z);
 
                     if (nextPosAndNormalIP < 0) {
                         if (wallVectorSwapped)
-                            nextPosAndNormalIP = (short)(-nextPosAndNormalIP) + STATECAR_PLANE_PUSH_OFFSET;
+                            nextPosAndNormalIP = (short)(-nextPosAndNormalIP)
+                                                 + STATECAR_PLANE_PUSH_OFFSET;
                         /* Push wheel away from plane surface */
                         vec_1C6.z = 0;
                         vec_1C6.x = 0;
@@ -3396,7 +3406,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
         }
 
         /* ====== Section 18: Jump count and surface flag ====== */
-        collisionFlag = (char)playerState->car_sumSurfFrontWheels + playerState->car_sumSurfRearWheels;
+        collisionFlag = (char)playerState->car_sumSurfFrontWheels
+                        + playerState->car_sumSurfRearWheels;
         if (isOpponentCar == 0 && collisionFlag == 0 && playerState->car_sumSurfAllWheels != 0)
             state.game_jumpCount++;
 
@@ -3474,7 +3485,8 @@ update_player_state(struct CARSTATE *playerState, struct SIMD *playerSimd,
                     != 0) {
                     state.game_obstacle_flags[si] = 1;
                     state_spawn_debris_particles(si + 2, -playerState->car_rotate.x,
-                                                 (int)((long)playerState->car_speed2 * 1408) / 15360);
+                                                 (int)((long)playerState->car_speed2 * 1408)
+                                                     / 15360);
                 }
             }
 
@@ -3549,12 +3561,14 @@ audio_apply_crash_flags(unsigned char flags, unsigned short sound_id) {
 void
 audio_replay_update_engine_sounds(unsigned short *info, unsigned short sound_id) {
 
-    audio_update_engine_sound((short)crash_sound_handle, (short)info[15], (short)info[3], (short)info[4], (short)info[5], (short)info[6],
-                              (short)info[7], (short)info[8], (short)sound_id);
+    audio_update_engine_sound((short)crash_sound_handle, (short)info[15], (short)info[3],
+                              (short)info[4], (short)info[5], (short)info[6], (short)info[7],
+                              (short)info[8], (short)sound_id);
 
     if (gameconfig.game_opponenttype != 0) {
-        audio_update_engine_sound((short)audio_opponent_engine_handle, (short)info[16], (short)info[9], (short)info[10],
-                                  (short)info[11], (short)info[12], (short)info[13], (short)info[14], (short)sound_id);
+        audio_update_engine_sound((short)audio_opponent_engine_handle, (short)info[16],
+                                  (short)info[9], (short)info[10], (short)info[11], (short)info[12],
+                                  (short)info[13], (short)info[14], (short)sound_id);
     }
 }
 
