@@ -50,7 +50,8 @@ static struct RECTANGLE sky_starfield_rect
 #define REND_DIST_MULT 1
 
 /* file-local data (moved from data_global.c) */
-static unsigned short off_3BE44[8] = { 31340, 31318, 31296, 31340, 31318, 31296, 31340, 31318 };
+static unsigned short starfield_shape_offsets[8] = { 31340, 31318, 31296, 31340,
+                                                     31318, 31296, 31340, 31318 };
 static unsigned short animation_duration_table[8] = { 30, 200, 320, 400, 530, 700, 880, 960 };
 static char tile_scan_pattern_octant_7[135] = {
     -1, -8, 2, 0,   -8, 2, 1,   -8, 2,                       /* dist=8 (3 tiles) */
@@ -220,51 +221,6 @@ transformedshape_sort_desc(short *zvals, short *indices, int count) {
 }
 
 enum {
-    TRACKOBJECT_RAW_SIZE = 14,
-    TRACKOBJECT_ROT_Y_OFFSET = 2,
-    TRACKOBJECT_SHAPE_OFS_OFFSET = 4,
-    TRACKOBJECT_LOSHAPE_OFS_OFFSET = 6,
-    TRACKOBJECT_OVERLAY_OFFSET = 8,
-    TRACKOBJECT_SURFACE_OFFSET = 9,
-    TRACKOBJECT_IGNORE_ZBIAS_OFFSET = 10,
-    TRACKOBJECT_MULTI_OFFSET = 11,
-    TRACKOBJECT_PHYS_OFFSET = 12
-};
-enum { TRACKOBJECT_LIST_COUNT = 215, SCENESHAPES2_COUNT = 19, SCENESHAPES3_COUNT = 13 };
-
-static inline const unsigned char *
-trkobj_entry(const unsigned char *table, unsigned index) {
-    return table + (size_t)(index * TRACKOBJECT_RAW_SIZE);
-}
-
-static inline const unsigned char *
-trkobj_entry_legacy_scene_index(unsigned index) {
-    if (index < TRACKOBJECT_LIST_COUNT) {
-        return trkobj_entry(trkObjectList, index);
-    }
-    index -= TRACKOBJECT_LIST_COUNT;
-    if (index < SCENESHAPES2_COUNT) {
-        return trkobj_entry(sceneshapes2, index);
-    }
-    index -= SCENESHAPES2_COUNT;
-    if (index < SCENESHAPES3_COUNT) {
-        return trkobj_entry(sceneshapes3, index);
-    }
-    return 0;
-}
-
-static inline unsigned short
-trkobj_u16_field(const unsigned char *obj, unsigned offset) {
-    return (unsigned short)obj[offset] | ((unsigned short)obj[offset + 1] << 8);
-}
-
-
-
-#define GAME3DSHAPES_DOS_BASE   30284u
-#define GAME3DSHAPES_DOS_STRIDE 22u
-#define GAME3DSHAPES_MAX        130
-
-enum {
     FRAME_RECT_ARRAY_COUNT = 15,
     FRAME_TILE_SCAN_COUNT = 45,
     FRAME_TILE_SCAN_LAST = 44,
@@ -289,65 +245,6 @@ enum {
     FRAME_SORT_BIAS_OVERLAY = 1024,
     FRAME_FLAG_TRACKED_SHAPE = 12
 };
-
-static inline struct SHAPE3D *
-shape3d_from_dos_dseg_offset(unsigned short ofs) {
-    int idx;
-    if (ofs == 0) {
-        return (struct SHAPE3D *)0;
-    }
-    if (ofs < GAME3DSHAPES_DOS_BASE) {
-        return (struct SHAPE3D *)0;
-    }
-    idx = (int)((unsigned)(ofs - GAME3DSHAPES_DOS_BASE) / GAME3DSHAPES_DOS_STRIDE);
-    if (idx < 0 || idx >= GAME3DSHAPES_MAX) {
-        return (struct SHAPE3D *)0;
-    }
-    if (game3dshapes[idx].shape3d_verts == 0) {
-        return (struct SHAPE3D *)0;
-    }
-    return &game3dshapes[idx];
-}
-
-static inline struct SHAPE3D *
-trkobj_shape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_u16_field(obj, TRACKOBJECT_SHAPE_OFS_OFFSET));
-}
-
-static inline struct SHAPE3D *
-trkobj_loshape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_u16_field(obj, TRACKOBJECT_LOSHAPE_OFS_OFFSET));
-}
-
-static inline short
-trkobj_roty(const unsigned char *obj) {
-    return (short)trkobj_u16_field(obj, TRACKOBJECT_ROT_Y_OFFSET);
-}
-
-static inline unsigned char
-trkobj_overlay(const unsigned char *obj) {
-    return obj[TRACKOBJECT_OVERLAY_OFFSET];
-}
-
-static inline signed char
-trkobj_surface(const unsigned char *obj) {
-    return (signed char)obj[TRACKOBJECT_SURFACE_OFFSET];
-}
-
-static inline unsigned char
-trkobj_ignore_zbias(const unsigned char *obj) {
-    return obj[TRACKOBJECT_IGNORE_ZBIAS_OFFSET];
-}
-
-static inline unsigned char
-trkobj_multi(const unsigned char *obj) {
-    return obj[TRACKOBJECT_MULTI_OFFSET];
-}
-
-static inline unsigned char
-trkobj_physical(const unsigned char *obj) {
-    return obj[TRACKOBJECT_PHYS_OFFSET];
-}
 
 static inline int
 frame_multitile_contains_tile(int anchor_col, int anchor_row, unsigned char multi_tile_flag,
@@ -636,7 +533,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 mat_mul_vector(&temp_vec_b, &view_rot_mat, &currenttransshape[0].pos);
                 if (currenttransshape[0].pos.z > FRAME_SCREEN_HEIGHT) {
                     currenttransshape[0].shapeptr
-                        = shape3d_from_dos_dseg_offset(off_3BE44[loop_count]);
+                        = shape3d_from_resource_offset(starfield_shape_offsets[loop_count]);
                     currenttransshape[0].rotvec.z = (short)-view_yaw;
                     render_result = (int)shape3d_render_transformed(&currenttransshape[0]);
                 }
@@ -712,7 +609,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 /* Hide cells if they represent far physical components and detail caps are active */
                 if (elem_map_value != 0 && timertestflag2 != 0) {
-                    const unsigned char *elem_obj = trkobj_entry_legacy_scene_index(elem_map_value);
+                    const unsigned char *elem_obj = trkobj_entry_by_scene_index(elem_map_value);
                     if (elem_obj != 0 && trkobj_physical(elem_obj) >= 64
                         && (tile_col != player_tile_col || tile_row != player_tile_row)) {
                         elem_map_value = 0;
@@ -725,7 +622,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 /* Handle scan marking for multi-tile components (sizes 1x2, 2x1, or 2x2) */
                 if (elem_map_value != 0) {
-                    const unsigned char *tile_obj = trkobj_entry_legacy_scene_index(elem_map_value);
+                    const unsigned char *tile_obj = trkobj_entry_by_scene_index(elem_map_value);
                     if (tile_obj != 0) {
                         multi_tile_value = trkobj_multi(tile_obj);
                         if (multi_tile_value != 0
@@ -914,7 +811,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             terrain_offset_table = terrain_offset_type2;
         }
         else {
-            trk_object_entry = trkobj_entry_legacy_scene_index(elem_map_value);
+            trk_object_entry = trkobj_entry_by_scene_index(elem_map_value);
             if (trk_object_entry == 0) {
                 elem_map_value = 0;
                 loop_count = 1;
@@ -963,7 +860,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
                 /* Render border fence meshes directly using 3D transformation matrices */
                 if (di != -1) {
-                    trk_object_ptr = trkobj_entry_legacy_scene_index(fence_TrkObjCodes[di]);
+                    trk_object_ptr = trkobj_entry_by_scene_index(fence_TrkObjCodes[di]);
                     if (trk_object_ptr != 0) {
                         if (tile_detail_level == 0) {
                             currenttransshape[0].shapeptr = trkobj_shape(trk_object_ptr);
@@ -1087,7 +984,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             tile_row_adj = tile_row;
         }
         else {
-            trk_object_entry = trkobj_entry_legacy_scene_index(elem_map_value);
+            trk_object_entry = trkobj_entry_by_scene_index(elem_map_value);
             if (trk_object_entry == 0) {
                 continue;
             }
@@ -1141,7 +1038,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                     currenttransshape[0].pos.y = temp_vec_c.y;
                     currenttransshape[0].pos.z = (short)*hill_multitile_offsets + temp_vec_c.z;
                     hill_multitile_offsets++;
-                    currenttransshape[0].shapeptr = &game3dshapes[946 / GAME3DSHAPES_DOS_STRIDE];
+                    currenttransshape[0].shapeptr = shape3d_at_index(SHAPE3D_IDX_HILL_ROAD);
                     currenttransshape[0].rectptr = &world_object_rect;
                     currenttransshape[0].ts_flags = base_ts_flags | 5;
                     currenttransshape[0].rotvec.x = 0;
@@ -1160,7 +1057,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
 
             /* Handle Overlay/Decal Shapes (like road paint details, hazard stripes) */
             if (trkobj_overlay(trk_object_entry) != 0) {
-                trk_object_ptr = trkobj_entry_legacy_scene_index(trkobj_overlay(trk_object_entry));
+                trk_object_ptr = trkobj_entry_by_scene_index(trkobj_overlay(trk_object_entry));
                 if (trk_object_ptr != 0) {
                     if (tile_detail_level != 0) {
                         currenttransshape[1].shapeptr = trkobj_loshape(trk_object_ptr);
@@ -1277,7 +1174,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
             if (obstacle_slot != 255) {
                 if (state.game_obstacle_flags[obstacle_slot] == 0) {
                     /* Rest state: Queue intact obstacle mesh */
-                    trk_object_entry = trkobj_entry_legacy_scene_index(
+                    trk_object_entry = trkobj_entry_by_scene_index(
                         212 + (unsigned)obstacle_scene_index[obstacle_slot]);
                     if (trk_object_entry == 0) {
                         continue;
@@ -1378,7 +1275,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                 /* Animate wheel rotation angles and suspension compressions directly */
                 shape3d_update_car_wheel_vertices(
-                    &game3dshapes[2772 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8],
+                    shape3d_car_wheel_vertices_at_index(SHAPE3D_IDX_PLAYER_CAR),
                     state.playerstate.car_steeringAngle, state.playerstate.car_wheel_susp_compress,
                     viewport_clipping_bounds, carshapevecs, &carshapevec);
             }
@@ -1456,7 +1353,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                 else {
                     curtransshape_ptr->shapeptr = trkobj_shape(trk_object_entry);
                     shape3d_update_car_wheel_vertices(
-                        &game3dshapes[2794 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8],
+                        shape3d_car_wheel_vertices_at_index(SHAPE3D_IDX_OPPONENT_CAR),
                         state.opponentstate.car_steeringAngle,
                         state.opponentstate.car_wheel_susp_compress, game_frame_pointer,
                         oppcarshapevecs, &oppcarshapevec);
@@ -1498,7 +1395,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                                                 FRAME_START_ARROW_RADIUS)
                              + FRAME_START_ARROW_Z_BIAS;
 
-                arrow_shape_verts = &game3dshapes[2442 / GAME3DSHAPES_DOS_STRIDE].shape3d_verts[8];
+                arrow_shape_verts = shape3d_car_wheel_vertices_at_index(SHAPE3D_IDX_START_ARROW);
                 arrow_shape_verts[0].x = (short)multi_tile_value - FRAME_START_ARROW_RADIUS;
                 arrow_shape_verts[1].x = (short)multi_tile_value - FRAME_START_ARROW_RADIUS;
                 arrow_shape_verts[2].x = (short)FRAME_START_ARROW_RADIUS - multi_tile_value;
@@ -1519,7 +1416,7 @@ update_frame(int view_index, struct RECTANGLE *clip_rect) {
                       + multiply_and_scale(cos_fast(track_angle + 512), FRAME_START_ARROW_FORWARD)
                       + trackcenterpos[(unsigned char)startrow2] - camera_pos.z;
 
-                curtransshape_ptr->shapeptr = &game3dshapes[2442 / GAME3DSHAPES_DOS_STRIDE];
+                curtransshape_ptr->shapeptr = shape3d_at_index(SHAPE3D_IDX_START_ARROW);
                 curtransshape_ptr->rectptr = &world_object_rect;
                 curtransshape_ptr->ts_flags = base_ts_flags | 4;
                 curtransshape_ptr->rotvec.x = 0;

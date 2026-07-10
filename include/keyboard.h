@@ -65,7 +65,7 @@ unsigned short kb_input_flags_to_keycode(unsigned short input_flags);
 
 /* Extended keyboard/input functions */
 int kb_get_char(void);
-int handle_ingame_kb_shortcuts(int);
+bool handle_ingame_kb_shortcuts(int);
 void kb_reg_callback(unsigned short code, void (*callback)(void));
 void kb_shift_checking2(void);
 

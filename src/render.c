@@ -40,22 +40,36 @@
 #include <stdlib.h>
 #include "stunts.h"
 #include "math.h"
-#include "shape3d.h"
-#include "shape2d.h"
-#include "memmgr.h"
-#include "ressources.h"
-#include "keyboard.h"
-#include "font.h"
+#include "track.h"
 
-struct RECTANGLE rect_invalid = { 9999, -1, 9999, -1 };
-int dialog_fnt_colour = 15;
-unsigned short camera_view_matrix = 5;
-unsigned short object_visibility_state = 14;
-unsigned short button_text_color = 15;
-unsigned short button_shadow_color = 8;
-unsigned short button_highlight_color = 7;
-int performGraphColor = 1;
-unsigned short dialogarg2 = 4;
+#define RENDER_INVALID_COORD 9999
+#define RENDER_INVALID_COORD_VALUE -1
+#define RENDER_DEFAULT_DIALOG_FONT_COLOR 15
+#define RENDER_DEFAULT_CAMERA_VIEW_MATRIX 5
+#define RENDER_DEFAULT_OBJECT_VISIBILITY_STATE 14
+#define RENDER_DEFAULT_BUTTON_TEXT_COLOR 15
+#define RENDER_BUTTON_SHADOW_COLOR 8
+#define RENDER_BUTTON_HIGHLIGHT_COLOR 7
+#define RENDER_DEFAULT_GRAPH_COLOR 1
+#define RENDER_DIALOG_ARGUMENT_VALUE 4
+#define RENDER_RECT_ARRAY_COUNT 15
+#define RENDER_TRANSFORMED_SHAPE_CAPACITY 29
+#define RENDER_TRANSFORMED_SHAPE_ARG_CAPACITY 30
+#define RENDER_TEXT_BUFFER_CAPACITY 2048
+#define RENDER_INITIAL_CAMERA_ROTATION_X 210
+#define RENDER_INITIAL_CAMERA_ROTATION_Z 464
+#define RENDER_INITIAL_CAMERA_ROTATION_Y 80
+
+struct RECTANGLE rect_invalid = { RENDER_INVALID_COORD, RENDER_INVALID_COORD_VALUE,
+                                  RENDER_INVALID_COORD, RENDER_INVALID_COORD_VALUE };
+int dialog_fnt_colour = RENDER_DEFAULT_DIALOG_FONT_COLOR;
+unsigned short camera_view_matrix = RENDER_DEFAULT_CAMERA_VIEW_MATRIX;
+unsigned short object_visibility_state = RENDER_DEFAULT_OBJECT_VISIBILITY_STATE;
+unsigned short button_text_color = RENDER_DEFAULT_BUTTON_TEXT_COLOR;
+unsigned short button_shadow_color = RENDER_BUTTON_SHADOW_COLOR;
+unsigned short button_highlight_color = RENDER_BUTTON_HIGHLIGHT_COLOR;
+int performGraphColor = RENDER_DEFAULT_GRAPH_COLOR;
+unsigned short dialogarg2 = RENDER_DIALOG_ARGUMENT_VALUE;
 struct MATRIX mat_car_orientation = { 0 };
 int screen_display_toggle_flag = 0;
 char current_screen_buffer_selector = 0;
@@ -66,7 +80,7 @@ struct SPRITE *smouspriteptr = 0;
 char screen_shake_intensity = 0;
 short angle_rotation_state[2] = { 0, 0 };
 void *opp_res = 0;
-struct RECTANGLE frame_dirty_rects[15] = { 0 };
+struct RECTANGLE frame_dirty_rects[RENDER_RECT_ARRAY_COUNT] = { 0 };
 struct RECTANGLE terrain_rect = { 0, 0, 0, 0 };
 struct RECTANGLE world_object_rect = { 0, 0, 0, 0 };
 unsigned short skybox_grd_color = 0;
@@ -89,10 +103,10 @@ short pState_f36Mminf40sar2 = 0;
 void *dasmshapeptr = 0;
 struct PLANE *planptr = 0;
 short video_flag3_isFFFF = -1;
-struct RECTANGLE rect_buffer_front[15] = { 0 };
+struct RECTANGLE rect_buffer_front[RENDER_RECT_ARRAY_COUNT] = { 0 };
 struct SPRITE *mouseunkspriteptr = 0;
 unsigned short sdgame2_widths[3] = { 0 };
-struct RECTANGLE rect_buffer_back[15] = { 0 };
+struct RECTANGLE rect_buffer_back[RENDER_RECT_ARRAY_COUNT] = { 0 };
 int height_above_replaybar = 0;
 #pragma pack(push, 1)
 char video_flag6_is1 = 0;
@@ -104,14 +118,14 @@ int dastbmp_y = 0;
 int roofbmpheight = 0;
 short video_flag4_is1 = 0;
 short sprite_transformation_angle = 0;
-char resID_byte1[2048] = { 0 };
+char resID_byte1[RENDER_TEXT_BUFFER_CAPACITY] = { 0 };
 bool video_flag5_is0 = false;
 bool replaybar_enabled = false;
 char cameramode = 0;
 unsigned char timertestflag2 = 0;
-unsigned short rotation_x_angle = 210;
-unsigned short rotation_z_angle = 464;
-unsigned short rotation_y_angle = 80;
+unsigned short rotation_x_angle = RENDER_INITIAL_CAMERA_ROTATION_X;
+unsigned short rotation_z_angle = RENDER_INITIAL_CAMERA_ROTATION_Z;
+unsigned short rotation_y_angle = RENDER_INITIAL_CAMERA_ROTATION_Y;
 
 enum { RENDER_DIRTY_RECT_CAPACITY = 45 };
 
@@ -122,11 +136,11 @@ static short skybox_wat_color = 0;
 static void *skyboxes[] = { 0, 0, 0, 0 };
 static char texture_page_index = 0;
 struct TRANSFORMEDSHAPE3D *curtransshape_ptr = 0;
-short transformedshape_zarray[29] = { 0 };
-unsigned char transformedshape_arg2array[30] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+short transformedshape_zarray[RENDER_TRANSFORMED_SHAPE_CAPACITY] = { 0 };
+unsigned char transformedshape_arg2array[RENDER_TRANSFORMED_SHAPE_ARG_CAPACITY] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 char transformedshape_counter = 0;
-short transformedshape_indices[29] = { 0 };
+short transformedshape_indices[RENDER_TRANSFORMED_SHAPE_CAPACITY] = { 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static short angular_velocity_state = 0;
@@ -136,7 +150,7 @@ static short dirty_rect_indices[RENDER_DIRTY_RECT_CAPACITY] = { 0 };
 static struct RECTANGLE intro_dirty_clip_rect = { 0, 0, 0, 0 };
 static short memory_pointer_boundary_max = 0;
 static struct RECTANGLE rect_skybox = { 0, 0, 0, 0 };
-static char rect_sort_indices[15] = { 0 };
+static char rect_sort_indices[RENDER_RECT_ARRAY_COUNT] = { 0 };
 static short skybox_current = 0;
 static short skybox_ptr1 = 0;
 static short skybox_ptr2 = 0;
@@ -194,64 +208,6 @@ static struct SHAPE3D intro_bravshape;
 
 static struct RECTANGLE trackpreview_cliprect = { 0, 320, 0, 200 };
 
-enum { TRACKOBJECT_RAW_SIZE = 14 };
-
-/**
- * @brief Return a pointer to a track-object table entry by index.
- *
- * @param table  Base of the track-object table.
- * @param index  Entry index.
- * @return Pointer to the 14-byte raw entry.
- */
-static inline const unsigned char *
-trkobj_entry(const unsigned char *table, unsigned index) {
-    return table + (size_t)(index * TRACKOBJECT_RAW_SIZE);
-}
-
-/**
- * @brief Return the raw byte pointer of a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Same pointer cast to unsigned char.
- */
-static inline const unsigned char *
-trkobj_raw(const unsigned char *obj) {
-    return (const unsigned char *)obj;
-}
-
-/**
- * @brief Extract the primary shape offset from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return 16-bit DOS dseg offset of the shape.
- */
-static inline unsigned short
-trkobj_ofs_shape(const unsigned char *obj) {
-    const unsigned char *raw = trkobj_raw(obj);
-    return (unsigned short)raw[4] | ((unsigned short)raw[5] << 8);
-}
-
-/**
- * @brief Extract the low-detail shape offset from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return 16-bit DOS dseg offset of the low-detail shape.
- */
-static inline unsigned short
-trkobj_ofs_loshape(const unsigned char *obj) {
-    const unsigned char *raw = trkobj_raw(obj);
-    return (unsigned short)raw[6] | ((unsigned short)raw[7] << 8);
-}
-
-/*
- * DOS dseg layout: game3dshapes[0] resides at offset 30284 within dseg,
- * each SHAPE3D is 22 bytes (22) in the original 16-bit binary.
- * Convert a stored dseg offset to a game3dshapes[] pointer.
- */
-#define GAME3DSHAPES_DOS_BASE   30284u
-#define GAME3DSHAPES_DOS_STRIDE 22u
-#define GAME3DSHAPES_MAX        130
-
 enum {
     RENDER_SCREEN_LEFT = 0,
     RENDER_SCREEN_TOP = 0,
@@ -267,7 +223,6 @@ enum {
     RENDER_MAX_STRIP_COUNT = 32,
     RENDER_WRAP_DELTA_MAX = 96,
     RENDER_INVALID_POINT_COORD = 32768,
-    RENDER_RECT_ARRAY_COUNT = 15,
     RENDER_SKYBOX_RECT_SLOT = 5,
     RENDER_SKYBOX_COUNT = 4,
     RENDER_TRACK_GRID_SIZE = 30,
@@ -326,106 +281,6 @@ enum {
 };
 
 #define DO_SINKING_RECT_PTR ((struct RECTANGLE *)43534)
-
-/**
- * @brief Convert a DOS dseg offset to a game3dshapes[] pointer.
- *
- * @param ofs  16-bit DOS segment offset.
- * @return Pointer to the SHAPE3D, or NULL if invalid.
- */
-static inline struct SHAPE3D *
-shape3d_from_dos_dseg_offset(unsigned short ofs) {
-    int idx;
-    if (ofs == 0)
-        return (struct SHAPE3D *)0;
-    if (ofs < GAME3DSHAPES_DOS_BASE)
-        return (struct SHAPE3D *)0;
-    idx = (int)((unsigned)(ofs - GAME3DSHAPES_DOS_BASE) / GAME3DSHAPES_DOS_STRIDE);
-    if (idx < 0 || idx >= GAME3DSHAPES_MAX)
-        return (struct SHAPE3D *)0;
-    if (game3dshapes[idx].shape3d_verts == 0)
-        return (struct SHAPE3D *)0;
-    return &game3dshapes[idx];
-}
-
-/**
- * @brief Get the primary SHAPE3D pointer for a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Pointer to the SHAPE3D, or NULL.
- */
-static inline struct SHAPE3D *
-trkobj_shape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_shape(obj));
-}
-
-/**
- * @brief Get the low-detail SHAPE3D pointer for a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Pointer to the SHAPE3D, or NULL.
- */
-static inline struct SHAPE3D *
-trkobj_loshape(const unsigned char *obj) {
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_loshape(obj));
-}
-
-/**
- * @brief Extract the Y-rotation angle from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Rotation angle as a signed short.
- */
-static inline short
-trkobj_roty(const unsigned char *obj) {
-    const unsigned char *raw = trkobj_raw(obj);
-    return (short)((unsigned short)raw[2] | ((unsigned short)raw[3] << 8));
-}
-
-/**
- * @brief Extract the overlay flag byte from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Overlay byte value.
- */
-static inline unsigned char
-trkobj_overlay(const unsigned char *obj) {
-    return trkobj_raw(obj)[8];
-}
-
-/**
- * @brief Extract the surface type from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Surface type as a signed char.
- */
-static inline signed char
-trkobj_surface(const unsigned char *obj) {
-    return (signed char)trkobj_raw(obj)[9];
-}
-
-/**
- * @brief Extract the z-bias ignore flag from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Non-zero if z-bias should be ignored.
- */
-static inline unsigned char
-trkobj_ignore_zbias(const unsigned char *obj) {
-    return trkobj_raw(obj)[10];
-}
-
-/**
- * @brief Extract the multi-tile flag from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Multi-tile flag byte.
- */
-static inline unsigned char
-trkobj_multi(const unsigned char *obj) {
-    return trkobj_raw(obj)[11];
-}
-
 
 static struct RECTANGLE intro_cliprect = { 0, 320, 0, 200 };
 
@@ -1620,13 +1475,13 @@ init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
     char *cracshape;
     char *cinfshape;
     int segIdx, count;
-    int cx;
+    int frames_per_crack_segment;
 
     cracshape = locate_shape_alt(gameresptr, (char *)aCrak);
     cinfshape = locate_shape_alt(gameresptr, (char *)aCinf);
 
-    cx = framespersec / RENDER_CRACK_SEGMENTS_PER_SECOND;
-    frame_index = frame_count / cx;
+    frames_per_crack_segment = framespersec / RENDER_CRACK_SEGMENTS_PER_SECOND;
+    frame_index = frame_count / frames_per_crack_segment;
 
     count = *(short *)cinfshape;
     if (frame_index >= count) {
@@ -1887,8 +1742,8 @@ setup_intro(void) {
         /* Call intro_op */
         {
             struct RECTANGLE callrect;
-            int bx = rect_buffer_index;
-            callrect = frame_dirty_rects[bx];
+            int dirty_rect_index = rect_buffer_index;
+            callrect = frame_dirty_rects[dirty_rect_index];
 
             intro_op(camera_x, camera_y, camera_z, camera_yaw, camera_pitch, draw_car_flag,
                      end_phase, (short *)stars, star_points_ptr, star_point_count_ptr, &callrect,

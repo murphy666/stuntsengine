@@ -81,6 +81,97 @@ extern unsigned char projectiondata9[2];
 extern unsigned char projectiondata10[2];
 extern struct RECTANGLE select_rect_rc;
 extern struct SHAPE3D game3dshapes[];
+
+/*
+ * Legacy resource-file offsets stored in track data still use the original
+ * 16-bit DOS data-segment layout.  game3dshapes[0] lived at offset 30284;
+ * each SHAPE3D descriptor was 22 bytes wide in the original binary.
+ */
+enum {
+    SHAPE3D_RESOURCE_OFS_BASE = 30284u,
+    SHAPE3D_RESOURCE_OFS_STRIDE = 22u,
+    SHAPE3D_RESOURCE_MAX_COUNT = 130,
+
+    /*
+     * Direct game3dshapes[] indices for shapes referenced by the renderer.
+     * The original code used literals like (946 / 22) — index*stride values,
+     * not full DOS data-segment offsets.
+     */
+    SHAPE3D_IDX_HILL_ROAD = 43,
+    SHAPE3D_IDX_START_ARROW = 111,
+    SHAPE3D_IDX_PLAYER_CAR = 126,
+    SHAPE3D_IDX_OPPONENT_CAR = 127,
+    SHAPE3D_CAR_WHEEL_VERT_INDEX = 8,
+};
+
+/**
+ * @brief Look up a loaded shape by its game3dshapes[] index.
+ */
+static inline struct SHAPE3D *
+shape3d_at_index(int shape_index) {
+    if (shape_index < 0 || shape_index >= SHAPE3D_RESOURCE_MAX_COUNT) {
+        return (struct SHAPE3D *)0;
+    }
+    if (game3dshapes[shape_index].shape3d_verts == 0) {
+        return (struct SHAPE3D *)0;
+    }
+    return &game3dshapes[shape_index];
+}
+
+/**
+ * @brief Convert a legacy resource offset to a game3dshapes[] index.
+ *
+ * @return Index on success, or -1 when the offset is out of range or unmapped.
+ */
+static inline int
+shape3d_index_from_resource_offset(unsigned short resource_offset) {
+    unsigned int index;
+
+    if (resource_offset == 0 || resource_offset < SHAPE3D_RESOURCE_OFS_BASE) {
+        return -1;
+    }
+
+    index = (resource_offset - SHAPE3D_RESOURCE_OFS_BASE) / SHAPE3D_RESOURCE_OFS_STRIDE;
+    if (index >= SHAPE3D_RESOURCE_MAX_COUNT) {
+        return -1;
+    }
+    return (int)index;
+}
+
+/**
+ * @brief Resolve a legacy resource offset to a loaded SHAPE3D pointer.
+ *
+ * Track-object records and a few hard-coded renderer paths still store the
+ * original 16-bit file offsets rather than modern pointers.
+ *
+ * @return Pointer to the shape, or NULL when the offset is invalid or unloaded.
+ */
+static inline struct SHAPE3D *
+shape3d_from_resource_offset(unsigned short resource_offset) {
+    int index = shape3d_index_from_resource_offset(resource_offset);
+
+    if (index < 0 || game3dshapes[index].shape3d_verts == 0) {
+        return (struct SHAPE3D *)0;
+    }
+    return &game3dshapes[index];
+}
+
+/**
+ * @brief Return the wheel-vertex block inside a car body shape.
+ *
+ * Car wheel animation writes into vertices starting at index 8 of the
+ * player/opponent body meshes.
+ */
+static inline struct VECTOR *
+shape3d_car_wheel_vertices_at_index(int car_body_shape_index) {
+    struct SHAPE3D *shape = shape3d_at_index(car_body_shape_index);
+
+    if (shape == 0) {
+        return (struct VECTOR *)0;
+    }
+    return &shape->shape3d_verts[SHAPE3D_CAR_WHEEL_VERT_INDEX];
+}
+
 extern unsigned char *material_clrlist2_ptr_cpy;
 extern unsigned char *material_clrlist_ptr_cpy;
 extern unsigned char *material_patlist2_ptr_cpy;
@@ -148,6 +239,7 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape
 void set_projection(int i1, int i2, int i3, int i4);
 void set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3,
                         unsigned short i4);
+void shape3d_set_palette_brightness(unsigned short level);
 int polarAngle(int z, int y);
 unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *cliprect,
                                 int use_scaled_preview);

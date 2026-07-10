@@ -148,4 +148,136 @@ extern unsigned char *tile_obstacle_map;
 extern unsigned char *obstacle_scene_index;
 extern short *wallptr;
 
+/*
+ * Legacy 16-bit offsets embedded in track-object records refer into one of two
+ * packed data blobs loaded at startup: shape metadata (shapeinfos) or per-object
+ * camera tables (track_camera_coords).
+ */
+enum {
+    TRACK_SHAPEINFOS_OFS_BASE = 6664,
+    TRACK_SHAPEINFOS_SIZE = 1680,
+    TRACK_CAMERA_DATA_OFS_BASE = 3220,
+    TRACK_CAMERA_DATA_SIZE = 3444,
+};
+
+/**
+ * @brief Resolve a legacy track-data offset to a host pointer.
+ *
+ * @return Pointer into shapeinfos or track_camera_coords, or NULL if unknown.
+ */
+static inline unsigned char *
+track_resolve_resource_offset(unsigned short legacy_offset) {
+    if ((unsigned int)legacy_offset >= (unsigned int)TRACK_SHAPEINFOS_OFS_BASE
+        && (unsigned int)legacy_offset
+               < (unsigned int)(TRACK_SHAPEINFOS_OFS_BASE + TRACK_SHAPEINFOS_SIZE)) {
+        return shapeinfos + ((unsigned int)legacy_offset - (unsigned int)TRACK_SHAPEINFOS_OFS_BASE);
+    }
+
+    if ((unsigned int)legacy_offset >= (unsigned int)TRACK_CAMERA_DATA_OFS_BASE
+        && (unsigned int)legacy_offset
+               < (unsigned int)(TRACK_CAMERA_DATA_OFS_BASE + TRACK_CAMERA_DATA_SIZE)) {
+        return track_camera_coords
+               + ((unsigned int)legacy_offset - (unsigned int)TRACK_CAMERA_DATA_OFS_BASE);
+    }
+
+    return (unsigned char *)0;
+}
+
+/*
+ * Track-object scene entries (trkObjectList, sceneshapes2, sceneshapes3) share a
+ * fixed 14-byte binary layout.  Helpers below decode fields and resolve shape
+ * pointers without exposing DOS segment arithmetic at every call site.
+ */
+enum {
+    TRACKOBJECT_RAW_SIZE = 14,
+    TRACKOBJECT_ROT_Y_OFFSET = 2,
+    TRACKOBJECT_SHAPE_OFS_OFFSET = 4,
+    TRACKOBJECT_LOSHAPE_OFS_OFFSET = 6,
+    TRACKOBJECT_OVERLAY_OFFSET = 8,
+    TRACKOBJECT_SURFACE_OFFSET = 9,
+    TRACKOBJECT_IGNORE_ZBIAS_OFFSET = 10,
+    TRACKOBJECT_MULTI_OFFSET = 11,
+    TRACKOBJECT_PHYS_OFFSET = 12,
+    TRACKOBJECT_LIST_COUNT = 215,
+    TRACKOBJECT_SCENESHAPES2_COUNT = 19,
+    TRACKOBJECT_SCENESHAPES3_COUNT = 13,
+};
+
+static inline const unsigned char *
+trkobj_entry(const unsigned char *table, unsigned index) {
+    return table + (size_t)(index * TRACKOBJECT_RAW_SIZE);
+}
+
+static inline unsigned short
+trkobj_u16_field(const unsigned char *obj, unsigned offset) {
+    return (unsigned short)obj[offset] | ((unsigned short)obj[offset + 1] << 8);
+}
+
+/** Map a combined scene index onto trkObjectList / sceneshapes2 / sceneshapes3. */
+static inline const unsigned char *
+trkobj_entry_by_scene_index(unsigned index) {
+    if (index < TRACKOBJECT_LIST_COUNT) {
+        return trkobj_entry(trkObjectList, index);
+    }
+    index -= TRACKOBJECT_LIST_COUNT;
+    if (index < TRACKOBJECT_SCENESHAPES2_COUNT) {
+        return trkobj_entry(sceneshapes2, index);
+    }
+    index -= TRACKOBJECT_SCENESHAPES2_COUNT;
+    if (index < TRACKOBJECT_SCENESHAPES3_COUNT) {
+        return trkobj_entry(sceneshapes3, index);
+    }
+    return (const unsigned char *)0;
+}
+
+static inline unsigned short
+trkobj_shape_resource_offset(const unsigned char *obj) {
+    return trkobj_u16_field(obj, TRACKOBJECT_SHAPE_OFS_OFFSET);
+}
+
+static inline unsigned short
+trkobj_loshape_resource_offset(const unsigned char *obj) {
+    return trkobj_u16_field(obj, TRACKOBJECT_LOSHAPE_OFS_OFFSET);
+}
+
+static inline struct SHAPE3D *
+trkobj_shape(const unsigned char *obj) {
+    return shape3d_from_resource_offset(trkobj_shape_resource_offset(obj));
+}
+
+static inline struct SHAPE3D *
+trkobj_loshape(const unsigned char *obj) {
+    return shape3d_from_resource_offset(trkobj_loshape_resource_offset(obj));
+}
+
+static inline short
+trkobj_roty(const unsigned char *obj) {
+    return (short)trkobj_u16_field(obj, TRACKOBJECT_ROT_Y_OFFSET);
+}
+
+static inline unsigned char
+trkobj_overlay(const unsigned char *obj) {
+    return obj[TRACKOBJECT_OVERLAY_OFFSET];
+}
+
+static inline signed char
+trkobj_surface(const unsigned char *obj) {
+    return (signed char)obj[TRACKOBJECT_SURFACE_OFFSET];
+}
+
+static inline unsigned char
+trkobj_ignore_zbias(const unsigned char *obj) {
+    return obj[TRACKOBJECT_IGNORE_ZBIAS_OFFSET];
+}
+
+static inline unsigned char
+trkobj_multi(const unsigned char *obj) {
+    return obj[TRACKOBJECT_MULTI_OFFSET];
+}
+
+static inline unsigned char
+trkobj_physical(const unsigned char *obj) {
+    return obj[TRACKOBJECT_PHYS_OFFSET];
+}
+
 #endif /* TRACK_H */

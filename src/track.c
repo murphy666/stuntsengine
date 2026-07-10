@@ -49,16 +49,27 @@ static unsigned short bevel_face_color = 11;
 
 
 /* file-local data (moved from data_global.c) */
-static unsigned char animation_state_advance_table[6] = { 0, 0, 1, 0, 1, 0 };
-static unsigned char animation_frame_transition_table[6] = { 0, 1, 0, 0, 1, 0 };
-static unsigned char terrain_conn_from_west[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
-                                                     0, 2, 3, 0, 0, 1, 1, 3, 2, 0 };
-static unsigned char terrain_conn_to_east[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
-                                                   1, 0, 0, 3, 2, 2, 3, 1, 1, 0 };
-static unsigned char terrain_conn_from_north[20] = { 0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
-                                                      4, 5, 0, 0, 4, 1, 5, 4, 1, 0 };
-static unsigned char terrain_conn_to_south[19] = { 0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
-                                                    4, 0, 5, 4, 0, 5, 1, 1, 4 };
+/*
+ * Compact, read-only lookup tables ported from the original assembly track
+ * logic.
+ *
+ * They are not runtime buffers. They encode the small state machine used by
+ * the original code when validating terrain connectivity and when advancing
+ * checkpoint animation state while walking track pieces.
+ */
+static const unsigned char checkpoint_animation_state_next_table[6] = { 0, 0, 1, 0, 1, 0 };
+static const unsigned char checkpoint_animation_transition_table[6] = { 0, 1, 0, 0, 1, 0 };
+
+/* Terrain connectivity tables: map one tile-side connection code to the code
+ * expected on the opposite side when the editor validates a track layout. */
+static const unsigned char terrain_conn_from_west[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 1, 3,
+                                                          0, 2, 3, 0, 0, 1, 1, 3, 2, 0 };
+static const unsigned char terrain_conn_to_east[20] = { 0, 0, 0, 0, 0, 0, 1, 2, 0, 3,
+                                                        1, 0, 0, 3, 2, 2, 3, 1, 1, 0 };
+static const unsigned char terrain_conn_from_north[20] = { 0, 0, 0, 0, 0, 0, 1, 1, 5, 0,
+                                                           4, 5, 0, 0, 4, 1, 5, 4, 1, 0 };
+static const unsigned char terrain_conn_to_south[19] = { 0, 0, 0, 0, 0, 0, 1, 0, 5, 1,
+                                                         4, 0, 5, 4, 0, 5, 1, 1, 4 };
 
 /*
  * trkmenu.c - Track Menu Functions
@@ -201,9 +212,15 @@ track_consume_dialog_click(void) {
     mousebutinputcode = 0;
 }
 
-/* Camera coordinate data for track objects */
-/* Original DS offsets 3220..6663 (3444 bytes) */
-unsigned char track_camera_coords[3444] = {
+/*
+ * Track-object camera data table.
+ *
+ * The original game stored per-object camera offset/angle data in a packed
+ * byte blob referenced by track object records. This array is the translated
+ * form of that blob, and the helper below resolves the original 16-bit offsets
+ * into pointers into it.
+ */
+unsigned char track_camera_coords[TRACK_CAMERA_DATA_SIZE] = {
     136, 255, 255, 255, 178, 254, 120, 0,   255, 255, 178, 254, 136, 255, 255, 255, 78,  1,   120,
     0,   255, 255, 78,  1,   200, 0,   0,   0,   0,   0,   200, 0,   0,   0,   178, 254, 56,  255,
     0,   0,   78,  1,   136, 255, 255, 255, 128, 0,   120, 0,   255, 255, 128, 0,   136, 255, 255,
@@ -721,14 +738,7 @@ unsigned char *tile_obstacle_map = 0;
 unsigned char *obstacle_scene_index = 0;
 short *wallptr = 0;
 
-/* trkObjectList is raw packed 14-byte records; access fields via offset */
-
-enum {
-    TRACKOBJECT_RAW_SIZE = 14,
-    TRACKOBJECT_LIST_COUNT = 215,
-    SCENESHAPES2_COUNT = 19,
-    SCENESHAPES3_COUNT = 13
-};
+/* trkObjectList is raw packed 14-byte records; access fields via track.h helpers */
 
 /* Resolve the element multi-tile flags across the track and scenery tables. */
 static unsigned char
@@ -737,11 +747,11 @@ track_editor_multitile_flag(unsigned elem) {
         return trkObjectList[elem * TRACKOBJECT_RAW_SIZE + 11u];
     }
     elem -= TRACKOBJECT_LIST_COUNT;
-    if (elem < SCENESHAPES2_COUNT) {
+    if (elem < TRACKOBJECT_SCENESHAPES2_COUNT) {
         return sceneshapes2[elem * TRACKOBJECT_RAW_SIZE + 11u];
     }
-    elem -= SCENESHAPES2_COUNT;
-    if (elem < SCENESHAPES3_COUNT) {
+    elem -= TRACKOBJECT_SCENESHAPES2_COUNT;
+    if (elem < TRACKOBJECT_SCENESHAPES3_COUNT) {
         return sceneshapes3[elem * TRACKOBJECT_RAW_SIZE + 11u];
     }
     return 0;
@@ -1568,7 +1578,7 @@ load_tracks_menu_shapes(void) {
     unsigned char elem_dirty_flags[132]; /* element dirty flags - 132 bytes */
     unsigned char terr_dirty_flags[132]; /* terrain dirty flags - 132 bytes */
 
-    int i, si;
+    int i;
     unsigned char *elem_map;
     unsigned char *terr_map;
     unsigned char multiflag;
@@ -2338,9 +2348,9 @@ load_tracks_menu_shapes(void) {
         /*----------------------------------------
          * Map keyboard shortcuts to picker categories.
          *--------------------------------------------------------------*/
-        for (si = 0; si < 10; si++) {
-            if (track_segment_offset_table[si] == input_code) {
-                current_category = si + 1;
+        for (int category_idx = 0; category_idx < 10; category_idx++) {
+            if (track_segment_offset_table[category_idx] == input_code) {
+                current_category = category_idx + 1;
                 input_code = 0;
                 break;
             }
@@ -2351,13 +2361,13 @@ load_tracks_menu_shapes(void) {
 		 /*--------------------------------------------------------------*/
         if (input_code == 99 || input_code == 67) {
             /* 'C' or 'c' - Check track */
-            si = track_setup();
+            int setup_result = track_setup();
             track_consume_dialog_click();
             ui_dialog_show_restext(
                 UI_DIALOG_CONFIRM, 1, locate_text_res(tedit_res, "eok"), /* Error/OK messages */
                 TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
 
-            if (si > 1) {
+            if (setup_result > 1) {
                 picker_mode = 0;
                 if (track_pieces_counter == 0) {
                     cursor_col = track_start_col;
@@ -2675,15 +2685,15 @@ load_tracks_menu_shapes(void) {
                     if (dialog_result != TRACK_U8_INVALID && dialog_result != 5) {
                         /* Clear track */
                         elem_map = (unsigned char *)track_elem_map;
-                        for (si = 0; si < TRACK_TRACKDATA_ELEM_BYTES; si++) {
-                            elem_map[si] = 0;
+                        for (int byte_idx = 0; byte_idx < TRACK_TRACKDATA_ELEM_BYTES; byte_idx++) {
+                            elem_map[byte_idx] = 0;
                         }
                         /* Load terrain template */
                         aTer0[3] = (char)'0' + dialog_result;
                         terrain_template_ptr = locate_shape_alt(tedit_res, aTer0);
                         terr_map = (unsigned char *)track_terrain_map;
-                        for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-                            terr_map[si] = ((unsigned char *)terrain_template_ptr)[si];
+                        for (int byte_idx = 0; byte_idx < TRACK_TRACKDATA_TOTAL_BYTES; byte_idx++) {
+                            terr_map[byte_idx] = ((unsigned char *)terrain_template_ptr)[byte_idx];
                         }
                         gameconfig.game_trackname[0] = 0;
                         redraw_map = true;
@@ -2704,6 +2714,7 @@ load_tracks_menu_shapes(void) {
                             TRACK_DIALOG_AUTO_POS, TRACK_DIALOG_AUTO_POS, performGraphColor, 0, 0);
                     }
                     if (!track_modified || dialog_result != 0) {
+                        int file_dialog_result;
                         g_is_busy = true;
                         redraw_map = true;
                         {
@@ -2713,7 +2724,7 @@ load_tracks_menu_shapes(void) {
 
                             /* File select dialog */
                             track_consume_dialog_click();
-                            si = do_fileselect_dialog(track_highscore_path_buffer,
+                            file_dialog_result = do_fileselect_dialog(track_highscore_path_buffer,
                                                       gameconfig.game_trackname, ".trk",
                                                       locate_text_res(mainresptr, "trk"));
                             /* do_fileselect_dialog already wrote the selected base name (no extension)
@@ -2724,7 +2735,7 @@ load_tracks_menu_shapes(void) {
                         file_build_path(track_highscore_path_buffer, gameconfig.game_trackname,
                                         ".trk", g_path_buf, sizeof(g_path_buf));
 
-                        if (si > 0) {
+                        if (file_dialog_result > 0) {
                             /* Load track file */
                             file_read_fatal(g_path_buf, (char *)track_elem_map);
                             track_setup();
@@ -2743,15 +2754,15 @@ load_tracks_menu_shapes(void) {
                     if (dialog_result != TRACK_U8_INVALID && dialog_result != 5) {
                         /* Clear track elements */
                         elem_map = (unsigned char *)track_elem_map;
-                        for (si = 0; si < TRACK_TRACKDATA_ELEM_BYTES; si++) {
-                            elem_map[si] = 0;
+                        for (int byte_idx = 0; byte_idx < TRACK_TRACKDATA_ELEM_BYTES; byte_idx++) {
+                            elem_map[byte_idx] = 0;
                         }
                         /* Load terrain template */
                         aTer0[3] = (char)'0' + dialog_result;
                         terrain_template_ptr = locate_shape_alt(tedit_res, aTer0);
                         terr_map = (unsigned char *)track_terrain_map;
-                        for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-                            terr_map[si] = ((unsigned char *)terrain_template_ptr)[si];
+                        for (int byte_idx = 0; byte_idx < TRACK_TRACKDATA_TOTAL_BYTES; byte_idx++) {
+                            terr_map[byte_idx] = ((unsigned char *)terrain_template_ptr)[byte_idx];
                         }
                         gameconfig.game_trackname[0] = 0;
                         redraw_map = true;
@@ -2768,9 +2779,9 @@ load_tracks_menu_shapes(void) {
                     g_is_busy = true;
                     redraw_map = true;
                     track_consume_dialog_click();
-                    si = do_savefile_dialog(track_highscore_path_buffer, gameconfig.game_trackname,
+                    int save_dialog_result = do_savefile_dialog(track_highscore_path_buffer, gameconfig.game_trackname,
                                             locate_text_res(mainresptr, "trk"));
-                    if (si != 0) {
+                    if (save_dialog_result != 0) {
                         file_build_path(track_highscore_path_buffer, gameconfig.game_trackname,
                                         ".trk", g_path_buf, sizeof(g_path_buf));
                         if (file_find(g_path_buf) != 0) {
@@ -2785,9 +2796,9 @@ load_tracks_menu_shapes(void) {
                             }
                         }
                         if (!save_cancel) {
-                            si = file_write_fatal(g_path_buf, (char *)track_elem_map,
+                            int write_result = file_write_fatal(g_path_buf, (char *)track_elem_map,
                                                   TRACK_FILE_SAVE_BYTES);
-                            if (si != 0) {
+                            if (write_result != 0) {
                                 highscore_write_a_(0);
                                 track_modified = false;
                             }
@@ -2824,7 +2835,7 @@ load_tracks_menu_shapes(void) {
         if (current_category == 0) {
             /* Terrain mode */
             terr_map = (unsigned char *)track_terrain_map;
-            si = terrainrows[cursor_row + 1] + cursor_col + 1;
+            int terrain_map_idx = terrainrows[cursor_row + 1] + cursor_col + 1;
 
             /* Swap if placing on same position */
             if (cursor_col == last_place_col && cursor_row == last_place_row) {
@@ -2834,7 +2845,7 @@ load_tracks_menu_shapes(void) {
                 redraw_cursor = true;
             }
             else {
-                swap_element = terr_map[si];
+                swap_element = terr_map[terrain_map_idx];
                 if (swap_element >= TRACK_MARKER_CORNER)
                     swap_element = 0;
                 last_place_col = cursor_col;
@@ -2842,7 +2853,7 @@ load_tracks_menu_shapes(void) {
             }
 
             /* Place terrain */
-            terr_map[si] = selected_element;
+            terr_map[terrain_map_idx] = selected_element;
             track_modified = true;
             needs_validation = true;
             redraw_map = true;
@@ -2924,21 +2935,7 @@ trkobject_raw_entry(unsigned char elem) {
 
 static unsigned char *
 trk_resolve_ofs(unsigned short ofs) {
-    enum { TRKINFO_OFS_BASE = 6664, CAMERA_DATA_OFS_BASE = 3220 };
-    unsigned int trkinfo_len = (unsigned int)1680u;
-    unsigned int camera_data_len = (unsigned int)3444u;
-
-    if ((unsigned int)ofs >= (unsigned int)TRKINFO_OFS_BASE
-        && (unsigned int)ofs < (unsigned int)(TRKINFO_OFS_BASE + trkinfo_len)) {
-        return shapeinfos + ((unsigned int)ofs - (unsigned int)TRKINFO_OFS_BASE);
-    }
-
-    if ((unsigned int)ofs >= (unsigned int)CAMERA_DATA_OFS_BASE
-        && (unsigned int)ofs < (unsigned int)(CAMERA_DATA_OFS_BASE + camera_data_len)) {
-        return track_camera_coords + ((unsigned int)ofs - (unsigned int)CAMERA_DATA_OFS_BASE);
-    }
-
-    return (unsigned char *)0;
+    return track_resolve_resource_offset(ofs);
 }
 
 static unsigned char *
@@ -2985,58 +2982,57 @@ track_setup_error_return(unsigned char trackErrorCode, unsigned char trkColIndex
 
 int
 track_setup(void) {
-    /* Snapshot td15 at entry to detect runtime overwrites */
+    /* Local state for the multi-phase track validation and path-building walk. */
+    unsigned char visited[904];
+    unsigned char subTOIBlockArr[904];
+    unsigned char connStatusArr[904];
 
+    unsigned char trkColIndex;
+    unsigned char trkRowIndex;
+    unsigned char tileElem;
+    unsigned char tileTerr;
+    unsigned char tileEntryPoint = 0;
+    unsigned char prevConnCode;
+    unsigned char sfCount;
+    unsigned char sfPassCount;
+    unsigned char matchCount;
+    unsigned char trackErrorCode;
+    unsigned char loopFoundFlag;
+    unsigned char subTOIBlock;
+    unsigned char MconnStatus;
+    unsigned char MprevConnStatus = 0;
+    unsigned char MprevColIndex = 0;
+    unsigned char MprevRowIndex = 0;
+    unsigned char MprevTileElem = 0;
+    unsigned char prevSubBlock = 0;
+    unsigned char distCount;
+    unsigned char McurrExitPoint;
+    unsigned char opp3Val;
+    unsigned char tcompDepth;
+    signed char connCheckFlag;
 
-    /* --- Local variable declarations matching ASM stack frame --- */
-    unsigned char visited[904];        /* var_738 */
-    unsigned char subTOIBlockArr[904]; /* var_AD4..var_subTOIBlock area */
-    unsigned char connStatusArr[904];  /* var_398 */
+    int trackDirection;
+    int prevPieceIdx;
+    int tempColExt;
+    int tempRowIdx2;
+    int checkX, checkY, checkZ;
 
-    unsigned char trkColIndex;         /* var_trkColIndex */
-    unsigned char trkRowIndex;         /* var_trkRowIndex */
-    unsigned char tileElem;            /* var_tileElem */
-    unsigned char tileTerr;            /* var_tileTerr */
-    unsigned char tileEntryPoint = 0;  /* var_tileEntryPoint */
-    unsigned char prevConnCode;        /* var_prevConnCode */
-    unsigned char sfCount;             /* var_sfCount */
-    unsigned char sfPassCount;         /* var_4 */
-    unsigned char matchCount;          /* var_2 */
-    unsigned char trackErrorCode;      /* var_trackErrorCode */
-    unsigned char loopFoundFlag;       /* var_AE8 */
-    unsigned char subTOIBlock;         /* var_subTOIBlock */
-    unsigned char MconnStatus;         /* var_MconnStatus */
-    unsigned char MprevConnStatus = 0; /* var_MprevConnStatus */
-    unsigned char MprevColIndex = 0;   /* var_MprevColIndex */
-    unsigned char MprevRowIndex = 0;   /* var_MprevRowIndex */
-    unsigned char MprevTileElem = 0;   /* var_MprevTileElem */
-    unsigned char prevSubBlock = 0;    /* var_3AA */
-    unsigned char distCount;           /* var_3A8 */
-    unsigned char McurrExitPoint;      /* var_McurrExitPoint */
-    unsigned char opp3Val;             /* var_74C */
-    unsigned char tcompDepth;          /* var_746 */
-    signed char connCheckFlag;         /* var_connCheckFlag */
+    unsigned char *ptrTOInfo;
+    struct TRKOBJINFO_RAW *ptrCurrTOInfo;
+    short *cameraOfs;
 
-    int trackDirection; /* var_trackDirection */
-    int prevPieceIdx;   /* var_3AC */
-    int tempColExt;     /* var_AEA */
-    int tempRowIdx2;    /* var_AEC */
-    int checkX, checkY, checkZ; /* var_ADA, var_AD8, var_AD6 */
+    struct TCOMP_ENTRY *tcompArr;
+    struct TCOMP_ENTRY *tcompEntry;
 
-    /* Pointers */
-    unsigned char *ptrTOInfo;             /* var_ptrTOInfo */
-    struct TRKOBJINFO_RAW *ptrCurrTOInfo; /* var_ptrCurrTOInfo */
-    short *cameraOfs;                     /* var_ADE (near ptr) */
+    int chkPathIdx;
+    int chkTileElem;
 
-    /* tcomp buffer (-allocated) */
-    struct TCOMP_ENTRY *tcompArr;   /* tcomp base pointer */
-    struct TCOMP_ENTRY *tcompEntry; /* current tcomp entry */
-
-    /* Phase 10 temporaries */
-    int chkPathIdx;  /* var_A */
-    int chkTileElem; /* var_C */
-
-    int si, di; /* register variables */
+    int tile_idx;
+    int sub_block_idx;
+    int piece_idx;
+    int checkpoint_limit;
+    int checkpoint_idx;
+    int checkpoint_counter;
 
     /* ===== PHASE 1: Allocate tcomp buffer (64 * 14 = 896 bytes) ===== */
     tcompArr = (struct TCOMP_ENTRY *)mmgr_alloc_resbytes("tcomp", (long)TRACK_SETUP_TCOMP_BYTES);
@@ -3051,8 +3047,8 @@ track_setup(void) {
     trackErrorCode = 0;
 
     /* Clear tile_obstacle_map */
-    for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-        tile_obstacle_map[si] = TRACK_U8_INVALID;
+    for (tile_idx = 0; tile_idx < TRACK_TRACKDATA_TOTAL_BYTES; tile_idx++) {
+        tile_obstacle_map[tile_idx] = TRACK_U8_INVALID;
     }
 
     /* ===== PHASE 3: West-to-East terrain connectivity ===== */
@@ -3133,10 +3129,10 @@ track_setup(void) {
     distCount = 0;
     loopFoundFlag = 0;
 
-    for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-        visited[si] = 0;
-        track_waypoint_next[si] = -1;
-        track_waypoint_alt[si] = -1;
+    for (tile_idx = 0; tile_idx < TRACK_TRACKDATA_TOTAL_BYTES; tile_idx++) {
+        visited[tile_idx] = 0;
+        track_waypoint_next[tile_idx] = -1;
+        track_waypoint_alt[tile_idx] = -1;
     }
 
     /* Set start position */
@@ -3272,10 +3268,11 @@ track_setup(void) {
             matchCount = 0;
             ptrTOInfo = trkobject_info_ptr((unsigned char)tileElem);
             if (ptrTOInfo != (unsigned char *)0) {
-                for (si = 0; trkobjinfo_block(ptrTOInfo, 0)->si_noOfBlocks > (unsigned char)si;
-                     si++) {
+                for (sub_block_idx = 0;
+                     trkobjinfo_block(ptrTOInfo, 0)->si_noOfBlocks > (unsigned char)sub_block_idx;
+                     sub_block_idx++) {
                     connCheckFlag = -1; /* unmatched */
-                    ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)si);
+                    ptrCurrTOInfo = trkobjinfo_block(ptrTOInfo, (unsigned char)sub_block_idx);
 
                     /* Check entryPoint match */
                     if (ptrCurrTOInfo->si_entryPoint == tileEntryPoint) {
@@ -3285,7 +3282,7 @@ track_setup(void) {
                         }
                         else {
                             trackErrorCode = 4; /* elem_mism */
-                            break;              /* exit for-si */
+                            break;              /* exit sub-block search */
                         }
                     }
                     else {
@@ -3296,7 +3293,7 @@ track_setup(void) {
                             }
                             else {
                                 trackErrorCode = 4; /* elem_mism */
-                                break;              /* exit for-si */
+                                break;              /* exit sub-block search */
                             }
                         }
                         /* else connCheckFlag stays -1 */
@@ -3307,20 +3304,20 @@ track_setup(void) {
                         if (visited[trackrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
                             != 0) {
                             /* Already visited: scan existing pieces for a loop */
-                            for (di = 0; di < track_pieces_counter; di++) {
+                            for (piece_idx = 0; piece_idx < track_pieces_counter; piece_idx++) {
                                 /* Check col match */
-                                if (path_col[di] != trkColIndex)
+                                if (path_col[piece_idx] != trkColIndex)
                                     continue;
                                 /* Check row match */
-                                if (path_row[di] != trkRowIndex)
+                                if (path_row[piece_idx] != trkRowIndex)
                                     continue;
                                 /* Check subTOIBlock match */
-                                if (subTOIBlockArr[di] != (unsigned char)si)
+                                if (subTOIBlockArr[piece_idx] != (unsigned char)sub_block_idx)
                                     continue;
                                 /* Check connStatus match */
-                                if (connStatusArr[di] != (unsigned char)connCheckFlag) {
+                                if (connStatusArr[piece_idx] != (unsigned char)connCheckFlag) {
                                     trackErrorCode = 5; /* wrong_way */
-                                    break;              /* exit for-di */
+                                    break;              /* exit piece scan */
                                 }
                                 /* Match found - link it */
                                 connCheckFlag = -1; /* mark as already linked */
@@ -3331,15 +3328,15 @@ track_setup(void) {
                                         /* td01 slot already used, use td02 instead */
                                         linkPtr = &track_waypoint_alt[prevPieceIdx];
                                     }
-                                    *linkPtr = (short)di;
+                                    *linkPtr = (short)piece_idx;
                                 }
-                                if (di == 0) {
+                                if (piece_idx == 0) {
                                     loopFoundFlag = 1;
                                 }
                                 /* DON'T break - continue scanning for wrong_way errors */
                             }
                             if (trackErrorCode != 0)
-                                break; /* exit for-si on wrong_way */
+                                break; /* exit sub-block search on wrong_way */
                         }
                     } /* end connCheckFlag >= 0 */
                     if (connCheckFlag < 0) {
@@ -3349,21 +3346,21 @@ track_setup(void) {
                     /* First match or additional match? */
                     if (matchCount == 0) {
                         /* First match: save it */
-                        subTOIBlock = (unsigned char)si;
+                        subTOIBlock = (unsigned char)sub_block_idx;
                         MconnStatus = (unsigned char)connCheckFlag;
                     }
                     else {
                         /* Additional match: push to tcomp backtrack stack */
                         if (tcompDepth >= TRACK_SETUP_DEPTH_MAX) {
                             trackErrorCode = 8; /* many_path */
-                            break;              /* exit for-si */
+                            break;              /* exit sub-block search */
                         }
 
                         tcompEntry = &tcompArr[tcompDepth];
                         tcompEntry->tc_col = trkColIndex;
                         tcompEntry->tc_row = trkRowIndex;
                         tcompEntry->tc_tileElem = tileElem;
-                        tcompEntry->tc_subBlock = (unsigned char)si;
+                        tcompEntry->tc_subBlock = (unsigned char)sub_block_idx;
                         tcompEntry->tc_connStatus = (unsigned char)connCheckFlag;
                         tcompEntry->tc_prevCode = prevConnCode;
                         tcompEntry->tc_prevIdx = (short)prevPieceIdx;
@@ -3379,7 +3376,7 @@ track_setup(void) {
                 }
             } /* if (ptrTOInfo != NULL) */
             if (trackErrorCode != 0)
-                break; /* exit while(1) on for-si error */
+                break; /* exit main loop on sub-block search error */
 
             if (matchCount == 0) {
                 /* No match found */
@@ -3551,10 +3548,10 @@ track_setup(void) {
 
                     /* Apply opp3 direction lookup */
                     if (MconnStatus != 0) {
-                        opp3Val = animation_frame_transition_table[(signed char)opp3Val];
+                        opp3Val = checkpoint_animation_transition_table[(signed char)opp3Val];
                     }
                     else {
-                        opp3Val = animation_state_advance_table[(signed char)opp3Val];
+                        opp3Val = checkpoint_animation_state_next_table[(signed char)opp3Val];
                     }
 
                     /* Get arrowOrient -> trackDirection */
@@ -3745,29 +3742,29 @@ track_setup(void) {
     track_start_row = startrow2;
 
     /* Compute checkpoint limit = min(track_pieces_counter / 3, 64) */
-    si = track_pieces_counter / 3;
-    if (si > 64) {
-        si = 64;
+    checkpoint_limit = track_pieces_counter / 3;
+    if (checkpoint_limit > 64) {
+        checkpoint_limit = 64;
     }
-    game_exit_request_flag = (unsigned char)si;
+    game_exit_request_flag = (unsigned char)checkpoint_limit;
 
     /* Clear subTOIBlockArr for checkpoint phase */
-    for (si = 0; si < TRACK_TRACKDATA_TOTAL_BYTES; si++) {
-        subTOIBlockArr[si] = 0;
+    for (tile_idx = 0; tile_idx < TRACK_TRACKDATA_TOTAL_BYTES; tile_idx++) {
+        subTOIBlockArr[tile_idx] = 0;
     }
 
     /* Init checkpoint loop */
-    di = 0; /* checkpoint counter */
-    si = 0; /* iteration index */
+    checkpoint_counter = 0;
+    checkpoint_idx = 0;
 
     /* ===== PHASE 10: Checkpoint computation loop ===== */
-    while (si < (signed char)game_exit_request_flag) {
+    while (checkpoint_idx < (signed char)game_exit_request_flag) {
         int mapIdx;
         unsigned char *visitedPtr;
         struct TRKOBJINFO_RAW *subBlockInfo;
 
-        /* Compute path index: si * track_pieces_counter / checkpointLimit */
-        chkPathIdx = track_pieces_counter * si / (int)(signed char)game_exit_request_flag;
+        /* Compute path index: checkpoint_idx * track_pieces_counter / checkpointLimit */
+        chkPathIdx = track_pieces_counter * checkpoint_idx / (int)(signed char)game_exit_request_flag;
 
         /* Read col/row from path */
         trkColIndex = path_col[chkPathIdx];
@@ -3777,7 +3774,7 @@ track_setup(void) {
         mapIdx = terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex;
         visitedPtr = &subTOIBlockArr[mapIdx];
         if (*visitedPtr != 0) {
-            si++;
+            checkpoint_idx++;
             continue; /* already processed, skip */
         }
         *visitedPtr = 1; /* mark as processed */
@@ -3850,49 +3847,54 @@ track_setup(void) {
             if (track_terrain_map[terrainrows[(signed char)trkRowIndex] + (signed char)trkColIndex]
                 == 6) {
                 /* Hill: set track_element_height_ofs to 450 */
-                ((short *)track_element_height_ofs)[di] = TRACK_HILL_HEIGHT_OFFSET;
+                ((short *)track_element_height_ofs)[checkpoint_counter] = TRACK_HILL_HEIGHT_OFFSET;
             }
             else {
                 /* Not hill: set track_element_height_ofs to 0 */
-                ((short *)track_element_height_ofs)[di] = 0;
+                ((short *)track_element_height_ofs)[checkpoint_counter] = 0;
             }
 
             /* Store in track_cam_height_base (always 0) */
-            ((short *)track_cam_height_base)[di] = 0;
+            ((short *)track_cam_height_base)[checkpoint_counter] = 0;
 
-            /* waypoint_world_pos[di*3 + 1] = track_element_height_ofs[di] + camData[1] */
-            waypoint_world_pos[di * 3 + 1] = (short)((short *)track_element_height_ofs)[di] + checkY;
+            /* waypoint_world_pos[checkpoint_counter*3 + 1] = track_element_height_ofs[checkpoint_counter] + camData[1] */
+            waypoint_world_pos[checkpoint_counter * 3 + 1]
+                = (short)((short *)track_element_height_ofs)[checkpoint_counter] + checkY;
 
-            /* Compute Z position (waypoint_world_pos[di*3 + 2]) */
+            /* Compute Z position (waypoint_world_pos[checkpoint_counter*3 + 2]) */
             if (trkobject_multitile_flag((unsigned char)chkTileElem)
                 & TRACK_MULTI_TILE_EXTENDS_DOWN) {
                 /* Multi-tile */
-                waypoint_world_pos[di * 3 + 2] = (short)trackpos[(signed char)trkRowIndex] + checkZ;
+                waypoint_world_pos[checkpoint_counter * 3 + 2]
+                    = (short)trackpos[(signed char)trkRowIndex] + checkZ;
             }
             else {
                 /* Single-tile */
-                waypoint_world_pos[di * 3 + 2] = (short)trackcenterpos[(signed char)trkRowIndex] + checkZ;
+                waypoint_world_pos[checkpoint_counter * 3 + 2]
+                    = (short)trackcenterpos[(signed char)trkRowIndex] + checkZ;
             }
 
-            /* Compute X position (waypoint_world_pos[di*3]) */
+            /* Compute X position (waypoint_world_pos[checkpoint_counter*3]) */
             if (trkobject_multitile_flag((unsigned char)chkTileElem)
                 & TRACK_MULTI_TILE_EXTENDS_RIGHT) {
                 /* Multi-tile */
-                waypoint_world_pos[(ptrdiff_t)(di * 3)] = (short)trackpos2[(signed char)trkColIndex + 1] + checkX;
+                waypoint_world_pos[(ptrdiff_t)(checkpoint_counter * 3)]
+                    = (short)trackpos2[(signed char)trkColIndex + 1] + checkX;
             }
             else {
                 /* Single-tile */
-                waypoint_world_pos[(ptrdiff_t)(di * 3)] = (short)trackcenterpos2[(signed char)trkColIndex] + checkX;
+                waypoint_world_pos[(ptrdiff_t)(checkpoint_counter * 3)]
+                    = (short)trackcenterpos2[(signed char)trkColIndex] + checkX;
             }
 
-            di++; /* checkpoint counter++ */
+            checkpoint_counter++;
         }
 
-        si++; /* iteration index++ */
+        checkpoint_idx++;
     }
 
     /* ===== PHASE 11: Success path ===== */
-    game_exit_request_flag = (unsigned char)di;
+    game_exit_request_flag = (unsigned char)checkpoint_counter;
     mmgr_release((char *)tcompArr);
     return 0;
 }
