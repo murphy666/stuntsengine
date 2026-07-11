@@ -33,36 +33,124 @@
 #define REND_DIST_MULT 8
 #endif
 
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "stunts.h"
 #include "math.h"
-#include "shape3d.h"
-#include "shape2d.h"
-#include "memmgr.h"
-#include "ressources.h"
-#include "keyboard.h"
-#include "font.h"
+#include "track.h"
+
+#define RENDER_INVALID_COORD 9999
+#define RENDER_INVALID_COORD_VALUE -1
+#define RENDER_DEFAULT_DIALOG_FONT_COLOR 15
+#define RENDER_DEFAULT_CAMERA_VIEW_MATRIX 5
+#define RENDER_DEFAULT_OBJECT_VISIBILITY_STATE 14
+#define RENDER_DEFAULT_BUTTON_TEXT_COLOR 15
+#define RENDER_BUTTON_SHADOW_COLOR 8
+#define RENDER_BUTTON_HIGHLIGHT_COLOR 7
+#define RENDER_DEFAULT_GRAPH_COLOR 1
+#define RENDER_DIALOG_ARGUMENT_VALUE 4
+#define RENDER_RECT_ARRAY_COUNT 15
+#define RENDER_TRANSFORMED_SHAPE_CAPACITY 29
+#define RENDER_TRANSFORMED_SHAPE_ARG_CAPACITY 30
+#define RENDER_TEXT_BUFFER_CAPACITY 2048
+#define RENDER_INITIAL_CAMERA_ROTATION_X 210
+#define RENDER_INITIAL_CAMERA_ROTATION_Z 464
+#define RENDER_INITIAL_CAMERA_ROTATION_Y 80
+
+struct RECTANGLE rect_invalid = { RENDER_INVALID_COORD, RENDER_INVALID_COORD_VALUE,
+                                  RENDER_INVALID_COORD, RENDER_INVALID_COORD_VALUE };
+int dialog_fnt_colour = RENDER_DEFAULT_DIALOG_FONT_COLOR;
+unsigned short camera_view_matrix = RENDER_DEFAULT_CAMERA_VIEW_MATRIX;
+unsigned short object_visibility_state = RENDER_DEFAULT_OBJECT_VISIBILITY_STATE;
+unsigned short button_text_color = RENDER_DEFAULT_BUTTON_TEXT_COLOR;
+unsigned short button_shadow_color = RENDER_BUTTON_SHADOW_COLOR;
+unsigned short button_highlight_color = RENDER_BUTTON_HIGHLIGHT_COLOR;
+int performGraphColor = RENDER_DEFAULT_GRAPH_COLOR;
+unsigned short dialogarg2 = RENDER_DIALOG_ARGUMENT_VALUE;
+struct MATRIX mat_car_orientation = { 0 };
+int screen_display_toggle_flag = 0;
+char current_screen_buffer_selector = 0;
+struct SPRITE *mmouspriteptr = 0;
+int waitflag = 0;
+short sprite_row_offset_table = 0;
+struct SPRITE *smouspriteptr = 0;
+char screen_shake_intensity = 0;
+short angle_rotation_state[2] = { 0, 0 };
+void *opp_res = 0;
+struct RECTANGLE frame_dirty_rects[RENDER_RECT_ARRAY_COUNT] = { 0 };
+struct RECTANGLE terrain_rect = { 0, 0, 0, 0 };
+struct RECTANGLE world_object_rect = { 0, 0, 0, 0 };
+unsigned short skybox_grd_color = 0;
+unsigned char replay_fps_inverse_scale = 0;
+char idle_expired = 0;
+short video_flag1_is1 = 0;
+short camera_y_offset = 0;
+struct SPRITE *wndsprite = 0;
+unsigned short framespersec2 = 0;
+short meter_needle_color = 0;
+struct PLANE *current_planptr = 0;
+short video_flag2_is1 = 0;
+short current_rotation_angle_value = 0;
+struct VECTOR vec_movement_local = { 0 };
+struct VECTOR vec_planerotopresult = { 0 };
+short pState_minusRotate_z_2 = 0;
+short pState_minusRotate_x_2 = 0;
+short pState_minusRotate_y_2 = 0;
+short pState_f36Mminf40sar2 = 0;
+void *dasmshapeptr = 0;
+struct PLANE *planptr = 0;
+short video_flag3_isFFFF = -1;
+struct RECTANGLE rect_buffer_front[RENDER_RECT_ARRAY_COUNT] = { 0 };
+struct SPRITE *mouseunkspriteptr = 0;
+unsigned short sdgame2_widths[3] = { 0 };
+struct RECTANGLE rect_buffer_back[RENDER_RECT_ARRAY_COUNT] = { 0 };
+int height_above_replaybar = 0;
+#pragma pack(push, 1)
+char video_flag6_is1 = 0;
+#pragma pack(pop)
+int dashbmp_y = 0;
+void *sdgame2shapes[] = { 0, 0, 0, 0, 0 };
+bool replaybar_toggle = false;
+int dastbmp_y = 0;
+int roofbmpheight = 0;
+short video_flag4_is1 = 0;
+short sprite_transformation_angle = 0;
+char resID_byte1[RENDER_TEXT_BUFFER_CAPACITY] = { 0 };
+bool video_flag5_is0 = false;
+bool replaybar_enabled = false;
+char cameramode = 0;
+unsigned char timertestflag2 = 0;
+unsigned short rotation_x_angle = RENDER_INITIAL_CAMERA_ROTATION_X;
+unsigned short rotation_z_angle = RENDER_INITIAL_CAMERA_ROTATION_Z;
+unsigned short rotation_y_angle = RENDER_INITIAL_CAMERA_ROTATION_Y;
+
+enum { RENDER_DIRTY_RECT_CAPACITY = 45 };
 
 /* Variables moved from data_game.c */
 static char dirty_rect_count = 0;
-static void * sdgame2ptr = 0;
+static void *sdgame2ptr = 0;
 static short skybox_wat_color = 0;
-static void * skyboxes[] = { 0, 0, 0, 0 };
+static void *skyboxes[] = { 0, 0, 0, 0 };
 static char texture_page_index = 0;
+struct TRANSFORMEDSHAPE3D *curtransshape_ptr = 0;
+short transformedshape_zarray[RENDER_TRANSFORMED_SHAPE_CAPACITY] = { 0 };
+unsigned char transformedshape_arg2array[RENDER_TRANSFORMED_SHAPE_ARG_CAPACITY] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                                                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+char transformedshape_counter = 0;
+short transformedshape_indices[RENDER_TRANSFORMED_SHAPE_CAPACITY] = { 0 };
 
 /* Variables moved from data_game.c (private to this translation unit) */
 static short angular_velocity_state = 0;
 static short collision_detection_state = 0;
-static struct RECTANGLE dirty_rect_array[45] = { { 0 } };
-static short dirty_rect_indices[45] = { 0 };
+static struct RECTANGLE dirty_rect_array[RENDER_DIRTY_RECT_CAPACITY] = { { 0 } };
+static short dirty_rect_indices[RENDER_DIRTY_RECT_CAPACITY] = { 0 };
 static struct RECTANGLE intro_dirty_clip_rect = { 0, 0, 0, 0 };
 static short memory_pointer_boundary_max = 0;
-static short physics_constants_table = 16;
 static struct RECTANGLE rect_skybox = { 0, 0, 0, 0 };
-static char rect_sort_indices[15] = { 0 };
+static char rect_sort_indices[RENDER_RECT_ARRAY_COUNT] = { 0 };
 static short skybox_current = 0;
 static short skybox_ptr1 = 0;
 static short skybox_ptr2 = 0;
@@ -109,8 +197,8 @@ static struct RECTANGLE rect_ingame_text3 = { 68, 92, 113, 128 };
 static struct RECTANGLE rect_ingame_text4 = { 228, 252, 113, 128 };
 
 /* skybox_res pointer - replaces seg/ofs pair */
-static char * g_skybox_res_ptr = NULL;
-static char mouse_button_state_vector = 0;
+static char *g_skybox_res_ptr = NULL;
+static bool mouse_button_state_vector = false;
 
 
 static struct SHAPE3D intro_logoshape;
@@ -119,64 +207,6 @@ static struct SHAPE3D intro_bravshape;
 
 
 static struct RECTANGLE trackpreview_cliprect = { 0, 320, 0, 200 };
-
-enum { TRACKOBJECT_RAW_SIZE = 14 };
-
-/**
- * @brief Return a pointer to a track-object table entry by index.
- *
- * @param table  Base of the track-object table.
- * @param index  Entry index.
- * @return Pointer to the 14-byte raw entry.
- */
-static inline const unsigned char* trkobj_entry(const unsigned char* table, unsigned index)
-{
-    return table + index * TRACKOBJECT_RAW_SIZE;
-}
-
-/**
- * @brief Return the raw byte pointer of a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Same pointer cast to unsigned char.
- */
-static inline const unsigned char* trkobj_raw(const unsigned char* obj)
-{
-    return (const unsigned char*)obj;
-}
-
-/**
- * @brief Extract the primary shape offset from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return 16-bit DOS dseg offset of the shape.
- */
-static inline unsigned short trkobj_ofs_shape(const unsigned char* obj)
-{
-    const unsigned char* raw = trkobj_raw(obj);
-    return (unsigned short)raw[4] | ((unsigned short)raw[5] << 8);
-}
-
-/**
- * @brief Extract the low-detail shape offset from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return 16-bit DOS dseg offset of the low-detail shape.
- */
-static inline unsigned short trkobj_ofs_loshape(const unsigned char* obj)
-{
-    const unsigned char* raw = trkobj_raw(obj);
-    return (unsigned short)raw[6] | ((unsigned short)raw[7] << 8);
-}
-
-/*
- * DOS dseg layout: game3dshapes[0] resides at offset 30284 within dseg,
- * each SHAPE3D is 22 bytes (22) in the original 16-bit binary.
- * Convert a stored dseg offset to a game3dshapes[] pointer.
- */
-#define GAME3DSHAPES_DOS_BASE   30284u
-#define GAME3DSHAPES_DOS_STRIDE 22u
-#define GAME3DSHAPES_MAX        130
 
 enum {
     RENDER_SCREEN_LEFT = 0,
@@ -193,13 +223,18 @@ enum {
     RENDER_MAX_STRIP_COUNT = 32,
     RENDER_WRAP_DELTA_MAX = 96,
     RENDER_INVALID_POINT_COORD = 32768,
-    RENDER_RECT_ARRAY_COUNT = 15,
+    RENDER_SKYBOX_RECT_SLOT = 5,
     RENDER_SKYBOX_COUNT = 4,
     RENDER_TRACK_GRID_SIZE = 30,
     RENDER_STAR_COUNT = 100,
+    RENDER_INTRO_STAR_COLOR_CYCLE_LIMIT = 16,
     RENDER_COLOR_INDEX_SKY = 17,
     RENDER_COLOR_INDEX_GROUND = 16,
     RENDER_COLOR_INDEX_WATER = 100,
+    RENDER_SPHERE_SCALE_FACTOR_COS_45 = 11585,
+    RENDER_SPHERE_SCALE_FACTOR_90_PERCENT = 14654,
+    RENDER_SPHERE_SCALE_FACTOR_97_PERCENT = 15895,
+    RENDER_SPHERE_SCALE_FACTOR_80_PERCENT = 13107,
     RENDER_MATERIAL_ENTRY_COUNT = 129,
     RENDER_MATERIAL_ENTRY_STRIDE = 2,
     RENDER_MATERIAL_PTR_VALID_BASE = 1048576,
@@ -214,112 +249,38 @@ enum {
     RENDER_TRACK_MARKER_MIN = 253,
     RENDER_VISIBILITY_BASE = 1024,
     RENDER_STAR_MIN_Z = 200,
+    RENDER_SINKING_MAX_DURATION_SECONDS = 4,
+    RENDER_CRACK_SEGMENTS_PER_SECOND = 7,
+    RENDER_REPLAY_INDICATOR_DUTY_DIVISOR = 2,
     RENDER_INTRO_WND_DEPTH = 15,
+    RENDER_INTRO_DEFAULT_FPS = 30,
+    RENDER_INTRO_OPPONENT_TRACKING_SECONDS = 6,
+    RENDER_INTRO_END_PHASE_DELAY_SECONDS = 11,
+    RENDER_INTRO_TOTAL_DURATION_SECONDS = 23,
     RENDER_INTRO_CAMERA_CENTER = 1024,
     RENDER_INTRO_CAMERA_Y_START = 300,
     RENDER_INTRO_CAMERA_Y_CRUISE = 90,
+    RENDER_INTRO_CAMERA_Y_FOLLOW_OFFSET = 20,
     RENDER_INTRO_CAMERA_Y_STEP = 20,
+    RENDER_INTRO_CAMERA_Z_RETREAT_STEP = 5,
     RENDER_INTRO_CAMERA_ADJUST_STEP = 10,
-    RENDER_INTRO_LOGO_FLAGS_TRACKED = 12
+    RENDER_INTRO_LOGO_FLAGS_TRACKED = 12,
+
+    /* HUD / in-game text layout */
+    RENDER_FONT_CHAR_WIDTH = 8,
+    RENDER_HUD_DISCLAIMER_Y = 170,
+    RENDER_HUD_BOTTOM_TEXT_Y = 182,
+    RENDER_HUD_WARNING_Y = 93,
+    RENDER_HUD_REPLAY_TEXT_Y = 15,
+    RENDER_HUD_ARROW_X = 148,
+    RENDER_HUD_OPP_ARROW_LEFT_X = 68,
+    RENDER_HUD_OPP_ARROW_RIGHT_X = 228,
+    RENDER_HUD_OPP_ARROW_Y = 113,
+    RENDER_HUD_OPP_TEXT_Y = 116,
+    RENDER_HUD_PENALTY_TEXT_Y = 102
 };
 
-#define DO_SINKING_RECT_PTR ((struct RECTANGLE*)43534)
-
-/**
- * @brief Convert a DOS dseg offset to a game3dshapes[] pointer.
- *
- * @param ofs  16-bit DOS segment offset.
- * @return Pointer to the SHAPE3D, or NULL if invalid.
- */
-static inline struct SHAPE3D* shape3d_from_dos_dseg_offset(unsigned short ofs)
-{
-    int idx;
-    if (ofs == 0) return (struct SHAPE3D*)0;
-    if (ofs < GAME3DSHAPES_DOS_BASE) return (struct SHAPE3D*)0;
-    idx = (int)((unsigned)(ofs - GAME3DSHAPES_DOS_BASE) / GAME3DSHAPES_DOS_STRIDE);
-    if (idx < 0 || idx >= GAME3DSHAPES_MAX) return (struct SHAPE3D*)0;
-    if (game3dshapes[idx].shape3d_verts == 0) return (struct SHAPE3D*)0;
-    return &game3dshapes[idx];
-}
-
-/**
- * @brief Get the primary SHAPE3D pointer for a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Pointer to the SHAPE3D, or NULL.
- */
-static inline struct SHAPE3D* trkobj_shape(const unsigned char* obj)
-{
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_shape(obj));
-}
-
-/**
- * @brief Get the low-detail SHAPE3D pointer for a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Pointer to the SHAPE3D, or NULL.
- */
-static inline struct SHAPE3D* trkobj_loshape(const unsigned char* obj)
-{
-    return shape3d_from_dos_dseg_offset(trkobj_ofs_loshape(obj));
-}
-
-/**
- * @brief Extract the Y-rotation angle from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Rotation angle as a signed short.
- */
-static inline short trkobj_roty(const unsigned char* obj)
-{
-    const unsigned char* raw = trkobj_raw(obj);
-    return (short)((unsigned short)raw[2] | ((unsigned short)raw[3] << 8));
-}
-
-/**
- * @brief Extract the overlay flag byte from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Overlay byte value.
- */
-static inline unsigned char trkobj_overlay(const unsigned char* obj)
-{
-    return trkobj_raw(obj)[8];
-}
-
-/**
- * @brief Extract the surface type from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Surface type as a signed char.
- */
-static inline signed char trkobj_surface(const unsigned char* obj)
-{
-    return (signed char)trkobj_raw(obj)[9];
-}
-
-/**
- * @brief Extract the z-bias ignore flag from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Non-zero if z-bias should be ignored.
- */
-static inline unsigned char trkobj_ignore_zbias(const unsigned char* obj)
-{
-    return trkobj_raw(obj)[10];
-}
-
-/**
- * @brief Extract the multi-tile flag from a track-object entry.
- *
- * @param obj  Track-object entry pointer.
- * @return Multi-tile flag byte.
- */
-static inline unsigned char trkobj_multi(const unsigned char* obj)
-{
-    return trkobj_raw(obj)[11];
-}
-
+#define DO_SINKING_RECT_PTR ((struct RECTANGLE *)43534)
 
 static struct RECTANGLE intro_cliprect = { 0, 320, 0, 200 };
 
@@ -327,13 +288,10 @@ static struct RECTANGLE intro_cliprect = { 0, 320, 0, 200 };
 /**
  * @brief Look up a 16-bit material colour by index from the colour list.
  *
-/** @brief Index.
- * @param index Parameter `index`.
- * @return Function result.
  */
-static unsigned short render_get_material_color(unsigned short index)
-{
-    const unsigned char * color_bytes;
+static unsigned short
+render_get_material_color(unsigned short index) {
+    const unsigned char *color_bytes;
     uintptr_t src_addr;
     const unsigned int material_entries = (unsigned int)RENDER_MATERIAL_ENTRY_COUNT;
 
@@ -343,48 +301,51 @@ static unsigned short render_get_material_color(unsigned short index)
 
     src_addr = (uintptr_t)material_clrlist_ptr_cpy;
     if (material_clrlist_ptr_cpy != 0 && src_addr >= (uintptr_t)RENDER_MATERIAL_PTR_VALID_BASE) {
-        color_bytes = ((const unsigned char *)material_clrlist_ptr_cpy) + ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
-    } else {
-        color_bytes = ((const unsigned char *)material_color_list) + ((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE);
+        color_bytes = ((const unsigned char *)material_clrlist_ptr_cpy)
+                      + ((size_t)((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE));
+    }
+    else {
+        color_bytes = ((const unsigned char *)material_color_list)
+                      + ((size_t)((unsigned int)index * RENDER_MATERIAL_ENTRY_STRIDE));
     }
 
-    return (unsigned short)(
-        (unsigned short)color_bytes[0] |
-        ((unsigned short)color_bytes[1] << 8)
-    );
+    return (unsigned short)((unsigned short)color_bytes[0] | ((unsigned short)color_bytes[1] << 8));
 }
 
 
 /* Forward declarations */
 /** @brief Draw one rectangular slice of the active skybox. */
-void draw_skybox_rect_slice(struct RECTANGLE* rectptr, int angY, int skyheight);
+void draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight);
 void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
-              int draw_opponent, int use_primary_logo, short* star_positions, struct POINT2D* star_screen_points,
-              short* star_count, struct RECTANGLE* current_rect,
-              struct RECTANGLE* clip_rect, struct RECTANGLE* previous_rect_ptr);
+              int draw_opponent, int use_primary_logo, short *star_positions,
+              struct POINT2D *star_screen_points, short *star_count, struct RECTANGLE *current_rect,
+              struct RECTANGLE *clip_rect, struct RECTANGLE *previous_rect_ptr);
 
 /**--------------------------------------------------------------
  * @brief Free the SDGAME2 resource block.
  /*--------------------------------------------------------------*/
-void free_sdgame2(void) {
+void
+free_sdgame2(void) {
     mmgr_free(sdgame2ptr);
 }
 
 /**--------------------------------------------------------------
  * @brief Unload the skybox resource and reset its state.
  /*--------------------------------------------------------------*/
-void unload_skybox(void) {
-    if (mouse_button_state_vector != 0) {
+void
+unload_skybox(void) {
+    if (mouse_button_state_vector) {
         mmgr_free(g_skybox_res_ptr);
     }
-    mouse_button_state_vector = 0;
+    mouse_button_state_vector = false;
     g_skybox_res_ptr = NULL;
 }
 
 /**--------------------------------------------------------------
  * @brief Load the SDGAME2 shape resources and cache their widths.
  /*--------------------------------------------------------------*/
-void load_sdgame2_shapes(void) {
+void
+load_sdgame2_shapes(void) {
     int i;
     sdgame2ptr = (char *)file_load_resource(8, (char *)aSdgame2);
     locate_many_resources(sdgame2ptr, (char *)aEx01ex02ex03leftrigh, (char **)sdgame2shapes);
@@ -399,10 +360,11 @@ void load_sdgame2_shapes(void) {
  * @param z_adjust  Z-depth adjustment for sorting.
  * @param sort_key        Secondary sort parameter stored per shape.
  /*--------------------------------------------------------------*/
-void transformed_shape_add_for_sort(int z_adjust, int sort_key) {
+void
+transformed_shape_add_for_sort(int z_adjust, int sort_key) {
     struct VECTOR shapepos;
     struct VECTOR transformedpos;
-    int si, di;
+    int shapeIdx;
 
     /* Copy pos from curtransshape_ptr */
     shapepos.x = curtransshape_ptr->pos.x;
@@ -411,11 +373,10 @@ void transformed_shape_add_for_sort(int z_adjust, int sort_key) {
 
     mat_mul_vector(&shapepos, &mat_temp, &transformedpos);
 
-    si = (int)(unsigned char)transformedshape_counter;
-    di = si;
-    transformedshape_zarray[di] = transformedpos.z + z_adjust;
-    transformedshape_arg2array[si] = (char)sort_key;
-    transformedshape_indices[di] = si;
+    shapeIdx = (int)(unsigned char)transformedshape_counter;
+    transformedshape_zarray[shapeIdx] = (short)transformedpos.z + z_adjust;
+    transformedshape_arg2array[shapeIdx] = (char)sort_key;
+    transformedshape_indices[shapeIdx] = (short)shapeIdx;
     transformedshape_counter++;
 
     curtransshape_ptr++;
@@ -424,9 +385,10 @@ void transformed_shape_add_for_sort(int z_adjust, int sort_key) {
 /**--------------------------------------------------------------
  * @brief Initialise the rectangle dirty-tracking arrays.
  /*--------------------------------------------------------------*/
-void init_rect_arrays(void) {
+void
+init_rect_arrays(void) {
     int i;
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         /* Copy fullscreen_rect to first entry of both arrays */
         rect_buffer_front[0] = fullscreen_rect;
         rect_buffer_back[0] = fullscreen_rect;
@@ -448,20 +410,24 @@ void init_rect_arrays(void) {
  * @param sink_height  Total height of the sinking region.
  * @return Pointer to the computed bounding rectangle.
  /*--------------------------------------------------------------*/
-struct RECTANGLE*  do_sinking(int frame_count, int base_y, int sink_height) {
-    int di, si;
+struct RECTANGLE *
+do_sinking(int frame_count, int base_y, int sink_height) {
+    int maxFrames, sinkDelta;
+    int bottomY;
 
-    di = framespersec << 2;
-    if (frame_count > di) frame_count = di;
+    maxFrames = framespersec * RENDER_SINKING_MAX_DURATION_SECONDS;
+    if (frame_count > maxFrames)
+        frame_count = maxFrames;
 
-    si = (int)((long)sink_height * (long)frame_count / ((long)framespersec * 4L));
+    sinkDelta = (int)((long)sink_height * (long)frame_count
+                      / ((long)framespersec * RENDER_SINKING_MAX_DURATION_SECONDS));
 
     rect_ingame_text.left = RENDER_SCREEN_LEFT;
     rect_ingame_text.right = RENDER_SCREEN_WIDTH;
-    di = base_y + sink_height;
-    rect_ingame_text.top = di - si;
-    rect_ingame_text.bottom = di;
-    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, di - si, di);
+    bottomY = base_y + sink_height;
+    rect_ingame_text.top = bottomY - sinkDelta;
+    rect_ingame_text.bottom = bottomY;
+    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, bottomY - sinkDelta, bottomY);
     sprite_clear_sprite1_color(skybox_wat_color);
 
     return DO_SINKING_RECT_PTR;
@@ -471,22 +437,17 @@ struct RECTANGLE*  do_sinking(int frame_count, int base_y, int sink_height) {
  * @brief Load a skybox scenery set and set sky, ground and water colours.
  * @param skybox_index Skybox selector value from track metadata.
  /*--------------------------------------------------------------*/
-void load_skybox(unsigned char skybox_index) {
-    short si;
-    static const char* const skybox_names[] = {
-        "desert",
-        "tropical",
-        "alpine",
-        "city",
-        "country"
-    };
+void
+load_skybox(unsigned char skybox_index) {
+    short heightTemp;
+    static const char *const skybox_names[] = { "desert", "tropical", "alpine", "city", "country" };
     unsigned char skybox_idx;
 
     if (skybox_index & RENDER_SKYBOX_ALT_FLAG) {
-        skybox_index &= RENDER_SKYBOX_INDEX_MASK;
-    } else {
-        if (mouse_button_state_vector != 0 && texture_page_index == skybox_index) {
-            goto set_colors_only;
+    }
+    else {
+        if (mouse_button_state_vector && texture_page_index == skybox_index) {
+            return;
         }
         unload_skybox();
         skybox_idx = skybox_index;
@@ -494,43 +455,48 @@ void load_skybox(unsigned char skybox_index) {
             skybox_idx = 0;
         }
 
-        texture_page_index = skybox_idx;
-        mouse_button_state_vector = 1;
+        texture_page_index = (char)skybox_idx;
+        mouse_button_state_vector = true;
 
         {
-            g_skybox_res_ptr = (char *)file_load_shape2d_fatal_thunk((char*)skybox_names[skybox_idx]);
+            g_skybox_res_ptr
+                = (char *)file_load_shape2d_fatal_thunk((char *)skybox_names[skybox_idx]);
         }
 
-        locate_many_resources(g_skybox_res_ptr,
-                      (char *)aScensce2sce3sce4, (char **)skyboxes);
+        locate_many_resources(g_skybox_res_ptr, (char *)aScensce2sce3sce4, (char **)skyboxes);
 
-        skybox_ptr1 = ((struct SHAPE2D *)skyboxes[0])->s2d_height;
-        skybox_ptr2 = ((struct SHAPE2D *)skyboxes[1])->s2d_height;
-        skybox_ptr3 = ((struct SHAPE2D *)skyboxes[2])->s2d_height;
-        skybox_ptr4 = ((struct SHAPE2D *)skyboxes[3])->s2d_height;
+        skybox_ptr1 = (short)((struct SHAPE2D *)skyboxes[0])->s2d_height;
+        skybox_ptr2 = (short)((struct SHAPE2D *)skyboxes[1])->s2d_height;
+        skybox_ptr3 = (short)((struct SHAPE2D *)skyboxes[2])->s2d_height;
+        skybox_ptr4 = (short)((struct SHAPE2D *)skyboxes[3])->s2d_height;
 
         /* skybox_current = min of all ptrs */
-        si = skybox_ptr1;
-        if (si > skybox_ptr2) si = skybox_ptr2;
-        if (si > skybox_ptr3) si = skybox_ptr3;
-        if (si > skybox_ptr4) si = skybox_ptr4;
-        skybox_current = si;
+        heightTemp = skybox_ptr1;
+        if (heightTemp > skybox_ptr2)
+            heightTemp = skybox_ptr2;
+        if (heightTemp > skybox_ptr3)
+            heightTemp = skybox_ptr3;
+        if (heightTemp > skybox_ptr4)
+            heightTemp = skybox_ptr4;
+        skybox_current = heightTemp;
 
         /* memory_pointer_boundary_max = max of all ptrs */
-        si = skybox_ptr1;
-        if (si < skybox_ptr2) si = skybox_ptr2;
-        if (si < skybox_ptr3) si = skybox_ptr3;
-        if (si < skybox_ptr4) si = skybox_ptr4;
-        memory_pointer_boundary_max = si;
+        heightTemp = skybox_ptr1;
+        if (heightTemp < skybox_ptr2)
+            heightTemp = skybox_ptr2;
+        if (heightTemp < skybox_ptr3)
+            heightTemp = skybox_ptr3;
+        if (heightTemp < skybox_ptr4)
+            heightTemp = skybox_ptr4;
+        memory_pointer_boundary_max = heightTemp;
     }
 
     /* Set colors from safe material color storage */
     skybox_sky_color = (short)render_get_material_color(RENDER_COLOR_INDEX_SKY);
     skybox_grd_color = render_get_material_color(RENDER_COLOR_INDEX_GROUND);
     skybox_wat_color = (short)render_get_material_color(RENDER_COLOR_INDEX_WATER);
-    meter_needle_color = dialog_fnt_colour;
+    meter_needle_color = (short)dialog_fnt_colour;
 
-set_colors_only:
     return;
 }
 
@@ -541,78 +507,76 @@ set_colors_only:
  * @param angY       Current camera yaw angle.
  * @param skyheight  Pixel row of the horizon.
  /*--------------------------------------------------------------*/
-void draw_skybox_rect_slice(struct RECTANGLE* rectptr, int angY, int skyheight) {
-    int si, di;
+void
+draw_skybox_rect_slice(struct RECTANGLE *rectptr, int angY, int skyheight) {
+    int skyHeight;
+    int angOffset;
+    int groundTop, groundHeight;
     int blit_top, blit_bottom;
 
     if (timertestflag2 == 4) {
-        si = skyheight - rectptr->top;
-    } else {
-        si = skyheight - rectptr->top - skybox_current;
+        skyHeight = skyheight - rectptr->top;
+    }
+    else {
+        skyHeight = skyheight - rectptr->top - skybox_current;
     }
 
     /* Clamp to rect height */
-    if (rectptr->bottom - rectptr->top < si) {
-        si = rectptr->bottom - rectptr->top;
+    if (rectptr->bottom - rectptr->top < skyHeight) {
+        skyHeight = rectptr->bottom - rectptr->top;
     }
 
     /* Draw sky portion */
-    if (si > 0) {
-        sprite_set_1_size(rectptr->left, rectptr->right,
-                          rectptr->top, rectptr->top + si);
+    if (skyHeight > 0) {
+        sprite_set_1_size(rectptr->left, rectptr->right, rectptr->top, rectptr->top + skyHeight);
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
-    if (timertestflag2 == 4) {
-        goto draw_ground;
+    if (timertestflag2 != 4) {
+        /* Draw skybox images */
+        angOffset = angY + RENDER_ANGLE_HALF_TURN;
+        angOffset &= RENDER_ANGLE_MASK;
+        angOffset -= RENDER_ANGLE_FULL_TURN;
+
+        if (rectptr->top < skyheight
+            && skyheight - memory_pointer_boundary_max <= rectptr->bottom) {
+            blit_top = rectptr->top;
+            if (blit_top < skyheight - memory_pointer_boundary_max) {
+                blit_top = skyheight - memory_pointer_boundary_max;
+            }
+            blit_bottom = rectptr->bottom;
+            if (blit_bottom > skyheight) {
+                blit_bottom = skyheight;
+            }
+
+            if (blit_top < blit_bottom) {
+                sprite_set_1_size(rectptr->left, rectptr->right, blit_top, blit_bottom);
+                sprite_clear_sprite1_color(skybox_sky_color);
+
+                sprite_putimage_copy_at(skyboxes[0], angOffset, skyheight - skybox_ptr1);
+                sprite_putimage_copy_at(skyboxes[1], angOffset + RENDER_SCREEN_WIDTH,
+                                        skyheight - skybox_ptr2);
+                sprite_putimage_copy_at(skyboxes[2], angOffset + RENDER_ANGLE_HALF_TURN,
+                                        skyheight - skybox_ptr3);
+                sprite_putimage_copy_at(skyboxes[3],
+                                        angOffset + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH),
+                                        skyheight - skybox_ptr4);
+                sprite_putimage_copy_at(skyboxes[0], angOffset + RENDER_ANGLE_FULL_TURN,
+                                        skyheight - skybox_ptr1);
+            }
+        }
     }
 
-    /* Draw skybox images */
-    si = angY + RENDER_ANGLE_HALF_TURN;
-    si &= RENDER_ANGLE_MASK;
-    si -= RENDER_ANGLE_FULL_TURN;
-
-    if (rectptr->top >= skyheight) {
-        goto draw_ground;
-    }
-    if (skyheight - memory_pointer_boundary_max > rectptr->bottom) {
-        goto draw_ground;
-    }
-
-    blit_top = rectptr->top;
-    if (blit_top < skyheight - memory_pointer_boundary_max) {
-        blit_top = skyheight - memory_pointer_boundary_max;
-    }
-    blit_bottom = rectptr->bottom;
-    if (blit_bottom > skyheight) {
-        blit_bottom = skyheight;
-    }
-
-    if (blit_top >= blit_bottom) {
-        goto draw_ground;
-    }
-
-    sprite_set_1_size(rectptr->left, rectptr->right,
-                      blit_top, blit_bottom);
-    sprite_clear_sprite1_color(skybox_sky_color);
-
-    sprite_putimage_copy_at(skyboxes[0], si, skyheight - skybox_ptr1);
-    sprite_putimage_copy_at(skyboxes[1], si + RENDER_SCREEN_WIDTH, skyheight - skybox_ptr2);
-    sprite_putimage_copy_at(skyboxes[2], si + RENDER_ANGLE_HALF_TURN, skyheight - skybox_ptr3);
-    sprite_putimage_copy_at(skyboxes[3], si + (RENDER_ANGLE_HALF_TURN + RENDER_SCREEN_WIDTH), skyheight - skybox_ptr4);
-    sprite_putimage_copy_at(skyboxes[0], si + RENDER_ANGLE_FULL_TURN, skyheight - skybox_ptr1);
-
-draw_ground:
     /* Draw ground portion below skybox */
     if (rectptr->top >= skyheight) {
-        di = rectptr->top;
-    } else {
-        di = skyheight;
+        groundTop = rectptr->top;
     }
-    si = rectptr->bottom - di;
-    if (si > 0) {
-        sprite_set_1_size(rectptr->left, rectptr->right,
-                          di, di + si);
+    else {
+        groundTop = skyheight;
+    }
+    groundHeight = rectptr->bottom - groundTop;
+    if (groundHeight > 0) {
+        sprite_set_1_size(rectptr->left, rectptr->right, groundTop, groundTop + groundHeight);
         sprite_clear_sprite1_color(skybox_grd_color);
     }
 }
@@ -620,21 +584,12 @@ draw_ground:
 /*--------------------------------------------------------------
  * skybox_op
  /*--------------------------------------------------------------*/
-/** @brief Render skybox layer.
- * @param view_index Parameter `view_index`.
- * @param clip_rect Parameter `clip_rect`.
- * @param sky_dir_sign Parameter `sky_dir_sign`.
- * @param camera_matrix Parameter `camera_matrix`.
- * @param view_roll Parameter `view_roll`.
- * @param view_yaw Parameter `view_yaw`.
- * @param camera_y Parameter `camera_y`.
- * @return Function result.
- */
-int  render_skybox_layer(int view_index, struct RECTANGLE* clip_rect, int sky_dir_sign,
-                  struct MATRIX* camera_matrix, int view_roll, int view_yaw, int camera_y) {
-    int line_intersections[60];  /* buffer for draw_line_related */
-    int skybox_drawn;
-    int has_wraparound;
+int
+render_skybox_layer(int view_index, struct RECTANGLE *clip_rect, int sky_dir_sign,
+                    struct MATRIX *camera_matrix, int view_roll, int view_yaw, int camera_y) {
+    int line_intersections[60]; /* buffer for draw_line_related */
+    bool skybox_drawn;
+    bool has_wraparound;
     struct VECTOR horizon_vec;
     struct VECTOR horizon_vec2;
     int sky_height;
@@ -645,271 +600,293 @@ int  render_skybox_layer(int view_index, struct RECTANGLE* clip_rect, int sky_di
     struct RECTANGLE slice_rect;
     int horizon_y_delta;
     struct VECTOR horizon_vec_a_cam, horizon_vec_b_cam;
-    int di, si;
+    int intersectDelta;
+    int dirty_idx;
+    int stripIdx;
+    int fillHeight;
 
 
     dirty_rect_count = 0;
-    skybox_drawn = 0;
+    skybox_drawn = false;
 
     sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
 
-    if (view_roll == 0) goto no_horizon;
+    if (view_roll != 0) {
 
-    /* Compute upper vector */
-    horizon_vec.x = (short)(RENDER_HORIZON_VECTOR_X * sky_dir_sign);
-    horizon_vec.y = (short)(-camera_y);
-    horizon_vec.z = (short)(RENDER_HORIZON_VECTOR_Z * sky_dir_sign);
-    mat_mul_vector(&horizon_vec, camera_matrix, &horizon_vec_a_cam);
+        /* Compute upper vector */
+        horizon_vec.x = (short)(RENDER_HORIZON_VECTOR_X * sky_dir_sign);
+        horizon_vec.y = (short)(-camera_y);
+        horizon_vec.z = (short)(RENDER_HORIZON_VECTOR_Z * sky_dir_sign);
+        mat_mul_vector(&horizon_vec, camera_matrix, &horizon_vec_a_cam);
 
-    /* Compute lower vector */
-    horizon_vec2.x = (short)(RENDER_HORIZON_VECTOR_NEG_X * sky_dir_sign);
-    horizon_vec2.y = (short)(-camera_y);
-    horizon_vec2.z = (short)(RENDER_HORIZON_VECTOR_Z * sky_dir_sign);
-    mat_mul_vector(&horizon_vec2, camera_matrix, &horizon_vec_b_cam);
+        /* Compute lower vector */
+        horizon_vec2.x = (short)(RENDER_HORIZON_VECTOR_NEG_X * sky_dir_sign);
+        horizon_vec2.y = (short)(-camera_y);
+        horizon_vec2.z = (short)(RENDER_HORIZON_VECTOR_Z * sky_dir_sign);
+        mat_mul_vector(&horizon_vec2, camera_matrix, &horizon_vec_b_cam);
 
-    if (horizon_vec_a_cam.z < 0 || horizon_vec_b_cam.z < 0) {
-        di = skybox_sky_color;
-fill_and_return:
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->bottom);
-        sprite_clear_sprite1_color(di);
-        goto done;
-    }
-
-    vector_to_point(&horizon_vec_a_cam, &horizon_point_a);
-    vector_to_point(&horizon_vec_b_cam, &horizon_point_b);
-
-    if (horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD && horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD &&
-        horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD && horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD) {
-        goto no_horizon;
-    }
-
-    /* Check if both points are off-screen right */
-    if (horizon_point_a.px > RENDER_SCREEN_WIDTH && horizon_point_b.px > RENDER_SCREEN_WIDTH) {
-        if (horizon_point_a.py < horizon_point_b.py) goto fill_sky;
-        goto fill_grd;
-    }
-    /* Check if both points are off-screen left */
-    if (horizon_point_a.px < 0 && horizon_point_b.px < 0) {
-        if (horizon_point_a.py <= horizon_point_b.py) goto fill_grd;
-        goto fill_sky;
-    }
-
-    /* Check if both below bottom */
-    if (clip_rect->bottom < horizon_point_a.py &&
-        clip_rect->bottom < horizon_point_b.py) {
-        if (horizon_point_a.px <= horizon_point_b.px) goto fill_grd;
-        goto fill_sky;
-    }
-
-    /* Check if both above top */
-    if (clip_rect->top > horizon_point_a.py &&
-        clip_rect->top > horizon_point_b.py) {
-        if (horizon_point_a.px >= horizon_point_b.px) goto fill_grd;
-        goto fill_sky;
-    }
-
-    has_wraparound = 0;
-
-    /* Wrap-around case detection */
-    if (timertestflag2 != 4 &&
-        ((horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH) ||
-         (horizon_point_a.px < 0 && horizon_point_b.px > RENDER_SCREEN_WIDTH))) {
-        int wrap_x0;
-        int wrap_y0;
-        int wrap_x1;
-        int wrap_y1;
-
-        if (horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH) {
-            wrap_x0 = horizon_point_b.px;
-            wrap_y0 = horizon_point_b.py;
-            wrap_x1 = horizon_point_a.px;
-            wrap_y1 = horizon_point_a.py;
-        } else {
-            wrap_x0 = horizon_point_a.px;
-            wrap_y0 = horizon_point_a.py;
-            wrap_x1 = horizon_point_b.px;
-            wrap_y1 = horizon_point_b.py;
+        if (horizon_vec_a_cam.z < 0 || horizon_vec_b_cam.z < 0) {
+            sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                              clip_rect->bottom);
+            sprite_clear_sprite1_color(skybox_sky_color);
+            return skybox_drawn;
         }
 
-        if (draw_line_related(wrap_x0, wrap_y0,
-                              wrap_x1, wrap_y1, line_intersections) == 0) {
-            /* edge x is line_intersections[1], y0 is [3], y1 is [5] */
-            di = line_intersections[3] - line_intersections[5];
-            if (di < 0) di = -di;
-            if (di < RENDER_WRAP_DELTA_MAX) {
-                if (line_intersections[1] == 0) {
-                    horizon_y_left = line_intersections[3];
-                    horizon_y_delta = line_intersections[5] - horizon_y_left;
-                    has_wraparound = 1;
-                } else if (line_intersections[1] == RENDER_SCREEN_RIGHT_EDGE) {
-                    horizon_y_left = line_intersections[5];
-                    horizon_y_delta = line_intersections[3] - horizon_y_left;
-                    has_wraparound = 1;
+        vector_to_point(&horizon_vec_a_cam, &horizon_point_a);
+        vector_to_point(&horizon_vec_b_cam, &horizon_point_b);
+
+        if (!(horizon_point_a.px == (int16_t)RENDER_INVALID_POINT_COORD
+              && horizon_point_a.py == (int16_t)RENDER_INVALID_POINT_COORD
+              && horizon_point_b.px == (int16_t)RENDER_INVALID_POINT_COORD
+              && horizon_point_b.py == (int16_t)RENDER_INVALID_POINT_COORD)) {
+
+            /* Check if both points are off-screen right */
+            if (horizon_point_a.px > RENDER_SCREEN_WIDTH
+                && horizon_point_b.px > RENDER_SCREEN_WIDTH) {
+                int fill_color = (horizon_point_a.py < horizon_point_b.py) ? skybox_sky_color
+                                                                           : skybox_grd_color;
+                sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                                  clip_rect->bottom);
+                sprite_clear_sprite1_color(fill_color);
+                return skybox_drawn;
+            }
+            /* Check if both points are off-screen left */
+            if (horizon_point_a.px < 0 && horizon_point_b.px < 0) {
+                int fill_color = (horizon_point_a.py <= horizon_point_b.py) ? skybox_grd_color
+                                                                            : skybox_sky_color;
+                sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                                  clip_rect->bottom);
+                sprite_clear_sprite1_color(fill_color);
+                return skybox_drawn;
+            }
+
+            /* Check if both below bottom */
+            if (clip_rect->bottom < horizon_point_a.py && clip_rect->bottom < horizon_point_b.py) {
+                int fill_color = (horizon_point_a.px <= horizon_point_b.px) ? skybox_grd_color
+                                                                            : skybox_sky_color;
+                sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                                  clip_rect->bottom);
+                sprite_clear_sprite1_color(fill_color);
+                return skybox_drawn;
+            }
+
+            /* Check if both above top */
+            if (clip_rect->top > horizon_point_a.py && clip_rect->top > horizon_point_b.py) {
+                int fill_color = (horizon_point_a.px >= horizon_point_b.px) ? skybox_grd_color
+                                                                            : skybox_sky_color;
+                sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                                  clip_rect->bottom);
+                sprite_clear_sprite1_color(fill_color);
+                return skybox_drawn;
+            }
+
+            has_wraparound = false;
+
+            /* Wrap-around case detection */
+            if (timertestflag2 != 4
+                && ((horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH)
+                    || (horizon_point_a.px < 0 && horizon_point_b.px > RENDER_SCREEN_WIDTH))) {
+                int wrap_x0;
+                int wrap_y0;
+                int wrap_x1;
+                int wrap_y1;
+
+                if (horizon_point_b.px < 0 && horizon_point_a.px > RENDER_SCREEN_WIDTH) {
+                    wrap_x0 = horizon_point_b.px;
+                    wrap_y0 = horizon_point_b.py;
+                    wrap_x1 = horizon_point_a.px;
+                    wrap_y1 = horizon_point_a.py;
+                }
+                else {
+                    wrap_x0 = horizon_point_a.px;
+                    wrap_y0 = horizon_point_a.py;
+                    wrap_x1 = horizon_point_b.px;
+                    wrap_y1 = horizon_point_b.py;
+                }
+
+                if (draw_line_related(wrap_x0, wrap_y0, wrap_x1, wrap_y1, line_intersections)
+                    == 0) {
+                    /* edge x is line_intersections[1], y0 is [3], y1 is [5] */
+                    intersectDelta = line_intersections[3] - line_intersections[5];
+                    if (intersectDelta < 0)
+                        intersectDelta = -intersectDelta;
+                    if (intersectDelta < RENDER_WRAP_DELTA_MAX) {
+                        if (line_intersections[1] == 0) {
+                            horizon_y_left = line_intersections[3];
+                            horizon_y_delta = line_intersections[5] - horizon_y_left;
+                            has_wraparound = true;
+                        }
+                        else if (line_intersections[1] == RENDER_SCREEN_RIGHT_EDGE) {
+                            horizon_y_left = line_intersections[5];
+                            horizon_y_delta = line_intersections[3] - horizon_y_left;
+                            has_wraparound = true;
+                        }
+                    }
                 }
             }
-        }
-    }
 
-    if (has_wraparound == 0) goto no_wraparound;
+            if (!has_wraparound) {
+                /* Render tilted skybox using vertical strips with interpolated horizon height.
+         * horizon_point_a and horizon_point_b define the horizon line endpoints.
+         * Interpolate the horizon Y across the screen width and render the skybox
+        * image in each strip via draw_skybox_rect_slice. */
+                {
+                    int strip_left, strip_right, strip_count, strip_idx;
+                    int left_y, right_y, py_delta;
 
+                    /* Determine horizon height at the left and right screen edges.
+                     */
+                    if (horizon_point_a.px != horizon_point_b.px) {
+                        left_y = horizon_point_a.py
+                                 + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                                         * (0 - horizon_point_a.px))
+                                       / (horizon_point_b.px - horizon_point_a.px);
+                        right_y = horizon_point_a.py
+                                  + (int)(((long)(horizon_point_b.py - horizon_point_a.py))
+                                          * (RENDER_SCREEN_WIDTH - horizon_point_a.px))
+                                        / (horizon_point_b.px - horizon_point_a.px);
+                    }
+                    else {
+                        left_y = (horizon_point_a.py + horizon_point_b.py) / 2;
+                        right_y = left_y;
+                    }
 
-    /* Has wrap-around */
-    if (timertestflag_copy == 0) goto simple_skybox;
+                    horizon_y_left = left_y;
+                    horizon_y_delta = right_y - left_y;
 
-    /* Full rect tracking path */
-    slice_rect.left = 0;
-    rect_skybox.left = 0;
-    slice_rect.right = 320;
-    rect_skybox.right = 320;
+                    py_delta = (horizon_y_delta < 0) ? -horizon_y_delta : horizon_y_delta;
+                    strip_count = py_delta + 1;
+                    if (strip_count > RENDER_MAX_STRIP_COUNT)
+                        strip_count = RENDER_MAX_STRIP_COUNT;
 
-    if (race_condition_state_flag != 0) {
-        rect_skybox.top = clip_rect->top;
-        rect_skybox.bottom = clip_rect->bottom;
-        goto setup_rect_done;
-    }
-
-    /* Compute sky top */
-    {
-        int tmp;
-        tmp = horizon_y_left + horizon_y_delta;
-        if (tmp > horizon_y_left) tmp = horizon_y_left;
-        tmp -= memory_pointer_boundary_max;
-        rect_skybox.top = tmp;
-        if (clip_rect->top > tmp) {
-            rect_skybox.top = clip_rect->top;
-        }
-    }
-
-    /* Compute sky bottom */
-    {
-        int tmp;
-        tmp = horizon_y_left + horizon_y_delta;
-        if (tmp < horizon_y_left) tmp = horizon_y_left;
-        rect_skybox.bottom = tmp;
-    }
-
-    /* Fill sky area above skybox */
-    for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-        rect_sort_indices[si] = 1;
-    }
-    rect_sort_indices[5] = 3;
-
-    slice_rect.top = RENDER_SCREEN_TOP;
-    slice_rect.bottom = rect_skybox.top;
-
-    if (rect_intersect(&slice_rect, clip_rect) == 0) {
-        dirty_rect_count = 0;
-        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
-                           frame_dirty_rects, &slice_rect,
-                           &dirty_rect_count, dirty_rect_array);
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                              dirty_rect_array[di].top, dirty_rect_array[di].bottom);
-            sprite_clear_sprite1_color(skybox_sky_color);
-        }
-    }
-
-    /* Fill ground area below skybox */
-    slice_rect.top = rect_skybox.bottom;
-    slice_rect.bottom = RENDER_SCREEN_HEIGHT;
-    if (rect_intersect(&slice_rect, clip_rect) == 0) {
-        dirty_rect_count = 0;
-        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
-                           frame_dirty_rects, &slice_rect,
-                           &dirty_rect_count, dirty_rect_array);
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            sprite_set_1_size(dirty_rect_array[di].left, dirty_rect_array[di].right,
-                              dirty_rect_array[di].top, dirty_rect_array[di].bottom);
-            sprite_clear_sprite1_color(skybox_grd_color);
-        }
-    }
-
-setup_rect_done:
-    slice_rect.top = rect_skybox.top;
-    slice_rect.bottom = rect_skybox.bottom;
-    goto setup_skybox_strip;
-
-simple_skybox:
-    slice_rect.top = clip_rect->top;
-    slice_rect.bottom = clip_rect->bottom;
-
-setup_skybox_strip:
-    slice_rect.left = RENDER_SCREEN_LEFT;
-    slice_rect.right = RENDER_SCREEN_WIDTH;
-    if (rect_intersect(&slice_rect, clip_rect) != 0) goto done;
-
-    /* Render skybox strips */
-    strip_left = RENDER_SCREEN_LEFT;
-    di = (horizon_y_delta < 0 ? -horizon_y_delta : horizon_y_delta) + 1;
-    if (di > RENDER_MAX_STRIP_COUNT) di = RENDER_MAX_STRIP_COUNT;
-
-    for (si = 0; si < di; si++) {
-        slice_rect.left = strip_left;
-        slice_rect.right = ((RENDER_SCREEN_WIDTH * si + RENDER_SCREEN_WIDTH) / di) & video_flag3_isFFFF;
-        if (slice_rect.left != slice_rect.right) {
-            sky_height = horizon_y_delta * si / di + horizon_y_left;
-            draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-            strip_left = slice_rect.right;
-        }
-    }
-    goto done;
-
-no_wraparound:
-
-
-    /* Render tilted skybox using vertical strips with interpolated horizon height.
-     * horizon_point_a and horizon_point_b define the horizon line endpoints.
-     * Interpolate the horizon Y across the screen width and render the skybox
-    * image in each strip via draw_skybox_rect_slice. */
-    {
-        int strip_left, strip_right, strip_count, strip_idx;
-        int left_y, right_y, py_delta;
-
-        /* Determine horizon height at the left and right screen edges.
-/** @brief Points.
- * @param px Parameter `px`.
- * @return Function result.
- */
-        if (horizon_point_a.px != horizon_point_b.px) {
-            left_y  = horizon_point_a.py + (int)(((long)(horizon_point_b.py - horizon_point_a.py)) * (0 - horizon_point_a.px)) / (horizon_point_b.px - horizon_point_a.px);
-            right_y = horizon_point_a.py + (int)(((long)(horizon_point_b.py - horizon_point_a.py)) * (RENDER_SCREEN_WIDTH - horizon_point_a.px)) / (horizon_point_b.px - horizon_point_a.px);
-        } else {
-            left_y  = (horizon_point_a.py + horizon_point_b.py) / 2;
-            right_y = left_y;
-        }
-
-        horizon_y_left = left_y;
-        horizon_y_delta = right_y - left_y;
-
-        py_delta = (horizon_y_delta < 0) ? -horizon_y_delta : horizon_y_delta;
-        strip_count = py_delta + 1;
-        if (strip_count > RENDER_MAX_STRIP_COUNT) strip_count = RENDER_MAX_STRIP_COUNT;
-
-        strip_left = RENDER_SCREEN_LEFT;
-        slice_rect.top = clip_rect->top;
-        slice_rect.bottom = clip_rect->bottom;
-        for (strip_idx = 0; strip_idx < strip_count; strip_idx++) {
-            strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH) / strip_count) & video_flag3_isFFFF;
-            if (strip_left != strip_right) {
-                slice_rect.left = strip_left;
-                slice_rect.right = strip_right;
-                sky_height = horizon_y_delta * strip_idx / strip_count + horizon_y_left;
-                draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-                strip_left = strip_right;
+                    strip_left = RENDER_SCREEN_LEFT;
+                    slice_rect.top = clip_rect->top;
+                    slice_rect.bottom = clip_rect->bottom;
+                    for (strip_idx = 0; strip_idx < strip_count; strip_idx++) {
+                        strip_right = ((RENDER_SCREEN_WIDTH * strip_idx + RENDER_SCREEN_WIDTH)
+                                       / strip_count)
+                                      & video_flag3_isFFFF;
+                        if (strip_left != strip_right) {
+                            slice_rect.left = strip_left;
+                            slice_rect.right = strip_right;
+                            sky_height = horizon_y_delta * strip_idx / strip_count + horizon_y_left;
+                            draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
+                            strip_left = strip_right;
+                        }
+                    }
+                }
+                return true;
             }
-        }
-    }
-    goto done2;
 
-fill_sky:
-    di = skybox_sky_color;
-    goto fill_and_return;
+            /* Has wrap-around */
+            if (!timertestflag_copy) {
+                slice_rect.top = clip_rect->top;
+                slice_rect.bottom = clip_rect->bottom;
+            }
+            else {
+                /* Full rect tracking path */
+                slice_rect.left = 0;
+                rect_skybox.left = 0;
+                slice_rect.right = 320;
+                rect_skybox.right = 320;
 
-fill_grd:
-    di = skybox_grd_color;
-    goto fill_and_return;
+                if (race_condition_state_flag != 0) {
+                    rect_skybox.top = clip_rect->top;
+                    rect_skybox.bottom = clip_rect->bottom;
+                }
+                else {
+                    /* Compute sky top */
+                    {
+                        int tmp;
+                        tmp = horizon_y_left + horizon_y_delta;
+                        if (tmp > horizon_y_left)
+                            tmp = horizon_y_left;
+                        tmp -= memory_pointer_boundary_max;
+                        rect_skybox.top = tmp;
+                        if (clip_rect->top > tmp) {
+                            rect_skybox.top = clip_rect->top;
+                        }
+                    }
 
-no_horizon:
+                    /* Compute sky bottom */
+                    {
+                        int tmp;
+                        tmp = horizon_y_left + horizon_y_delta;
+                        if (tmp < horizon_y_left)
+                            tmp = horizon_y_left;
+                        rect_skybox.bottom = tmp;
+                    }
+
+                    /* Fill sky area above skybox */
+                    for (stripIdx = 0; stripIdx < RENDER_RECT_ARRAY_COUNT; stripIdx++) {
+                        rect_sort_indices[stripIdx] = 1;
+                    }
+                    rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
+
+                    slice_rect.top = RENDER_SCREEN_TOP;
+                    slice_rect.bottom = rect_skybox.top;
+
+                    if (rect_intersect(&slice_rect, clip_rect) == 0) {
+                        dirty_rect_count = 0;
+                        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices,
+                                           rect_buffer_primary, frame_dirty_rects, &slice_rect,
+                                           &dirty_rect_count, dirty_rect_array);
+                        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+                            sprite_set_1_size(dirty_rect_array[dirty_idx].left, dirty_rect_array[dirty_idx].right,
+                                              dirty_rect_array[dirty_idx].top,
+                                              dirty_rect_array[dirty_idx].bottom);
+                            sprite_clear_sprite1_color(skybox_sky_color);
+                        }
+                    }
+
+                    /* Fill ground area below skybox */
+                    slice_rect.top = rect_skybox.bottom;
+                    slice_rect.bottom = RENDER_SCREEN_HEIGHT;
+                    if (rect_intersect(&slice_rect, clip_rect) == 0) {
+                        dirty_rect_count = 0;
+                        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices,
+                                           rect_buffer_primary, frame_dirty_rects, &slice_rect,
+                                           &dirty_rect_count, dirty_rect_array);
+                        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+                            sprite_set_1_size(dirty_rect_array[dirty_idx].left, dirty_rect_array[dirty_idx].right,
+                                              dirty_rect_array[dirty_idx].top,
+                                              dirty_rect_array[dirty_idx].bottom);
+                            sprite_clear_sprite1_color(skybox_grd_color);
+                        }
+                    }
+                }
+
+                slice_rect.top = rect_skybox.top;
+                slice_rect.bottom = rect_skybox.bottom;
+            }
+
+            /* setup_skybox_strip: */
+            slice_rect.left = RENDER_SCREEN_LEFT;
+            slice_rect.right = RENDER_SCREEN_WIDTH;
+            if (rect_intersect(&slice_rect, clip_rect) != 0)
+                return skybox_drawn;
+
+            /* Render skybox strips */
+            strip_left = RENDER_SCREEN_LEFT;
+            {
+            int strip_count = (horizon_y_delta < 0 ? -horizon_y_delta : horizon_y_delta) + 1;
+            if (strip_count > RENDER_MAX_STRIP_COUNT)
+                strip_count = RENDER_MAX_STRIP_COUNT;
+
+            for (stripIdx = 0; stripIdx < strip_count; stripIdx++) {
+                slice_rect.left = strip_left;
+                slice_rect.right = ((RENDER_SCREEN_WIDTH * stripIdx + RENDER_SCREEN_WIDTH) / strip_count)
+                                   & video_flag3_isFFFF;
+                if (slice_rect.left != slice_rect.right) {
+                    sky_height = horizon_y_delta * stripIdx / strip_count + horizon_y_left;
+                    draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
+                    strip_left = slice_rect.right;
+                }
+            }
+            } /* strip_count scope */
+            return skybox_drawn;
+        } /* end if (!both_invalid) */
+    } /* end if (view_roll != 0) */
 
     /* No horizon visible - simple sky/ground split */
     horizon_vec.x = 0;
@@ -920,13 +897,14 @@ no_horizon:
     if (horizon_vec_a_cam.z < 0) {
         /* Looking down = all sky */
         sprite_clear_sprite1_color(skybox_sky_color);
-        if (timertestflag_copy == 0) goto done;
-        skybox_drawn = 1;
+        if (!timertestflag_copy)
+            return skybox_drawn;
+        skybox_drawn = true;
         rect_skybox.left = RENDER_SCREEN_LEFT;
         rect_skybox.right = RENDER_SCREEN_WIDTH;
         rect_skybox.top = clip_rect->top;
         rect_skybox.bottom = clip_rect->bottom;
-        goto done;
+        return skybox_drawn;
     }
 
     /* Have a horizon point */
@@ -939,19 +917,20 @@ no_horizon:
     if (sky_dir_sign == 1) {
 
         /* Full skybox rendering */
-        if (timertestflag_copy == 0) {
+        if (!timertestflag_copy) {
             /* Simple mode */
             slice_rect.left = RENDER_SCREEN_LEFT;
             slice_rect.right = RENDER_SCREEN_WIDTH;
             slice_rect.top = clip_rect->top;
             slice_rect.bottom = clip_rect->bottom;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-            goto done;
+            return skybox_drawn;
         }
 
         if (timertestflag2 == 4) {
             rect_skybox.top = sky_height - 1;
-        } else {
+        }
+        else {
             rect_skybox.top = sky_height - memory_pointer_boundary_max;
         }
         rect_skybox.left = RENDER_SCREEN_LEFT;
@@ -965,12 +944,12 @@ no_horizon:
             slice_rect.top = clip_rect->top;
             slice_rect.bottom = clip_rect->bottom;
             draw_skybox_rect_slice(&slice_rect, view_yaw, sky_height);
-            goto done;
+            return skybox_drawn;
         }
 
         /* Multi-rect tracking path */
-        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-            rect_sort_indices[si] = 1;
+        for (stripIdx = 0; stripIdx < RENDER_RECT_ARRAY_COUNT; stripIdx++) {
+            rect_sort_indices[stripIdx] = 1;
         }
 
         if (timertestflag2 == 4) {
@@ -978,77 +957,78 @@ no_horizon:
         }
 
         if (angle_rotation_state[view_index] == view_yaw) {
-            if (((struct RECTANGLE*)rect_buffer_primary)[5].left == rect_skybox.left &&
-                ((struct RECTANGLE*)rect_buffer_primary)[5].right == rect_skybox.right &&
-                ((struct RECTANGLE*)rect_buffer_primary)[5].top == rect_skybox.top &&
-                ((struct RECTANGLE*)rect_buffer_primary)[5].bottom == rect_skybox.bottom) {
-                rect_sort_indices[5] = 0;
-            } else {
-                rect_sort_indices[5] = 3;
+            if (((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].left
+                    == rect_skybox.left
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].right
+                       == rect_skybox.right
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].top
+                       == rect_skybox.top
+                && ((struct RECTANGLE *)rect_buffer_primary)[RENDER_SKYBOX_RECT_SLOT].bottom
+                       == rect_skybox.bottom) {
+                rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
             }
-        } else {
-            rect_sort_indices[5] = 3;
+            else {
+                rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
+            }
+        }
+        else {
+            rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 3;
         }
 
         dirty_rect_count = 0;
-        rectlist_add_rects(15, rect_sort_indices, rect_buffer_primary,
-                           frame_dirty_rects, clip_rect,
-                           &dirty_rect_count, dirty_rect_array);
+        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_primary,
+                           frame_dirty_rects, clip_rect, &dirty_rect_count, dirty_rect_array);
 
-        for (di = 0; di < (int)(signed char)dirty_rect_count; di++) {
-            draw_skybox_rect_slice(&dirty_rect_array[di], view_yaw, sky_height);
+        for (dirty_idx = 0; dirty_idx < (int)(signed char)dirty_rect_count; dirty_idx++) {
+            draw_skybox_rect_slice(&dirty_rect_array[dirty_idx], view_yaw, sky_height);
         }
-        goto done;
+        return skybox_drawn;
     }
 
     /* sky_dir_sign != 1: Simple ground/sky fill */
 
-    si = sky_height - clip_rect->top;
-    if (clip_rect->bottom - clip_rect->top < si) {
-        si = clip_rect->bottom - clip_rect->top;
+    fillHeight = sky_height - clip_rect->top;
+    if (clip_rect->bottom - clip_rect->top < fillHeight) {
+        fillHeight = clip_rect->bottom - clip_rect->top;
     }
-    if (si > 0) {
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top, clip_rect->top + si);
+    if (fillHeight > 0) {
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, clip_rect->top,
+                          clip_rect->top + fillHeight);
         sprite_clear_sprite1_color(skybox_grd_color);
     }
-    si = clip_rect->bottom - sky_height;
-    if (si > 0) {
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, sky_height, sky_height + si);
+    fillHeight = clip_rect->bottom - sky_height;
+    if (fillHeight > 0) {
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, sky_height,
+                          sky_height + fillHeight);
         sprite_clear_sprite1_color(skybox_sky_color);
     }
 
-done2:
-    skybox_drawn = 1;
-done:
+    skybox_drawn = true;
     return skybox_drawn;
 }
 
 /**--------------------------------------------------------------
  * @brief Render the 3D track preview shown before a race.
  /*--------------------------------------------------------------*/
-void draw_track_preview(void) {
-    int cell_index, unused_row_temp;
+void
+draw_track_preview(void) {
+    int cell_index;
     int object_index;
-    unsigned char unused_marker, terrain_id;
-    unsigned char row, unused_col_temp;
+    unsigned char terrain_id;
+    unsigned int row;
     int pitch_angle, horizon_y;
     unsigned char col, track_elem;
     int projected_horizon_y = 0, corner_idx;
-    struct MATRIX* camera_mat;
+    struct MATRIX *camera_mat;
     struct TRANSFORMEDSHAPE3D transformed_shape;
     int element_world_z;
     struct POINT2D projected_point;
     struct VECTOR object_pos;
-    int radius_xz, unused_tmp;
-    struct MATRIX* matptr;
-    unsigned char* elem_map_ptr;
-    unsigned char* terr_map_ptr;
-    int i, si;
-
-    (void)unused_col_temp;
-    (void)unused_marker;
-    (void)unused_tmp;
-    (void)i;
+    int radius_xz;
+    struct MATRIX *matptr;
+    unsigned char *elem_map_ptr;
+    unsigned char *terr_map_ptr;
+    short trackX;
 
     if (track_terrain_map == 0) {
         return;
@@ -1056,54 +1036,63 @@ void draw_track_preview(void) {
     {
         const uintptr_t terr_ptr = (uintptr_t)track_terrain_map;
         const uintptr_t expected_elem_ptr = terr_ptr - RENDER_TRACK_MAP_DELTA;
-        if (track_elem_map == 0 ||
-            (uintptr_t)track_elem_map >= terr_ptr ||
-            (terr_ptr - (uintptr_t)track_elem_map) != RENDER_TRACK_MAP_DELTA) {
-            track_elem_map = (unsigned char*)expected_elem_ptr;
+        if (track_elem_map == 0 || (uintptr_t)track_elem_map >= terr_ptr
+            || (terr_ptr - (uintptr_t)track_elem_map) != RENDER_TRACK_MAP_DELTA) {
+            track_elem_map = (unsigned char *)expected_elem_ptr;
         }
     }
 
-    radius_xz = polarRadius2D(angle_correction_offset_x - angle_sine_table_start, angle_correction_offset_z - angle_sine_table_stride);
+    radius_xz = polarRadius2D(angle_correction_offset_x - angle_sine_table_start,
+                              angle_correction_offset_z - angle_sine_table_stride);
     pitch_angle = polarAngle(angle_correction_offset_y - angle_sine_table_offset, radius_xz);
     matptr = mat_rot_zxy(0, pitch_angle, 0, 1);
     camera_mat = matptr;
 
-    mat_mul_vector((struct VECTOR*)preview_camera_forward_vector, camera_mat, &object_pos);
+    mat_mul_vector((struct VECTOR *)preview_camera_forward_vector, camera_mat, &object_pos);
     vector_to_point(&object_pos, &projected_point);
     projected_horizon_y = projected_point.py;
 
     horizon_y = projected_horizon_y;
-    if (horizon_y < 0) horizon_y = 0;
+    if (horizon_y < 0)
+        horizon_y = 0;
 
     /* Draw sky */
     {
         int sky_bottom = horizon_y - skybox_current;
-        if (sky_bottom < 0) sky_bottom = 0;
-        if (sky_bottom > RENDER_SCREEN_HEIGHT) sky_bottom = RENDER_SCREEN_HEIGHT;
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP, (unsigned short)sky_bottom);
+        if (sky_bottom < 0)
+            sky_bottom = 0;
+        if (sky_bottom > RENDER_SCREEN_HEIGHT)
+            sky_bottom = RENDER_SCREEN_HEIGHT;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP,
+                          (unsigned short)sky_bottom);
         if (sky_bottom > 0) {
             sprite_clear_sprite1_color(skybox_sky_color);
         }
     }
 
     /* Draw skybox images */
-    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP, RENDER_COLOR_INDEX_WATER);
+    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP,
+                      RENDER_COLOR_INDEX_WATER);
     sprite_putimage_copy_at(skyboxes[2], RENDER_SCREEN_LEFT, horizon_y - skybox_ptr3);
     sprite_putimage_copy_at(skyboxes[3], RENDER_SCREEN_WIDTH, horizon_y - skybox_ptr4);
 
     /* Draw ground */
     {
         int ground_top = horizon_y;
-        if (ground_top < 0) ground_top = 0;
-        if (ground_top > RENDER_SCREEN_HEIGHT) ground_top = RENDER_SCREEN_HEIGHT;
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, (unsigned short)ground_top, RENDER_SCREEN_HEIGHT);
+        if (ground_top < 0)
+            ground_top = 0;
+        if (ground_top > RENDER_SCREEN_HEIGHT)
+            ground_top = RENDER_SCREEN_HEIGHT;
+        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, (unsigned short)ground_top,
+                          RENDER_SCREEN_HEIGHT);
         if (ground_top < RENDER_SCREEN_HEIGHT) {
             sprite_clear_sprite1_color(skybox_grd_color);
         }
     }
 
     /* Full-screen clear for 3D */
-    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP, RENDER_SCREEN_HEIGHT);
+    sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, RENDER_SCREEN_TOP,
+                      RENDER_SCREEN_HEIGHT);
     select_cliprect_rotate(0, pitch_angle, 0, &trackpreview_cliprect, 1);
 
     terr_map_ptr = track_terrain_map;
@@ -1111,9 +1100,8 @@ void draw_track_preview(void) {
     if (terr_map_ptr == 0) {
         return;
     }
-    if (elem_map_ptr == 0 ||
-        (uintptr_t)elem_map_ptr >= (uintptr_t)terr_map_ptr ||
-        ((uintptr_t)terr_map_ptr - (uintptr_t)elem_map_ptr) != RENDER_TRACK_MAP_DELTA) {
+    if (elem_map_ptr == 0 || (uintptr_t)elem_map_ptr >= (uintptr_t)terr_map_ptr
+        || ((uintptr_t)terr_map_ptr - (uintptr_t)elem_map_ptr) != RENDER_TRACK_MAP_DELTA) {
         elem_map_ptr = terr_map_ptr - RENDER_TRACK_MAP_DELTA;
     }
 
@@ -1122,111 +1110,137 @@ void draw_track_preview(void) {
     transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
 
     /* Iterate track grid (matches original draw_track_preview ASM in seg003.asm) */
-    (void)unused_row_temp; /* unused_row_temp not used in loop; row index via row directly */
     for (row = 0; row < RENDER_TRACK_GRID_SIZE; row++) {
-        for (col = 0; col < RENDER_TRACK_GRID_SIZE; ) {
+        for (col = 0; col < RENDER_TRACK_GRID_SIZE;) {
             /*
-             * di: Y-height offset in track-preview camera units.
+             * height_offset: Y-height offset in track-preview camera units.
              * Use hillHeightConsts[1] for hill elevation.
-             * For non-hill terrain and track elements, di = 0.
+             * For non-hill terrain and track elements, height_offset = 0.
              */
-            int di = 0;
+            int height_offset = 0;
 
             cell_index = (int)col;
             track_elem = elem_map_ptr[trackrows[row] + cell_index];
             terrain_id = terr_map_ptr[terrainrows[row] + cell_index];
 
-/** @brief Markers.
- * @param element Parameter `element`.
- * @param RENDER_TRACK_MARKER_MIN Parameter `RENDER_TRACK_MARKER_MIN`.
- * @return Function result.
- */
             /* Bridge/fence markers (253-255): suppress element, nothing renders */
             if (track_elem >= RENDER_TRACK_MARKER_MIN) {
                 terrain_id = 0;
                 track_elem = 0;
                 /* Hill-road substitution: replace element id when on hill-type terrain */
-            } else if (track_elem != 0) {
-                if (terrain_id >= RENDER_TERRAIN_HILLROAD_MIN && terrain_id < RENDER_TERRAIN_HILLROAD_MAX_EXCL) {
+            }
+            else if (track_elem != 0) {
+                if (terrain_id >= RENDER_TERRAIN_HILLROAD_MIN
+                    && terrain_id < RENDER_TERRAIN_HILLROAD_MAX_EXCL) {
                     track_elem = subst_hillroad_track(terrain_id, track_elem);
                     terrain_id = 0;
                 }
             }
 
             /*
-/** @brief Path.
- * @param RENDER_TERRAIN_HILL Parameter `RENDER_TERRAIN_HILL`.
- * @return Function result.
- */
+             * Hill terrain path: elevate the object.
+             */
             if (terrain_id == RENDER_TERRAIN_HILL) {
-                di = hillHeightConsts[1];
+                height_offset = hillHeightConsts[1];
                 if (track_elem != 0) {
                     terrain_id = 0;
                 }
                 if (terrain_id != 0) {
                     /* Render hill terrain (loshape) at elevated Y */
                     object_index = (int)terrain_id;
-                    transformed_shape.shapeptr = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                    transformed_shape.pos.x = (trackcenterpos2[(int)col] - angle_sine_table_start) >> 1;
-                    transformed_shape.pos.y = (di - angle_sine_table_offset) >> 1;
+                    transformed_shape.shapeptr
+                        = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.pos.x = (short)(trackcenterpos2[(int)col] - angle_sine_table_start)
+                                              >> 1;
+                    transformed_shape.pos.y = (short)(height_offset - angle_sine_table_offset) >> 1;
                     /* DOS: sub ax, word_3C10C (62736) / sar ax,1 — must wrap at 16 bits */
-                    transformed_shape.pos.z = (short)((uint16_t)trackcenterpos[row] - (uint16_t)(unsigned short)angle_sine_table_stride) >> 1;
+                    transformed_shape.pos.z
+                        = (short)((uint16_t)trackcenterpos[row]
+                                  - (uint16_t)(unsigned short)angle_sine_table_stride)
+                          >> 1;
                     transformed_shape.rotvec.x = 0;
                     transformed_shape.rotvec.y = 0;
-                    transformed_shape.rotvec.z = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.rotvec.z
+                        = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
                     transformed_shape.ts_flags = 5 | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
+                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE
+                                                                   * REND_DIST_MULT;
                     transformed_shape.material = 0;
                     shape3d_render_transformed(&transformed_shape);
                 }
-            } else {
-/** @brief Path.
- * @param RENDER_TRACK_BRIDGE_MAX Parameter `RENDER_TRACK_BRIDGE_MAX`.
- * @return Function result.
- */
+            }
+            else {
                 /* Non-hill terrain path (loc_1CE04 in original ASM) */
-                if (track_elem >= RENDER_TRACK_BRIDGE_MIN && track_elem <= RENDER_TRACK_BRIDGE_MAX) {
+                if (track_elem >= RENDER_TRACK_BRIDGE_MIN
+                    && track_elem <= RENDER_TRACK_BRIDGE_MAX) {
                     /* Bridge/overpass element: render terrain at all 4 surrounding corners.
                      * Uses hishape per original ASM [bx+4]. */
                     for (corner_idx = 0; corner_idx < 4; corner_idx++) {
                         unsigned char r, c;
                         switch (corner_idx) {
-                            case 0: r = col;     c = row;     break;
-                            case 1: r = col + 1; c = row;     break;
-                            case 2: r = col;     c = row + 1; break;
-                            default: r = col + 1; c = row + 1; break;
+                        case 0:
+                            r = col;
+                            c = row;
+                            break;
+                        case 1:
+                            r = col + 1;
+                            c = row;
+                            break;
+                        case 2:
+                            r = col;
+                            c = row + 1;
+                            break;
+                        default:
+                            r = col + 1;
+                            c = row + 1;
+                            break;
                         }
                         {
                             unsigned char tv = terr_map_ptr[terrainrows[(int)c] + (int)r];
                             if (tv != 0) {
                                 object_index = (int)tv;
-                                transformed_shape.shapeptr = trkobj_shape(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                                transformed_shape.pos.x = (trackcenterpos2[(int)r] - angle_sine_table_start) >> 1;
-                                transformed_shape.pos.y = (-angle_sine_table_offset) >> 1;
-                                transformed_shape.pos.z = (short)((uint16_t)trackcenterpos[(int)c] - (uint16_t)(unsigned short)angle_sine_table_stride) >> 1;
+                                transformed_shape.shapeptr = trkobj_shape(
+                                    trkobj_entry(sceneshapes2, (unsigned)object_index));
+                                transformed_shape.pos.x
+                                    = (short)(trackcenterpos2[(int)r] - angle_sine_table_start) >> 1;
+                                transformed_shape.pos.y = (short)(-angle_sine_table_offset) >> 1;
+                                transformed_shape.pos.z
+                                    = (short)((uint16_t)trackcenterpos[(int)c]
+                                              - (uint16_t)(unsigned short)angle_sine_table_stride)
+                                      >> 1;
                                 transformed_shape.rotvec.x = 0;
                                 transformed_shape.rotvec.y = 0;
-                                transformed_shape.rotvec.z = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                                transformed_shape.ts_flags = 5 | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                                transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
+                                transformed_shape.rotvec.z = trkobj_roty(
+                                    trkobj_entry(sceneshapes2, (unsigned)object_index));
+                                transformed_shape.ts_flags = 5
+                                                             | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
+                                transformed_shape.shape_visibility_threshold
+                                    = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
                                 transformed_shape.material = 0;
                                 shape3d_render_transformed(&transformed_shape);
                             }
                         }
                     }
-                    terrain_id = 0;
-                } else if (terrain_id != 0) {
+                }
+                else if (terrain_id != 0) {
                     /* Regular flat terrain (loshape) */
                     object_index = (int)terrain_id;
-                    transformed_shape.shapeptr = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
-                    transformed_shape.pos.x = (trackcenterpos2[(int)col] - angle_sine_table_start) >> 1;
-                    transformed_shape.pos.y = (-angle_sine_table_offset) >> 1;
-                    transformed_shape.pos.z = (short)((uint16_t)trackcenterpos[row] - (uint16_t)(unsigned short)angle_sine_table_stride) >> 1;
+                    transformed_shape.shapeptr
+                        = trkobj_loshape(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.pos.x = (short)(trackcenterpos2[(int)col] - angle_sine_table_start)
+                                              >> 1;
+                    transformed_shape.pos.y = (short)(-angle_sine_table_offset) >> 1;
+                    transformed_shape.pos.z
+                        = (short)((uint16_t)trackcenterpos[row]
+                                  - (uint16_t)(unsigned short)angle_sine_table_stride)
+                          >> 1;
                     transformed_shape.rotvec.x = 0;
                     transformed_shape.rotvec.y = 0;
-                    transformed_shape.rotvec.z = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
+                    transformed_shape.rotvec.z
+                        = trkobj_roty(trkobj_entry(sceneshapes2, (unsigned)object_index));
                     transformed_shape.ts_flags = 5 | TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED;
-                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
+                    transformed_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE
+                                                                   * REND_DIST_MULT;
                     transformed_shape.material = 0;
                     shape3d_render_transformed(&transformed_shape);
                 }
@@ -1247,36 +1261,33 @@ void draw_track_preview(void) {
                  */
                 object_index = (int)track_elem;
                 {
-                    const unsigned char* tobj = trkobj_entry(trkObjectList, (unsigned)object_index);
+                    const unsigned char *tobj = trkobj_entry(trkObjectList, (unsigned)object_index);
 
-/** @brief Position.
- * @param tobj Parameter `tobj`.
- * @return Function result.
- */
                     /* Z position (row axis) */
                     if (trkobj_multi(tobj) & 1) {
                         element_world_z = trackpos[row];
-                    } else {
+                    }
+                    else {
                         element_world_z = trackcenterpos[row];
                     }
-/** @brief Position.
- * @param tobj Parameter `tobj`.
- * @return Function result.
- */
                     /* X position (column axis) */
                     if (trkobj_multi(tobj) & 2) {
-                        si = trackpos2[col + 1];
-                    } else {
-                        si = trackcenterpos2[(int)col];
+                        trackX = (short)trackpos2[col + 1];
+                    }
+                    else {
+                        trackX = (short)trackcenterpos2[(int)col];
                     }
 
-                    object_pos.x = (si - angle_sine_table_start) >> 1;
-                    object_pos.y = (di - angle_sine_table_offset) >> 1;  /* elevated on hills */
-                    object_pos.z = (short)((uint16_t)element_world_z - (uint16_t)(unsigned short)angle_sine_table_stride) >> 1;
+                    object_pos.x = (short)(trackX - angle_sine_table_start) >> 1;
+                    object_pos.y = (short)(height_offset - angle_sine_table_offset) >> 1; /* elevated on hills */
+                    object_pos.z = (short)((uint16_t)element_world_z
+                                           - (uint16_t)(unsigned short)angle_sine_table_stride)
+                                   >> 1;
 
                     /* Overlay: loshape of overlay entry, roty from main trkobj */
                     if (trkobj_overlay(tobj) != 0) {
-                        const unsigned char* overlay = trkobj_entry(trkObjectList, (unsigned)trkobj_overlay(tobj));
+                        const unsigned char *overlay = trkobj_entry(trkObjectList,
+                                                                    (unsigned)trkobj_overlay(tobj));
                         if (trkobj_loshape(overlay) != 0) {
                             transformed_shape.shapeptr = trkobj_loshape(overlay);
                             transformed_shape.pos = object_pos;
@@ -1284,7 +1295,8 @@ void draw_track_preview(void) {
                             transformed_shape.ts_flags = 5;
                             if (trkobj_surface(overlay) >= 0) {
                                 transformed_shape.material = trkobj_surface(overlay);
-                            } else {
+                            }
+                            else {
                                 transformed_shape.material = 0;
                             }
                             shape3d_render_transformed(&transformed_shape);
@@ -1298,7 +1310,8 @@ void draw_track_preview(void) {
                     transformed_shape.ts_flags = trkobj_ignore_zbias(tobj) | 4;
                     if (trkobj_surface(tobj) >= 0) {
                         transformed_shape.material = trkobj_surface(tobj);
-                    } else {
+                    }
+                    else {
                         transformed_shape.material = 0;
                     }
                     if (transformed_shape.shapeptr) {
@@ -1317,127 +1330,132 @@ void draw_track_preview(void) {
 /**--------------------------------------------------------------
  * @brief Draw race HUD overlays (messages, arrows and status text).
  /*--------------------------------------------------------------*/
-struct RECTANGLE*  draw_ingame_text(void) {
-    int si;
+struct RECTANGLE *
+draw_ingame_text(void) {
 
     rect_ingame_text = rect_invalid;
 
     if (idle_expired != 0) {
         /* "Professional Driver" + "on Closed Circuit" */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aDm1));
-        rect_union(intro_draw_text(resID_byte1,
-               font_get_centered_x(resID_byte1), 170, dialog_fnt_colour, 0),
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_DISCLAIMER_Y,
+                                   dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aDm2));
-        goto draw_text_at_B6;
+        {
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
+            rect_union(r, &rect_ingame_text, &rect_ingame_text);
+        }
+        return &rect_ingame_text;
     }
 
-    if (game_replay_mode != 0) goto replay_check;
+    if (game_replay_mode != 0) {
+        if (game_replay_mode == 2) {
+            unsigned int frame_mod;
+            frame_mod = (unsigned)state.game_frame % framespersec;
+            if ((int)(framespersec / RENDER_REPLAY_INDICATOR_DUTY_DIVISOR) > (int)frame_mod) {
+                copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
+                {
+                    int x = 312 - (int)strlen(resID_byte1) * RENDER_FONT_CHAR_WIDTH;
+                    struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_REPLAY_TEXT_Y, dialog_fnt_colour, 0);
+                    rect_union(r, &rect_ingame_text, &rect_ingame_text);
+                }
+            }
+        }
+        return &rect_ingame_text;
+    }
 
     if (state.game_inputmode == 0) {
         /* "Fasten Your Seatbelt" */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPre));
-draw_text_at_B6:
-        /* Common path: draw text at computed X, specified Y */
         {
             int x = font_get_centered_x(resID_byte1);
-            struct RECTANGLE* r = intro_draw_text(resID_byte1, x, 182,
-                                                  dialog_fnt_colour, 0);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
-        goto done_text;
+        return &rect_ingame_text;
     }
 
-    if (passed_security == 0) {
+    if (!passed_security) {
         /* Security system warning */
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe1));
-        rect_union(intro_draw_text(resID_byte1,
-               font_get_centered_x(resID_byte1), 93, dialog_fnt_colour, 0),
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_WARNING_Y,
+                                   dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
 
         copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aSe2));
-        goto draw_text_at_B6;
+        {
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_BOTTOM_TEXT_Y, dialog_fnt_colour, 0);
+            rect_union(r, &rect_ingame_text, &rect_ingame_text);
+        }
+        return &rect_ingame_text;
     }
 
-    if (followOpponentFlag != 0) goto done_text;
-    if (cameramode != 0) goto done_text;
-    if (state.playerstate.car_crashBmpFlag != 0) goto done_text;
+    if (followOpponentFlag)
+        return &rect_ingame_text;
+    if (cameramode != 0)
+        return &rect_ingame_text;
+    if (state.playerstate.car_crashBmpFlag != 0)
+        return &rect_ingame_text;
 
     /* Direction arrows / messages */
     switch ((signed char)state.game_collision_type) {
-        case 1:
-            /* Left arrow */
-            sprite_putimage_transparent(sdgame2shapes[3], 148, 93);
-            rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
-            break;
-        case 2:
-            /* Right arrow */
-            sprite_putimage_transparent(sdgame2shapes[4], 148, 93);
-            rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
-            break;
-        case 3:
-            /* "Wrong Way" */
-            copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aWww));
-            rect_union(intro_draw_text(resID_byte1,
-                       font_get_centered_x(resID_byte1), 93, dialog_fnt_colour, 0),
-                       &rect_ingame_text, &rect_ingame_text);
-            break;
+    case 1:
+        /* Left arrow */
+        sprite_putimage_transparent(sdgame2shapes[3], RENDER_HUD_ARROW_X, RENDER_HUD_WARNING_Y);
+        rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
+        break;
+    case 2:
+        /* Right arrow */
+        sprite_putimage_transparent(sdgame2shapes[4], RENDER_HUD_ARROW_X, RENDER_HUD_WARNING_Y);
+        rect_union(&rect_ingame_text2, &rect_ingame_text, &rect_ingame_text);
+        break;
+    case 3:
+        /* "Wrong Way" */
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aWww));
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_WARNING_Y,
+                                   dialog_fnt_colour, 0),
+                   &rect_ingame_text, &rect_ingame_text);
+        break;
     }
 
     /* Bottom text based on field_45E */
     resID_byte1[0] = 0;
     switch ((signed char)state.game_flyover_check) {
-        case 1:
-            /* Opponent near + left arrow */
-            sprite_putimage_transparent(sdgame2shapes[3], 68, 113);
-            rect_union(&rect_ingame_text3, &rect_ingame_text, &rect_ingame_text);
-            copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp));
-            break;
-        case 2:
-            /* Opponent near + right arrow */
-            sprite_putimage_transparent(sdgame2shapes[4], 228, 113);
-            rect_union(&rect_ingame_text4, &rect_ingame_text, &rect_ingame_text);
-            copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp_0));
-            break;
+    case 1:
+        /* Opponent near + left arrow */
+        sprite_putimage_transparent(sdgame2shapes[3], RENDER_HUD_OPP_ARROW_LEFT_X, RENDER_HUD_OPP_ARROW_Y);
+        rect_union(&rect_ingame_text3, &rect_ingame_text, &rect_ingame_text);
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp));
+        break;
+    case 2:
+        /* Opponent near + right arrow */
+        sprite_putimage_transparent(sdgame2shapes[4], RENDER_HUD_OPP_ARROW_RIGHT_X, RENDER_HUD_OPP_ARROW_Y);
+        rect_union(&rect_ingame_text4, &rect_ingame_text, &rect_ingame_text);
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aOpp_0));
+        break;
     }
 
     if (resID_byte1[0] != 0) {
-        rect_union(intro_draw_text(resID_byte1,
-                   font_get_centered_x(resID_byte1), 116, dialog_fnt_colour, 0),
+        rect_union(intro_draw_text(resID_byte1, font_get_centered_x(resID_byte1), RENDER_HUD_OPP_TEXT_Y,
+                                   dialog_fnt_colour, 0),
                    &rect_ingame_text, &rect_ingame_text);
     }
 
     /* Penalty display */
-    if (show_penalty_counter == 0) goto done_text;
-    copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPen));
-    format_frame_as_string(resID_byte1 + strlen(resID_byte1), penalty_time, 0);
-    {
-        int x = font_get_centered_x(resID_byte1);
-        struct RECTANGLE* r = intro_draw_text(resID_byte1, x, 102,
-                                              dialog_fnt_colour, 0);
-        rect_union(r, &rect_ingame_text, &rect_ingame_text);
-    }
-    goto done_text;
-
-replay_check:
-    if (game_replay_mode != 2) goto done_text;
-    {
-        unsigned int frame_mod;
-        si = state.game_frame;
-        frame_mod = (unsigned)si % framespersec;
-        if ((int)(framespersec >> 1) <= (int)frame_mod) goto done_text;
-
-        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aRpl_0));
+    if (show_penalty_counter != 0) {
+        copy_string(resID_byte1, locate_text_res(gameresptr, (char *)aPen));
+        format_frame_as_string(resID_byte1 + strlen(resID_byte1), penalty_time, 0);
         {
-            int x = 312 - (int)strlen(resID_byte1) * 8;
-            struct RECTANGLE* r = intro_draw_text(resID_byte1, x, 15,
-                                                  dialog_fnt_colour, 0);
+            int x = font_get_centered_x(resID_byte1);
+            struct RECTANGLE *r = intro_draw_text(resID_byte1, x, RENDER_HUD_PENALTY_TEXT_Y, dialog_fnt_colour, 0);
             rect_union(r, &rect_ingame_text, &rect_ingame_text);
         }
     }
 
-done_text:
     return &rect_ingame_text;
 }
 
@@ -1449,20 +1467,21 @@ done_text:
  * @param crack_y_scale   Vertical scale for the crack.
  * @return Pointer to the bounding rectangle of the crack overlay.
  /*--------------------------------------------------------------*/
-struct RECTANGLE*  init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
+struct RECTANGLE *
+init_crak(int frame_count, int crack_y_offset, int crack_y_scale) {
     int frame_index, segment_count;
     int x2, y2, x1, y1;
     struct POINT2D point;
-    char * cracshape;
-    char * cinfshape;
-    int si, count;
-    int cx;
+    char *cracshape;
+    char *cinfshape;
+    int segIdx, count;
+    int frames_per_crack_segment;
 
     cracshape = locate_shape_alt(gameresptr, (char *)aCrak);
     cinfshape = locate_shape_alt(gameresptr, (char *)aCinf);
 
-    cx = framespersec / 7;
-    frame_index = frame_count / cx;
+    frames_per_crack_segment = framespersec / RENDER_CRACK_SEGMENTS_PER_SECOND;
+    frame_index = frame_count / frames_per_crack_segment;
 
     count = *(short *)cinfshape;
     if (frame_index >= count) {
@@ -1473,23 +1492,23 @@ struct RECTANGLE*  init_crak(int frame_count, int crack_y_offset, int crack_y_sc
 
     rect_ingame_text = rect_invalid;
 
-    for (si = 0; si < segment_count; si++) {
-        short * crk = (short *)cracshape;
-        x1 = crk[si * 4 + 0];
-        y1 = crk[si * 4 + 1];
-        x2 = crk[si * 4 + 2];
-        y2 = crk[si * 4 + 3];
+    for (segIdx = 0; segIdx < segment_count; segIdx++) {
+        short *crk = (short *)cracshape;
+        x1 = crk[segIdx * 4 + 0];
+        y1 = crk[segIdx * 4 + 1];
+        x2 = crk[segIdx * 4 + 2];
+        y2 = crk[segIdx * 4 + 3];
 
         /* Scale to screen size */
-        y1 = (int)((long)y1 * (long)crack_y_scale / 200L);
-        y2 = (int)((long)y2 * (long)crack_y_scale / 200L);
+        y1 = (int)((long)y1 * (long)crack_y_scale / (long)RENDER_SCREEN_HEIGHT);
+        y2 = (int)((long)y2 * (long)crack_y_scale / (long)RENDER_SCREEN_HEIGHT);
 
         /* Draw 3 lines: black outline + colored center */
         preRender_line(x1, y1 + crack_y_offset - 1, x2, y2 + crack_y_offset - 1, 0);
         preRender_line(x1, y1 + crack_y_offset + 1, x2, y2 + crack_y_offset + 1, 0);
         preRender_line(x1, y1 + crack_y_offset, x2, y2 + crack_y_offset, dialog_fnt_colour);
 
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             /* Update bounding rect */
             point.px = x1;
             point.py = y1 + crack_y_offset - 1;
@@ -1515,37 +1534,38 @@ struct RECTANGLE*  init_crak(int frame_count, int crack_y_offset, int crack_y_sc
 /**--------------------------------------------------------------
  * @brief Run the title intro animation sequence setup and frame loop.
  /*--------------------------------------------------------------*/
-unsigned short  setup_intro(void) {
+unsigned short
+setup_intro(void) {
     short intro_frame_counter;
-    short* star_point_count_ptr = 0;
+    short *star_point_count_ptr = 0;
     struct RECTANGLE star_points_buffer_a[50];
     short star_point_count_a;
     struct RECTANGLE star_points_buffer_b[50];
     short star_point_count_b;
-    struct POINT2D* star_points_ptr = 0;
-    short draw_car_flag;
+    struct POINT2D *star_points_ptr = 0;
+    bool draw_car_flag;
     short camera_pitch;
     short opponent_x, opponent_y, opponent_z;
-    struct { short x, y, z; } stars[100];
-    short camera_delta;
+    struct {
+        short x, y, z;
+    } stars[100];
+    int camera_delta;
     short frame_delta;
     short camera_x, camera_y, camera_z;
-    char intro_interrupted;
+    bool intro_interrupted;
     short rect_buffer_index;
     struct RECTANGLE dirty_rect;
     short camera_yaw;
     struct RECTANGLE combined_dirty_rect;
-    char * logo_shapes[3];
+    char *logo_shapes[3];
     struct RECTANGLE rendered_rect;
-    short end_phase;
+    bool end_phase;
     short camera_distance;
-    short target_x = RENDER_INTRO_CAMERA_CENTER, target_y = RENDER_INTRO_CAMERA_Y_CRUISE, target_z = RENDER_INTRO_CAMERA_CENTER;
-    char * titleres;
-    int i;
+    short target_x = RENDER_INTRO_CAMERA_CENTER, target_y = RENDER_INTRO_CAMERA_Y_CRUISE,
+          target_z = RENDER_INTRO_CAMERA_CENTER;
+    char *titleres;
 
-    (void)i;
-
-    intro_interrupted = 0;
+    intro_interrupted = false;
 
     /* Load title 3D resource */
     titleres = (char *)file_load_3dres((char *)aTitle);
@@ -1557,15 +1577,16 @@ unsigned short  setup_intro(void) {
     shape3d_init_shape(logo_shapes[2], &intro_bravshape);
 
     /* Create sprite window if needed */
-    if (video_flag5_is0 == 0) {
-        wndsprite = sprite_make_wnd(RENDER_SCREEN_WIDTH, RENDER_SCREEN_HEIGHT, RENDER_INTRO_WND_DEPTH);
+    if (!video_flag5_is0) {
+        wndsprite = sprite_make_wnd(RENDER_SCREEN_WIDTH, RENDER_SCREEN_HEIGHT,
+                                    RENDER_INTRO_WND_DEPTH);
     }
 
     /* Initialize star positions */
     for (camera_delta = 0; camera_delta < RENDER_STAR_COUNT; camera_delta++) {
-        stars[camera_delta].x = (get_kevinrandom() << 7) - 16384;
-        stars[camera_delta].y = 5000 - (get_kevinrandom() << 7);
-        stars[camera_delta].z = (get_kevinrandom() << 7) - 16384;
+        stars[camera_delta].x = (short)(get_kevinrandom() << 7) - 16384;
+        stars[camera_delta].y = (short)5000 - (get_kevinrandom() << 7);
+        stars[camera_delta].z = (short)(get_kevinrandom() << 7) - 16384;
     }
 
     set_projection(40, 40, RENDER_SCREEN_WIDTH, RENDER_SCREEN_HEIGHT);
@@ -1573,32 +1594,27 @@ unsigned short  setup_intro(void) {
     camera_x = RENDER_INTRO_CAMERA_CENTER;
     camera_z = RENDER_INTRO_CAMERA_CENTER;
     camera_y = RENDER_INTRO_CAMERA_Y_START;
-    end_phase = 0;
+    end_phase = false;
     intro_frame_counter = 0;
 
     /* Load car model for intro */
     {
-        char * carres;
+        char *carres;
         carres = file_load_resfile(aCarcoun_0);
         setup_aero_trackdata(carres, 1);
         unload_resource(carres);
     }
 
     init_plantrak_();
-    timer_get_delta();
+    (void)timer_get_delta();
 
-/** @brief Fps.
- * @param gameplay Parameter `gameplay`.
- * @param framespersec Parameter `framespersec`.
- * @return Function result.
- */
     /* The intro always runs at 20 fps (matching DOS hardware detection default).
      * framespersec is 0 at first launch (only set during gameplay), so initialise
      * it here when needed — same value the DOS speed-detection would have chosen. */
     if (framespersec == 0) {
-        framespersec = 30;
+        framespersec = RENDER_INTRO_DEFAULT_FPS;
     }
-    inverse_fps_hundredths = 100 / framespersec;
+    inverse_fps_hundredths = (short)100 / framespersec;
     angular_velocity_state = 0;
 
     star_point_count_b = 0;
@@ -1617,44 +1633,49 @@ unsigned short  setup_intro(void) {
     /* Main intro loop */
     for (;;) {
         /* Poll SDL events first to prevent blocking on timer when events are pending */
-        kb_poll_sdl_input();
-        
+        kb_poll_input();
+
         frame_delta = (short)timer_get_delta();
         if (inverse_fps_hundredths == 0) {
             inverse_fps_hundredths = 1;
         }
-        angular_velocity_state += frame_delta;
+        angular_velocity_state += (short)frame_delta;
 
         while (angular_velocity_state > inverse_fps_hundredths) {
-            angular_velocity_state -= inverse_fps_hundredths;
+            angular_velocity_state -= (short)inverse_fps_hundredths;
             update_opponent_car_state();
 
             /* Check if intro should end */
             {
-                int limit;
-                limit = framespersec;
-                limit = ((limit << 2) + limit) << 1;
-                limit += framespersec;  /* limit = framespersec * 11 */
+                int limit = framespersec * RENDER_INTRO_END_PHASE_DELAY_SECONDS;
                 intro_frame_counter++;
                 if (intro_frame_counter > limit) {
-                    end_phase = 1;
+                    end_phase = true;
                     camera_y += RENDER_INTRO_CAMERA_Y_STEP;
-                    camera_z -= 5;
+                    camera_z -= RENDER_INTRO_CAMERA_Z_RETREAT_STEP;
 
                     /* Oscillate camera angle toward intro center */
                     camera_delta = camera_x - RENDER_INTRO_CAMERA_CENTER;
                     if (camera_delta < 0) {
-                        if (camera_delta < -RENDER_INTRO_CAMERA_ADJUST_STEP) camera_x += RENDER_INTRO_CAMERA_ADJUST_STEP;
-                    } else if (camera_delta > 0) {
-                        if (camera_delta >= RENDER_INTRO_CAMERA_ADJUST_STEP) camera_x -= RENDER_INTRO_CAMERA_ADJUST_STEP;
-                        else camera_x = RENDER_INTRO_CAMERA_CENTER;
+                        if (camera_delta < -RENDER_INTRO_CAMERA_ADJUST_STEP)
+                            camera_x += RENDER_INTRO_CAMERA_ADJUST_STEP;
+                    }
+                    else if (camera_delta > 0) {
+                        if (camera_delta >= RENDER_INTRO_CAMERA_ADJUST_STEP)
+                            camera_x -= RENDER_INTRO_CAMERA_ADJUST_STEP;
+                        else
+                            camera_x = RENDER_INTRO_CAMERA_CENTER;
                     }
 
-                    if (target_x > RENDER_INTRO_CAMERA_CENTER) target_x--;
-                    else if (target_x < RENDER_INTRO_CAMERA_CENTER) target_x++;
+                    if (target_x > RENDER_INTRO_CAMERA_CENTER)
+                        target_x--;
+                    else if (target_x < RENDER_INTRO_CAMERA_CENTER)
+                        target_x++;
 
-                    if (target_z > RENDER_INTRO_CAMERA_CENTER) target_z--;
-                    else if (target_z < RENDER_INTRO_CAMERA_CENTER) target_z++;
+                    if (target_z > RENDER_INTRO_CAMERA_CENTER)
+                        target_z--;
+                    else if (target_z < RENDER_INTRO_CAMERA_CENTER)
+                        target_z++;
                 }
             }
         }
@@ -1662,36 +1683,32 @@ unsigned short  setup_intro(void) {
         /* Always render, even if physics didn't tick (fixes intro refresh bug) */
         /* if (no_tick_flag == 0) goto check_input; */
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             setup_mcgawnd2();
-        } else {
+        }
+        else {
             sprite_select_wnd_as_sprite1();
         }
 
         /* Set camera position from opponent car */
         camera_yaw = -1;
-        draw_car_flag = 1;
+        draw_car_flag = true;
         opponent_x = (short)((long)state.opponentstate.car_posWorld1.lx >> 6);
         opponent_y = (short)((long)state.opponentstate.car_posWorld1.ly >> 6);
         opponent_z = (short)((long)state.opponentstate.car_posWorld1.lz >> 6);
 
         {
-            int early_limit;
-            early_limit = framespersec;
-            early_limit = (early_limit << 1) + early_limit;
-            early_limit <<= 1; /* framespersec * 6 */
+            int early_limit = framespersec * RENDER_INTRO_OPPONENT_TRACKING_SECONDS;
             if (intro_frame_counter < early_limit) {
-                draw_car_flag = 0;
-                camera_yaw = state.opponentstate.car_rotate.x & 1023;
+                draw_car_flag = false;
+                camera_yaw = (short)state.opponentstate.car_rotate.x & 1023;
                 camera_pitch = 0;
                 camera_x = opponent_x;
-                camera_y = opponent_y + 20;
+                camera_y = (short)opponent_y + RENDER_INTRO_CAMERA_Y_FOLLOW_OFFSET;
                 camera_z = opponent_z;
-            } else {
-                int mid_limit;
-                mid_limit = framespersec;
-                mid_limit = ((mid_limit << 2) + mid_limit) << 1;
-                mid_limit += framespersec; /* framespersec * 11 */
+            }
+            else {
+                int mid_limit = framespersec * RENDER_INTRO_END_PHASE_DELAY_SECONDS;
                 if (intro_frame_counter < mid_limit) {
                     camera_x = RENDER_INTRO_CAMERA_CENTER;
                     camera_z = RENDER_INTRO_CAMERA_CENTER;
@@ -1705,44 +1722,46 @@ unsigned short  setup_intro(void) {
 
         if (camera_yaw == -1) {
             /* Compute camera angle from position delta */
-            camera_yaw = -polarAngle(target_x - camera_x, target_z - camera_z) & RENDER_ANGLE_MASK;
-            camera_distance = polarRadius2D(target_x - camera_x, target_z - camera_z);
-            camera_pitch = polarAngle(target_y - camera_y, camera_distance) & RENDER_ANGLE_MASK;
+            camera_yaw = (short)-polarAngle(target_x - camera_x, target_z - camera_z) & RENDER_ANGLE_MASK;
+            camera_distance = (short)polarRadius2D(target_x - camera_x, target_z - camera_z);
+            camera_pitch = (short)polarAngle(target_y - camera_y, camera_distance) & RENDER_ANGLE_MASK;
         }
 
         /* Set up rect tracking buffers */
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             if (rect_buffer_index == 0) {
-                star_points_ptr = (struct POINT2D*)star_points_buffer_b;
-                star_point_count_ptr = (short*)&star_point_count_b;
-            } else {
-                star_points_ptr = (struct POINT2D*)star_points_buffer_a;
-                star_point_count_ptr = (short*)&star_point_count_a;
+                star_points_ptr = (struct POINT2D *)star_points_buffer_b;
+                star_point_count_ptr = (short *)&star_point_count_b;
+            }
+            else {
+                star_points_ptr = (struct POINT2D *)star_points_buffer_a;
+                star_point_count_ptr = (short *)&star_point_count_a;
             }
         }
 
         /* Call intro_op */
         {
             struct RECTANGLE callrect;
-            int bx = rect_buffer_index;
-            callrect = frame_dirty_rects[bx];
+            int dirty_rect_index = rect_buffer_index;
+            callrect = frame_dirty_rects[dirty_rect_index];
 
-            intro_op(camera_x, camera_y, camera_z, camera_yaw, camera_pitch,
-                     draw_car_flag, end_phase, (short*)stars, star_points_ptr,
-                     star_point_count_ptr, &callrect, &rendered_rect, &dirty_rect);
+            intro_op(camera_x, camera_y, camera_z, camera_yaw, camera_pitch, draw_car_flag,
+                     end_phase, (short *)stars, star_points_ptr, star_point_count_ptr, &callrect,
+                     &rendered_rect, &dirty_rect);
         }
 
-        if (video_flag5_is0 != 0) {
+        if (video_flag5_is0) {
             mouse_draw_opaque_check();
             setup_mcgawnd1();
             mouse_draw_transparent_check();
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 frame_dirty_rects[rect_buffer_index] = rendered_rect;
             }
             rect_buffer_index ^= 1;
-        } else {
+        }
+        else {
             sprite_copy_2_to_1();
-            if (timertestflag_copy != 0) {
+            if (timertestflag_copy) {
                 rect_union(&dirty_rect, &world_object_rect, &combined_dirty_rect);
                 if (rect_intersect(&combined_dirty_rect, &intro_dirty_clip_rect) == 0) {
                     sprite_set_1_size(combined_dirty_rect.left, combined_dirty_rect.right,
@@ -1753,7 +1772,8 @@ unsigned short  setup_intro(void) {
                     frame_dirty_rects[0] = rendered_rect;
                     world_object_rect = dirty_rect;
                 }
-            } else {
+            }
+            else {
                 mouse_draw_opaque_check();
                 sprite_putimage(wndsprite->sprite_bitmapptr);
                 mouse_draw_transparent_check();
@@ -1763,16 +1783,16 @@ unsigned short  setup_intro(void) {
         video_refresh();
 
         if (input_do_checking(frame_delta) != 0) {
-            intro_interrupted = 1;
+            intro_interrupted = true;
             break;
         }
-        if (23 * framespersec <= intro_frame_counter) {
+        if (framespersec * RENDER_INTRO_TOTAL_DURATION_SECONDS <= intro_frame_counter) {
             break;
         }
     }
 
     /* Cleanup */
-    if (video_flag5_is0 == 0) {
+    if (!video_flag5_is0) {
         sprite_free_wnd(wndsprite);
     }
 
@@ -1784,25 +1804,11 @@ unsigned short  setup_intro(void) {
 /*--------------------------------------------------------------
  * intro_op
  /*--------------------------------------------------------------*/
-/** @brief Intro op.
- * @param camera_x Parameter `camera_x`.
- * @param camera_y Parameter `camera_y`.
- * @param camera_z Parameter `camera_z`.
- * @param camera_pitch Parameter `camera_pitch`.
- * @param camera_yaw Parameter `camera_yaw`.
- * @param draw_opponent Parameter `draw_opponent`.
- * @param use_primary_logo Parameter `use_primary_logo`.
- * @param star_positions Parameter `star_positions`.
- * @param star_screen_points Parameter `star_screen_points`.
- * @param star_count Parameter `star_count`.
- * @param current_rect Parameter `current_rect`.
- * @param clip_rect Parameter `clip_rect`.
- * @param previous_rect_ptr Parameter `previous_rect_ptr`.
- */
-void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
-              int draw_opponent, int use_primary_logo, short* star_positions, struct POINT2D* star_screen_points,
-              short* star_count, struct RECTANGLE* current_rect,
-              struct RECTANGLE* clip_rect, struct RECTANGLE* previous_rect_ptr) {
+void
+intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int camera_yaw,
+         int draw_opponent, int use_primary_logo, short *star_positions,
+         struct POINT2D *star_screen_points, short *star_count, struct RECTANGLE *current_rect,
+         struct RECTANGLE *clip_rect, struct RECTANGLE *previous_rect_ptr) {
     struct VECTOR star_camera_vec;
     struct POINT2D screen_point;
     struct VECTOR star_offset_vec;
@@ -1810,7 +1816,7 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
     struct RECTANGLE dirty_rect;
     struct TRANSFORMEDSHAPE3D intro_shape;
     struct RECTANGLE rendered_rect;
-    int si, di;
+    int starIdx, insertIdx;
 
     rendered_rect = rect_invalid;
 
@@ -1819,18 +1825,20 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
     /* Set up logo shape */
     if (use_primary_logo != 0) {
         intro_shape.shapeptr = &intro_logoshape;
-    } else {
+    }
+    else {
         intro_shape.shapeptr = &intro_logo2shape;
     }
 
-    intro_shape.pos.x = RENDER_INTRO_CAMERA_CENTER - camera_x;
-    intro_shape.pos.y = -camera_y;
-    intro_shape.pos.z = RENDER_INTRO_CAMERA_CENTER - camera_z;
+    intro_shape.pos.x = (short)RENDER_INTRO_CAMERA_CENTER - camera_x;
+    intro_shape.pos.y = (short)-camera_y;
+    intro_shape.pos.z = (short)RENDER_INTRO_CAMERA_CENTER - camera_z;
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         intro_shape.rectptr = &rendered_rect;
         intro_shape.ts_flags = RENDER_INTRO_LOGO_FLAGS_TRACKED;
-    } else {
+    }
+    else {
         intro_shape.ts_flags = 4;
     }
 
@@ -1848,26 +1856,27 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
         intro_shape.pos.z = (short)((long)state.opponentstate.car_posWorld1.lz >> 6) - camera_z;
 
         intro_shape.shapeptr = &intro_bravshape;
-        if (timertestflag_copy != 0) {
+        if (timertestflag_copy) {
             intro_shape.rectptr = &rendered_rect;
             intro_shape.ts_flags = RENDER_INTRO_LOGO_FLAGS_TRACKED;
-        } else {
+        }
+        else {
             intro_shape.ts_flags = 4;
         }
 
         intro_shape.rotvec.x = 0;
         intro_shape.rotvec.y = 0;
-        intro_shape.rotvec.z = -state.opponentstate.car_rotate.x;
+        intro_shape.rotvec.z = (short)-state.opponentstate.car_rotate.x;
         intro_shape.shape_visibility_threshold = RENDER_VISIBILITY_BASE * REND_DIST_MULT;
         intro_shape.material = 0;
         shape3d_render_transformed(&intro_shape);
     }
 
     /* Rect tracking: clear old points */
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         if (*star_count != 0) {
-            for (si = 0; si < *star_count; si++) {
-                screen_point = star_screen_points[si];
+            for (starIdx = 0; starIdx < *star_count; starIdx++) {
+                screen_point = star_screen_points[starIdx];
                 putpixel_single_clipped(0, screen_point.py, screen_point.px);
             }
         }
@@ -1875,29 +1884,29 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
         /* Compute combined dirty rect */
         rect_union(current_rect, clip_rect, &union_rect);
         if (rect_intersect(&union_rect, &intro_dirty_clip_rect) == 0) {
-            sprite_set_1_size(union_rect.left, union_rect.right,
-                              union_rect.top, union_rect.bottom);
+            sprite_set_1_size(union_rect.left, union_rect.right, union_rect.top, union_rect.bottom);
             sprite_clear_sprite1_color(0);
         }
         dirty_rect = rendered_rect;
-    } else {
+    }
+    else {
         /* Simple mode: clear entire intro clip rect */
-        sprite_set_1_size(intro_cliprect.left, intro_cliprect.right,
-                          intro_cliprect.top, intro_cliprect.bottom);
+        sprite_set_1_size(intro_cliprect.left, intro_cliprect.right, intro_cliprect.top,
+                          intro_cliprect.bottom);
         sprite_clear_sprite1_color(0);
     }
 
     /* Draw intro clip rect background */
-    sprite_set_1_size(intro_cliprect.left, intro_cliprect.right,
-                      intro_cliprect.top, intro_cliprect.bottom);
+    sprite_set_1_size(intro_cliprect.left, intro_cliprect.right, intro_cliprect.top,
+                      intro_cliprect.bottom);
 
     /* Render stars */
-    di = 0;
-    for (si = 0; si < RENDER_STAR_COUNT; si++) {
-        int starofs = si * 3;
-        star_offset_vec.x = star_positions[starofs + 0] - camera_x;
-        star_offset_vec.y = star_positions[starofs + 1] - camera_y;
-        star_offset_vec.z = star_positions[starofs + 2] - camera_z;
+    insertIdx = 0;
+    for (starIdx = 0; starIdx < RENDER_STAR_COUNT; starIdx++) {
+        int starofs = starIdx * 3;
+        star_offset_vec.x = (short)star_positions[starofs + 0] - camera_x;
+        star_offset_vec.y = (short)star_positions[starofs + 1] - camera_y;
+        star_offset_vec.z = (short)star_positions[starofs + 2] - camera_z;
 
         mat_mul_vector(&star_offset_vec, &mat_temp, &star_camera_vec);
 
@@ -1905,26 +1914,26 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
             vector_to_point(&star_camera_vec, &screen_point);
             putpixel_single_clipped(intro_colorvalue, screen_point.py, screen_point.px);
 
-            if (timertestflag_copy != 0) {
-                star_screen_points[di] = screen_point;
-                di++;
+            if (timertestflag_copy) {
+                star_screen_points[insertIdx] = screen_point;
+                insertIdx++;
                 rect_adjust_from_point(&screen_point, &dirty_rect);
             }
 
             intro_colorvalue++;
-            if (intro_colorvalue == physics_constants_table) {
+            if (intro_colorvalue == RENDER_INTRO_STAR_COLOR_CYCLE_LIMIT) {
                 intro_colorvalue = 1;
             }
         }
     }
 
-    if (timertestflag_copy != 0) {
-        *star_count = di;
+    if (timertestflag_copy) {
+        *star_count = (short)insertIdx;
     }
 
     get_a_poly_info();
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         *clip_rect = rendered_rect;
         *previous_rect_ptr = dirty_rect;
     }
@@ -1935,13 +1944,13 @@ void intro_op(int camera_x, int camera_y, int camera_z, int camera_pitch, int ca
  *
  * @param frame_rect  Bounding rectangle of the current frame.
  /*--------------------------------------------------------------*/
-void render_present_ingame_view(struct RECTANGLE* frame_rect) {
-    int si, di;
-    struct RECTANGLE* rp;
+void
+render_present_ingame_view(struct RECTANGLE *frame_rect) {
+    int rectIdx;
+    struct RECTANGLE *rp;
 
-    (void)di;
-
-    if (video_flag5_is0 != 0) return;
+    if (video_flag5_is0)
+        return;
 
     sprite_copy_2_to_1();
 
@@ -1949,74 +1958,72 @@ void render_present_ingame_view(struct RECTANGLE* frame_rect) {
         /* Page flip mode */
         mouse_draw_opaque_check();
         sprite_putimage(wndsprite->sprite_bitmapptr);
-        goto finish;
     }
-
-    if (timertestflag_copy == 0) {
+    else if (!timertestflag_copy) {
         /* No rect tracking: blit full provided rect */
-        sprite_set_1_size(frame_rect->left, frame_rect->right,
-                  frame_rect->top, frame_rect->bottom);
-        goto blit_full;
-    }
-
-    /* Full rect-tracking path */
-    for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-        rect_sort_indices[si] = 3;
-    }
-
-    if (timertestflag2 == 4) {
-        collision_detection_state = sprite_transformation_angle;
-    }
-
-    /* Check if rect at index 5 changed */
-    if (collision_detection_state == sprite_transformation_angle &&
-        rect_buffer_front[5].left == rect_buffer_back[5].left &&
-        rect_buffer_front[5].right == rect_buffer_back[5].right &&
-        rect_buffer_front[5].top == rect_buffer_back[5].top &&
-        rect_buffer_front[5].bottom == rect_buffer_back[5].bottom) {
-        rect_sort_indices[5] = 0;
-    }
-
-    dirty_rect_count = 0;
-    rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_front,
-                       rect_buffer_back, frame_rect,
-                       &dirty_rect_count, dirty_rect_array);
-
-    if (dirty_rect_count == 0) {
-        /* No dirty rects: use full screen */
-        sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, frame_rect->top, frame_rect->bottom);
-        goto blit_full;
-    }
-
-    /* Sort and blit dirty rects */
-    rect_array_sort_by_top((int)(signed char)dirty_rect_count,
-                           dirty_rect_array, dirty_rect_indices);
-    mouse_draw_opaque_check();
-
-    for (si = 0; si < (int)(signed char)dirty_rect_count; si++) {
-        int idx = dirty_rect_indices[si];
-        rp = &dirty_rect_array[idx];
-        sprite_set_1_size(rp->left, rp->right, rp->top, rp->bottom);
+        sprite_set_1_size(frame_rect->left, frame_rect->right, frame_rect->top, frame_rect->bottom);
+        mouse_draw_opaque_check();
         sprite_putimage(wndsprite->sprite_bitmapptr);
     }
-    goto done;
+    else {
+        /* Full rect-tracking path */
+        for (rectIdx = 0; rectIdx < RENDER_RECT_ARRAY_COUNT; rectIdx++) {
+            rect_sort_indices[rectIdx] = 3;
+        }
 
-blit_full:
-    mouse_draw_opaque_check();
-    sprite_putimage(wndsprite->sprite_bitmapptr);
+        if (timertestflag2 == 4) {
+            collision_detection_state = sprite_transformation_angle;
+        }
 
-done:
-    /* Cleanup */
-finish:
+        /* Check if rect at index 5 changed */
+        if (collision_detection_state == sprite_transformation_angle
+            && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].left
+                   == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].left
+            && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].right
+                   == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].right
+            && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].top
+                   == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].top
+            && rect_buffer_front[RENDER_SKYBOX_RECT_SLOT].bottom
+                   == rect_buffer_back[RENDER_SKYBOX_RECT_SLOT].bottom) {
+            rect_sort_indices[RENDER_SKYBOX_RECT_SLOT] = 0;
+        }
+
+        dirty_rect_count = 0;
+        rectlist_add_rects(RENDER_RECT_ARRAY_COUNT, rect_sort_indices, rect_buffer_front,
+                           rect_buffer_back, frame_rect, &dirty_rect_count, dirty_rect_array);
+
+        if (dirty_rect_count == 0) {
+            /* No dirty rects: use full screen */
+            sprite_set_1_size(RENDER_SCREEN_LEFT, RENDER_SCREEN_WIDTH, frame_rect->top,
+                              frame_rect->bottom);
+            mouse_draw_opaque_check();
+            sprite_putimage(wndsprite->sprite_bitmapptr);
+        }
+        else {
+            /* Sort and blit dirty rects */
+            rect_array_sort_by_top((int)(signed char)dirty_rect_count, dirty_rect_array,
+                                   dirty_rect_indices);
+            mouse_draw_opaque_check();
+
+            for (rectIdx = 0; rectIdx < (int)(signed char)dirty_rect_count; rectIdx++) {
+                int idx = dirty_rect_indices[rectIdx];
+                rp = &dirty_rect_array[idx];
+                sprite_set_1_size(rp->left, rp->right, rp->top, rp->bottom);
+                sprite_putimage(wndsprite->sprite_bitmapptr);
+            }
+        }
+    }
+
+    /* Common cleanup */
     mouse_draw_transparent_check();
     video_refresh();
 
-    if (timertestflag_copy != 0) {
+    if (timertestflag_copy) {
         collision_detection_state = sprite_transformation_angle;
 
         /* Copy rect_buffer_front to rect_buffer_back */
-        for (si = 0; si < RENDER_RECT_ARRAY_COUNT; si++) {
-            rect_buffer_back[si] = rect_buffer_front[si];
+        for (rectIdx = 0; rectIdx < RENDER_RECT_ARRAY_COUNT; rectIdx++) {
+            rect_buffer_back[rectIdx] = rect_buffer_front[rectIdx];
         }
     }
 }
@@ -2029,97 +2036,99 @@ finish:
  * @param src_ptr  Pointer to 6 control-point coordinates (x1,y1,x2,y2,x3,y3).
  * @param dst_ptr  Output vertex buffer written as 16-bit coordinate pairs.
  */
-void build_sphere_vertex_buffer(const unsigned short* src_ptr, unsigned* dst_ptr)
-{
-    const short* src = (const short*)src_ptr;
-    short* d = (short*)dst_ptr;
+void
+build_sphere_vertex_buffer(const unsigned short *src_ptr, unsigned *dst_ptr) {
+    const short *src = (const short *)src_ptr;
+    short *d = (short *)dst_ptr;
     short half_width, half_height, width_three_quarters, height_three_quarters;
     short quarter_width, quarter_height, vertex_index;
     short half_dx, half_dy, dx_three_quarters, dy_three_quarters, quarter_dx, quarter_dy;
-    short si_val, di_val;
+    short center_x, neg_width, neg_height;
 
     /* src offsets: 0=x1, 1=y1, 2=x2, 3=y2, 4=x3, 5=y3 */
-    si_val = src[0];
+    center_x = src[0];
 
     /* d[0] = x2 - x1 = width */
-    d[0] = src[2] - si_val;
+    d[0] = (short)src[2] - center_x;
     /* d[1] = y2 - y1 = height */
-    d[1] = src[3] - src[1];
+    d[1] = (short)src[3] - src[1];
     /* d[16] = x3 - x1 = dx (offset 32) */
-    d[16] = src[4] - si_val;
+    d[16] = (short)src[4] - center_x;
     /* d[17] = y3 - y1 = dy (offset 34) */
-    d[17] = src[5] - src[1];
+    d[17] = (short)src[5] - src[1];
 
     /* Calculate intermediate values */
-    half_width = d[0] >> 1;
-    quarter_width = half_width >> 1;
-    width_three_quarters = half_width + quarter_width;
+    half_width = (short)d[0] >> 1;
+    quarter_width = (short)half_width >> 1;
+    width_three_quarters = (short)half_width + quarter_width;
 
-    half_height = d[1] >> 1;
-    quarter_height = half_height >> 1;
-    height_three_quarters = half_height + quarter_height;
+    half_height = (short)d[1] >> 1;
+    quarter_height = (short)half_height >> 1;
+    height_three_quarters = (short)half_height + quarter_height;
 
-    half_dx = d[16] >> 1;
-    quarter_dx = half_dx >> 1;
-    dx_three_quarters = half_dx + quarter_dx;
+    half_dx = (short)d[16] >> 1;
+    quarter_dx = (short)half_dx >> 1;
+    dx_three_quarters = (short)half_dx + quarter_dx;
 
-    half_dy = d[17] >> 1;
-    quarter_dy = half_dy >> 1;
-    dy_three_quarters = half_dy + quarter_dy;
+    half_dy = (short)d[17] >> 1;
+    quarter_dy = (short)half_dy >> 1;
+    dy_three_quarters = (short)half_dy + quarter_dy;
 
     /* Scale calculations with 11585 (approx 0.707 = sin/cos 45 degrees) */
-    d[8] = multiply_and_scale(d[16] + d[0], 11585);
-    d[9] = multiply_and_scale(d[1] + d[17], 11585);
+    d[8] = multiply_and_scale((short)d[16] + d[0], RENDER_SPHERE_SCALE_FACTOR_COS_45);
+    d[9] = multiply_and_scale((short)d[1] + d[17], RENDER_SPHERE_SCALE_FACTOR_COS_45);
 
     /* Scale calculations with 14654 (approx 0.900) */
-    d[4] = multiply_and_scale(d[0] + half_dx, 14654);
-    d[5] = multiply_and_scale(d[1] + half_dy, 14654);
-    d[12] = multiply_and_scale(d[16] + half_width, 14654);
-    d[13] = multiply_and_scale(d[17] + half_height, 14654);
+    d[4] = multiply_and_scale((short)d[0] + half_dx, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[5] = multiply_and_scale((short)d[1] + half_dy, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[12] = multiply_and_scale((short)d[16] + half_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[13] = multiply_and_scale((short)d[17] + half_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
 
     /* Scale calculations with 15895 (approx 0.970) */
-    d[2] = multiply_and_scale(d[0] + quarter_dx, 15895);
-    d[3] = multiply_and_scale(d[1] + quarter_dy, 15895);
-    d[14] = multiply_and_scale(d[16] + quarter_width, 15895);
-    d[15] = multiply_and_scale(d[17] + quarter_height, 15895);
+    d[2] = multiply_and_scale((short)d[0] + quarter_dx, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[3] = multiply_and_scale((short)d[1] + quarter_dy, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[14] = multiply_and_scale((short)d[16] + quarter_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[15] = multiply_and_scale((short)d[17] + quarter_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
 
     /* Scale calculations with 13107 (approx 0.800) */
-    d[6] = multiply_and_scale(d[0] + dx_three_quarters, 13107);
-    d[7] = multiply_and_scale(d[1] + dy_three_quarters, 13107);
-    d[10] = multiply_and_scale(d[16] + width_three_quarters, 13107);
-    d[11] = multiply_and_scale(d[17] + height_three_quarters, 13107);
+    d[6] = multiply_and_scale((short)d[0] + dx_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[7] = multiply_and_scale((short)d[1] + dy_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[10] = multiply_and_scale((short)d[16] + width_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[11] = multiply_and_scale((short)d[17] + height_three_quarters,
+                               RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
 
     /* Second half: negative direction calculations */
-    si_val = -d[0];
+    neg_width = (short)-d[0];
 
-    d[24] = multiply_and_scale(d[16] + si_val, 11585);
-    di_val = -d[1];
-    d[25] = multiply_and_scale(d[17] + di_val, 11585);
+    d[24] = multiply_and_scale((short)d[16] + neg_width, RENDER_SPHERE_SCALE_FACTOR_COS_45);
+    neg_height = (short)-d[1];
+    d[25] = multiply_and_scale((short)d[17] + neg_height, RENDER_SPHERE_SCALE_FACTOR_COS_45);
 
-    d[28] = multiply_and_scale(half_dx + si_val, 14654);
-    d[29] = multiply_and_scale(half_dy + di_val, 14654);
-    d[20] = multiply_and_scale(d[16] - half_width, 14654);
-    d[21] = multiply_and_scale(d[17] - half_height, 14654);
+    d[28] = multiply_and_scale((short)half_dx + neg_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[29] = multiply_and_scale((short)half_dy + neg_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[20] = multiply_and_scale((short)d[16] - half_width, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
+    d[21] = multiply_and_scale((short)d[17] - half_height, RENDER_SPHERE_SCALE_FACTOR_90_PERCENT);
 
-    si_val = -d[0];
-    d[30] = multiply_and_scale(quarter_dx + si_val, 15895);
-    di_val = -d[1];
-    d[31] = multiply_and_scale(quarter_dy + di_val, 15895);
-    d[18] = multiply_and_scale(d[16] - quarter_width, 15895);
-    d[19] = multiply_and_scale(d[17] - quarter_height, 15895);
+    neg_width = (short)-d[0];
+    d[30] = multiply_and_scale((short)quarter_dx + neg_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    neg_height = (short)-d[1];
+    d[31] = multiply_and_scale((short)quarter_dy + neg_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[18] = multiply_and_scale((short)d[16] - quarter_width, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
+    d[19] = multiply_and_scale((short)d[17] - quarter_height, RENDER_SPHERE_SCALE_FACTOR_97_PERCENT);
 
-    d[26] = multiply_and_scale(dx_three_quarters + si_val, 13107);
-    d[27] = multiply_and_scale(dy_three_quarters + di_val, 13107);
-    d[22] = multiply_and_scale(d[16] - width_three_quarters, 13107);
-    d[23] = multiply_and_scale(d[17] - height_three_quarters, 13107);
+    d[26] = multiply_and_scale((short)dx_three_quarters + neg_width, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[27] = multiply_and_scale((short)dy_three_quarters + neg_height, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[22] = multiply_and_scale((short)d[16] - width_three_quarters, RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
+    d[23] = multiply_and_scale((short)d[17] - height_three_quarters,
+                               RENDER_SPHERE_SCALE_FACTOR_80_PERCENT);
 
     /* Final loop: create mirrored vertices */
     for (vertex_index = 0; vertex_index < 16; vertex_index++) {
-        short* si_ptr = d + (vertex_index * 2);
-        di_val = src[0];
-        si_ptr[32] = di_val - si_ptr[0];
-        si_ptr[33] = src[1] - si_ptr[1];
-        si_ptr[0] += di_val;
-        si_ptr[1] += src[1];
+        short *si_ptr = d + ((ptrdiff_t)(vertex_index * 2));
+        center_x = src[0];
+        si_ptr[32] = (short)center_x - si_ptr[0];
+        si_ptr[33] = (short)src[1] - si_ptr[1];
+        si_ptr[0] += (short)center_x;
+        si_ptr[1] += (short)src[1];
     }
 }

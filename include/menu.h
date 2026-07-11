@@ -25,9 +25,10 @@
 
 unsigned short load_intro_resources(void);
 void run_tracks_menu(unsigned short unused);
-void run_car_menu(char* caridptr, unsigned char* materialofs, unsigned char* transmissionofs, unsigned int opponenttype);
+void run_car_menu(char *caridptr, unsigned char *materialofs, unsigned char *transmissionofs,
+                  unsigned int opponenttype);
 void run_opponent_menu(void);
-struct RECTANGLE* intro_draw_text(char* str, int x, int y, int colour, int shadowColour);
+struct RECTANGLE *intro_draw_text(char *str, int x, int y, int colour, int shadowColour);
 void security_check(unsigned short idx);
 unsigned short run_option_menu_(void);
 unsigned short run_intro_(void);

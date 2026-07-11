@@ -26,10 +26,6 @@
 /* Types */
 #include "game_types.h"
 
-/* Data / global variables */
-#include "data_game.h"
-#include "data_menu_track.h"
-
 /* Core modules */
 #include "math.h"
 #include "memmgr.h"
@@ -56,23 +52,29 @@
 
 /* Global state — defined in src/stuntsengine.c */
 
-#ifdef STUNTS_IMPL
-#  define _SE_
-#else
-#  define _SE_ extern
-#endif
+/* Persistent config on-disk layout */
+enum { STN_PERSIST_PATH_LEN = 82, STN_PERSIST_TRACKNAME_LEN = 9, STN_PERSIST_VERSION = 2 };
+#pragma pack(push, 1)
+struct STN_PERSIST_CONFIG {
+    char magic[8];
+    unsigned short version;
+    struct GAMEINFO gameconfig;
+    char track_path[STN_PERSIST_PATH_LEN];
+    char replay_path[STN_PERSIST_PATH_LEN];
+    char mouse_mode;
+    char joystick_mode;
+    char video_scale;
+};
+#pragma pack(pop)
 
-_SE_ char             aDefault_1[];
-_SE_ char             replay_file_path_buffer[];
-_SE_ struct SIMD      simd_opponent_rt;
-_SE_ char             track_highscore_path_buffer[];
-
-#undef _SE_
+extern char aDefault_1[];
+extern char replay_file_path_buffer[];
+extern struct SIMD simd_opponent_rt;
+extern char track_highscore_path_buffer[];
 
 /* Exit handler (defined in stunts.c) */
 void add_exit_handler(void (*handler)(void));
-void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w,
-                         unsigned short h, unsigned short col1,
-                         unsigned short col2, unsigned short col3);
+void draw_beveled_border(unsigned short x, unsigned short y, unsigned short w, unsigned short h,
+                         unsigned short col1, unsigned short col2, unsigned short col3);
 
 #endif

@@ -23,34 +23,44 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
-void mouse_get_state(unsigned short* buttons, unsigned short* x, unsigned short* y);
+#include <stdbool.h>
+
+enum {
+    MOUSE_BUTTON_PRIMARY = 0x01,
+    MOUSE_BUTTON_SECONDARY = 0x02,
+    MOUSE_BUTTON_MIDDLE = 0x04,
+    MOUSE_BUTTON_ACTION_MASK = MOUSE_BUTTON_PRIMARY | MOUSE_BUTTON_SECONDARY,
+    MOUSE_KEYCODE_PRIMARY_ACTION = ' ',
+    MOUSE_KEYCODE_SECONDARY_ACTION = 13
+};
+
+void mouse_poll_input(void);
+void mouse_get_state(unsigned short *buttons, unsigned short *x, unsigned short *y);
 void mouse_set_pixratio(unsigned short hpix, unsigned short vpix);
 unsigned short mouse_init(unsigned short width, unsigned short height);
 void mouse_set_minmax(int hmin, int vmin, int hmax, int vmax);
 void mouse_set_position(int x, int y);
+unsigned short mouse_buttons_to_keycode(unsigned short buttons);
+bool mouse_has_action_buttons(unsigned short buttons);
 void mouse_draw_transparent_check(void);
 void mouse_draw_opaque_check(void);
-short mouse_multi_hittest(short count, unsigned short* x1_array, unsigned short* x2_array, unsigned short* y1_array, unsigned short* y2_array);
+short mouse_multi_hittest(short count, unsigned short *x1_array, unsigned short *x2_array,
+                          unsigned short *y1_array, unsigned short *y2_array);
 void mouse_draw_opaque(void);
 void mouse_draw_transparent(void);
-unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short* x1_arr, unsigned short* x2_arr, unsigned short* y1_arr, unsigned short* y2_arr, unsigned short sprite_hi, unsigned short sprite_lo);
+unsigned int mouse_update_menu_blink(unsigned char selected, unsigned short *x1_arr,
+                                     unsigned short *x2_arr, unsigned short *y1_arr,
+                                     unsigned short *y2_arr, unsigned short sprite_hi,
+                                     unsigned short sprite_lo);
 
 /* Global state — defined in src/mouse.c */
 
-#ifdef MOUSE_IMPL
-#  define _MO_
-#else
-#  define _MO_ extern
-#endif
-
-_MO_ char             kbormouse;
-_MO_ unsigned short   mouse_butstate;
-_MO_ char             mouse_isdirty;
-_MO_ char             mouse_motion_detected_flag;
-_MO_ char             mouse_motion_state_flag;
-_MO_ unsigned short   mouse_xpos;
-_MO_ unsigned short   mouse_ypos;
-
-#undef _MO_
+extern bool mouse_input_active;
+extern unsigned short mouse_buttons;
+extern bool mouse_cursor_dirty;
+extern bool mouse_cursor_enabled;
+extern bool mouse_control_enabled;
+extern unsigned short mouse_x;
+extern unsigned short mouse_y;
 
 #endif /* MOUSE_H */

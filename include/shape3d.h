@@ -23,112 +23,232 @@
 #ifndef SHAPE3D_H
 #define SHAPE3D_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "math.h"
 
-#pragma pack (push, 1)
+#pragma pack(push, 1)
 
 struct SHAPE3D {
-	unsigned short shape3d_numverts;
-	struct VECTOR * shape3d_verts;
-	unsigned short shape3d_numprimitives;
-	unsigned short shape3d_numpaints;
-	char * shape3d_primitives;
-	char * shape3d_cull1;
-	char * shape3d_cull2;
+    unsigned short shape3d_numverts;
+    struct VECTOR *shape3d_verts;
+    unsigned short shape3d_numprimitives;
+    unsigned short shape3d_numpaints;
+    char *shape3d_primitives;
+    char *shape3d_cull1;
+    char *shape3d_cull2;
 };
 
 struct SHAPE3DHEADER {
-	unsigned char header_numverts;
-	unsigned char header_numprimitives;
-	unsigned char header_numpaints;
-	unsigned char header_reserved;
+    unsigned char header_numverts;
+    unsigned char header_numprimitives;
+    unsigned char header_numpaints;
+    unsigned char header_reserved;
 };
 
 struct TRANSFORMEDSHAPE3D {
-	struct VECTOR pos;
-	struct SHAPE3D* shapeptr;
-	struct RECTANGLE* rectptr;
-	struct VECTOR rotvec;
-	unsigned short shape_visibility_threshold;
-	unsigned char ts_flags;
-	unsigned char material;
+    struct VECTOR pos;
+    struct SHAPE3D *shapeptr;
+    struct RECTANGLE *rectptr;
+    struct VECTOR rotvec;
+    unsigned short shape_visibility_threshold;
+    unsigned char ts_flags;
+    unsigned char material;
 };
 
 /* TRANSFORMEDSHAPE3D::ts_flags bits */
-#define TRANSFORM_FLAG_FORCE_UNSORTED          1
-#define TRANSFORM_FLAG_SKIP_VIEW_CULL          2
-#define TRANSFORM_FLAG_UPDATE_RECT             8
-#define TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED    32
+#define TRANSFORM_FLAG_FORCE_UNSORTED       1
+#define TRANSFORM_FLAG_SKIP_VIEW_CULL       2
+#define TRANSFORM_FLAG_UPDATE_RECT          8
+#define TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED 32
 
 /* Binary layout constants for raw SHAPE3D buffers. */
-#define SHAPE3D_HEADER_SIZE_BYTES      4
-#define SHAPE3D_VERTEX_SIZE_BYTES      6
-#define SHAPE3D_CULL_ENTRY_SIZE_BYTES  4
-#define SHAPE3D_PRIMITIVE_SIZE_BYTES   8
+#define SHAPE3D_HEADER_SIZE_BYTES     4
+#define SHAPE3D_VERTEX_SIZE_BYTES     6
+#define SHAPE3D_CULL_ENTRY_SIZE_BYTES 4
+#define SHAPE3D_PRIMITIVE_SIZE_BYTES  8
+
+/* Shared 3-D render state */
+extern unsigned short polygon_alternate_color;
+extern unsigned short polygon_pattern_type;
+extern char backlights_paint_override;
+extern struct MATRIX mat_temp;
+extern unsigned char cos80[4];
+extern unsigned char sin80[4];
+extern unsigned char projectiondata5[2];
+extern unsigned char projectiondata8[2];
+extern unsigned char projectiondata9[2];
+extern unsigned char projectiondata10[2];
+extern struct RECTANGLE select_rect_rc;
+extern struct SHAPE3D game3dshapes[];
+
+/*
+ * Legacy resource-file offsets stored in track data still use the original
+ * 16-bit DOS data-segment layout.  game3dshapes[0] lived at offset 30284;
+ * each SHAPE3D descriptor was 22 bytes wide in the original binary.
+ */
+enum {
+    SHAPE3D_RESOURCE_OFS_BASE = 30284u,
+    SHAPE3D_RESOURCE_OFS_STRIDE = 22u,
+    SHAPE3D_RESOURCE_MAX_COUNT = 130,
+
+    /*
+     * Direct game3dshapes[] indices for shapes referenced by the renderer.
+     * The original code used literals like (946 / 22) — index*stride values,
+     * not full DOS data-segment offsets.
+     */
+    SHAPE3D_IDX_HILL_ROAD = 43,
+    SHAPE3D_IDX_START_ARROW = 111,
+    SHAPE3D_IDX_PLAYER_CAR = 126,
+    SHAPE3D_IDX_OPPONENT_CAR = 127,
+    SHAPE3D_CAR_WHEEL_VERT_INDEX = 8,
+};
+
+/**
+ * @brief Look up a loaded shape by its game3dshapes[] index.
+ */
+static inline struct SHAPE3D *
+shape3d_at_index(int shape_index) {
+    if (shape_index < 0 || shape_index >= SHAPE3D_RESOURCE_MAX_COUNT) {
+        return (struct SHAPE3D *)0;
+    }
+    if (game3dshapes[shape_index].shape3d_verts == 0) {
+        return (struct SHAPE3D *)0;
+    }
+    return &game3dshapes[shape_index];
+}
+
+/**
+ * @brief Convert a legacy resource offset to a game3dshapes[] index.
+ *
+ * @return Index on success, or -1 when the offset is out of range or unmapped.
+ */
+static inline int
+shape3d_index_from_resource_offset(unsigned short resource_offset) {
+    unsigned int index;
+
+    if (resource_offset == 0 || resource_offset < SHAPE3D_RESOURCE_OFS_BASE) {
+        return -1;
+    }
+
+    index = (resource_offset - SHAPE3D_RESOURCE_OFS_BASE) / SHAPE3D_RESOURCE_OFS_STRIDE;
+    if (index >= SHAPE3D_RESOURCE_MAX_COUNT) {
+        return -1;
+    }
+    return (int)index;
+}
+
+/**
+ * @brief Resolve a legacy resource offset to a loaded SHAPE3D pointer.
+ *
+ * Track-object records and a few hard-coded renderer paths still store the
+ * original 16-bit file offsets rather than modern pointers.
+ *
+ * @return Pointer to the shape, or NULL when the offset is invalid or unloaded.
+ */
+static inline struct SHAPE3D *
+shape3d_from_resource_offset(unsigned short resource_offset) {
+    int index = shape3d_index_from_resource_offset(resource_offset);
+
+    if (index < 0 || game3dshapes[index].shape3d_verts == 0) {
+        return (struct SHAPE3D *)0;
+    }
+    return &game3dshapes[index];
+}
+
+/**
+ * @brief Return the wheel-vertex block inside a car body shape.
+ *
+ * Car wheel animation writes into vertices starting at index 8 of the
+ * player/opponent body meshes.
+ */
+static inline struct VECTOR *
+shape3d_car_wheel_vertices_at_index(int car_body_shape_index) {
+    struct SHAPE3D *shape = shape3d_at_index(car_body_shape_index);
+
+    if (shape == 0) {
+        return (struct VECTOR *)0;
+    }
+    return &shape->shape3d_verts[SHAPE3D_CAR_WHEEL_VERT_INDEX];
+}
+
+extern unsigned char *material_clrlist2_ptr_cpy;
+extern unsigned char *material_clrlist_ptr_cpy;
+extern unsigned char *material_patlist2_ptr_cpy;
+extern unsigned char *material_patlist_ptr_cpy;
+extern unsigned char *material_clrlist2_ptr;
+extern unsigned char *material_clrlist_ptr;
+extern unsigned char *material_patlist2_ptr;
+extern unsigned char *material_patlist_ptr;
+extern unsigned char material_color_list[];
+extern unsigned char material_pattern2_list[];
+extern unsigned char material_pattern_list[];
+extern short viewport_clipping_bounds[];
+extern struct VECTOR carshapevec;
+extern struct VECTOR carshapevecs[];
+extern struct VECTOR oppcarshapevec;
+extern struct VECTOR oppcarshapevecs[];
+extern short game_frame_pointer[];
 
 /**
  * @brief Parse a raw shape buffer and populate a SHAPE3D struct.
  */
-static inline void shape3d_init_shape_pure(char* shapeptr, struct SHAPE3D* gameshape)
-{
-	struct SHAPE3DHEADER* hdr = (struct SHAPE3DHEADER*)shapeptr;
+static inline void
+shape3d_init_shape_pure(char *shapeptr, struct SHAPE3D *gameshape) {
+    struct SHAPE3DHEADER *hdr = (struct SHAPE3DHEADER *)shapeptr;
 
-	gameshape->shape3d_numverts = hdr->header_numverts;
-	gameshape->shape3d_numprimitives = hdr->header_numprimitives;
-	gameshape->shape3d_numpaints = hdr->header_numpaints;
+    gameshape->shape3d_numverts = hdr->header_numverts;
+    gameshape->shape3d_numprimitives = hdr->header_numprimitives;
+    gameshape->shape3d_numpaints = hdr->header_numpaints;
 
-	gameshape->shape3d_verts =
-		(struct VECTOR*)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
+    gameshape->shape3d_verts = (struct VECTOR *)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
 
-	gameshape->shape3d_cull1 =
-		shapeptr +
-		hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES +
-		SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull1 = shapeptr + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES)
+                               + SHAPE3D_HEADER_SIZE_BYTES;
 
-	gameshape->shape3d_cull2 =
-		shapeptr +
-		hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES +
-		hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES +
-		SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull2 = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
+                               + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES)
+                               + SHAPE3D_HEADER_SIZE_BYTES;
 
-	gameshape->shape3d_primitives =
-		shapeptr +
-		hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES +
-		hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES +
-		SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_primitives
+        = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
+          + (ptrdiff_t)(hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES) + SHAPE3D_HEADER_SIZE_BYTES;
 }
 
 /**
  * @brief Project a 3-D radius into screen pixels.
  */
-static inline unsigned shape3d_project_radius(uint16_t proj_scale,
-											  unsigned radius_3d,
-											  int depth_z)
-{
-	unsigned long numer;
+static inline unsigned
+shape3d_project_radius(uint16_t proj_scale, unsigned radius_3d, int depth_z) {
+    unsigned long numer;
 
-	if (depth_z <= 0) {
-		return 0;
-	}
+    if (depth_z <= 0) {
+        return 0;
+    }
 
-	numer = (unsigned long)proj_scale * (unsigned long)radius_3d;
-	return (unsigned)(numer / (unsigned long)depth_z);
+    numer = (unsigned long)proj_scale * (unsigned long)radius_3d;
+    return (unsigned)(numer / (unsigned long)depth_z);
 }
 
-#pragma pack (pop)
+#pragma pack(pop)
 
 int shape3d_load_all(void);
 void shape3d_free_all(void);
-void shape3d_init_shape(char * shapeptr, struct SHAPE3D* gameshape);
-unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape);
+void shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape);
+unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape);
 void set_projection(int i1, int i2, int i3, int i4);
-void set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4);
+void set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3,
+                        unsigned short i4);
+void shape3d_set_palette_brightness(unsigned short level);
 int polarAngle(int z, int y);
-unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE* cliprect, int use_scaled_preview);
+unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *cliprect,
+                                int use_scaled_preview);
 void init_polyinfo(void);
 void polyinfo_reset(void);
 void get_a_poly_info(void);
-void shape3d_update_car_wheel_vertices(struct VECTOR * wheel_vertices, int wheel_stride, short* radius_table, short* offset_table, struct VECTOR* source_vectors, struct VECTOR* destination_vector);
+void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_stride,
+                                       short *radius_table, short *offset_table,
+                                       struct VECTOR *source_vectors,
+                                       struct VECTOR *destination_vector);
 
 #endif

@@ -21,17 +21,17 @@
  */
 
 /**
- * video.c - SDL2 video mode and palette functions
+ * video.c - SDL3 video mode and palette functions
  */
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "framebuffer.h"
 #include "game_timing.h"
 #include "timer.h"
-#include "data_game.h"
 #include "ui.h"
 
 /* Variables moved from data_game.c (private to this translation unit) */
@@ -39,16 +39,16 @@ static unsigned char input_queue_buffer = 0;
 
 
 /* Function pointer type for exit handlers */
-typedef void (* voidfunctype)(void);
+typedef void (*voidfunctype)(void);
 
 /* CRITICAL: All SDL state MUST come before sdl_framebuffer to prevent overflow corruption */
-static SDL2Context sdl_ctx;
+static SDLContext sdl_ctx;
 static Framebuffer sdl_fb;
-static void* sdl_ctx_saved_window = NULL;
-static void* sdl_ctx_saved_renderer = NULL;
-static void* sdl_ctx_saved_texture = NULL;
-static unsigned char sdl_active = 0;
-static unsigned char sdl_init_attempted = 0;
+static void *sdl_ctx_saved_window = NULL;
+static void *sdl_ctx_saved_renderer = NULL;
+static void *sdl_ctx_saved_texture = NULL;
+static bool sdl_active = false;
+static bool sdl_init_attempted = false;
 /* Framebuffer LAST - overflows will go past end of .bss, causing immediate crash instead of silent corruption */
 static unsigned char sdl_framebuffer[FB_PIXELS];
 
@@ -56,7 +56,7 @@ static unsigned char sdl_framebuffer[FB_PIXELS];
 void video_add_exithandler(void);
 void video_on_exit(void);
 
-unsigned char* video_get_framebuffer(void);
+unsigned char *video_get_framebuffer(void);
 void video_present_frame(void);
 void video_refresh(void);
 int video_is_sdl_active(void);
@@ -67,174 +67,194 @@ void video_wait_menu_refresh(void);
  * @param accum Parameter `accum`.
  * @return Function result.
  */
-static void video_wait_refresh_slot(unsigned long *next_counter, unsigned long *accum)
-{
-	timer_wait_for_counter_rate(timer_get_display_hz(), next_counter, accum);
+static void
+video_wait_refresh_slot(unsigned long *next_counter, unsigned long *accum) {
+    timer_wait_for_counter_rate(timer_get_display_hz(), next_counter, accum);
 }
 
 static int sdl_scale = 3;
-static int sdl_fullscreen = 0;
-static unsigned char video_exit_handler_registered = 0;
+static bool sdl_fullscreen = false;
+static bool video_exit_handler_registered = false;
 static void (*video_scale_changed_cb)(void) = NULL;
 
 /** @brief Register a callback invoked whenever the scale changes.
  */
-void video_set_scale_changed_cb(void (*cb)(void)) {
-	video_scale_changed_cb = cb;
+void
+video_set_scale_changed_cb(void (*cb)(void)) {
+    video_scale_changed_cb = cb;
 }
 
 /** @brief Increase the SDL render scale by one step.
  */
-void video_scale_up(void) {
-	if (sdl_fullscreen) return;
-	if (sdl_scale >= 3) return;
-	sdl_scale++;
-	fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
-	if (video_scale_changed_cb) video_scale_changed_cb();
+void
+video_scale_up(void) {
+    if (sdl_fullscreen)
+        return;
+    if (sdl_scale >= 3)
+        return;
+    sdl_scale++;
+    fb_sdl_set_scale(&sdl_ctx, sdl_scale);
+    if (video_scale_changed_cb)
+        video_scale_changed_cb();
 }
 
 /** @brief Decrease the SDL render scale by one step.
  */
-void video_scale_down(void) {
+void
+video_scale_down(void) {
 
-	if (sdl_fullscreen) return;
-	if (sdl_scale <= 1) return;
-	sdl_scale--;
-	fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
-	if (video_scale_changed_cb) video_scale_changed_cb();
+    if (sdl_fullscreen)
+        return;
+    if (sdl_scale <= 1)
+        return;
+    sdl_scale--;
+    fb_sdl_set_scale(&sdl_ctx, sdl_scale);
+    if (video_scale_changed_cb)
+        video_scale_changed_cb();
 }
 
 /** @brief Return current render scale multiplier.
  */
-int video_get_scale(void) {
-	return sdl_scale;
+int
+video_get_scale(void) {
+    return sdl_scale;
 }
 
 /** @brief Set render scale multiplier (1–3), applying immediately if SDL is active.
  */
-void video_set_scale(int scale) {
-	if (scale < 1) scale = 1;
-	if (scale > 3) scale = 3;
-	sdl_scale = scale;
-	if (sdl_active && !sdl_fullscreen) {
-		fb_sdl2_set_scale(&sdl_ctx, sdl_scale);
-	}
+void
+video_set_scale(int scale) {
+    if (scale < 1)
+        scale = 1;
+    if (scale > 3)
+        scale = 3;
+    sdl_scale = scale;
+    if (sdl_active && !sdl_fullscreen) {
+        fb_sdl_set_scale(&sdl_ctx, sdl_scale);
+    }
 }
 
 /** @brief Toggle SDL fullscreen mode and reinitialize the video surface.
  */
-void video_toggle_fullscreen(void) {
+void
+video_toggle_fullscreen(void) {
 
-	sdl_fullscreen = !sdl_fullscreen;
-	fb_sdl2_toggle_fullscreen(&sdl_ctx);
+    sdl_fullscreen = !sdl_fullscreen;
+    fb_sdl_toggle_fullscreen(&sdl_ctx);
 }
 
 /** @brief Try to initialize SDL video and the main rendering surface.
  */
-static void video_try_init_sdl(void) {
+static void
+video_try_init_sdl(void) {
 
-	if (sdl_init_attempted != 0) {
-		return;
-	}
+    if (sdl_init_attempted) {
+        return;
+    }
 
-	sdl_init_attempted = 1;
-	fb_init(&sdl_fb);
-	memset(sdl_framebuffer, 0, sizeof(sdl_framebuffer));
+    sdl_init_attempted = true;
+    fb_init(&sdl_fb);
+    memset(sdl_framebuffer, 0, sizeof(sdl_framebuffer));
 
-	/* Use sdl_scale as-is: may have been pre-set by video_set_scale() from
+    /* Use sdl_scale as-is: may have been pre-set by video_set_scale() from
 	 * persisted config. Fall back to env var, then default 3. */
-	{
-		const char* scale_env = getenv("STUNTS_SCALE");
-		if (scale_env != NULL) {
-			int s = atoi(scale_env);
-			if (s >= 1 && s <= 3) sdl_scale = s;
-		}
-	}
-	if (sdl_scale < 1 || sdl_scale > 3) sdl_scale = 3;
+    {
+        const char *scale_env = getenv("STUNTS_SCALE");
+        if (scale_env != NULL) {
+            int s = (int)strtol(scale_env, NULL, 10);
+            if (s >= 1 && s <= 3)
+                sdl_scale = s;
+        }
+    }
+    if (sdl_scale < 1 || sdl_scale > 3)
+        sdl_scale = 3;
 
-	if (fb_sdl2_init(&sdl_ctx, "stuntsengine", sdl_scale) == 0) {
-		sdl_ctx_saved_window   = sdl_ctx.window;
-		sdl_ctx_saved_renderer = sdl_ctx.renderer;
-		sdl_ctx_saved_texture  = sdl_ctx.texture;
-		sdl_active = 1;
-	}
+    if (fb_sdl_init(&sdl_ctx, "stuntsengine", sdl_scale) == 0) {
+        sdl_ctx_saved_window = sdl_ctx.window;
+        sdl_ctx_saved_renderer = sdl_ctx.renderer;
+        sdl_ctx_saved_texture = sdl_ctx.texture;
+        sdl_active = true;
+    }
 }
 
 /** @brief Return the active 8-bit framebuffer.
  * @return Function result.
  */
-unsigned char* video_get_framebuffer(void) {
+unsigned char *
+video_get_framebuffer(void) {
 
-	if (sdl_active != 0) {
-		return sdl_framebuffer;
-	}
-	return NULL;
+    if (sdl_active) {
+        return sdl_framebuffer;
+    }
+    return NULL;
 }
 
 /** @brief Report whether SDL video output is currently active.
  * @return Function result.
  */
-int video_is_sdl_active(void) {
+int
+video_is_sdl_active(void) {
 
-	return sdl_active != 0;
+    return sdl_active;
 }
 
 /** @brief Present the current framebuffer, applying timing and palette updates.
  */
-void video_present_frame(void) {
+void
+video_present_frame(void) {
 
-	static unsigned long next_present_counter = 0;
-	static unsigned long present_accum = 0;
+    static unsigned long next_present_counter = 0;
+    static unsigned long present_accum = 0;
 
-	if (sdl_active == 0) {
-		return;
-	}
+    if (!sdl_active) {
+        return;
+    }
 
-	/* Silently recover from any pointer corruption. */
-	if (sdl_ctx.window   != sdl_ctx_saved_window   ||
-	    sdl_ctx.renderer != sdl_ctx_saved_renderer ||
-	    sdl_ctx.texture  != sdl_ctx_saved_texture) {
-		sdl_ctx.window   = sdl_ctx_saved_window;
-		sdl_ctx.renderer = sdl_ctx_saved_renderer;
-		sdl_ctx.texture  = sdl_ctx_saved_texture;
-	}
+    /* Silently recover from any pointer corruption. */
+    if (sdl_ctx.window != sdl_ctx_saved_window || sdl_ctx.renderer != sdl_ctx_saved_renderer
+        || sdl_ctx.texture != sdl_ctx_saved_texture) {
+        sdl_ctx.window = sdl_ctx_saved_window;
+        sdl_ctx.renderer = sdl_ctx_saved_renderer;
+        sdl_ctx.texture = sdl_ctx_saved_texture;
+    }
 
-	video_wait_refresh_slot(&next_present_counter, &present_accum);
+    video_wait_refresh_slot(&next_present_counter, &present_accum);
 
-	memcpy(sdl_fb.pixels, sdl_framebuffer, FB_PIXELS);
-	fb_sdl2_present(&sdl_ctx, &sdl_fb);
+    memcpy(sdl_fb.pixels, sdl_framebuffer, (size_t)FB_PIXELS);
+    fb_sdl_present(&sdl_ctx, &sdl_fb);
 }
 
 /** @brief Video refresh.
  */
-void video_refresh(void)
-{
-	video_present_frame();
+void
+video_refresh(void) {
+    video_present_frame();
 }
 
 /** @brief Video wait menu refresh.
  */
-void video_wait_menu_refresh(void)
-{
-	video_present_frame();
+void
+video_wait_menu_refresh(void) {
+    video_present_frame();
 }
 
 /**
  * video_clear_color - Clear framebuffer with color value
  */
-void video_clear_color(unsigned short color) {
-	unsigned int i;
-	unsigned char * framebuffer;
+void
+video_clear_color(unsigned short color) {
+    unsigned int i;
+    unsigned char *framebuffer;
 
-	if (sdl_active == 0) {
-		return;
-	}
+    if (!sdl_active) {
+        return;
+    }
 
-	framebuffer = video_get_framebuffer();
-	/* FB_PIXELS bytes, writing as shorts so divide by 2 */
-	for (i = 0; i < FB_PIXELS / 2; i++) {
-		((unsigned short *)framebuffer)[i] = color;
-	}
+    framebuffer = video_get_framebuffer();
+    /* FB_PIXELS bytes, writing as shorts so divide by 2 */
+    for (i = 0; i < FB_PIXELS / 2; i++) {
+        ((unsigned short *)framebuffer)[i] = color;
+    }
 }
 
 /**
@@ -246,40 +266,39 @@ void video_clear_color(unsigned short color) {
  * @param colors Parameter `colors`.
  * @return Function result.
  */
-void video_set_palette(unsigned short start, unsigned short count, unsigned char* colors) {
-	unsigned int i;
+void
+video_set_palette(unsigned short start, unsigned short count, unsigned char *colors) {
+    unsigned int i;
 
-	if (sdl_active == 0) {
-		return;
-	}
+    if (!sdl_active) {
+        return;
+    }
 
-	for (i = 0; i < (unsigned int)count; i++) {
-		unsigned int idx = (unsigned int)start + i;
-		if (idx >= 256u) {
-			break;
-		}
-		fb_set_palette_entry(&sdl_fb,
-			(unsigned char)idx,
-			colors[i * 3u + 0u],
-			colors[i * 3u + 1u],
-			colors[i * 3u + 2u]);
-	}
+    for (i = 0; i < (unsigned int)count; i++) {
+        unsigned int idx = (unsigned int)start + i;
+        if (idx >= 256u) {
+            break;
+        }
+        fb_set_palette_entry(&sdl_fb, (unsigned char)idx, colors[i * 3u + 0u], colors[i * 3u + 1u],
+                             colors[i * 3u + 2u]);
+    }
 }
 /**
 /** @brief Mode.
  * @param video_sdl_init Parameter `video_sdl_init`.
  * @return Function result.
  */
-void video_sdl_init(void) {
-	video_try_init_sdl();
-	video_add_exithandler();
+void
+video_sdl_init(void) {
+    video_try_init_sdl();
+    video_add_exithandler();
 
-	if (sdl_active == 0) {
-		return;
-	}
+    if (!sdl_active) {
+        return;
+    }
 
-	video_clear_color(0);
-	video_refresh();
+    video_clear_color(0);
+    video_refresh();
 }
 
 /**
@@ -287,18 +306,19 @@ void video_sdl_init(void) {
  * 
  * Registers video_on_exit exactly once.
  */
-void video_add_exithandler(void) {
-	if (video_exit_handler_registered != 0) {
-		return;
-	}
+void
+video_add_exithandler(void) {
+    if (video_exit_handler_registered) {
+        return;
+    }
 
-	if (sdl_active == 0) {
-		return;
-	}
+    if (!sdl_active) {
+        return;
+    }
 
-	video_exit_handler_registered = 1;
-	input_queue_buffer = 0;
-	add_exit_handler((voidfunctype)video_on_exit);
+    video_exit_handler_registered = true;
+    input_queue_buffer = 0;
+    add_exit_handler((voidfunctype)video_on_exit);
 }
 
 /**
@@ -306,12 +326,13 @@ void video_add_exithandler(void) {
  * 
  * Called during program exit to shutdown SDL video resources.
  */
-void video_on_exit(void) {
-	if (sdl_init_attempted == 0) {
-		return;
-	}
+void
+video_on_exit(void) {
+    if (!sdl_init_attempted) {
+        return;
+    }
 
-	fb_sdl2_shutdown(&sdl_ctx);
-	sdl_active = 0;
-	video_exit_handler_registered = 0;
+    fb_sdl_shutdown(&sdl_ctx);
+    sdl_active = false;
+    video_exit_handler_registered = false;
 }

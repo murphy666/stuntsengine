@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Version string to use in archive names (e.g. v1.2.3-test). Defaults to branch name.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -76,10 +81,18 @@ jobs:
       - name: Build
         run: cmake --build --preset "${{ matrix.platform.preset }}" --parallel
 
+      - name: Compute versioned archive name
+        run: |
+          VERSION="${{ github.event.inputs.version_override || github.ref_name }}"
+          BASE="${{ matrix.platform.archive_name }}"
+          EXT="${{ matrix.platform.archive_file }}"
+          EXT="${EXT##*.}"
+          echo "ARCHIVE_FILE_OUT=${BASE}-${VERSION}.${EXT}" >> "$GITHUB_ENV"
+
       - name: Package release asset
         env:
           ARCHIVE_NAME: ${{ matrix.platform.archive_name }}
-          ARCHIVE_FILE: ${{ matrix.platform.archive_file }}
+          ARCHIVE_FILE: ${{ env.ARCHIVE_FILE_OUT }}
           BINARY_DIR: ${{ github.workspace }}/${{ matrix.platform.binary_dir }}
         run: ${{ matrix.platform.package_cmd }}
 
@@ -87,7 +100,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.archive_name }}
-          path: ${{ runner.temp }}/${{ matrix.platform.archive_file }}
+          path: ${{ runner.temp }}/${{ env.ARCHIVE_FILE_OUT }}
           if-no-files-found: error
 
   publish:

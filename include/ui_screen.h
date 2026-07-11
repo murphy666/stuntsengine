@@ -1,5 +1,5 @@
 /*
- * ui_screen.h - SDL2-style event-driven screen system for Stunts UI
+ * ui_screen.h - SDL3-style event-driven screen system for Stunts UI
  *
  * Replaces the per-menu while(1) polling loops with a proper
  * screen stack.  Each screen provides callbacks for events, updates,
@@ -33,27 +33,29 @@
 
 /* -------- Event types ----------------------------------------------- */
 
-#define UI_EVENT_NONE        0
-#define UI_EVENT_KEY_DOWN    1   /* key pressed                         */
-#define UI_EVENT_KEY_UP      2   /* key released                        */
-#define UI_EVENT_MOUSE_MOVE  3   /* mouse moved                         */
-#define UI_EVENT_MOUSE_DOWN  4   /* mouse button pressed                */
-#define UI_EVENT_MOUSE_UP    5   /* mouse button released               */
-#define UI_EVENT_TICK        6   /* timer tick (per-frame update)        */
-#define UI_EVENT_ENTER       7   /* screen became topmost               */
-#define UI_EVENT_LEAVE       8   /* screen is no longer topmost         */
+#define UI_EVENT_NONE       0
+#define UI_EVENT_KEY_DOWN   1 /* key pressed                         */
+#define UI_EVENT_KEY_UP     2 /* key released                        */
+#define UI_EVENT_MOUSE_MOVE 3 /* mouse moved                         */
+#define UI_EVENT_MOUSE_DOWN 4 /* mouse button pressed                */
+#define UI_EVENT_MOUSE_UP   5 /* mouse button released               */
+#define UI_EVENT_TICK       6 /* timer tick (per-frame update)        */
+#define UI_EVENT_ENTER      7 /* screen became topmost               */
+#define UI_EVENT_LEAVE      8 /* screen is no longer topmost         */
+
+#include <stdbool.h>
 
 /*
  * UIEvent — unified input event, replacing the scattered polling of
  * kb_get_char / mouse_get_state / get_joy_flags.
  */
 typedef struct {
-    unsigned short type;           /* UI_EVENT_* constant               */
-    unsigned short key;            /* DOS BIOS key code (for KEY_DOWN/UP) */
-    unsigned short mouse_x;        /* Current mouse X                   */
-    unsigned short mouse_y;        /* Current mouse Y                   */
-    unsigned short mouse_buttons;  /* Bitmask: bit0=left, bit1=right    */
-    unsigned short delta;          /* Frame delta (for TICK events)      */
+    unsigned short type;          /* UI_EVENT_* constant               */
+    unsigned short key;           /* DOS BIOS key code (for KEY_DOWN/UP) */
+    unsigned short mouse_x;       /* Current mouse X                   */
+    unsigned short mouse_y;       /* Current mouse Y                   */
+    unsigned short mouse_buttons; /* Bitmask: bit0=left, bit1=right    */
+    unsigned short delta;         /* Frame delta (for TICK events)      */
 } UIEvent;
 
 /* -------- Screen struct --------------------------------------------- */
@@ -73,14 +75,14 @@ typedef struct {
  */
 typedef struct UIScreen UIScreen;
 struct UIScreen {
-    int  (*on_event)(UIScreen *self, const UIEvent *ev);
+    int (*on_event)(UIScreen *self, const UIEvent *ev);
     void (*on_render)(UIScreen *self);
     void (*on_destroy)(UIScreen *self);
     void *userdata;
 
     /* private — managed by the screen stack */
-    int   _modal_result;
-    unsigned char _wants_pop;
+    int _modal_result;
+    bool _wants_pop;
 };
 
 /* -------- Screen lifecycle ------------------------------------------ */
@@ -128,7 +130,7 @@ int ui_screen_depth(void);
  * Run the screen loop until the stack is empty.
  *
  * Each iteration:
- *   1. Poll SDL events via kb_poll_sdl_input()
+ *   1. Poll input events via kb_poll_input()
  *   2. Convert to UIEvent and dispatch to the top screen's on_event
  *   3. Send a UI_EVENT_TICK with the frame delta
  *   4. Call on_render on the top screen

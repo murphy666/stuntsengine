@@ -52,7 +52,7 @@
  *
  * At 50 %:  timer at 50 Hz → physics at 10 Hz → car accelerates at ½ DOS rate
  * ----------------------------------------------------------------------- */
-#define GAME_SPEED_PERCENT   100UL
+#define GAME_SPEED_PERCENT 100UL
 
 /* -----------------------------------------------------------------------
  * Game-logic timer  (DOS PIT, 100 Hz → 10 ms per tick at 100 % speed)
@@ -68,31 +68,31 @@
  *                             = 100000 / (100 * GAME_SPEED_PERCENT)
  *                             = 1000 / GAME_SPEED_PERCENT
  * ----------------------------------------------------------------------- */
-#define GAME_TIMER_HZ        100UL
-#define GAME_TIMER_MS        (1000UL / GAME_TIMER_HZ)           /* 10 ms at 100 Hz */
-#define GAME_TIMER_MS_EFF    (1000UL / GAME_SPEED_PERCENT)      /* scaled tick period */
+#define GAME_TIMER_HZ     100UL
+#define GAME_TIMER_MS     (1000UL / GAME_TIMER_HZ)      /* 10 ms at 100 Hz */
+#define GAME_TIMER_MS_EFF (1000UL / GAME_SPEED_PERCENT) /* scaled tick period */
 
 /* -----------------------------------------------------------------------
  * VGA vertical retrace  (70 Hz → ≈14.3 ms per frame)
  * Independent of GAME_SPEED_PERCENT — screen always refreshes at 70 Hz.
  * ----------------------------------------------------------------------- */
-#define GAME_VSYNC_HZ        70UL
-#define GAME_VSYNC_MS        (1000UL / GAME_VSYNC_HZ)           /* 14 ms */
-#define GAME_VSYNC_NS        (1000000000L / (long)GAME_VSYNC_HZ) /* 14 285 714 ns */
+#define GAME_VSYNC_HZ 70UL
+#define GAME_VSYNC_MS (1000UL / GAME_VSYNC_HZ)            /* 14 ms */
+#define GAME_VSYNC_NS (1000000000L / (long)GAME_VSYNC_HZ) /* 14 285 714 ns */
 
 /* Unified display loop pacing target (menus + frame presents).
  * Physics runs at framespersec Hz (20) regardless of this value — only
  * the visual refresh rate changes.  Set STUNTS_DISPLAY_HZ env var at
  * runtime to override (e.g. STUNTS_DISPLAY_HZ=30 for slower machines). */
-#define GAME_DISPLAY_HZ      60UL
+#define GAME_DISPLAY_HZ 60UL
 
 /* -----------------------------------------------------------------------
  * Spin-yield duration
  * When a loop is waiting for the next timer tick or game frame it sleeps
  * this long before re-checking, preventing 100 % CPU burn.
  * ----------------------------------------------------------------------- */
-#define GAME_YIELD_MS        1UL
-#define GAME_YIELD_NS        (GAME_YIELD_MS * 1000000L)          /* 1 000 000 ns */
+#define GAME_YIELD_MS 1UL
+#define GAME_YIELD_NS (GAME_YIELD_MS * 1000000L) /* 1 000 000 ns */
 
 /* -----------------------------------------------------------------------
  * Menu/input pacing scale

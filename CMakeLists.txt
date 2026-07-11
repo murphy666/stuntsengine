@@ -5,7 +5,9 @@ project(stunts C CXX)
 # Build options
 # ---------------------------------------------------------------------------
 option(STUNTS_ASAN    "Build with AddressSanitizer (GCC/Clang only)"  OFF)
-option(STUNTS_TESTS   "Build test executables"                         ON)
+
+# Generate compile_commands.json for clang-tidy / IDEs.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---------------------------------------------------------------------------
 # C standard
@@ -14,87 +16,84 @@ set(CMAKE_C_STANDARD   11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)   # use -std=c11, not gnu11 (fmopl gets gnu11 explicitly)
 
-# C++ standard (for GTest-based tests and any future .cc sources)
+# C++ standard
 set(CMAKE_CXX_STANDARD          17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        OFF)
 
 # ---------------------------------------------------------------------------
-# SDL2
+# SDL3
 #
-# On Linux:  found via pkg-config / system headers automatically.
-# On Windows (cross-compile): auto-downloaded to library/sdl2-windows/.
-#   Override with -DSDL2_DIR=<path> if you have a custom installation.
+# On Linux:  found via CMake config or pkg-config / system headers.
+# On Windows (cross-compile): auto-downloaded to library/sdl3-windows/.
+#   Override with -DSDL3_DIR=<path> if you have a custom installation.
 # ---------------------------------------------------------------------------
 
-# Auto-download SDL2 MinGW development archive for Windows cross-builds
+# Auto-download SDL3 MinGW development archive for Windows cross-builds.
 if(WIN32)
-    set(_SDL2_VERSION  "2.32.2")
-    set(_SDL2_ARCHIVE  "SDL2-devel-${_SDL2_VERSION}-mingw.tar.gz")
-    set(_SDL2_URL      "https://github.com/libsdl-org/SDL/releases/download/release-${_SDL2_VERSION}/${_SDL2_ARCHIVE}")
-    set(_SDL2_LOCAL    "${CMAKE_CURRENT_SOURCE_DIR}/library/sdl2-windows")
-    set(_SDL2_SENTINEL "${_SDL2_LOCAL}/SDL2-${_SDL2_VERSION}/x86_64-w64-mingw32/lib/cmake/SDL2/sdl2-config.cmake")
+    set(_SDL3_VERSION "3.4.4")
+    set(_SDL3_ARCHIVE "SDL3-devel-${_SDL3_VERSION}-mingw.tar.gz")
+    set(_SDL3_URL "https://github.com/libsdl-org/SDL/releases/download/release-${_SDL3_VERSION}/${_SDL3_ARCHIVE}")
+    set(_SDL3_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/library/sdl3-windows")
 
-    if(NOT EXISTS "${_SDL2_SENTINEL}")
-        message(STATUS "Downloading SDL2 ${_SDL2_VERSION} MinGW development archive ...")
-        file(MAKE_DIRECTORY "${_SDL2_LOCAL}")
-        set(_SDL2_TARBALL "${_SDL2_LOCAL}/${_SDL2_ARCHIVE}")
-        file(DOWNLOAD "${_SDL2_URL}" "${_SDL2_TARBALL}"
-            STATUS _sdl2_dl_status
+    file(GLOB _SDL3_CONFIGS
+        "${_SDL3_LOCAL}/*/x86_64-w64-mingw32/lib/cmake/SDL3/SDL3Config.cmake")
+
+    if(NOT _SDL3_CONFIGS)
+        message(STATUS "Downloading SDL3 ${_SDL3_VERSION} MinGW development archive ...")
+        file(MAKE_DIRECTORY "${_SDL3_LOCAL}")
+        set(_SDL3_TARBALL "${_SDL3_LOCAL}/${_SDL3_ARCHIVE}")
+        file(DOWNLOAD "${_SDL3_URL}" "${_SDL3_TARBALL}"
+            STATUS _sdl3_dl_status
             SHOW_PROGRESS)
-        list(GET _sdl2_dl_status 0 _sdl2_dl_code)
-        if(NOT _sdl2_dl_code EQUAL 0)
-            list(GET _sdl2_dl_status 1 _sdl2_dl_msg)
+        list(GET _sdl3_dl_status 0 _sdl3_dl_code)
+        if(NOT _sdl3_dl_code EQUAL 0)
+            list(GET _sdl3_dl_status 1 _sdl3_dl_msg)
             message(FATAL_ERROR
-                "Failed to download SDL2: ${_sdl2_dl_msg}\n"
-                "URL: ${_SDL2_URL}\n"
-                "Download it manually and extract to ${_SDL2_LOCAL}/")
+                "Failed to download SDL3: ${_sdl3_dl_msg}\n"
+                "URL: ${_SDL3_URL}\n"
+                "Download it manually and extract to ${_SDL3_LOCAL}/")
         endif()
-        message(STATUS "Extracting ${_SDL2_ARCHIVE} ...")
+        message(STATUS "Extracting ${_SDL3_ARCHIVE} ...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E tar xzf "${_SDL2_TARBALL}"
-            WORKING_DIRECTORY "${_SDL2_LOCAL}"
-            RESULT_VARIABLE _sdl2_tar_result)
-        if(NOT _sdl2_tar_result EQUAL 0)
-            message(FATAL_ERROR "Failed to extract ${_SDL2_ARCHIVE}")
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${_SDL3_TARBALL}"
+            WORKING_DIRECTORY "${_SDL3_LOCAL}"
+            RESULT_VARIABLE _sdl3_tar_result)
+        if(NOT _sdl3_tar_result EQUAL 0)
+            message(FATAL_ERROR "Failed to extract ${_SDL3_ARCHIVE}")
         endif()
-        file(REMOVE "${_SDL2_TARBALL}")
+        file(REMOVE "${_SDL3_TARBALL}")
+        file(GLOB _SDL3_CONFIGS
+            "${_SDL3_LOCAL}/*/x86_64-w64-mingw32/lib/cmake/SDL3/SDL3Config.cmake")
     endif()
 
-    set(SDL2_DIR "${_SDL2_LOCAL}/SDL2-${_SDL2_VERSION}/x86_64-w64-mingw32/lib/cmake/SDL2"
-        CACHE PATH "SDL2 cmake config directory" FORCE)
-    unset(_SDL2_VERSION)
-    unset(_SDL2_ARCHIVE)
-    unset(_SDL2_URL)
-    unset(_SDL2_LOCAL)
-    unset(_SDL2_SENTINEL)
-endif()
-
-find_package(SDL2 REQUIRED)
-
-# Normalise: older FindSDL2.cmake exports SDL2_INCLUDE_DIRS / SDL2_LIBRARIES;
-# vcpkg and the official SDL2 package export SDL2::SDL2.
-if(NOT TARGET SDL2::SDL2)
-    add_library(SDL2::SDL2 INTERFACE IMPORTED)
-    set_target_properties(SDL2::SDL2 PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${SDL2_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES      "${SDL2_LIBRARIES}")
-endif()
-
-# The official SDL2 MinGW cmake config sets INTERFACE_INCLUDE_DIRECTORIES to
-# "<arch>/include/SDL2" — one level too deep for #include <SDL2/SDL.h>.
-# We add the parent dir ("<arch>/include") so both forms work.
-if(WIN32 AND TARGET SDL2::SDL2)
-    get_target_property(_sdl2_raw_inc SDL2::SDL2 INTERFACE_INCLUDE_DIRECTORIES)
-    if(_sdl2_raw_inc)
-        get_filename_component(_sdl2_inc_parent "${_sdl2_raw_inc}" DIRECTORY)
-        if(IS_DIRECTORY "${_sdl2_inc_parent}")
-            set_property(TARGET SDL2::SDL2 APPEND PROPERTY
-                INTERFACE_INCLUDE_DIRECTORIES "${_sdl2_inc_parent}")
-        endif()
+    list(LENGTH _SDL3_CONFIGS _SDL3_CONFIG_COUNT)
+    if(_SDL3_CONFIG_COUNT EQUAL 0)
+        message(FATAL_ERROR "SDL3Config.cmake not found after extraction in ${_SDL3_LOCAL}")
     endif()
-    unset(_sdl2_raw_inc)
-    unset(_sdl2_inc_parent)
+    list(GET _SDL3_CONFIGS 0 _SDL3_CONFIG)
+    get_filename_component(_SDL3_CONFIG_DIR "${_SDL3_CONFIG}" DIRECTORY)
+
+    set(SDL3_DIR "${_SDL3_CONFIG_DIR}"
+        CACHE PATH "SDL3 cmake config directory" FORCE)
+    unset(_SDL3_VERSION)
+    unset(_SDL3_ARCHIVE)
+    unset(_SDL3_URL)
+    unset(_SDL3_LOCAL)
+    unset(_SDL3_CONFIGS)
+    unset(_SDL3_CONFIG_COUNT)
+    unset(_SDL3_CONFIG)
+    unset(_SDL3_CONFIG_DIR)
+endif()
+
+find_package(SDL3 QUIET CONFIG)
+
+if(TARGET SDL3::SDL3)
+    set(STUNTS_SDL_TARGET SDL3::SDL3)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+    set(STUNTS_SDL_TARGET PkgConfig::SDL3)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -125,15 +124,6 @@ if(STUNTS_ASAN)
         set(ASAN_COMPILE_FLAGS -fsanitize=address -fno-omit-frame-pointer)
         set(ASAN_LINK_FLAGS    -fsanitize=address)
     endif()
-endif()
-
-# ---------------------------------------------------------------------------
-# Coverage (gcov / lcov)
-# ---------------------------------------------------------------------------
-option(STUNTS_COVERAGE "Build all test targets with gcov line-coverage instrumentation" OFF)
-if(STUNTS_COVERAGE AND NOT MSVC)
-    set(COVERAGE_COMPILE_FLAGS --coverage -fprofile-arcs -ftest-coverage -O0 -g)
-    set(COVERAGE_LINK_FLAGS    --coverage)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -199,16 +189,14 @@ add_executable(stunts ${ALL_SRC} $<TARGET_OBJECTS:fmopl_obj>)
 target_include_directories(stunts PRIVATE src include library/adplug/src)
 target_compile_options(stunts PRIVATE
     ${STUNTS_WARN_FLAGS})
-target_link_libraries(stunts PRIVATE SDL2::SDL2)
+target_link_libraries(stunts PRIVATE ${STUNTS_SDL_TARGET})
 
 # Math library — not needed on Windows (MSVC CRT), required on Linux/MinGW
 if(NOT MSVC)
     target_link_libraries(stunts PRIVATE m)
 endif()
 
-# Windows: tell SDL not to hijack main(); we provide our own console entry point.
-# SDL2main.a would provide WinMain→SDL_main bridging which we don't need for a
-# console app.  Instead use SDL_MAIN_HANDLED + -mconsole linker flag.
+# Windows: keep the console entry point and bypass SDL's optional main wrapper.
 if(WIN32)
     target_compile_definitions(stunts PRIVATE SDL_MAIN_HANDLED)
     target_link_options(stunts PRIVATE -mconsole)
@@ -238,23 +226,23 @@ else()
     message(STATUS "Game resources folder not found — skipping copy")
 endif()
 
-# On Windows cross-build: copy SDL2.dll next to the executable so it can run.
+# On Windows cross-build: copy SDL3.dll next to the executable so it can run.
 if(WIN32)
-    # Derive the SDL2 arch root from SDL2_DIR:
-    # SDL2_DIR = .../x86_64-w64-mingw32/lib/cmake/SDL2  (go up 3 levels)
-    get_filename_component(_sdl2_cmake_dir "${SDL2_DIR}" ABSOLUTE)
-    get_filename_component(_sdl2_lib_cmake "${_sdl2_cmake_dir}"   DIRECTORY)  # lib/cmake
-    get_filename_component(_sdl2_lib       "${_sdl2_lib_cmake}"   DIRECTORY)  # lib
-    get_filename_component(_sdl2_arch_root "${_sdl2_lib}"         DIRECTORY)  # arch root
-    set(_sdl2_dll "${_sdl2_arch_root}/bin/SDL2.dll")
-    if(EXISTS "${_sdl2_dll}")
+    # Derive the SDL3 arch root from SDL3_DIR:
+    # SDL3_DIR = .../x86_64-w64-mingw32/lib/cmake/SDL3  (go up 3 levels)
+    get_filename_component(_sdl3_cmake_dir "${SDL3_DIR}" ABSOLUTE)
+    get_filename_component(_sdl3_lib_cmake "${_sdl3_cmake_dir}"   DIRECTORY)
+    get_filename_component(_sdl3_lib       "${_sdl3_lib_cmake}"   DIRECTORY)
+    get_filename_component(_sdl3_arch_root "${_sdl3_lib}"         DIRECTORY)
+    set(_sdl3_dll "${_sdl3_arch_root}/bin/SDL3.dll")
+    if(EXISTS "${_sdl3_dll}")
         add_custom_command(TARGET stunts POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${_sdl2_dll}"
+                "${_sdl3_dll}"
                 "$<TARGET_FILE_DIR:stunts>"
-            COMMENT "Copying SDL2.dll")
+            COMMENT "Copying SDL3.dll")
     else()
-        message(WARNING "SDL2.dll not found at ${_sdl2_dll} — copy it manually next to stunts.exe")
+        message(WARNING "SDL3.dll not found at ${_sdl3_dll} — copy it manually next to stunts.exe")
     endif()
 
     # Copy MinGW runtime DLLs required by the produced executable when running
@@ -284,308 +272,55 @@ if(WIN32)
 endif()
 
 # ---------------------------------------------------------------------------
-# Tests
+# clang-format targets: `format` (in-place) and `format-check` (dry-run)
 # ---------------------------------------------------------------------------
-if(STUNTS_TESTS)
-    enable_testing()
-    set(STUNTS_TEST_TARGETS "")
-
-    # --- Google Test via FetchContent (falls back to system install) ---
-    include(FetchContent)
-    find_package(GTest QUIET)
-    if(NOT GTest_FOUND)
-        FetchContent_Declare(
-            googletest
-            GIT_REPOSITORY https://github.com/google/googletest.git
-            GIT_TAG        v1.14.0
-        )
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-        set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(googletest)
-    endif()
-    include(GoogleTest)
-
-    # Helper macro: add a Google Test executable.
-    # Each TEST() case is registered as an individual CTest entry via
-    # gtest_discover_tests(), giving a sensible per-case count in ctest.
-    # Usage: stunts_add_gtest(target_name test_src.cc  [extra_src.c ...])
-    # Usage: stunts_add_gtest(target [WORKING_DIRECTORY dir] src1.cc [src2.c ...])
-    macro(stunts_add_gtest _target)
-        cmake_parse_arguments(_GTEST "" "WORKING_DIRECTORY" "" ${ARGN})
-        set(_srcs ${_GTEST_UNPARSED_ARGUMENTS})
-        set(_all_exist TRUE)
-        foreach(_s ${_srcs})
-            if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_s}")
-                set(_all_exist FALSE)
-                break()
-            endif()
-        endforeach()
-        if(_all_exist)
-            add_executable(${_target} ${_srcs})
-            target_include_directories(${_target} PRIVATE src include)
-            if(STUNTS_COVERAGE AND NOT MSVC)
-                target_compile_options(${_target} PRIVATE ${COVERAGE_COMPILE_FLAGS})
-                target_link_options(${_target} PRIVATE ${COVERAGE_LINK_FLAGS})
-            endif()
-            if(NOT MSVC)
-                target_link_libraries(${_target} PRIVATE m)
-            endif()
-            target_link_libraries(${_target} PRIVATE GTest::gtest_main)
-            if(_GTEST_WORKING_DIRECTORY)
-                gtest_discover_tests(${_target}
-                    WORKING_DIRECTORY "${_GTEST_WORKING_DIRECTORY}"
-                    EXTRA_ARGS --gtest_color=yes
-                    PROPERTIES ENVIRONMENT "GTEST_COLOR=yes")
-            else()
-                gtest_discover_tests(${_target}
-                    EXTRA_ARGS --gtest_color=yes
-                    PROPERTIES ENVIRONMENT "GTEST_COLOR=yes")
-            endif()
-            list(APPEND STUNTS_TEST_TARGETS ${_target})
-            if(_GTEST_WORKING_DIRECTORY)
-                set_property(TARGET ${_target} PROPERTY STUNTS_WORKING_DIR "${_GTEST_WORKING_DIRECTORY}")
-            else()
-                set_property(TARGET ${_target} PROPERTY STUNTS_WORKING_DIR "${CMAKE_BINARY_DIR}")
-            endif()
-        else()
-            message(STATUS "[STUNTS] ${_target}: DISABLED — missing source files")
-        endif()
-    endmacro()
-
-    # Helper for tests that need SDL2 + GTest
-    macro(stunts_add_sdl_gtest _target)
-        set(_srcs ${ARGN})
-        set(_all_exist TRUE)
-        foreach(_s ${_srcs})
-            if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_s}")
-                set(_all_exist FALSE)
-                break()
-            endif()
-        endforeach()
-        if(_all_exist)
-            add_executable(${_target} ${_srcs})
-            target_include_directories(${_target} PRIVATE src include)
-            target_compile_options(${_target} PRIVATE
-                $<$<CONFIG:Debug>:-O0 -g>)
-            if(STUNTS_COVERAGE AND NOT MSVC)
-                target_compile_options(${_target} PRIVATE ${COVERAGE_COMPILE_FLAGS})
-                target_link_options(${_target} PRIVATE ${COVERAGE_LINK_FLAGS})
-            endif()
-            target_link_libraries(${_target} PRIVATE SDL2::SDL2 GTest::gtest_main)
-            if(NOT MSVC)
-                target_link_libraries(${_target} PRIVATE m)
-            endif()
-            if(WIN32 AND TARGET SDL2::SDL2main)
-                target_link_libraries(${_target} PRIVATE SDL2::SDL2main)
-            endif()
-            gtest_discover_tests(${_target}
-                EXTRA_ARGS --gtest_color=yes
-                PROPERTIES ENVIRONMENT "GTEST_COLOR=yes")
-            list(APPEND STUNTS_TEST_TARGETS ${_target})
-        else()
-            message(STATUS "[STUNTS] ${_target}: DISABLED — missing source files")
-        endif()
-    endmacro()
-
-    # --- Unit tests (no SDL2) ---
-    stunts_add_gtest(test_memmgr_stub
-        tests/test_memmgr_stub.cc
-        src/memmgr.c)
-
-    stunts_add_sdl_gtest(test_framebuffer
-        tests/test_framebuffer.cc
-        src/framebuffer.c)
-
-    stunts_add_gtest(test_shape2d_resource
-        tests/test_shape2d_resource.cc)
-
-    stunts_add_gtest(test_font
+find_program(CLANG_FORMAT_EXE NAMES clang-format clang-format-20 clang-format-19
+                                     clang-format-18 clang-format-17)
+if(CLANG_FORMAT_EXE)
+    file(GLOB_RECURSE STUNTS_FORMAT_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/src/*.c"
+        "${CMAKE_SOURCE_DIR}/include/*.h"
+    )
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i ${STUNTS_FORMAT_SOURCES}
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        tests/test_font.cc)
-
-    stunts_add_gtest(test_shape3d_core
-        tests/test_shape3d_core.cc)
-
-    stunts_add_gtest(test_shape3d_resource
-        tests/test_shape3d_resource.cc)
-
-    stunts_add_gtest(test_shape3d_polyinfo
-        tests/test_shape3d_polyinfo.cc)
-
-    stunts_add_gtest(test_shape3d_pipeline
-        tests/test_shape3d_pipeline.cc)
-
-    stunts_add_gtest(test_shape3d_pointer_table_regression
-        tests/test_shape3d_pointer_table_regression.cc)
-
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test_outputs")
-    stunts_add_gtest(test_polygon_render_image
-        tests/test_polygon_render_image.cc)
-
-    stunts_add_gtest(test_terrain_track_frame_check
-        tests/test_terrain_track_frame_check.cc)
-
-    stunts_add_gtest(test_math
-        tests/test_math.cc
-        src/math.c)
-
-    stunts_add_gtest(test_shape2d_pure
-        tests/test_shape2d_pure.cc
-        tests/test_shape2d_pure_stubs.c
-        src/shape2d.c)
-
-    stunts_add_gtest(test_shape3d_layout
-        tests/test_shape3d_layout.cc)
-
-    stunts_add_gtest(test_header_centralization
-        tests/test_header_centralization.cc)
-
-    stunts_add_gtest(test_hill_terrain_render
-        tests/test_hill_terrain_render.cc
-        tests/test_hill_terrain_render_stubs.c
-        src/shape3d.c
-        src/math.c
-        src/data_game.c)
-
-    # --- SDL2 tests ---
-    stunts_add_sdl_gtest(test_sdl_audio_tone
-        tests/test_sdl_audio_tone.cc)
-
-    stunts_add_sdl_gtest(test_intro_music_audio
-        tests/test_intro_music_audio.cc)
-
-    stunts_add_gtest(test_audio_menu_basics
+        COMMENT "Running clang-format on src/ and include/"
+        VERBATIM
+    )
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${STUNTS_FORMAT_SOURCES}
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        tests/test_audio_menu_basics.cc)
-
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_opl2_backend.cc")
-        add_executable(test_opl2_backend
-            tests/test_opl2_backend.cc
-            src/opl2.c
-            $<TARGET_OBJECTS:fmopl_obj>)
-        target_include_directories(test_opl2_backend PRIVATE src include library/adplug/src)
-        target_link_libraries(test_opl2_backend PRIVATE GTest::gtest_main)
-        if(NOT MSVC)
-            target_link_libraries(test_opl2_backend PRIVATE m)
-        endif()
-        gtest_discover_tests(test_opl2_backend
-            EXTRA_ARGS --gtest_color=yes
-            PROPERTIES ENVIRONMENT "GTEST_COLOR=yes")
-        list(APPEND STUNTS_TEST_TARGETS test_opl2_backend)
-        set_property(TARGET test_opl2_backend PROPERTY STUNTS_WORKING_DIR "${CMAKE_BINARY_DIR}")
-    endif()
-
-    stunts_add_gtest(test_timer
-        tests/test_timer.cc
-        src/timer.c)
-    if(TARGET test_timer)
-        target_compile_definitions(test_timer PRIVATE _POSIX_C_SOURCE=200809L)
-    endif()
-
-    stunts_add_gtest(test_ressources
-        tests/test_ressources.cc
-        tests/test_ressources_stubs.c
-        src/ressources.c)
-    if(TARGET test_ressources)
-        target_compile_definitions(test_ressources PRIVATE _GNU_SOURCE)
-    endif()
-
-    stunts_add_gtest(test_data_tables
-        tests/test_data_tables.cc
-        src/data_game.c
-        src/data_menu_track.c
-        src/data_runtime.c)
-
-    stunts_add_gtest(test_track_decode
-        tests/test_track_decode.cc)
-
-    stunts_add_gtest(test_string_format
-        tests/test_string_format.cc)
-
-    stunts_add_gtest(test_steering
-        tests/test_steering.cc)
-
-    stunts_add_gtest(test_carstate_pure
-        tests/test_carstate_pure.cc)
-
-    # --- UI system tests ---
-    stunts_add_gtest(test_ui_keys
-        tests/test_ui_keys.cc)
-
-    stunts_add_gtest(test_ui_widgets_pure
-        tests/test_ui_widgets_pure.cc)
-
-    stunts_add_gtest(test_ui_screen
-        tests/test_ui_screen.cc
-        tests/test_ui_screen_stubs.c
-        src/ui_screen.c)
-
-    # Generate a cmake file (at generate time) listing every test binary path
-    # and its required working directory.
-    # This file is consumed by cmake/run_tests.cmake so it knows what to run.
-    set(_exe_lines "")
-    set(_wdir_lines "")
-    foreach(_t ${STUNTS_TEST_TARGETS})
-        string(APPEND _exe_lines "  \"$<TARGET_FILE:${_t}>\"\n")
-        string(APPEND _wdir_lines "  \"$<TARGET_PROPERTY:${_t},STUNTS_WORKING_DIR>\"\n")
-    endforeach()
-    file(GENERATE
-        OUTPUT "${CMAKE_BINARY_DIR}/test_runner_targets.cmake"
-        CONTENT "set(TEST_EXECUTABLES\n${_exe_lines})\nset(TEST_WORKING_DIRS\n${_wdir_lines})\n"
+        COMMENT "Checking clang-format compliance (dry-run)"
+        VERBATIM
     )
+else()
+    message(STATUS "clang-format not found — format/format-check targets disabled")
+endif()
 
-    # 'make check' — numbered suite banners + grand total, fully colored
-    add_custom_target(check
-        COMMAND ${CMAKE_COMMAND}
-            -DCMAKE_COMMAND=${CMAKE_COMMAND}
-            -DTEST_TARGETS_FILE=${CMAKE_BINARY_DIR}/test_runner_targets.cmake
-            -P ${CMAKE_SOURCE_DIR}/cmake/run_tests.cmake
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        DEPENDS ${STUNTS_TEST_TARGETS}
-        COMMENT "Running all tests"
-        USES_TERMINAL
+# ---------------------------------------------------------------------------
+# clang-tidy target: `tidy` (report) and `tidy-fix` (apply fixes)
+# Requires compile_commands.json — ensure you build from a configured tree.
+# ---------------------------------------------------------------------------
+find_program(CLANG_TIDY_EXE NAMES clang-tidy clang-tidy-20 clang-tidy-19
+                                   clang-tidy-18 clang-tidy-17)
+if(CLANG_TIDY_EXE)
+    add_custom_target(tidy
+        COMMAND ${CLANG_TIDY_EXE}
+            -p "${CMAKE_BINARY_DIR}"
+            ${ALL_SRC}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running clang-tidy (report only)"
+        VERBATIM
     )
-
-    # 'make run_tests' — alias for check
-    add_custom_target(run_tests
-        DEPENDS check
+    add_custom_target(tidy-fix
+        COMMAND ${CLANG_TIDY_EXE}
+            -p "${CMAKE_BINARY_DIR}"
+            --fix
+            ${ALL_SRC}
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running clang-tidy --fix"
+        VERBATIM
     )
-
-    # 'make coverage' — run tests with gcov instrumentation, produce lcov HTML
-    if(STUNTS_COVERAGE AND NOT MSVC)
-        find_program(LCOV_EXECUTABLE    lcov    REQUIRED)
-        find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
-        set(_cov_info "${CMAKE_BINARY_DIR}/coverage.info")
-        set(_cov_html "${CMAKE_BINARY_DIR}/coverage_html")
-        add_custom_target(coverage
-            COMMAND ${LCOV_EXECUTABLE} --directory . --zerocounters
-            COMMAND ${CMAKE_COMMAND} -E env GTEST_COLOR=yes
-                ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIG>
-            COMMAND ${LCOV_EXECUTABLE}
-                --directory .
-                --base-directory "${CMAKE_SOURCE_DIR}"
-                --capture
-                --output-file "${_cov_info}"
-                --ignore-errors inconsistent,inconsistent
-            COMMAND ${LCOV_EXECUTABLE}
-                --extract "${_cov_info}"
-                "${CMAKE_SOURCE_DIR}/src/*"
-                --output-file "${_cov_info}"
-                --ignore-errors unused
-            COMMAND ${GENHTML_EXECUTABLE}
-                "${_cov_info}"
-                --output-directory "${_cov_html}"
-                --title "Stunts Engine Coverage"
-                --legend
-                --quiet
-            COMMAND ${CMAKE_COMMAND} -E echo
-                "Report ready: ${_cov_html}/index.html"
-            WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-            DEPENDS ${STUNTS_TEST_TARGETS}
-            COMMENT "Generating gcov/lcov line-coverage report"
-            USES_TERMINAL
-        )
-    endif()
-
-endif() # STUNTS_TESTS
+else()
+    message(STATUS "clang-tidy not found — tidy/tidy-fix targets disabled")
+endif()

@@ -23,41 +23,58 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
+#include "game_types.h"
+
+extern int audio_opponent_engine_handle;
+extern int audio_engine_sound_handle;
+extern short audio_frame_index;
+extern bool audio_replay_apply_state;
+extern char audiodriverstring[];
+extern int crash_sound_handle;
+extern char opponent_audio_state;
+extern char player_audio_state;
+extern void *songfileptr;
+extern void *voicefileptr;
+extern short *aero_table_player;
+extern short *aero_table_opponent;
+extern char replay_audio_frame_buffer[];
+
 /* Audio engine init/teardown */
-void * init_audio_resources(void * songptr, void * voiceptr, const char* name);
-void   load_audio_finalize(void * audiores);
-short  audio_load_driver(const char* driver, short a2, short a3);
-void   audio_unload(void);
-void   audiodrv_atexit(void);
-short  audio_toggle_flag2(void);
-void   audio_disable_flag2(void);
-void   audio_enable_flag2(void);
+void *init_audio_resources(void *songptr, void *voiceptr, const char *name);
+void load_audio_finalize(void *audiores);
+short audio_load_driver(const char *driver, short a2, short a3);
+void audio_unload(void);
+void audiodrv_atexit(void);
+short audio_toggle_flag2(void);
+void audio_disable_flag2(void);
+void audio_enable_flag2(void);
 
 /* Engine sound management */
-char * pad_id(unsigned long * id_value);
-short  audio_init_engine(short unused, void * data_ptr, void * song_res, void * voice_res);
-void   audio_start_engine_note(short handle_id);
-void   audio_stop_engine_note(short handle_id);
-void   audio_driver_timer(void);
-void   audio_update_engine_sound(short handle_id, short rpm, short distance_x, short distance_y,
-                                  short distance_z, short unused_a, short unused_c, short unused_e, short distance_divisor);
-void   audio_add_driver_timer(void);
-void   audio_remove_driver_timer(void);
-void   audio_driver_func3F(int mode);
+char *pad_id(unsigned long *id_value);
+short audio_init_engine(short unused, void *data_ptr, void *song_res, void *voice_res);
+void audio_start_engine_note(short handle_id);
+void audio_stop_engine_note(short handle_id);
+void audio_driver_timer(void);
+void audio_update_engine_sound(short handle_id, short rpm, short distance_x, short distance_y,
+                               short distance_z, short unused_a, short unused_c, short unused_e,
+                               short distance_divisor);
+void audio_add_driver_timer(void);
+void audio_remove_driver_timer(void);
+void audio_driver_func3F(int mode);
 unsigned short audio_set_menu_music_paused(unsigned short paused);
 
 /* Car audio synchronisation */
 void audio_sync_car_audio(void);
 void audio_apply_crash_flags(unsigned char flags, unsigned short sound_id);
-void audio_replay_update_engine_sounds(unsigned short* info, unsigned short sound_id);
+void audio_replay_update_engine_sounds(unsigned short *info, unsigned short sound_id);
 void audio_on_replay_mode_changed(void);
 
 /* Crash / skid FX selectors */
-void   audio_select_crash2_fx_and_restart(short handle_id);
-void   audio_select_crash1_fx(short handle_id);
-void   audio_select_crash2_fx(short handle_id);
-void   audio_select_skid1_fx(short handle_id);
-void   audio_select_skid2_fx(short handle_id);
-void   audio_clear_chunk_fx(short handle_id);
+void audio_select_crash2_fx_and_restart(short handle_id);
+void audio_select_crash1_fx(short handle_id);
+void audio_select_crash2_fx(short handle_id);
+void audio_select_skid1_fx(short handle_id);
+void audio_select_skid2_fx(short handle_id);
+void audio_clear_chunk_fx(short handle_id);
 
 #endif /* AUDIO_H */

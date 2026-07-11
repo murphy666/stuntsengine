@@ -33,23 +33,143 @@
 #include "shape3d.h"
 #include "shape2d.h"
 /* Variables moved from data_game.c */
-static void (*spritefunc)(unsigned short, unsigned short, unsigned short, unsigned short*, unsigned short*) = 0;
-static void (*imagefunc)(unsigned short, unsigned short, unsigned short, unsigned short, unsigned short) = 0;
-static void * game1ptr = 0;
-static void * game2ptr = 0;
+static void (*spritefunc)(unsigned short, unsigned short, unsigned short, unsigned short *,
+                          unsigned short *)
+    = 0;
+static void (*imagefunc)(unsigned short, unsigned short, unsigned short, unsigned short,
+                         unsigned short)
+    = 0;
+static void *game1ptr = 0;
+static void *game2ptr = 0;
 static unsigned short polygon_info_head = 0;
 static unsigned polygon_op_error_code = 0;
-static unsigned char* polyinfoptr = 0;
-static int* polyinfoptrs[4097] = { 0 };
+static unsigned char *polyinfoptr = 0;
+static int *polyinfoptrs[4097] = { 0 };
 static unsigned select_rect_scale_preview = 0;
 static unsigned char shape3d_vector_direction_bucket = 0;
 static unsigned short zorder_current_index = 0;
 
+/* Shared 3-D render state moved from data_game.c */
+unsigned short polygon_pattern_type = 0;
+unsigned short polygon_alternate_color = 0;
+unsigned char projectiondata5[2] = { 160, 0 };
+unsigned char projectiondata8[2] = { 100, 0 };
+unsigned char projectiondata9[2] = { 0, 0 };
+unsigned char projectiondata10[2] = { 0, 0 };
+unsigned char material_color_list[258]
+    = { 0,   0, 1,   0, 2,   0, 3,   0, 4,   0, 5,   0, 6,   0, 7,   0, 8,   0, 9,   0, 10,  0,
+        11,  0, 12,  0, 13,  0, 14,  0, 15,  0, 108, 0, 116, 0, 15,  0, 28,  0, 29,  0, 14,  0,
+        28,  0, 31,  0, 14,  0, 200, 0, 198, 0, 196, 0, 112, 0, 114, 0, 116, 0, 194, 0, 197, 0,
+        200, 0, 146, 0, 37,  0, 35,  0, 181, 0, 29,  0, 31,  0, 19,  0, 3,   0, 11,  0, 27,  0,
+        0,   0, 4,   0, 4,   0, 12,  0, 156, 0, 154, 0, 152, 0, 150, 0, 42,  0, 40,  0, 38,  0,
+        37,  0, 27,  0, 26,  0, 25,  0, 24,  0, 72,  0, 70,  0, 68,  0, 66,  0, 123, 0, 121, 0,
+        120, 0, 117, 0, 92,  0, 90,  0, 88,  0, 87,  0, 173, 0, 171, 0, 169, 0, 167, 0, 20,  0,
+        19,  0, 18,  0, 17,  0, 77,  0, 76,  0, 74,  0, 73,  0, 45,  0, 44,  0, 42,  0, 41,  0,
+        159, 0, 175, 0, 174, 0, 172, 0, 29,  0, 28,  0, 18,  0, 90,  0, 15,  0, 7,   0, 200, 0,
+        219, 0, 136, 0, 99,  0, 101, 0, 103, 0, 104, 0, 106, 0, 17,  0, 20,  0, 60,  0, 77,  0,
+        46,  0, 61,  0, 45,  0, 202, 0, 190, 0, 186, 0, 183, 0, 180, 0, 0,   0, 28,  0, 30,  0,
+        16,  0, 20,  0, 68,  0, 54,  0, 39,  0, 43,  0, 12,  0, 17,  0 };
+/* pattern type per material: 0=solid, 1=patterned/grille (see material_pattern2_list for bit-mask), 3=invisible */
+/* stride-2 (lo byte = value, hi byte = 0); source: dseg.asm material_pattern_list */
+unsigned char material_pattern_list[258] = {
+    /* mattypes 0-21: solid */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattypes 22-24: patterned (windshields) */
+    1, 0, 1, 0, 1, 0,
+    /* mattypes 25-33: solid */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattype 34: patterned (grille) */
+    1, 0,
+    /* mattypes 35-92: solid */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattype 93: patterned */
+    1, 0,
+    /* mattypes 94-116: solid */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattypes 117-125: patterned */
+    1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+    /* mattypes 126-128: solid */
+    0, 0, 0, 0, 0, 0
+};
+/* 16-bit pattern bitmask per material (for matpattern==1); 0xFFFF=solid, 0=invisible, 0x77DD/0xDD77=halftone */
+/* stored as little-endian word pairs; source: dseg.asm material_pattern2_list */
+unsigned char material_pattern2_list[258] = {
+    /* mattypes 0-17: 0xFFFF (opaque) */
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    /* mattype 18: 0x0000 (invisible) */
+    0, 0,
+    /* mattypes 19-21: 0xFFFF */
+    255, 255, 255, 255, 255, 255,
+    /* mattype 22: 0x77DD (halftone pattern A) */
+    221, 119,
+    /* mattype 23: 0xDD77 (halftone pattern B) */
+    119, 221,
+    /* mattype 24: 0x77DD */
+    221, 119,
+    /* mattypes 25-33: 0xFFFF */
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    /* mattype 34: 0x77DD */
+    221, 119,
+    /* mattypes 35-63: 0xFFFF */
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255,
+    /* mattypes 64-93: 0x0000 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattype 94: 0x77DD */
+    221, 119,
+    /* mattypes 95-105: 0xFFFF */
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255,
+    /* mattypes 106-118: 0x0000 */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /* mattype 119: 0xCC33 */ 51, 204,
+    /* mattype 120: 0x33CC */ 204, 51,
+    /* mattype 121: 0xB66D */ 109, 182,
+    /* mattype 122: 0x4992 */ 146, 73,
+    /* mattype 123: 0xB66D */ 109, 182,
+    /* mattype 124: 0x4992 */ 146, 73,
+    /* mattype 125: 0xB66D */ 109, 182,
+    /* mattype 126: 0x4992 */ 146, 73,
+    /* mattypes 127-128: 0x0000 */
+    0, 0, 0, 0
+};
+unsigned char *material_clrlist_ptr = material_color_list;
+unsigned char *material_clrlist2_ptr = material_color_list;
+unsigned char *material_patlist_ptr = material_pattern_list;
+unsigned char *material_patlist2_ptr = material_pattern2_list;
+struct RECTANGLE select_rect_rc = { 0, 0, 0, 0 };
+unsigned char cos80[4] = { 0, 0, 0, 0 };
+unsigned char sin80[4] = { 0, 0, 0, 0 };
+struct SHAPE3D game3dshapes[] = { [129] = { 0 } };
+char backlights_paint_override = 0;
+unsigned char *material_clrlist_ptr_cpy = 0;
+unsigned char *material_clrlist2_ptr_cpy = 0;
+unsigned char *material_patlist_ptr_cpy = 0;
+unsigned char *material_patlist2_ptr_cpy = 0;
+struct MATRIX mat_temp = { 0 };
+short viewport_clipping_bounds[5] = { 0, 0, 0, 0, 0 };
+struct VECTOR carshapevec = { 0 };
+/* carshapevecs: 24 VECTORs (144 bytes) contiguous. */
+struct VECTOR carshapevecs[24] = { 0 };
+short game_frame_pointer[5] = { 0, 0, 0, 0, 0 };
+struct VECTOR oppcarshapevec = { 0 };
+/* oppcarshapevecs: same layout as carshapevecs. */
+struct VECTOR oppcarshapevecs[24] = { 0 };
+
 /* Variables moved from data_game.c (private to this translation unit) */
-static short * car2resptr = 0;
+static short *car2resptr = 0;
 static struct VECTOR carshapevec2 = { 0 };
 static unsigned char cos80_2[4] = { 0, 0, 0, 0 };
-static char * curshapeptr = 0;
+static char *curshapeptr = 0;
 static struct MATRIX mat_y0 = { 0 };
 static struct MATRIX mat_y100 = { 0 };
 static struct MATRIX mat_y200 = { 0 };
@@ -64,7 +184,26 @@ static unsigned char projectiondata3[2] = { 160, 0 };
 static unsigned char projectiondata4[2] = { 0, 0 };
 static unsigned char projectiondata6[2] = { 100, 0 };
 static unsigned char projectiondata7[2] = { 0, 0 };
-static unsigned char sin80_2[580] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static unsigned char sin80_2[580]
+    = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static unsigned char transshapenumvertscopy = 0;
 static unsigned short zorder_next_link = 0;
 static int zorder_shape_list[4097] = { 0 };
@@ -72,141 +211,137 @@ static unsigned short zorder_tail_counter = 0;
 
 
 /* file-local data (moved from data_global.c) */
-static char aStxxx[7] = "stxxx";   /* "st" + 4-char car ID + NUL */
+static char aStxxx[7] = "stxxx"; /* "st" + 4-char car ID + NUL */
 static unsigned char car_wheel_vertex_data[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 static char track_object_shape_names[116 * 5] = {
-    /* 00 barn */ 'b','a','r','n',0,
-    /* 01 zbrn */ 'z','b','r','n',0,
-    /* 02 brid */ 'b','r','i','d',0,
-    /* 03 zbri */ 'z','b','r','i',0,
-    /* 04 btur */ 'b','t','u','r',0,
-    /* 05 zbtu */ 'z','b','t','u',0,
-    /* 06 chi1 */ 'c','h','i','1',0,
-    /* 07 zch1 */ 'z','c','h','1',0,
-    /* 08 chi2 */ 'c','h','i','2',0,
-    /* 09 zch2 */ 'z','c','h','2',0,
-    /* 10 elrd */ 'e','l','r','d',0,
-    /* 11 zelr */ 'z','e','l','r',0,
-    /* 12 fini */ 'f','i','n','i',0,
-    /* 13 zfin */ 'z','f','i','n',0,
-    /* 14 gass */ 'g','a','s','s',0,
-    /* 15 zgas */ 'z','g','a','s',0,
-    /* 16 lban */ 'l','b','a','n',0,
-    /* 17 zlba */ 'z','l','b','a',0,
-    /* 18 loop */ 'l','o','o','p',0,
-    /* 19 zloo */ 'z','l','o','o',0,
-    /* 20 offi */ 'o','f','f','i',0,
-    /* 21 zoff */ 'z','o','f','f',0,
-    /* 22 pipe */ 'p','i','p','e',0,
-    /* 23 zpip */ 'z','p','i','p',0,
-    /* 24 ramp */ 'r','a','m','p',0,
-    /* 25 zram */ 'z','r','a','m',0,
-    /* 26 rban */ 'r','b','a','n',0,
-    /* 27 zrba */ 'z','r','b','a',0,
-    /* 28 rdup */ 'r','d','u','p',0,
-    /* 29 zrdu */ 'z','r','d','u',0,
-    /* 30 road */ 'r','o','a','d',0,
-    /* 31 zroa */ 'z','r','o','a',0,
-    /* 32 stur */ 's','t','u','r',0,
-    /* 33 zstu */ 'z','s','t','u',0,
-    /* 34 tenn */ 't','e','n','n',0,
-    /* 35 zten */ 'z','t','e','n',0,
-    /* 36 tunn */ 't','u','n','n',0,
-    /* 37 ztun */ 'z','t','u','n',0,
-    /* 38 turn */ 't','u','r','n',0,
-    /* 39 ztur */ 'z','t','u','r',0,
-    /* 40 goui */ 'g','o','u','i',0,
-    /* 41 gouo */ 'g','o','u','o',0,
-    /* 42 goup */ 'g','o','u','p',0,
-    /* 43 high */ 'h','i','g','h',0,
-    /* 44 lakc */ 'l','a','k','c',0,
-    /* 45 lake */ 'l','a','k','e',0,
-    /* 46 cld1 */ 'c','l','d','1',0,
-    /* 47 cld2 */ 'c','l','d','2',0,
-    /* 48 cld3 */ 'c','l','d','3',0,
-    /* 49 sigl */ 's','i','g','l',0,
-    /* 50 sigr */ 's','i','g','r',0,
-    /* 51 tree */ 't','r','e','e',0,
-    /* 52 inte */ 'i','n','t','e',0,
-    /* 53 zint */ 'z','i','n','t',0,
-    /* 54 offl */ 'o','f','f','l',0,
-    /* 55 zofl */ 'z','o','f','l',0,
-    /* 56 offr */ 'o','f','f','r',0,
-    /* 57 zofr */ 'z','o','f','r',0,
-    /* 58 palm */ 'p','a','l','m',0,
-    /* 59 zpal */ 'z','p','a','l',0,
-    /* 60 bank */ 'b','a','n','k',0,
-    /* 61 zban */ 'z','b','a','n',0,
-    /* 62 sofl */ 's','o','f','l',0,
-    /* 63 zsol */ 'z','s','o','l',0,
-    /* 64 sofr */ 's','o','f','r',0,
-    /* 65 zsor */ 'z','s','o','r',0,
-    /* 66 sram */ 's','r','a','m',0,
-    /* 67 zsra */ 'z','s','r','a',0,
-    /* 68 selr */ 's','e','l','r',0,
-    /* 69 zser */ 'z','s','e','r',0,
-    /* 70 elsp */ 'e','l','s','p',0,
-    /* 71 zesp */ 'z','e','s','p',0,
-    /* 72 cact */ 'c','a','c','t',0,
-    /* 73 cact */ 'c','a','c','t',0,
-    /* 74 spip */ 's','p','i','p',0,
-    /* 75 zspi */ 'z','s','p','i',0,
-    /* 76 sest */ 's','e','s','t',0,
-    /* 77 zses */ 'z','s','e','s',0,
-    /* 78 wroa */ 'w','r','o','a',0,
-    /* 79 zwro */ 'z','w','r','o',0,
-    /* 80 barr */ 'b','a','r','r',0,
-    /* 81 zbar */ 'z','b','a','r',0,
-    /* 82 lco0 */ 'l','c','o','0',0,
-    /* 83 zlco */ 'z','l','c','o',0,
-    /* 84 rco0 */ 'r','c','o','0',0,
-    /* 85 zrco */ 'z','r','c','o',0,
-    /* 86 gwro */ 'g','w','r','o',0,
-    /* 87 zgwr */ 'z','g','w','r',0,
-    /* 88 lco1 */ 'l','c','o','1',0,
-    /* 89 rco1 */ 'r','c','o','1',0,
-    /* 90 loo1 */ 'l','o','o','1',0,
-    /* 91 hig1 */ 'h','i','g','1',0,
-    /* 92 hig2 */ 'h','i','g','2',0,
-    /* 93 hig3 */ 'h','i','g','3',0,
-    /* 94 wind */ 'w','i','n','d',0,
-    /* 95 zwin */ 'z','w','i','n',0,
-    /* 96 boat */ 'b','o','a','t',0,
-    /* 97 zboa */ 'z','b','o','a',0,
-    /* 98 rest */ 'r','e','s','t',0,
-    /* 99 zres */ 'z','r','e','s',0,
-    /*100 hpip */ 'h','p','i','p',0,
-    /*101 zhpi */ 'z','h','p','i',0,
-    /*102 vcor */ 'v','c','o','r',0,
-    /*103 zvco */ 'z','v','c','o',0,
-    /*104 tun2 */ 't','u','n','2',0,
-    /*105 pip2 */ 'p','i','p','2',0,
-    /*106 fenc */ 'f','e','n','c',0,
-    /*107 zfen */ 'z','f','e','n',0,
-    /*108 cfen */ 'c','f','e','n',0,
-    /*109 zcfe */ 'z','c','f','e',0,
-    /*110 flag */ 'f','l','a','g',0,
-    /*111 truk */ 't','r','u','k',0,
-    /*112 exp0 */ 'e','x','p','0',0,
-    /*113 exp1 */ 'e','x','p','1',0,
-    /*114 exp2 */ 'e','x','p','2',0,
-    /*115 exp3 */ 'e','x','p','3',0,
+    /* 00 barn */ 'b', 'a', 'r', 'n', 0,
+    /* 01 zbrn */ 'z', 'b', 'r', 'n', 0,
+    /* 02 brid */ 'b', 'r', 'i', 'd', 0,
+    /* 03 zbri */ 'z', 'b', 'r', 'i', 0,
+    /* 04 btur */ 'b', 't', 'u', 'r', 0,
+    /* 05 zbtu */ 'z', 'b', 't', 'u', 0,
+    /* 06 chi1 */ 'c', 'h', 'i', '1', 0,
+    /* 07 zch1 */ 'z', 'c', 'h', '1', 0,
+    /* 08 chi2 */ 'c', 'h', 'i', '2', 0,
+    /* 09 zch2 */ 'z', 'c', 'h', '2', 0,
+    /* 10 elrd */ 'e', 'l', 'r', 'd', 0,
+    /* 11 zelr */ 'z', 'e', 'l', 'r', 0,
+    /* 12 fini */ 'f', 'i', 'n', 'i', 0,
+    /* 13 zfin */ 'z', 'f', 'i', 'n', 0,
+    /* 14 gass */ 'g', 'a', 's', 's', 0,
+    /* 15 zgas */ 'z', 'g', 'a', 's', 0,
+    /* 16 lban */ 'l', 'b', 'a', 'n', 0,
+    /* 17 zlba */ 'z', 'l', 'b', 'a', 0,
+    /* 18 loop */ 'l', 'o', 'o', 'p', 0,
+    /* 19 zloo */ 'z', 'l', 'o', 'o', 0,
+    /* 20 offi */ 'o', 'f', 'f', 'i', 0,
+    /* 21 zoff */ 'z', 'o', 'f', 'f', 0,
+    /* 22 pipe */ 'p', 'i', 'p', 'e', 0,
+    /* 23 zpip */ 'z', 'p', 'i', 'p', 0,
+    /* 24 ramp */ 'r', 'a', 'm', 'p', 0,
+    /* 25 zram */ 'z', 'r', 'a', 'm', 0,
+    /* 26 rban */ 'r', 'b', 'a', 'n', 0,
+    /* 27 zrba */ 'z', 'r', 'b', 'a', 0,
+    /* 28 rdup */ 'r', 'd', 'u', 'p', 0,
+    /* 29 zrdu */ 'z', 'r', 'd', 'u', 0,
+    /* 30 road */ 'r', 'o', 'a', 'd', 0,
+    /* 31 zroa */ 'z', 'r', 'o', 'a', 0,
+    /* 32 stur */ 's', 't', 'u', 'r', 0,
+    /* 33 zstu */ 'z', 's', 't', 'u', 0,
+    /* 34 tenn */ 't', 'e', 'n', 'n', 0,
+    /* 35 zten */ 'z', 't', 'e', 'n', 0,
+    /* 36 tunn */ 't', 'u', 'n', 'n', 0,
+    /* 37 ztun */ 'z', 't', 'u', 'n', 0,
+    /* 38 turn */ 't', 'u', 'r', 'n', 0,
+    /* 39 ztur */ 'z', 't', 'u', 'r', 0,
+    /* 40 goui */ 'g', 'o', 'u', 'i', 0,
+    /* 41 gouo */ 'g', 'o', 'u', 'o', 0,
+    /* 42 goup */ 'g', 'o', 'u', 'p', 0,
+    /* 43 high */ 'h', 'i', 'g', 'h', 0,
+    /* 44 lakc */ 'l', 'a', 'k', 'c', 0,
+    /* 45 lake */ 'l', 'a', 'k', 'e', 0,
+    /* 46 cld1 */ 'c', 'l', 'd', '1', 0,
+    /* 47 cld2 */ 'c', 'l', 'd', '2', 0,
+    /* 48 cld3 */ 'c', 'l', 'd', '3', 0,
+    /* 49 sigl */ 's', 'i', 'g', 'l', 0,
+    /* 50 sigr */ 's', 'i', 'g', 'r', 0,
+    /* 51 tree */ 't', 'r', 'e', 'e', 0,
+    /* 52 inte */ 'i', 'n', 't', 'e', 0,
+    /* 53 zint */ 'z', 'i', 'n', 't', 0,
+    /* 54 offl */ 'o', 'f', 'f', 'l', 0,
+    /* 55 zofl */ 'z', 'o', 'f', 'l', 0,
+    /* 56 offr */ 'o', 'f', 'f', 'r', 0,
+    /* 57 zofr */ 'z', 'o', 'f', 'r', 0,
+    /* 58 palm */ 'p', 'a', 'l', 'm', 0,
+    /* 59 zpal */ 'z', 'p', 'a', 'l', 0,
+    /* 60 bank */ 'b', 'a', 'n', 'k', 0,
+    /* 61 zban */ 'z', 'b', 'a', 'n', 0,
+    /* 62 sofl */ 's', 'o', 'f', 'l', 0,
+    /* 63 zsol */ 'z', 's', 'o', 'l', 0,
+    /* 64 sofr */ 's', 'o', 'f', 'r', 0,
+    /* 65 zsor */ 'z', 's', 'o', 'r', 0,
+    /* 66 sram */ 's', 'r', 'a', 'm', 0,
+    /* 67 zsra */ 'z', 's', 'r', 'a', 0,
+    /* 68 selr */ 's', 'e', 'l', 'r', 0,
+    /* 69 zser */ 'z', 's', 'e', 'r', 0,
+    /* 70 elsp */ 'e', 'l', 's', 'p', 0,
+    /* 71 zesp */ 'z', 'e', 's', 'p', 0,
+    /* 72 cact */ 'c', 'a', 'c', 't', 0,
+    /* 73 cact */ 'c', 'a', 'c', 't', 0,
+    /* 74 spip */ 's', 'p', 'i', 'p', 0,
+    /* 75 zspi */ 'z', 's', 'p', 'i', 0,
+    /* 76 sest */ 's', 'e', 's', 't', 0,
+    /* 77 zses */ 'z', 's', 'e', 's', 0,
+    /* 78 wroa */ 'w', 'r', 'o', 'a', 0,
+    /* 79 zwro */ 'z', 'w', 'r', 'o', 0,
+    /* 80 barr */ 'b', 'a', 'r', 'r', 0,
+    /* 81 zbar */ 'z', 'b', 'a', 'r', 0,
+    /* 82 lco0 */ 'l', 'c', 'o', '0', 0,
+    /* 83 zlco */ 'z', 'l', 'c', 'o', 0,
+    /* 84 rco0 */ 'r', 'c', 'o', '0', 0,
+    /* 85 zrco */ 'z', 'r', 'c', 'o', 0,
+    /* 86 gwro */ 'g', 'w', 'r', 'o', 0,
+    /* 87 zgwr */ 'z', 'g', 'w', 'r', 0,
+    /* 88 lco1 */ 'l', 'c', 'o', '1', 0,
+    /* 89 rco1 */ 'r', 'c', 'o', '1', 0,
+    /* 90 loo1 */ 'l', 'o', 'o', '1', 0,
+    /* 91 hig1 */ 'h', 'i', 'g', '1', 0,
+    /* 92 hig2 */ 'h', 'i', 'g', '2', 0,
+    /* 93 hig3 */ 'h', 'i', 'g', '3', 0,
+    /* 94 wind */ 'w', 'i', 'n', 'd', 0,
+    /* 95 zwin */ 'z', 'w', 'i', 'n', 0,
+    /* 96 boat */ 'b', 'o', 'a', 't', 0,
+    /* 97 zboa */ 'z', 'b', 'o', 'a', 0,
+    /* 98 rest */ 'r', 'e', 's', 't', 0,
+    /* 99 zres */ 'z', 'r', 'e', 's', 0,
+    /*100 hpip */ 'h', 'p', 'i', 'p', 0,
+    /*101 zhpi */ 'z', 'h', 'p', 'i', 0,
+    /*102 vcor */ 'v', 'c', 'o', 'r', 0,
+    /*103 zvco */ 'z', 'v', 'c', 'o', 0,
+    /*104 tun2 */ 't', 'u', 'n', '2', 0,
+    /*105 pip2 */ 'p', 'i', 'p', '2', 0,
+    /*106 fenc */ 'f', 'e', 'n', 'c', 0,
+    /*107 zfen */ 'z', 'f', 'e', 'n', 0,
+    /*108 cfen */ 'c', 'f', 'e', 'n', 0,
+    /*109 zcfe */ 'z', 'c', 'f', 'e', 0,
+    /*110 flag */ 'f', 'l', 'a', 'g', 0,
+    /*111 truk */ 't', 'r', 'u', 'k', 0,
+    /*112 exp0 */ 'e', 'x', 'p', '0', 0,
+    /*113 exp1 */ 'e', 'x', 'p', '1', 0,
+    /*114 exp2 */ 'e', 'x', 'p', '2', 0,
+    /*115 exp3 */ 'e', 'x', 'p', '3', 0,
 };
 
-static uint32_t invpow2tbl[32] = {
-    2147483648u, 1073741824u, 536870912u, 268435456u,
-    134217728u, 67108864u, 33554432u, 16777216u,
-    8388608u, 4194304u, 2097152u, 1048576u,
-    524288u, 262144u, 131072u, 65536u,
-    32768u, 16384u, 8192u, 4096u,
-    2048u, 1024u, 512u, 256u,
-    128u, 64u, 32u, 16u,
-    8u, 4u, 2u, 1u
-};
+static uint32_t invpow2tbl[32]
+    = { 2147483648u, 1073741824u, 536870912u, 268435456u, 134217728u, 67108864u, 33554432u,
+        16777216u,   8388608u,    4194304u,   2097152u,   1048576u,   524288u,   262144u,
+        131072u,     65536u,      32768u,     16384u,     8192u,      4096u,     2048u,
+        1024u,       512u,        256u,       128u,       64u,        32u,       16u,
+        8u,          4u,          2u,         1u };
 static unsigned char primidxcounttab[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 6, 3, 0, 0 };
 static unsigned char primtypetab[16] = { 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 4, 0, 0 };
 
-static unsigned char* s_polyinfo_base = 0;
+static unsigned char *s_polyinfo_base = 0;
 
 /* ================================================================
  * STRUCT DEFINITIONS NEEDED BY FORWARD DECLARATIONS
@@ -215,20 +350,20 @@ static unsigned char* s_polyinfo_base = 0;
 /* Used by draw_line_related and sprite_draw_line_from_info.
  * Total size is 28 (28) bytes. */
 struct LINEINFO {
-	unsigned short reserved0;         /* offset 0 */
-	unsigned short current_x;         /* offset 2 */
-	unsigned short x_fraction;        /* offset 4 */
-	unsigned short y_start;           /* offset 6 */
-	unsigned short x_fraction_seed;   /* offset 8 */
-	unsigned short y_end;             /* offset 10 */
-	unsigned short x_step_fixed;      /* offset 12 */
-	unsigned short pixel_count;       /* offset 14 */
-	unsigned short line_color;        /* offset 16 */
-	unsigned short draw_mode;         /* offset 18 */
-	unsigned short clip_top_rows;     /* offset 20 */
-	unsigned short reserved11;        /* offset 22 */
-	unsigned short clip_bottom_rows;  /* offset 24 */
-	unsigned short reserved13;        /* offset 26 */
+    unsigned short reserved0;        /* offset 0 */
+    unsigned short current_x;        /* offset 2 */
+    unsigned short x_fraction;       /* offset 4 */
+    unsigned short y_start;          /* offset 6 */
+    unsigned short x_fraction_seed;  /* offset 8 */
+    unsigned short y_end;            /* offset 10 */
+    unsigned short x_step_fixed;     /* offset 12 */
+    unsigned short pixel_count;      /* offset 14 */
+    unsigned short line_color;       /* offset 16 */
+    unsigned short draw_mode;        /* offset 18 */
+    unsigned short clip_top_rows;    /* offset 20 */
+    unsigned short reserved11;       /* offset 22 */
+    unsigned short clip_bottom_rows; /* offset 24 */
+    unsigned short reserved13;       /* offset 26 */
 };
 
 /* ================================================================
@@ -248,30 +383,28 @@ struct LINEINFO {
 #define projectiondata9_raw  projectiondata9
 #define projectiondata10_raw projectiondata10
 
-#define projectiondata1  (*(uint16_t*)(void*)projectiondata1_raw)
-#define projectiondata2  (*(uint16_t*)(void*)projectiondata2_raw)
-#define projectiondata3  (*(uint16_t*)(void*)projectiondata3_raw)
-#define projectiondata4  (*(uint16_t*)(void*)projectiondata4_raw)
-#define projectiondata5  (*(uint16_t*)(void*)projectiondata5_raw)
-#define projectiondata6  (*(uint16_t*)(void*)projectiondata6_raw)
-#define projectiondata7  (*(uint16_t*)(void*)projectiondata7_raw)
-#define projectiondata8  (*(uint16_t*)(void*)projectiondata8_raw)
-#define projectiondata9  (*(uint16_t*)(void*)projectiondata9_raw)
-#define projectiondata10 (*(uint16_t*)(void*)projectiondata10_raw)
+#define projectiondata1  (*(uint16_t *)(void *)projectiondata1_raw)
+#define projectiondata2  (*(uint16_t *)(void *)projectiondata2_raw)
+#define projectiondata3  (*(uint16_t *)(void *)projectiondata3_raw)
+#define projectiondata4  (*(uint16_t *)(void *)projectiondata4_raw)
+#define projectiondata5  (*(uint16_t *)(void *)projectiondata5_raw)
+#define projectiondata6  (*(uint16_t *)(void *)projectiondata6_raw)
+#define projectiondata7  (*(uint16_t *)(void *)projectiondata7_raw)
+#define projectiondata8  (*(uint16_t *)(void *)projectiondata8_raw)
+#define projectiondata9  (*(uint16_t *)(void *)projectiondata9_raw)
+#define projectiondata10 (*(uint16_t *)(void *)projectiondata10_raw)
 
 /* --- rendering state --- */
 
 /* --- sprite / draw functions --- */
 
 /* --- sphere / track objects --- */
-/* off_3F3C8: sphere LUT offset table (40 little-endian shorts from data_global.c) — private to shape3d */
-static unsigned short off_3F3C8[40] = {
-    15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
-    15556, 15564, 15573, 15583, 15594, 15606, 15619, 15633,
-    15648, 15664, 15681, 15699, 15718, 15738, 15759, 15781,
-    15804, 15828, 15853, 15879, 15906, 15934, 15963, 15993,
-    16024, 16056, 16089, 16123, 16158, 16194, 16231, 16269
-};
+/* sphere_lut_offsets: sphere LUT offset table (40 little-endian shorts from data_global.c) — private to shape3d */
+static unsigned short sphere_lut_offsets[40] = { 15528, 15528, 15529, 15531, 15534, 15538, 15543, 15549,
+                                        15556, 15564, 15573, 15583, 15594, 15606, 15619, 15633,
+                                        15648, 15664, 15681, 15699, 15718, 15738, 15759, 15781,
+                                        15804, 15828, 15853, 15879, 15906, 15934, 15963, 15993,
+                                        16024, 16056, 16089, 16123, 16158, 16194, 16231, 16269 };
 
 /* --- car shape data --- */
 /* carshapevecs2/3/4 are contiguous within carshapevecs at offsets +6/+12/+18 */
@@ -297,7 +430,8 @@ void preRender_default_alt(unsigned fill_color, unsigned vertex_line_count, unsi
  * @param vertex_line_count  Number of vertex pairs.
  * @param vertex_lines       Vertex coordinate array.
  */
-void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count, struct POINT2D *vertex_lines);
+void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count,
+                         struct POINT2D *vertex_lines);
 /**
  * @brief Render a polygon with a two-colour dither pattern (variant 1).
  *
@@ -307,118 +441,209 @@ void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned ve
  * @param vertex_line_count  Number of vertex pairs.
  * @param vertex_lines       Vertex coordinate array.
  */
-void preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color, unsigned vertex_line_count, struct POINT2D *vertex_lines);
-void preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsigned rim_color, unsigned tread_color);
-void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines, unsigned variant_flag);
-void generate_poly_edges(int16_t *scanline_bounds, int *regsi, int mode);
-void accumulate_scanline_bounds(int *regsi, unsigned unused_flag, unsigned apply_border_clip, int16_t *scanline_bounds);
-void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle, short *wheel_compression_src, short *wheel_state_cache, struct VECTOR *wheel_vertex_offsets, struct VECTOR *wheel_center_points);
-void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices, int wheel_rotation_angle, short *wheel_compression_src, short *wheel_state_cache, struct VECTOR *wheel_vertex_offsets, struct VECTOR *wheel_center_points);
+void preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color,
+                                       unsigned vertex_line_count, struct POINT2D *vertex_lines);
+void preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsigned rim_color,
+                     unsigned tread_color);
+void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
+                            unsigned variant_flag);
+void generate_poly_edges(int16_t *scanline_bounds, int *edge_state, int mode);
+void accumulate_scanline_bounds(int *edge_state, unsigned unused_flag, unsigned apply_border_clip,
+                                int16_t *scanline_bounds);
+void shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle,
+                                       short *wheel_compression_src, short *wheel_state_cache,
+                                       struct VECTOR *wheel_vertex_offsets,
+                                       struct VECTOR *wheel_center_points);
+void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices,
+                                              int wheel_rotation_angle,
+                                              short *wheel_compression_src,
+                                              short *wheel_state_cache,
+                                              struct VECTOR *wheel_vertex_offsets,
+                                              struct VECTOR *wheel_center_points);
 
-#define SHAPE3D_TOTAL_SHAPES 130
-#define SHAPE3D_TRACK_SHAPE_COUNT 116
-#define SHAPE3D_NAME_LEN 5
+#define SHAPE3D_TOTAL_SHAPES         130
+#define SHAPE3D_TRACK_SHAPE_COUNT    116
+#define SHAPE3D_NAME_LEN             5
 #define SHAPE3D_RES_OFS_MIN_REQUIRED 65000
 
-#define SHAPE3D_HEADER_SIZE_BYTES 4
-#define SHAPE3D_VERTEX_SIZE_BYTES 6
+#define SHAPE3D_HEADER_SIZE_BYTES     4
+#define SHAPE3D_VERTEX_SIZE_BYTES     6
 #define SHAPE3D_CULL_ENTRY_SIZE_BYTES 4
-#define SHAPE3D_PRIMITIVE_SIZE_BYTES 8
+#define SHAPE3D_PRIMITIVE_SIZE_BYTES  8
 
-#define POLYINFO_MAX_POLYS 4096
-#define POLYINFO_HEAD_INDEX POLYINFO_MAX_POLYS
-#define POLYINFO_BUFFER_SIZE 131072u
+#define POLYINFO_MAX_POLYS       4096
+#define POLYINFO_HEAD_INDEX      POLYINFO_MAX_POLYS
+#define POLYINFO_BUFFER_SIZE     131072u
 #define POLYINFO_TRANSFORM_LIMIT (POLYINFO_BUFFER_SIZE - 46u)
 
 #define ZORDER_LINK_END (-1)
 
 
 #define VERTEX_CACHE_COUNT 256
-#define VERTEX_FLAG_COUNT 256
+#define VERTEX_FLAG_COUNT  256
 
-#define ROTATION_ZERO_ARG 0
-#define NEAR_PLANE_Z 12
+#define ROTATION_ZERO_ARG     0
+#define NEAR_PLANE_Z          12
 #define VIEW_FORWARD_VECTOR_Z 4096
-#define RECT_CLIP_FULL_MASK 15
+#define RECT_CLIP_FULL_MASK   15
 
-#define VERTEX_DEPTH_FLAG_VISIBLE 0
+#define VERTEX_DEPTH_FLAG_VISIBLE     0
 #define VERTEX_DEPTH_FLAG_BEHIND_NEAR 1
-#define VERTEX_DEPTH_FLAG_UNCACHED 255
+#define VERTEX_DEPTH_FLAG_UNCACHED    255
 
 #define TRANSFORM_FLAG_SKIP_VIEW_CULL 2
-#define TRANSFORM_FLAG_UPDATE_RECT 8
+#define TRANSFORM_FLAG_UPDATE_RECT    8
 #define TRANSFORM_FLAG_FORCE_UNSORTED 1
 
 #define PRIMITIVE_TYPE_POLYGON 0
-#define PRIMITIVE_TYPE_LINE 1
-#define PRIMITIVE_TYPE_SPHERE 2
-#define PRIMITIVE_TYPE_WHEEL 3
-#define PRIMITIVE_TYPE_PIXEL 5
+#define PRIMITIVE_TYPE_LINE    1
+#define PRIMITIVE_TYPE_SPHERE  2
+#define PRIMITIVE_TYPE_WHEEL   3
+#define PRIMITIVE_TYPE_PIXEL   5
 
 #define BACKLIGHTS_PAINT_ID 45
 
-#define POLYINFO_ENTRY_HEADER_SIZE 6u
-#define POLYINFO_LINE_ENTRY_SIZE 14u
-#define POLYINFO_LINE_DEPTH_OFFSET 0u
-#define POLYINFO_LINE_MATERIAL_OFFSET 2u
-#define POLYINFO_LINE_VERTEX_COUNT_OFFSET 3u
+#define POLYINFO_ENTRY_HEADER_SIZE          6u
+#define POLYINFO_LINE_ENTRY_SIZE            14u
+#define POLYINFO_LINE_DEPTH_OFFSET          0u
+#define POLYINFO_LINE_MATERIAL_OFFSET       2u
+#define POLYINFO_LINE_VERTEX_COUNT_OFFSET   3u
 #define POLYINFO_LINE_PRIMITIVE_TYPE_OFFSET 4u
-#define POLYINFO_LINE_X0_OFFSET 6u
-#define POLYINFO_LINE_Y0_OFFSET 8u
-#define POLYINFO_LINE_X1_OFFSET 10u
-#define POLYINFO_LINE_Y1_OFFSET 12u
+#define POLYINFO_LINE_X0_OFFSET             6u
+#define POLYINFO_LINE_Y0_OFFSET             8u
+#define POLYINFO_LINE_X1_OFFSET             10u
+#define POLYINFO_LINE_Y1_OFFSET             12u
 
 #define POLY_DEPTH_MAX_SIGNED 32767u
-#define POLYLIST_WALK_LIMIT 512u
+#define POLYLIST_WALK_LIMIT   512u
 
-#define PROJECTION_ANGLE_SHIFT 11
-#define PROJECTION_ANGLE_SCALE_DIV 360
+#define PROJECTION_ANGLE_SHIFT      11
+#define PROJECTION_ANGLE_SCALE_DIV  360
 #define PROJECTION_ANGLE_HALF_SHIFT 1
-#define PROJECTION_ANGLE_MASK 1023
+#define PROJECTION_ANGLE_MASK       1023
 
 #define SELECT_CLIP_VEC_Z 10000
 
 #define SINCOS80_ANGLE 128
-#define MAT_Y_ROT_100 256
-#define MAT_Y_ROT_200 512
-#define MAT_Y_ROT_300 768
+#define MAT_Y_ROT_100  256
+#define MAT_Y_ROT_200  512
+#define MAT_Y_ROT_300  768
 
 #define WHEEL_VERTEX_CONTROL_ABS_MAX 2000
-#define WHEEL_INTERP_Q14 9472
-#define WHEEL_SCALE_OUTER_Q15 11585
-#define WHEEL_SCALE_INNER_Q15 14654
-#define WHEEL_POINTS_PER_RING 6
-#define WHEEL_POINTS_BOTH_RINGS 12
-#define WHEEL_COUNT 4
-#define WHEEL_COMPRESSION_SHIFT 6
+#define WHEEL_INTERP_Q14             9472
+#define WHEEL_SCALE_OUTER_Q15        11585
+#define WHEEL_SCALE_INNER_Q15        14654
+#define WHEEL_POINTS_PER_RING        6
+#define WHEEL_POINTS_BOTH_RINGS      12
+#define WHEEL_COUNT                  4
+#define WHEEL_COMPRESSION_SHIFT      6
 
-#define SPHERE_VERTEX_BUFFER_LINES 32
+#define SPHERE_VERTEX_BUFFER_LINES  32
 #define WHEEL_RIM_OUTLINE_LINECOUNT 18
-#define WHEEL_TREAD_LINECOUNT 16
-#define SPHERE_LUT_DSEG_OFFSET 259016
-#define SPHERE_LARGE_RADIUS_MIN 40
+#define WHEEL_TREAD_LINECOUNT       16
+#define SPHERE_LUT_DSEG_OFFSET      259016
+#define SPHERE_LARGE_RADIUS_MIN     40
 
-#define WHEEL_RING_POINTS 16
+#define WHEEL_RING_POINTS     16
 #define WHEEL_SIDE_QUAD_COUNT 15
 
 #define DRAW_HEALTH_EXTREME_COORD_LIMIT 4096
 
 #define DRAW_STRICT_LOG_LIMIT 200u
 
-#define INTERP_TABLE_COUNT 50
+#define INTERP_TABLE_COUNT  50
 #define CAR_SHAPE_MIN_VERTS 24
 
 #define MATERIAL_TYPE_INVALID_START 129
-#define RENDER_COORD_ABS_LIMIT 32000
+#define RENDER_COORD_ABS_LIMIT      32000
 
 #define SCANLINE_HEIGHT 480
 
-#define FIXED_SHIFT_16 16
-#define FIXED_HALF_16 32768UL
+#define FIXED_SHIFT_16     16
+#define FIXED_HALF_16      32768UL
 #define FIXED_FRAC_MASK_16 65535UL
-#define FIXED_ONE_16 65536
+#define FIXED_ONE_16       65536
 
 #define EDGE_STATE_WORD_COUNT 14
+
+/* Edge-state array field indices */
+#define EDGE_STATE_X           1   /* current x coordinate (integer part) */
+#define EDGE_STATE_FRAC        2   /* fractional part (Q0.16 fixed-point) */
+#define EDGE_STATE_Y_TOP       3   /* top y coordinate of visible span */
+#define EDGE_STATE_FRAC_INIT   4   /* initial fractional copy */
+#define EDGE_STATE_Y_BOTTOM    5   /* bottom y coordinate of visible span */
+#define EDGE_STATE_STEP        6   /* x or y step per scanline (fixed-point) */
+#define EDGE_STATE_COUNT       7   /* number of pixels/scanline steps */
+#define EDGE_STATE_X_END       8   /* end x coordinate */
+#define EDGE_STATE_MODE        9   /* edge drawing mode (Shape3DEdgeMode) */
+#define EDGE_STATE_CLIP_TOP    10  /* rows clipped at top */
+#define EDGE_STATE_EXTEND_BOTTOM_RIGHT 11  /* bottom extension count (right edges) */
+#define EDGE_STATE_CLIP_BOTTOM 12  /* rows clipped at bottom */
+#define EDGE_STATE_EXTEND_BOTTOM_LEFT  13  /* bottom extension count (left edges) */
+
+#define SHAPE3D_VERTEX_SCAN_LIMIT          8
+#define SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT 4
+
+#define PRIMITIVE_RECORD_HEADER_BYTES    2u
+#define PRIMITIVE_FLAG_SKIP_WINDING_CULL 1u
+#define PRIMITIVE_FLAG_CHAIN_UNSORTED    2u
+
+#define PROJECTION_FALLBACK_EIGHTH_SHIFT    3
+#define PROJECTION_FALLBACK_SIXTEENTH_SHIFT 4
+
+#define SPHERE_RADIUS_QUARTER_SHIFT      2
+#define SPHERE_RADIUS_SIXTEENTH_SHIFT    4
+#define SPHERE_CLIP_MARGIN_QUARTER_SHIFT 2
+
+#define WHEEL_STATE_CACHE_SIZE         (WHEEL_COUNT + 1)
+#define WHEEL_ROTATION_CACHE_SLOT      WHEEL_COUNT
+#define WHEEL_BUFFER_INNER_RING_OFFSET 32
+#define WHEEL_BUFFER_BACK_FACE_OFFSET  64
+#define WHEEL_OUTLINE_LAST_POINT_INDEX 17
+#define WHEEL_OUTLINE_ARC_POINT_COUNT  9
+#define WHEEL_QUAD_VERTEX_COUNT        4
+#define WHEEL_RING_VERTEX_PAIRS        8    /* xy-pairs per half-ring */
+#define WHEEL_RING_MIRROR_OFFSET       16   /* int offset to mirrored (back face) ring */
+#define LINE_VERTEX_COUNT              2
+
+#define CAR_WHEEL_VERTEX_BASE_INDEX 8
+#define CAR_WHEEL_RING_MIDPOINT     3
+
+enum Shape3DEdgeMode {
+    SHAPE3D_EDGE_MODE_EMPTY = 0,
+    SHAPE3D_EDGE_MODE_UNUSED = 1,
+    SHAPE3D_EDGE_MODE_VERTICAL = 2,
+    SHAPE3D_EDGE_MODE_DIAGONAL_LEFT = 3,
+    SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT = 4,
+    SHAPE3D_EDGE_MODE_SHALLOW_LEFT = 5,
+    SHAPE3D_EDGE_MODE_SHALLOW_RIGHT = 6,
+    SHAPE3D_EDGE_MODE_STEEP_LEFT = 7,
+    SHAPE3D_EDGE_MODE_STEEP_RIGHT = 8,
+    SHAPE3D_EDGE_MODE_INVALID = 9,
+};
+
+enum Shape3DDrawLineResult {
+    SHAPE3D_DRAW_LINE_OK = 0,
+    SHAPE3D_DRAW_LINE_NO_OUTPUT = 1,
+    SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X = 2,
+};
+
+enum Shape3DShapeSlot {
+    SHAPE3D_SLOT_PLAYER_EXP0 = 116,
+    SHAPE3D_SLOT_PLAYER_EXP1 = 117,
+    SHAPE3D_SLOT_PLAYER_EXP2 = 118,
+    SHAPE3D_SLOT_PLAYER_EXP3 = 119,
+    SHAPE3D_SLOT_OPPONENT_EXP0 = 120,
+    SHAPE3D_SLOT_OPPONENT_EXP1 = 121,
+    SHAPE3D_SLOT_OPPONENT_EXP2 = 122,
+    SHAPE3D_SLOT_OPPONENT_EXP3 = 123,
+    SHAPE3D_SLOT_PLAYER_CAR0 = 124,
+    SHAPE3D_SLOT_OPPONENT_CAR0 = 125,
+    SHAPE3D_SLOT_PLAYER_CAR1 = 126,
+    SHAPE3D_SLOT_OPPONENT_CAR1 = 127,
+    SHAPE3D_SLOT_PLAYER_CAR2 = 128,
+    SHAPE3D_SLOT_OPPONENT_CAR2 = 129,
+};
 
 #define POLYLIST_PTR_SANITY_MIN ((uintptr_t)1048576u)
 
@@ -426,20 +651,20 @@ void shape3d_update_car_wheel_vertices_legacy(struct VECTOR *wheel_vertices, int
  * Edge-state rows originate from 16-bit DOS intermediates. Keep the row-start
  * calculation in signed-16-bit domain before widening to host int.
  */
-static inline int edge_state_start_row_from_count(const int* edge_state, int count)
-{
-    int start_row = (int)(int16_t)edge_state[3] - count;
-    if ((int16_t)edge_state[2] < 0) {
+static inline int
+edge_state_start_row_from_count(const int *edge_state, int count) {
+    int start_row = (int)(int16_t)edge_state[EDGE_STATE_Y_TOP] - count;
+    if ((int16_t)edge_state[EDGE_STATE_FRAC] < 0) {
         start_row++;
     }
     return start_row;
 }
 
-static inline unsigned short material_table_word_at(const unsigned char* table, unsigned index)
-{
+static inline unsigned short
+material_table_word_at(const unsigned char *table, unsigned index) {
     unsigned offset = index * 2u;
-    return (unsigned short)((unsigned short)table[offset] |
-                            (unsigned short)((unsigned short)table[offset + 1u] << 8));
+    return (unsigned short)((unsigned short)table[offset]
+                            | (unsigned short)((unsigned short)table[offset + 1u] << 8));
 }
 
 /**
@@ -448,12 +673,12 @@ static inline unsigned short material_table_word_at(const unsigned char* table, 
  * @param poly_index Index into the polyinfo pointer array.
  * @return 16-bit depth key used by z-order insertion.
  */
-static unsigned short polyinfo_depth_at(int poly_index)
-{
-    return ((unsigned short*)(void*)polyinfoptrs[poly_index])[0];
+static unsigned short
+polyinfo_depth_at(int poly_index) {
+    return ((unsigned short *)(void *)polyinfoptrs[poly_index])[0];
 }
 
-char is_positive_winding_2d(struct POINT2D* pts);
+char is_positive_winding_2d(struct POINT2D *pts);
 /**
  * @brief Project a 3-D radius to screen pixels at a given depth.
  *
@@ -467,10 +692,11 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key, unsigned search_mod
 /** @brief Load base 3-D shape resources and initialize track-object shapes.
  * @return 0 on success, 1 on memory/resource failure.
  */
-int shape3d_load_all(void) {
+int
+shape3d_load_all(void) {
     int i;
     unsigned long mmgrofsdiff;
-    char* shapename;
+    char *shapename;
 
     game1ptr = 0;
     game2ptr = 0;
@@ -484,7 +710,7 @@ int shape3d_load_all(void) {
     game2ptr = file_load_3dres("game2");
 
     for (i = 0; i < SHAPE3D_TRACK_SHAPE_COUNT; i++) {
-        shapename = &track_object_shape_names[i * SHAPE3D_NAME_LEN];
+        shapename = &track_object_shape_names[(ptrdiff_t)(i * SHAPE3D_NAME_LEN)];
         curshapeptr = locate_shape_nofatal(game1ptr, shapename);
         if (curshapeptr == 0) {
             curshapeptr = locate_shape_fatal(game2ptr, shapename);
@@ -498,7 +724,8 @@ int shape3d_load_all(void) {
 /**
  * @brief Free all loaded 3-D shape resources.
  */
-void shape3d_free_all(void) {
+void
+shape3d_free_all(void) {
     if (game1ptr != 0) {
         mmgr_free(game1ptr);
     }
@@ -515,48 +742,22 @@ void shape3d_free_all(void) {
  * @param shapeptr   Pointer to the raw shape data.
  * @param gameshape  Output SHAPE3D structure.
  */
-void shape3d_init_shape(char* shapeptr, struct SHAPE3D* gameshape) {
-    struct SHAPE3DHEADER* hdr = (struct SHAPE3DHEADER*)shapeptr;
+void
+shape3d_init_shape(char *shapeptr, struct SHAPE3D *gameshape) {
+    struct SHAPE3DHEADER *hdr = (struct SHAPE3DHEADER *)shapeptr;
 
     gameshape->shape3d_numverts = hdr->header_numverts;
     gameshape->shape3d_numprimitives = hdr->header_numprimitives;
     gameshape->shape3d_numpaints = hdr->header_numpaints;
-    gameshape->shape3d_verts = (struct VECTOR*)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
-    gameshape->shape3d_cull1 = shapeptr + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
-    gameshape->shape3d_cull2 = shapeptr + hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
-    gameshape->shape3d_primitives = shapeptr + hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES + hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
-}
-
-/**
- * @brief Append a polygon to the z-order list without sorting.
- *
- * @param index  Polygon index.
- */
-static void __attribute__((unused)) polyinfo_append_unsorted(unsigned index) {
-    unsigned cursor;
-
-    if (index >= POLYINFO_MAX_POLYS) {
-        return;
-    }
-
-    if (polyinfonumpolys == 0) {
-        zorder_shape_list[POLYINFO_HEAD_INDEX] = index;
-        zorder_shape_list[index] = ZORDER_LINK_END;
-        return;
-    }
-
-    cursor = POLYINFO_HEAD_INDEX;
-    while (zorder_shape_list[cursor] >= 0) {
-        cursor = zorder_shape_list[cursor];
-        if (cursor >= POLYINFO_MAX_POLYS) {
-            break;
-        }
-    }
-
-    if (cursor < POLYINFO_MAX_POLYS) {
-        zorder_shape_list[cursor] = index;
-        zorder_shape_list[index] = ZORDER_LINK_END;
-    }
+    gameshape->shape3d_verts = (struct VECTOR *)(shapeptr + SHAPE3D_HEADER_SIZE_BYTES);
+    gameshape->shape3d_cull1 = shapeptr + (ptrdiff_t)hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_cull2 = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_CULL_ENTRY_SIZE_BYTES
+                               + (ptrdiff_t)hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES
+                               + SHAPE3D_HEADER_SIZE_BYTES;
+    gameshape->shape3d_primitives
+        = shapeptr + (ptrdiff_t)hdr->header_numprimitives * SHAPE3D_PRIMITIVE_SIZE_BYTES
+          + (ptrdiff_t)hdr->header_numverts * SHAPE3D_VERTEX_SIZE_BYTES + SHAPE3D_HEADER_SIZE_BYTES;
 }
 
 /**
@@ -568,11 +769,12 @@ static void __attribute__((unused)) polyinfo_append_unsorted(unsigned index) {
  * @param transformed_shape  Transformed shape with position, rotation, and clip data.
  * @return Number of accepted primitives, or 0 if shape is fully culled.
  */
-unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape) {
-    uint32_t* primitive_cull_table;
-    uint32_t* paint_cull_table;
+unsigned
+shape3d_render_transformed(struct TRANSFORMEDSHAPE3D *transformed_shape) {
+    uint32_t *primitive_cull_table;
+    uint32_t *paint_cull_table;
     unsigned char vertex_depth_flags[VERTEX_FLAG_COUNT];
-    struct MATRIX* rotation_matrix_ptr;
+    struct MATRIX *rotation_matrix_ptr;
     struct MATRIX inverse_model_view_matrix;
     struct MATRIX model_view_matrix;
     struct VECTOR shape_position_view;
@@ -581,42 +783,38 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape
     struct VECTOR scratch_vector_c;
     uint32_t direction_cull_mask_primary;
     uint32_t paint_cull_mask;
-    unsigned accepted_primitive_count, all_vertices_behind_near_plane, has_near_plane_vertex;
+    unsigned accepted_primitive_count;
+    bool all_vertices_behind_near_plane;
+    bool has_near_plane_vertex;
     unsigned char rect_clip_mask, primitive_render_type;
     struct VECTOR cached_view_vertices[VERTEX_CACHE_COUNT];
-    unsigned primitive_flags, primitive_file_type, primitive_accept_count, polygon_vertex_counter, current_vertex_index, previous_vertex_index, unused_primitive_counter, projected_radius;
+    unsigned primitive_flags, primitive_file_type, primitive_accept_count, polygon_vertex_counter,
+        current_vertex_index, previous_vertex_index, projected_radius;
     int polygon_vertex_x, polygon_vertex_y;
-    struct POINT2D* polyinfo_point_write_ptr;
+    struct POINT2D *polyinfo_point_write_ptr;
     long depth_sum = 0;
     struct POINT2D clipped_intersection_point, rect_expand_point;
     struct POINT2D cached_projected_points[VERTEX_CACHE_COUNT];
-    struct POINT2D** poly_point_slot_ptr;
-    struct POINT2D* polygon_points_ptr;
+    struct POINT2D **poly_point_slot_ptr;
+    struct POINT2D *polygon_points_ptr;
 
     unsigned i;
     unsigned temp, temp0, temp1;
-    unsigned reject_prim_culltable = 0;
-    unsigned reject_prim_all_behind = 0;
-    unsigned reject_prim_rect_stage1 = 0;
-    unsigned reject_prim_rect_stage2 = 0;
-    unsigned reject_prim_winding = 0;
-    unsigned reject_prim_numverts_zero = 0;
 
     unsigned transshapenumverts;
-    unsigned char* transshapeprimitives;
-    struct VECTOR* transshapeverts;
+    unsigned char *transshapeprimitives;
+    struct VECTOR *transshapeverts;
     unsigned char transshapenumpaints;
     unsigned char transshapematerial;
     unsigned char transshapeflags;
-    struct RECTANGLE* transshaperectptr = 0;
-    unsigned char* transshapeprimptr;
-    unsigned char* transshapeprimindexptr;
-    unsigned char* transshapepolyinfo;
-    struct POINT2D* transshapepolyinfopts;
+    struct RECTANGLE *transshaperectptr = 0;
+    unsigned char *transshapeprimptr;
+    unsigned char *transshapeprimindexptr;
+    unsigned char *transshapepolyinfo;
+    struct POINT2D *transshapepolyinfopts;
     unsigned char transprimitivepaintjob;
-    struct POINT2D* polyvertpointptrtab[VERTEX_FLAG_COUNT];
+    struct POINT2D *polyvertpointptrtab[VERTEX_FLAG_COUNT];
 
-    (void)unused_primitive_counter;
     if (transformed_shape == 0 || transformed_shape->shapeptr == 0) {
         return 1;
     }
@@ -628,11 +826,10 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape
     }
 
     transshapenumverts = transformed_shape->shapeptr->shape3d_numverts;
-    transshapeprimitives = (unsigned char*)transformed_shape->shapeptr->shape3d_primitives;
     transshapeverts = transformed_shape->shapeptr->shape3d_verts;
     transshapenumpaints = (unsigned char)transformed_shape->shapeptr->shape3d_numpaints;
-    primitive_cull_table = (uint32_t*)transformed_shape->shapeptr->shape3d_cull1;
-    paint_cull_table = (uint32_t*)transformed_shape->shapeptr->shape3d_cull2;
+    primitive_cull_table = (uint32_t *)transformed_shape->shapeptr->shape3d_cull1;
+    paint_cull_table = (uint32_t *)transformed_shape->shapeptr->shape3d_cull2;
     transshapematerial = transformed_shape->material;
     if (transshapematerial >= transshapenumpaints) {
         transshapematerial = 0;
@@ -652,10 +849,8 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape
     }
 
     if ((transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
-        rotation_matrix_ptr = mat_rot_zxy(transformed_shape->rotvec.x,
-                                    transformed_shape->rotvec.y,
-                                    transformed_shape->rotvec.z,
-                                    ROTATION_ZERO_ARG);
+        rotation_matrix_ptr = mat_rot_zxy(transformed_shape->rotvec.x, transformed_shape->rotvec.y,
+                                          transformed_shape->rotvec.z, ROTATION_ZERO_ARG);
         mat_mul_vector(&transformed_shape->pos, &mat_temp, &shape_position_view);
         mat_multiply(rotation_matrix_ptr, &mat_temp, &model_view_matrix);
         mat_invert(&model_view_matrix, &inverse_model_view_matrix);
@@ -663,21 +858,22 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape
         scratch_vector_a.y = 0;
         scratch_vector_a.z = VIEW_FORWARD_VECTOR_Z;
         mat_mul_vector(&scratch_vector_a, &inverse_model_view_matrix, &scratch_vector_b);
-        if ((scratch_vector_b.y <= 0 || transformed_shape->pos.y >= 0) &&
-            ((transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.x) ||
-             (transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.z))) {
+        if ((scratch_vector_b.y <= 0 || transformed_shape->pos.y >= 0)
+            && ((transformed_shape->shape_visibility_threshold * 2) <= abs(shape_position_view.x)
+                || (transformed_shape->shape_visibility_threshold * 2)
+                       <= abs(shape_position_view.z))) {
             shape3d_vector_direction_bucket = vector_direction_bucket32(&scratch_vector_b);
             direction_cull_mask_primary = invpow2tbl[shape3d_vector_direction_bucket];
             paint_cull_mask = invpow2tbl[shape3d_vector_direction_bucket];
-        } else {
+        }
+        else {
             direction_cull_mask_primary = (uint32_t)-1;
             paint_cull_mask = 0;
         }
-    } else {
-        rotation_matrix_ptr = mat_rot_zxy(transformed_shape->rotvec.x,
-                                    transformed_shape->rotvec.y,
-                                    transformed_shape->rotvec.z,
-                                    ROTATION_ZERO_ARG);
+    }
+    else {
+        rotation_matrix_ptr = mat_rot_zxy(transformed_shape->rotvec.x, transformed_shape->rotvec.y,
+                                          transformed_shape->rotvec.z, ROTATION_ZERO_ARG);
         mat_multiply(rotation_matrix_ptr, &mat_temp, &model_view_matrix);
         shape_position_view = transformed_shape->pos;
         direction_cull_mask_primary = (uint32_t)-1;
@@ -689,499 +885,508 @@ unsigned shape3d_render_transformed(struct TRANSFORMEDSHAPE3D* transformed_shape
     zorder_tail_counter = 0;
     accepted_primitive_count = 0;
 
-    if (transshapenumverts <= 8) {
+    if (transshapenumverts <= SHAPE3D_VERTEX_SCAN_LIMIT) {
         transshapenumvertscopy = (unsigned char)transshapenumverts;
-    } else {
-        transshapenumvertscopy = 8;
+    }
+    else {
+        transshapenumvertscopy = SHAPE3D_VERTEX_SCAN_LIMIT;
     }
 
-    if (transshapenumvertscopy > 4 && transshapeverts[0].y == transshapeverts[4].y) {
-        transshapenumvertscopy = 4;
+    if (transshapenumvertscopy > SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT
+        && transshapeverts[0].y == transshapeverts[SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT].y) {
+        transshapenumvertscopy = SHAPE3D_FLAT_TOP_VERTEX_SCAN_LIMIT;
     }
-
-    goto label_init_vertex_visibility_scan;
-
-label_init_vertex_visibility_scan:
-    rect_clip_mask = RECT_CLIP_FULL_MASK;
-    all_vertices_behind_near_plane = 1;
-    has_near_plane_vertex = 0;
-    i = 0;
-    goto label_vertex_scan_loop;
-
-label_vertex_scan_increment:
-    i++;
-label_vertex_scan_loop:
-    if (transshapenumvertscopy > i) goto label_transform_and_project_vertex;
-    if ((all_vertices_behind_near_plane != 0 || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
-        && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
-        return -1;
-    }
-    goto label_begin_primitive_processing;
-
-label_transform_and_project_vertex:
-    polyvertpointptrtab[i] = &cached_projected_points[i];
-    scratch_vector_a = transshapeverts[i];
-    if (select_rect_scale_preview != 0) {
-        scratch_vector_a.x /= 2;
-        scratch_vector_a.y /= 2;
-        scratch_vector_a.z /= 2;
-    }
-    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
-    scratch_vector_b.x += shape_position_view.x;
-    scratch_vector_b.y += shape_position_view.y;
-    scratch_vector_b.z += shape_position_view.z;
-    cached_view_vertices[i] = scratch_vector_b;
-    if (scratch_vector_b.z < NEAR_PLANE_Z) {
-        vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-        has_near_plane_vertex = 1;
-        goto label_vertex_scan_increment;
-    }
-    all_vertices_behind_near_plane = 0;
-    vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_VISIBLE;
-    vector_to_point(&scratch_vector_b, polyvertpointptrtab[i]);
-    if (rect_clip_mask != 0) {
-        unsigned char rect_mask = rect_compare_point(polyvertpointptrtab[i]);
-        rect_clip_mask &= rect_mask;
-    }
-    if (rect_clip_mask != 0) {
-        goto label_vertex_scan_increment;
-    }
-    goto label_begin_primitive_processing;
-
-label_begin_primitive_processing:
-    transshapeprimitives = (unsigned char*)transformed_shape->shapeptr->shape3d_primitives;
-
-label_primitive_loop_next:
-    transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]] +
-                        transshapenumpaints + 2;
-    primitive_flags = transshapeprimitives[1];
-    primitive_accept_count = 0;
-    if ((primitive_cull_table[0] & direction_cull_mask_primary) != 0) {
-        goto label_decode_primitive_header;
-    }
-    reject_prim_culltable++;
-    goto label_finish_current_primitive;
-
-label_decode_primitive_header:
-    primitive_file_type = transshapeprimitives[0];
-    transshapenumvertscopy = primidxcounttab[primitive_file_type];
-    primitive_render_type = primtypetab[primitive_file_type];
-
-    transshapepolyinfo = s_polyinfo_base + polyinfoptrnext;
-    polyinfoptrs[polyinfonumpolys] = (int*)transshapepolyinfo;
-
-    transprimitivepaintjob = transshapeprimitives[2 + transshapematerial];
-    transshapeprimitives += 2 + transshapenumpaints;
 
     rect_clip_mask = RECT_CLIP_FULL_MASK;
-    all_vertices_behind_near_plane = 1;
-    has_near_plane_vertex = 0;
-    transshapeprimindexptr = transshapeprimitives;
-    polygon_vertex_counter = 0;
-    goto label_polygon_vertex_loop;
+    all_vertices_behind_near_plane = true;
+    has_near_plane_vertex = false;
 
-label_polygon_vertex_visible:
-    all_vertices_behind_near_plane = 0;
-label_polygon_vertex_rect_clip_test:
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(polyvertpointptrtab[polygon_vertex_counter]);
-    }
-label_polygon_vertex_advance:
-    polygon_vertex_counter++;
-label_polygon_vertex_loop:
-    if (polygon_vertex_counter >= transshapenumvertscopy) goto label_dispatch_primitive_render_path;
-
-    temp = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-    polyvertpointptrtab[polygon_vertex_counter] = &cached_projected_points[temp];
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_UNCACHED) {
-        goto label_project_uncached_vertex;
-    }
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_VISIBLE) {
-        goto label_polygon_vertex_visible;
-    }
-    if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_BEHIND_NEAR) {
-        has_near_plane_vertex = 1;
-        goto label_polygon_vertex_advance;
-    }
-    goto label_polygon_vertex_advance;
-
-label_project_uncached_vertex:
-    scratch_vector_a = transshapeverts[temp];
-    if (select_rect_scale_preview != 0) {
-        scratch_vector_a.x /= 2;
-        scratch_vector_a.y /= 2;
-        scratch_vector_a.z /= 2;
-    }
-    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
-    scratch_vector_b.x += shape_position_view.x;
-    scratch_vector_b.y += shape_position_view.y;
-    scratch_vector_b.z += shape_position_view.z;
-    cached_view_vertices[temp] = scratch_vector_b;
-
-    if (scratch_vector_b.z >= NEAR_PLANE_Z) {
-        all_vertices_behind_near_plane = 0;
-        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_VISIBLE;
-        vector_to_point(&scratch_vector_b, polyvertpointptrtab[polygon_vertex_counter]);
-        goto label_polygon_vertex_rect_clip_test;
-    }
-    vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
-    has_near_plane_vertex = 1;
-    goto label_polygon_vertex_advance;
-
-label_dispatch_primitive_render_path:
-    if (all_vertices_behind_near_plane != 0) {
-        reject_prim_all_behind++;
-        goto label_finish_current_primitive;
-    }
-    if (rect_clip_mask != 0 && has_near_plane_vertex == 0) {
-        reject_prim_rect_stage1++;
-        goto label_finish_current_primitive;
-    }
-    if (primitive_render_type == PRIMITIVE_TYPE_POLYGON) goto _primtype_poly;
-    if (primitive_render_type == PRIMITIVE_TYPE_LINE) goto _primtype_line;
-    if (primitive_render_type == PRIMITIVE_TYPE_SPHERE) goto _primtype_sphere;
-    if (primitive_render_type == PRIMITIVE_TYPE_WHEEL) goto _primtype_wheel;
-    if (primitive_render_type == PRIMITIVE_TYPE_PIXEL) goto label_handle_unsupported_primitive_type5;
-    goto label_finish_current_primitive;
-
-_primtype_poly:
-    polyinfo_point_write_ptr = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapeprimindexptr = transshapeprimitives;
-
-    depth_sum = 0;
-    rect_clip_mask = RECT_CLIP_FULL_MASK;
-
-    if (has_near_plane_vertex != 0) goto label_clip_polygon_against_near_plane;
-    i = 0;
-    goto label_copy_polygon_vertex_loop;
-label_copy_polygon_vertex_advance:
-    i++;
-label_copy_polygon_vertex_loop:
-    if (transshapenumvertscopy <= i) goto label_prepare_primitive_submission;
-    current_vertex_index = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-    depth_sum += cached_view_vertices[current_vertex_index].z;
-    poly_point_slot_ptr = &polyvertpointptrtab[i];
-    *polyinfo_point_write_ptr = **poly_point_slot_ptr;
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(*poly_point_slot_ptr);
-    }
-    polyinfo_point_write_ptr++;
-    goto label_copy_polygon_vertex_advance;
-
-label_clip_polygon_against_near_plane:
-    polygon_vertex_counter = 0;
-    previous_vertex_index = transshapeprimitives[transshapenumvertscopy - 1];
-    i = 0;
-    goto label_clip_edge_loop;
-
-label_clip_edge_step_start:
-    if (vertex_depth_flags[previous_vertex_index] != 0) goto label_clip_edge_advance_indices;
-
-    vector_lerp_at_z(&cached_view_vertices[previous_vertex_index], &cached_view_vertices[current_vertex_index], &scratch_vector_a, NEAR_PLANE_Z);
-    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
-
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(&clipped_intersection_point);
+    for (i = 0; i < transshapenumvertscopy; i++) {
+        polyvertpointptrtab[i] = &cached_projected_points[i];
+        scratch_vector_a = transshapeverts[i];
+        if (select_rect_scale_preview != 0) {
+            scratch_vector_a.x /= 2;
+            scratch_vector_a.y /= 2;
+            scratch_vector_a.z /= 2;
+        }
+        mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
+        scratch_vector_b.x += (short)shape_position_view.x;
+        scratch_vector_b.y += (short)shape_position_view.y;
+        scratch_vector_b.z += (short)shape_position_view.z;
+        cached_view_vertices[i] = scratch_vector_b;
+        if (scratch_vector_b.z < NEAR_PLANE_Z) {
+            vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
+            has_near_plane_vertex = true;
+            continue;
+        }
+        all_vertices_behind_near_plane = false;
+        vertex_depth_flags[i] = VERTEX_DEPTH_FLAG_VISIBLE;
+        vector_to_point(&scratch_vector_b, polyvertpointptrtab[i]);
+        if (rect_clip_mask != 0) {
+            unsigned char rect_mask = rect_compare_point(polyvertpointptrtab[i]);
+            rect_clip_mask &= rect_mask;
+        }
+        if (rect_clip_mask == 0)
+            break; /* all clip bits cleared: proceed to primitive processing early */
     }
 
-    *polyinfo_point_write_ptr = clipped_intersection_point;
-
-label_clip_emit_vertex_advance:
-    polyinfo_point_write_ptr++;
-    polygon_vertex_counter++;
-
-label_clip_edge_advance_indices:
-    previous_vertex_index = current_vertex_index;
-    i++;
-label_clip_edge_loop:
-    if (transshapenumvertscopy <= i) goto label_finalize_polygon_vertex_count;
-    current_vertex_index = transshapeprimindexptr[0];
-    transshapeprimindexptr++;
-
-    depth_sum += cached_view_vertices[current_vertex_index].z;
-
-    if (vertex_depth_flags[current_vertex_index] != 0) goto label_clip_edge_step_start;
-
-    if (vertex_depth_flags[previous_vertex_index] == 0) goto label_clip_emit_current_vertex;
-
-    vector_lerp_at_z(&cached_view_vertices[current_vertex_index], &cached_view_vertices[previous_vertex_index], &scratch_vector_a, NEAR_PLANE_Z);
-    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
-
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(&clipped_intersection_point);
-    }
-
-    *polyinfo_point_write_ptr = clipped_intersection_point;
-    polyinfo_point_write_ptr++;
-    polygon_vertex_counter++;
-
-label_clip_emit_current_vertex:
-    *polyinfo_point_write_ptr = *polyvertpointptrtab[i];
-    if (rect_clip_mask != 0) {
-        rect_clip_mask &= rect_compare_point(polyvertpointptrtab[i]);
-    }
-    goto label_clip_emit_vertex_advance;
-
-label_finalize_polygon_vertex_count:
-    transshapenumvertscopy = (unsigned char)polygon_vertex_counter;
-
-label_prepare_primitive_submission:
-    if (transshapenumvertscopy == 0) {
-        reject_prim_numverts_zero++;
-        goto label_finish_current_primitive;
-    }
-    if (rect_clip_mask != 0) {
-        reject_prim_rect_stage2++;
-        goto label_finish_current_primitive;
-    }
-    if ((primitive_flags & 1) != 0) goto label_mark_primitive_accepted;
-    if ((paint_cull_mask & *paint_cull_table) != 0) goto label_mark_primitive_accepted;
-
-    if ((transshapeflags & TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED) == 0) {
-        if (is_positive_winding_2d((struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE)) == 0) {
-            reject_prim_winding++;
-            goto label_optional_rect_update_begin;
+    if (i >= transshapenumvertscopy) {
+        /* Normal completion: apply visibility cull */
+        if ((all_vertices_behind_near_plane
+             || transformed_shape->shape_visibility_threshold < abs(shape_position_view.x))
+            && (transshapeflags & TRANSFORM_FLAG_SKIP_VIEW_CULL) == 0) {
+            return -1;
         }
     }
 
-label_mark_primitive_accepted:
-    primitive_accept_count++;
+    transshapeprimitives = (unsigned char *)transformed_shape->shapeptr->shape3d_primitives;
 
-label_optional_rect_update_begin:
-    if (primitive_accept_count == 0) goto label_finish_current_primitive;
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0) goto label_finish_current_primitive;
+    while (1) {
+        /* ---- Per-primitive setup ---- */
+        transshapeprimptr = transshapeprimitives + primidxcounttab[transshapeprimitives[0]]
+                            + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
+        primitive_flags = transshapeprimitives[1];
+        primitive_accept_count = 0;
 
-    polygon_points_ptr = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    polygon_vertex_counter = 0;
-    goto label_rect_update_loop_check;
-
-label_rect_update_vertex_loop:
-    polygon_vertex_x = polygon_points_ptr->px;
-    polygon_vertex_y = polygon_points_ptr->py;
-    polygon_points_ptr++;
-
-    if (polygon_vertex_x < transshaperectptr->left) {
-        transshaperectptr->left = polygon_vertex_x;
-    }
-    if (transshaperectptr->right < polygon_vertex_x + 1) {
-        transshaperectptr->right = polygon_vertex_x + 1;
-    }
-    if (transshaperectptr->top > polygon_vertex_y) {
-        transshaperectptr->top = polygon_vertex_y;
-    }
-    if (transshaperectptr->bottom < polygon_vertex_y + 1) {
-        transshaperectptr->bottom = polygon_vertex_y + 1;
-    }
-
-    polygon_vertex_counter++;
-
-label_rect_update_loop_check:
-    if (polygon_vertex_counter < transshapenumvertscopy) goto label_rect_update_vertex_loop;
-
-label_finish_current_primitive:
-    transshapeprimitives = transshapeprimptr;
-    primitive_cull_table++;
-    paint_cull_table++;
-    if (primitive_accept_count != 0) goto label_store_polyinfo_entry;
-    if ((primitive_flags & 2) != 0) goto label_primitive_loop_exit_or_continue;
-label_skip_hidden_primitive_chain:
-    if ((transshapeprimitives[1] & 2) == 0) goto label_primitive_loop_exit_or_continue;
-    transshapeprimitives += primidxcounttab[transshapeprimitives[0]] + transshapenumpaints + 2;
-    primitive_cull_table++;
-    paint_cull_table++;
-    goto label_skip_hidden_primitive_chain;
-
-_primtype_line:
-    temp0 = transshapeprimitives[0];
-    temp1 = transshapeprimitives[1];
-    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] == 2) {
-        goto label_finish_current_primitive;
-    }
-    if (vertex_depth_flags[temp0] == 0) {
-        goto label_prepare_line_or_sphere_clip;
-    }
-    vector_lerp_at_z(&cached_view_vertices[temp1], &cached_view_vertices[temp0], &scratch_vector_a, NEAR_PLANE_Z);
-    temp = temp0;
-    goto label_store_line_clip_point;
-
-label_prepare_line_or_sphere_clip:
-    if (vertex_depth_flags[temp1] == 0) goto label_emit_line_primitive;
-    vector_lerp_at_z(&cached_view_vertices[temp0], &cached_view_vertices[temp1], &scratch_vector_a, NEAR_PLANE_Z);
-    temp = temp1;
-
-label_store_line_clip_point:
-    vector_to_point(&scratch_vector_a, &cached_projected_points[temp]);
-
-label_emit_line_primitive:
-    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
-    transshapepolyinfopts = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
-
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0) goto label_emit_line_polyinfo_basic;
-    rect_adjust_from_point(polyvertpointptrtab[0], transshaperectptr);
-    rect_adjust_from_point(polyvertpointptrtab[1], transshaperectptr);
-
-label_emit_line_polyinfo_basic:
-    transshapenumvertscopy = 2;
-
-label_emit_line_done:
-    primitive_accept_count++;
-    goto label_finish_current_primitive;
-
-_primtype_wheel:
-    if (has_near_plane_vertex != 0) goto label_finish_current_primitive;
-
-    transshapepolyinfopts = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
-    transshapepolyinfopts[2] = *polyvertpointptrtab[2];
-    transshapepolyinfopts[3] = *polyvertpointptrtab[3];
-
-    /* Viewport bounds check for wheel control points.
-       On DOS (16-bit int), extreme projections wrapped naturally.
-       On 32-bit, they stay large and blow up polarRadius2D → huge wheel.
-       Reject the wheel if any control point is far outside the screen. */
-    {
-        int _whi;
-        for (_whi = 0; _whi < 4; _whi++) {
-            int _wax = transshapepolyinfopts[_whi].px;
-            int _way = transshapepolyinfopts[_whi].py;
-            if (_wax < 0) _wax = -_wax;
-            if (_way < 0) _way = -_way;
-            if (_wax > WHEEL_VERTEX_CONTROL_ABS_MAX || _way > WHEEL_VERTEX_CONTROL_ABS_MAX)
-                goto label_finish_current_primitive;
+        if ((primitive_cull_table[0] & direction_cull_mask_primary) == 0) {
+            /* Culled by direction table: skip to finish */
         }
-    }
+        else {
+            /* ---- Decode primitive header ---- */
+            primitive_file_type = transshapeprimitives[0];
+            transshapenumvertscopy = primidxcounttab[primitive_file_type];
+            primitive_render_type = primtypetab[primitive_file_type];
 
-    if (is_positive_winding_2d(transshapepolyinfopts) != 0) goto label_emit_sphere_depth_seed;
+            transshapepolyinfo = s_polyinfo_base + polyinfoptrnext;
+            polyinfoptrs[polyinfonumpolys] = (int *)transshapepolyinfo;
 
-    transshapepolyinfopts[0] = *polyvertpointptrtab[3];
-    transshapepolyinfopts[1] = *polyvertpointptrtab[4];
-    transshapepolyinfopts[2] = *polyvertpointptrtab[5];
-    transshapepolyinfopts[3] = *polyvertpointptrtab[0];
+            transprimitivepaintjob
+                = transshapeprimitives[PRIMITIVE_RECORD_HEADER_BYTES + transshapematerial];
+            transshapeprimitives += PRIMITIVE_RECORD_HEADER_BYTES + transshapenumpaints;
 
-    depth_sum = cached_view_vertices[transshapeprimitives[3]].z << 2;
-    goto label_emit_sphere_radius_compute;
+            rect_clip_mask = RECT_CLIP_FULL_MASK;
+            all_vertices_behind_near_plane = true;
+            has_near_plane_vertex = false;
+            transshapeprimindexptr = transshapeprimitives;
 
-label_emit_sphere_depth_seed:
-    depth_sum = cached_view_vertices[transshapeprimitives[0]].z << 2;
+            /* ---- Project each primitive vertex ---- */
+            for (polygon_vertex_counter = 0; polygon_vertex_counter < transshapenumvertscopy;
+                 polygon_vertex_counter++) {
 
-label_emit_sphere_radius_compute:
-    transshapepolyinfopts = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    temp = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[1].px,
-                         transshapepolyinfopts[0].py - transshapepolyinfopts[1].py);
-    temp1 = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[2].px,
-                          transshapepolyinfopts[0].py - transshapepolyinfopts[2].py);
+                temp = transshapeprimindexptr[0];
+                transshapeprimindexptr++;
+                polyvertpointptrtab[polygon_vertex_counter] = &cached_projected_points[temp];
 
-    if (temp1 > temp) temp = temp1;
+                if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_UNCACHED) {
+                    /* Project and cache this vertex */
+                    scratch_vector_a = transshapeverts[temp];
+                    if (select_rect_scale_preview != 0) {
+                        scratch_vector_a.x /= 2;
+                        scratch_vector_a.y /= 2;
+                        scratch_vector_a.z /= 2;
+                    }
+                    mat_mul_vector(&scratch_vector_a, &model_view_matrix, &scratch_vector_b);
+                    scratch_vector_b.x += (short)shape_position_view.x;
+                    scratch_vector_b.y += (short)shape_position_view.y;
+                    scratch_vector_b.z += (short)shape_position_view.z;
+                    cached_view_vertices[temp] = scratch_vector_b;
 
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0) goto label_emit_sphere_polyinfo;
+                    if (scratch_vector_b.z >= NEAR_PLANE_Z) {
+                        all_vertices_behind_near_plane = false;
+                        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_VISIBLE;
+                        vector_to_point(&scratch_vector_b,
+                                        polyvertpointptrtab[polygon_vertex_counter]);
+                        if (rect_clip_mask != 0) {
+                            rect_clip_mask
+                                &= rect_compare_point(polyvertpointptrtab[polygon_vertex_counter]);
+                        }
+                    }
+                    else {
+                        vertex_depth_flags[temp] = VERTEX_DEPTH_FLAG_BEHIND_NEAR;
+                        has_near_plane_vertex = true;
+                    }
+                }
+                else if (vertex_depth_flags[temp] == VERTEX_DEPTH_FLAG_VISIBLE) {
+                    all_vertices_behind_near_plane = false;
+                    if (rect_clip_mask != 0) {
+                        rect_clip_mask
+                            &= rect_compare_point(polyvertpointptrtab[polygon_vertex_counter]);
+                    }
+                }
+                else {
+                    /* VERTEX_DEPTH_FLAG_BEHIND_NEAR */
+                    has_near_plane_vertex = true;
+                }
+            }
 
-    rect_expand_point.px = transshapepolyinfopts[0].px - (int)temp - 1;
-    rect_expand_point.py = transshapepolyinfopts[0].py - (int)temp - 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+            /* ---- Dispatch by render type (do{}while(0) for break-to-finish) ---- */
+            do {
+                if (all_vertices_behind_near_plane) {
+                    break;
+                }
+                if (rect_clip_mask != 0 && !has_near_plane_vertex) {
+                    break;
+                }
 
-    rect_expand_point.px = transshapepolyinfopts[0].px + (int)temp + 1;
-    rect_expand_point.py = transshapepolyinfopts[0].py + (int)temp + 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                switch (primitive_render_type) {
 
-    rect_expand_point.px = transshapepolyinfopts[3].px - (int)temp - 1;
-    rect_expand_point.py = transshapepolyinfopts[3].py - (int)temp - 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                /* ---- Polygon ---- */
+                case PRIMITIVE_TYPE_POLYGON: {
+                    polyinfo_point_write_ptr
+                        = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapeprimindexptr = transshapeprimitives;
+                    depth_sum = 0;
+                    rect_clip_mask = RECT_CLIP_FULL_MASK;
 
-    rect_expand_point.px = transshapepolyinfopts[3].px + (int)temp + 1;
-    rect_expand_point.py = transshapepolyinfopts[3].py + (int)temp + 1;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                    if (has_near_plane_vertex) {
+                        /* Near-plane clip */
+                        unsigned clip_vert_count = 0;
+                        unsigned clip_i;
+                        previous_vertex_index = transshapeprimitives[transshapenumvertscopy - 1];
+                        for (clip_i = 0; clip_i < transshapenumvertscopy; clip_i++) {
+                            current_vertex_index = transshapeprimindexptr[0];
+                            transshapeprimindexptr++;
+                            depth_sum += cached_view_vertices[current_vertex_index].z;
 
-label_emit_sphere_polyinfo:
-    transshapenumvertscopy = 4;
-    primitive_accept_count = 1;
-    goto label_finish_current_primitive;
+                            if (vertex_depth_flags[current_vertex_index] != 0) {
+                                /* current is behind near plane */
+                                if (vertex_depth_flags[previous_vertex_index] == 0) {
+                                    /* previous was visible: emit clip point */
+                                    vector_lerp_at_z(&cached_view_vertices[previous_vertex_index],
+                                                     &cached_view_vertices[current_vertex_index],
+                                                     &scratch_vector_a, NEAR_PLANE_Z);
+                                    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
+                                    if (rect_clip_mask != 0)
+                                        rect_clip_mask
+                                            &= rect_compare_point(&clipped_intersection_point);
+                                    *polyinfo_point_write_ptr = clipped_intersection_point;
+                                    polyinfo_point_write_ptr++;
+                                    clip_vert_count++;
+                                }
+                            }
+                            else {
+                                /* current is visible */
+                                if (vertex_depth_flags[previous_vertex_index] != 0) {
+                                    /* previous was behind: emit clip entry point */
+                                    vector_lerp_at_z(&cached_view_vertices[current_vertex_index],
+                                                     &cached_view_vertices[previous_vertex_index],
+                                                     &scratch_vector_a, NEAR_PLANE_Z);
+                                    vector_to_point(&scratch_vector_a, &clipped_intersection_point);
+                                    if (rect_clip_mask != 0)
+                                        rect_clip_mask
+                                            &= rect_compare_point(&clipped_intersection_point);
+                                    *polyinfo_point_write_ptr = clipped_intersection_point;
+                                    polyinfo_point_write_ptr++;
+                                    clip_vert_count++;
+                                }
+                                /* emit the visible vertex itself */
+                                *polyinfo_point_write_ptr = *polyvertpointptrtab[clip_i];
+                                if (rect_clip_mask != 0)
+                                    rect_clip_mask
+                                        &= rect_compare_point(polyvertpointptrtab[clip_i]);
+                                polyinfo_point_write_ptr++;
+                                clip_vert_count++;
+                            }
+                            previous_vertex_index = current_vertex_index;
+                        }
+                        transshapenumvertscopy = (unsigned char)clip_vert_count;
+                    }
+                    else {
+                        /* No near-plane clipping: copy vertices directly */
+                        unsigned copy_i;
+                        for (copy_i = 0; copy_i < transshapenumvertscopy; copy_i++) {
+                            current_vertex_index = transshapeprimindexptr[0];
+                            transshapeprimindexptr++;
+                            depth_sum += cached_view_vertices[current_vertex_index].z;
+                            poly_point_slot_ptr = &polyvertpointptrtab[copy_i];
+                            *polyinfo_point_write_ptr = **poly_point_slot_ptr;
+                            if (rect_clip_mask != 0)
+                                rect_clip_mask &= rect_compare_point(*poly_point_slot_ptr);
+                            polyinfo_point_write_ptr++;
+                        }
+                    }
 
-_primtype_sphere:
-    temp0 = transshapeprimitives[0];
-    temp1 = transshapeprimitives[1];
-    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
-    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] != 0) goto label_finish_current_primitive;
+                    /* Validate vertex count */
+                    if (transshapenumvertscopy == 0) {
+                        break;
+                    }
+                    if (rect_clip_mask != 0) {
+                        break;
+                    }
 
-    transshapepolyinfopts = (struct POINT2D*)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
-    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
-    scratch_vector_b = cached_view_vertices[temp0];
-    scratch_vector_c = cached_view_vertices[temp1];
+                    /* Winding cull */
+                    if ((primitive_flags & PRIMITIVE_FLAG_SKIP_WINDING_CULL) == 0
+                        && (paint_cull_mask & *paint_cull_table) == 0) {
+                        if ((transshapeflags & TRANSFORM_FLAG_TERRAIN_DOUBLE_SIDED) == 0) {
+                            if (is_positive_winding_2d(
+                                    (struct POINT2D *)(transshapepolyinfo
+                                                       + POLYINFO_ENTRY_HEADER_SIZE))
+                                == 0) {
+                                break; /* winding rejected: skip rect update */
+                            }
+                        }
+                    }
+                    primitive_accept_count++;
 
-    scratch_vector_a.x = scratch_vector_b.x - scratch_vector_c.x;
-    scratch_vector_a.y = scratch_vector_b.y - scratch_vector_c.y;
-    scratch_vector_a.z = scratch_vector_b.z - scratch_vector_c.z;
-    projected_radius = project_radius_by_depth(polarRadius3D(&scratch_vector_a), scratch_vector_b.z);
-    transshapepolyinfopts[1].px = projected_radius;
-    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) == 0) goto label_emit_line_polyinfo_basic;
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        unsigned rect_vi;
+                        polygon_points_ptr
+                            = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                        for (rect_vi = 0; rect_vi < transshapenumvertscopy; rect_vi++) {
+                            polygon_vertex_x = polygon_points_ptr->px;
+                            polygon_vertex_y = polygon_points_ptr->py;
+                            polygon_points_ptr++;
+                            if (polygon_vertex_x < transshaperectptr->left)
+                                transshaperectptr->left = polygon_vertex_x;
+                            if (transshaperectptr->right < polygon_vertex_x + 1)
+                                transshaperectptr->right = polygon_vertex_x + 1;
+                            if (transshaperectptr->top > polygon_vertex_y)
+                                transshaperectptr->top = polygon_vertex_y;
+                            if (transshaperectptr->bottom < polygon_vertex_y + 1)
+                                transshaperectptr->bottom = polygon_vertex_y + 1;
+                        }
+                    }
+                    break;
+                } /* PRIMITIVE_TYPE_POLYGON */
 
-    rect_expand_point.py = polyvertpointptrtab[0]->py - (int)projected_radius;
-    rect_expand_point.px = polyvertpointptrtab[0]->px - (int)projected_radius;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                /* ---- Line ---- */
+                case PRIMITIVE_TYPE_LINE: {
+                    temp0 = transshapeprimitives[0];
+                    temp1 = transshapeprimitives[1];
+                    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] == 2)
+                        break; /* both behind near plane */
 
-    rect_expand_point.py = polyvertpointptrtab[0]->py + (int)projected_radius;
-    rect_expand_point.px = polyvertpointptrtab[0]->px + (int)projected_radius;
-    rect_adjust_from_point(&rect_expand_point, transshaperectptr);
-    goto label_emit_line_polyinfo_basic;
+                    if (vertex_depth_flags[temp0] != 0) {
+                        /* temp0 behind near: clip temp0 edge toward temp1 */
+                        vector_lerp_at_z(&cached_view_vertices[temp1], &cached_view_vertices[temp0],
+                                         &scratch_vector_a, NEAR_PLANE_Z);
+                        vector_to_point(&scratch_vector_a, &cached_projected_points[temp0]);
+                    }
+                    else if (vertex_depth_flags[temp1] != 0) {
+                        /* temp1 behind near: clip temp1 edge toward temp0 */
+                        vector_lerp_at_z(&cached_view_vertices[temp0], &cached_view_vertices[temp1],
+                                         &scratch_vector_a, NEAR_PLANE_Z);
+                        vector_to_point(&scratch_vector_a, &cached_projected_points[temp1]);
+                    }
 
-label_handle_unsupported_primitive_type5:
-    fatal_error("unhandled primitive type 5");
-    goto label_emit_line_done;
+                    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
+                    transshapepolyinfopts
+                        = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
 
-label_store_polyinfo_entry:
-    accepted_primitive_count++;
-    transshapepolyinfo[3] = transshapenumvertscopy;
-    transshapepolyinfo[POLYINFO_LINE_PRIMITIVE_TYPE_OFFSET] = primitive_render_type;
-    if (transprimitivepaintjob == BACKLIGHTS_PAINT_ID) {
-        transshapepolyinfo[2] = backlights_paint_override;
-    } else {
-        transshapepolyinfo[2] = transprimitivepaintjob;
-    }
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_adjust_from_point(polyvertpointptrtab[0], transshaperectptr);
+                        rect_adjust_from_point(polyvertpointptrtab[1], transshaperectptr);
+                    }
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+                } /* PRIMITIVE_TYPE_LINE */
 
-    if (transshapenumvertscopy == 1) {
-        temp0 = (unsigned)depth_sum;
-    } else if (transshapenumvertscopy == 2) {
-        temp0 = (unsigned)(depth_sum >> 1);
-    } else if (transshapenumvertscopy == 4) {
-        temp0 = (unsigned)(depth_sum >> 2);
-    } else if (transshapenumvertscopy == 8) {
-        temp0 = (unsigned)(depth_sum >> 3);
-    } else {
-        temp0 = (unsigned)(depth_sum / transshapenumvertscopy);
-    }
+                /* ---- Wheel ---- */
+                case PRIMITIVE_TYPE_WHEEL: {
+                    if (has_near_plane_vertex)
+                        break;
 
-    if (temp0 > POLY_DEPTH_MAX_SIGNED) {
-        temp0 = POLY_DEPTH_MAX_SIGNED;
-    }
+                    transshapepolyinfopts
+                        = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    transshapepolyinfopts[1] = *polyvertpointptrtab[1];
+                    transshapepolyinfopts[2] = *polyvertpointptrtab[2];
+                    transshapepolyinfopts[3] = *polyvertpointptrtab[3];
 
-    if (has_near_plane_vertex != 0) {
-        if ((short)temp0 < NEAR_PLANE_Z) {
-            temp0 = NEAR_PLANE_Z;
+                    /* Viewport bounds check for wheel control points.
+                       On DOS (16-bit int), extreme projections wrapped naturally.
+                       On 32-bit, they stay large and blow up polarRadius2D.
+                       Reject if any control point is far outside the screen. */
+                    {
+                        int wheel_vert_idx;
+                        bool wheel_out_of_bounds = false;
+                        for (wheel_vert_idx = 0; wheel_vert_idx < 4; wheel_vert_idx++) {
+                            int abs_px = transshapepolyinfopts[wheel_vert_idx].px;
+                            int abs_py = transshapepolyinfopts[wheel_vert_idx].py;
+                            if (abs_px < 0)
+                                abs_px = -abs_px;
+                            if (abs_py < 0)
+                                abs_py = -abs_py;
+                            if (abs_px > WHEEL_VERTEX_CONTROL_ABS_MAX
+                                || abs_py > WHEEL_VERTEX_CONTROL_ABS_MAX) {
+                                wheel_out_of_bounds = true;
+                                break;
+                            }
+                        }
+                        if (wheel_out_of_bounds)
+                            break;
+                    }
+
+                    if (is_positive_winding_2d(transshapepolyinfopts) == 0) {
+                        transshapepolyinfopts[0] = *polyvertpointptrtab[3];
+                        transshapepolyinfopts[1] = *polyvertpointptrtab[4];
+                        transshapepolyinfopts[2] = *polyvertpointptrtab[5];
+                        transshapepolyinfopts[3] = *polyvertpointptrtab[0];
+                        depth_sum = cached_view_vertices[transshapeprimitives[3]].z << 2;
+                    }
+                    else {
+                        depth_sum = cached_view_vertices[transshapeprimitives[0]].z << 2;
+                    }
+
+                    /* Compute wheel radius */
+                    transshapepolyinfopts
+                        = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                    temp = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[1].px,
+                                         transshapepolyinfopts[0].py - transshapepolyinfopts[1].py);
+                    temp1
+                        = polarRadius2D(transshapepolyinfopts[0].px - transshapepolyinfopts[2].px,
+                                        transshapepolyinfopts[0].py - transshapepolyinfopts[2].py);
+                    if (temp1 > temp)
+                        temp = temp1;
+
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_expand_point.px = transshapepolyinfopts[0].px - (int)temp - 1;
+                        rect_expand_point.py = transshapepolyinfopts[0].py - (int)temp - 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[0].px + (int)temp + 1;
+                        rect_expand_point.py = transshapepolyinfopts[0].py + (int)temp + 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[3].px - (int)temp - 1;
+                        rect_expand_point.py = transshapepolyinfopts[3].py - (int)temp - 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.px = transshapepolyinfopts[3].px + (int)temp + 1;
+                        rect_expand_point.py = transshapepolyinfopts[3].py + (int)temp + 1;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                    }
+                    transshapenumvertscopy = 4;
+                    primitive_accept_count = 1;
+                    break;
+                } /* PRIMITIVE_TYPE_WHEEL */
+
+                /* ---- Sphere ---- */
+                case PRIMITIVE_TYPE_SPHERE: {
+                    temp0 = transshapeprimitives[0];
+                    temp1 = transshapeprimitives[1];
+                    depth_sum = cached_view_vertices[temp0].z + cached_view_vertices[temp1].z;
+                    if (vertex_depth_flags[temp0] + vertex_depth_flags[temp1] != 0)
+                        break; /* at least one vertex is behind near plane */
+
+                    transshapepolyinfopts
+                        = (struct POINT2D *)(transshapepolyinfo + POLYINFO_ENTRY_HEADER_SIZE);
+                    transshapepolyinfopts[0] = *polyvertpointptrtab[0];
+                    scratch_vector_b = cached_view_vertices[temp0];
+                    scratch_vector_c = cached_view_vertices[temp1];
+                    scratch_vector_a.x = (short)scratch_vector_b.x - scratch_vector_c.x;
+                    scratch_vector_a.y = (short)scratch_vector_b.y - scratch_vector_c.y;
+                    scratch_vector_a.z = (short)scratch_vector_b.z - scratch_vector_c.z;
+                    projected_radius = project_radius_by_depth(polarRadius3D(&scratch_vector_a),
+                                                               scratch_vector_b.z);
+                    transshapepolyinfopts[1].px = (int)projected_radius;
+
+                    if ((transshapeflags & TRANSFORM_FLAG_UPDATE_RECT) != 0) {
+                        rect_expand_point.py = polyvertpointptrtab[0]->py - (int)projected_radius;
+                        rect_expand_point.px = polyvertpointptrtab[0]->px - (int)projected_radius;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                        rect_expand_point.py = polyvertpointptrtab[0]->py + (int)projected_radius;
+                        rect_expand_point.px = polyvertpointptrtab[0]->px + (int)projected_radius;
+                        rect_adjust_from_point(&rect_expand_point, transshaperectptr);
+                    }
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+                } /* PRIMITIVE_TYPE_SPHERE */
+
+                /* ---- Pixel (unsupported) ---- */
+                case PRIMITIVE_TYPE_PIXEL:
+                    fatal_error("unhandled primitive type 5");
+                    transshapenumvertscopy = 2;
+                    primitive_accept_count++;
+                    break;
+
+                default:
+                    break;
+
+                } /* switch (primitive_render_type) */
+
+            } while (0); /* end per-primitive processing */
+
+        } /* end if (cull_table passed) */
+
+        /* ---- Finish current primitive ---- */
+        transshapeprimitives = transshapeprimptr;
+        primitive_cull_table++;
+        paint_cull_table++;
+
+        if (primitive_accept_count != 0) {
+            /* Store this primitive into the polyinfo buffer */
+            accepted_primitive_count++;
+            transshapepolyinfo[3] = transshapenumvertscopy;
+            transshapepolyinfo[POLYINFO_LINE_PRIMITIVE_TYPE_OFFSET] = primitive_render_type;
+            if (transprimitivepaintjob == BACKLIGHTS_PAINT_ID) {
+                transshapepolyinfo[2] = backlights_paint_override;
+            }
+            else {
+                transshapepolyinfo[2] = transprimitivepaintjob;
+            }
+
+            if (transshapenumvertscopy == 1) {
+                temp0 = (unsigned)depth_sum;
+            }
+            else if (transshapenumvertscopy == 2) {
+                temp0 = (unsigned)(depth_sum >> 1);
+            }
+            else if (transshapenumvertscopy == 4) {
+                temp0 = (unsigned)(depth_sum >> 2);
+            }
+            else if (transshapenumvertscopy == 8) {
+                temp0 = (unsigned)(depth_sum >> 3);
+            }
+            else {
+                temp0 = (unsigned)(depth_sum / transshapenumvertscopy);
+            }
+
+            if (temp0 > POLY_DEPTH_MAX_SIGNED)
+                temp0 = POLY_DEPTH_MAX_SIGNED;
+
+            if (has_near_plane_vertex) {
+                if ((short)temp0 < NEAR_PLANE_Z)
+                    temp0 = NEAR_PLANE_Z;
+            }
+            else if ((short)temp0 < 0) {
+                /* Depth is negative and no near-plane vertex: discard */
+                accepted_primitive_count--;
+            }
+
+            if (accepted_primitive_count != 0) {
+                ((unsigned short *)transshapepolyinfo)[0] = (unsigned short)temp0;
+
+                if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0
+                    || (primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
+                    temp = 0;
+                }
+                else {
+                    temp = 1;
+                }
+
+                polygon_op_error_code = polyinfo_insert_sorted_by_depth(temp0, temp);
+                if (polygon_op_error_code != 0)
+                    return 1;
+            } /* end if (accepted_primitive_count != 0) inner depth check */
         }
-    } else if ((short)temp0 < 0) {
-        goto label_finish_current_primitive;
-    }
+        else if ((primitive_flags & PRIMITIVE_FLAG_CHAIN_UNSORTED) == 0) {
+            /* Hidden primitive with chain flag: skip linked hidden primitives */
+            while ((transshapeprimitives[1] & PRIMITIVE_FLAG_CHAIN_UNSORTED) != 0) {
+                transshapeprimitives += primidxcounttab[transshapeprimitives[0]]
+                                        + transshapenumpaints + PRIMITIVE_RECORD_HEADER_BYTES;
+                primitive_cull_table++;
+                paint_cull_table++;
+            }
+        }
 
-    ((unsigned short*)transshapepolyinfo)[0] = (unsigned short)temp0;
+        if (transshapeprimitives[0] == 0)
+            break;
+    } /* while (1) primitive loop */
 
-    if ((transshapeflags & TRANSFORM_FLAG_FORCE_UNSORTED) != 0 || (primitive_flags & 2) != 0) {
-        temp = 0;
-    } else {
-        temp = 1;
-    }
-
-    polygon_op_error_code = polyinfo_insert_sorted_by_depth(temp0, temp);
-    if (polygon_op_error_code != 0) {
-        return 1;
-    }
-
-label_primitive_loop_exit_or_continue:
-    if (transshapeprimitives[0] != 0) goto label_primitive_loop_next;
-    if (accepted_primitive_count != 0) return 0;
+    if (accepted_primitive_count != 0)
+        return 0;
     return -1;
 }
 
@@ -1189,21 +1394,24 @@ label_primitive_loop_exit_or_continue:
  * @param pts Pointer to at least three 2-D points.
  * @return 1 for positive winding, 0 otherwise.
  */
-char is_positive_winding_2d(struct POINT2D * pts) {
-	long dx0, dy0, dx1, dy1;
-	long temp;
+char
+is_positive_winding_2d(struct POINT2D *pts) {
+    long dx0, dy0, dx1, dy1;
+    long temp;
 
-	dx0 = (long)pts[0].px - pts[1].px;
-	dx1 = (long)pts[2].px - pts[1].px;
-	
-	if (dx0 == 0 && dx1 == 0) return 0;
-		
-	dy0 = (long)pts[0].py - pts[1].py;
-	dy1 = (long)pts[2].py - pts[1].py;
+    dx0 = (long)pts[0].px - pts[1].px;
+    dx1 = (long)pts[2].px - pts[1].px;
 
-	if (dy0 == 0 && dy1 == 0) return 0;
+    if (dx0 == 0 && dx1 == 0)
+        return 0;
+
+    dy0 = (long)pts[0].py - pts[1].py;
+    dy1 = (long)pts[2].py - pts[1].py;
+
+    if (dy0 == 0 && dy1 == 0)
+        return 0;
     temp = (dx1 * dy0) - (dx0 * dy1);
-	return temp <= 0 ? 0 : 1;
+    return temp <= 0 ? 0 : 1;
 }
 
 /**
@@ -1212,7 +1420,8 @@ char is_positive_winding_2d(struct POINT2D * pts) {
  * @param i3  Horizontal viewport half-size.
  * @param i4  Vertical viewport half-size.
  */
-static void projection_apply(unsigned short i3, unsigned short i4) {
+static void
+projection_apply(unsigned short i3, unsigned short i4) {
     projectiondata3 = i3 >> 1;
     projectiondata5 = projectiondata3 + projectiondata4;
     projectiondata6 = i4 >> 1;
@@ -1220,9 +1429,12 @@ static void projection_apply(unsigned short i3, unsigned short i4) {
     projectiondata9 = (long)cos_fast(projectiondata1) * projectiondata3 / sin_fast(projectiondata1);
 
     if (projectiondata2 != 0) {
-        projectiondata10 = (long)cos_fast(projectiondata2) * projectiondata6 / sin_fast(projectiondata2);
-    } else {
-        projectiondata10 = projectiondata9 - (projectiondata9 >> 3) - (projectiondata9 >> 4);
+        projectiondata10 = (long)cos_fast(projectiondata2) * projectiondata6
+                           / sin_fast(projectiondata2);
+    }
+    else {
+        projectiondata10 = projectiondata9 - (projectiondata9 >> PROJECTION_FALLBACK_EIGHTH_SHIFT)
+                           - (projectiondata9 >> PROJECTION_FALLBACK_SIXTEENTH_SHIFT);
         projectiondata2 = polarAngle(projectiondata10, projectiondata6);
     }
 }
@@ -1232,7 +1444,8 @@ static void projection_apply(unsigned short i3, unsigned short i4) {
  * @param depth_z Positive depth value.
  * @return Projected radius in pixels, or 0 when depth is non-positive.
  */
-unsigned project_radius_by_depth(unsigned radius_3d, int depth_z) {
+unsigned
+project_radius_by_depth(unsigned radius_3d, int depth_z) {
     unsigned long numer;
 
     if (depth_z <= 0) {
@@ -1250,8 +1463,9 @@ unsigned project_radius_by_depth(unsigned radius_3d, int depth_z) {
  * @param search_mode      0 = restart from current index, 1 = continue from last position.
  * @return 0 on success, 1 if the polygon buffer is full.
  */
-unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) {
-	int regdi, regsi, regax;
+unsigned
+polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned search_mode) {
+    int list_entry, walk_counter, prev_counter;
     unsigned short depth_key;
     unsigned short depth_cur;
 
@@ -1267,48 +1481,52 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned sear
         zorder_current_index = POLYINFO_HEAD_INDEX;
     }
 
-    //return polyinfo_insert_sorted_by_depth_(depth_key_input, search_mode);
-
     if (search_mode == 0) {
-		regdi = zorder_shape_list[zorder_current_index];
-        if (regdi >= POLYINFO_MAX_POLYS) {
-            regdi = -1;
+        list_entry = zorder_shape_list[zorder_current_index];
+        if (list_entry >= POLYINFO_MAX_POLYS) {
+            list_entry = -1;
         }
-	} else {
-		zorder_current_index = zorder_next_link;
+    }
+    else {
+        zorder_current_index = zorder_next_link;
         if (zorder_current_index > POLYINFO_HEAD_INDEX) {
             zorder_current_index = POLYINFO_HEAD_INDEX;
         }
-		regdi = zorder_shape_list[zorder_next_link];
-		regsi = zorder_tail_counter;
+        list_entry = zorder_shape_list[zorder_next_link];
+        walk_counter = zorder_tail_counter;
 
-		while (regdi >= 0) {
-            if (regdi >= POLYINFO_MAX_POLYS || polyinfoptrs[regdi] == 0) {
-                regdi = -1;
+        while (list_entry >= 0) {
+            if (list_entry >= POLYINFO_MAX_POLYS || polyinfoptrs[list_entry] == 0) {
+                list_entry = -1;
                 break;
             }
-			regax = regsi;
-			regsi--;
-			if (regax == 0) break;
-            depth_cur = polyinfo_depth_at(regdi);
-            if (depth_cur < depth_key) break;
-			zorder_current_index = regdi;
-			regdi = zorder_shape_list[regdi];
-		}
-	}
+            prev_counter = walk_counter;
+            walk_counter--;
+            if (prev_counter == 0)
+                break;
+            depth_cur = polyinfo_depth_at(list_entry);
+            if (depth_cur < depth_key)
+                break;
+            zorder_current_index = list_entry;
+            list_entry = zorder_shape_list[list_entry];
+        }
+    }
 
-    zorder_shape_list[polyinfonumpolys] = regdi;
+    zorder_shape_list[polyinfonumpolys] = list_entry;
     zorder_shape_list[zorder_current_index] = polyinfonumpolys;
-	zorder_tail_counter++;
-	if (regdi < 0) {
-		polygon_info_head = polyinfonumpolys;
-	}
-	zorder_current_index = zorder_shape_list[zorder_current_index];
-	polyinfonumpolys++;
-    polyinfoptrnext += (unsigned)(transshapenumvertscopy * (unsigned)sizeof(struct POINT2D)) + POLYINFO_ENTRY_HEADER_SIZE;
-    if (polyinfonumpolys == POLYINFO_MAX_POLYS) return 1;
-    if (polyinfoptrnext <= POLYINFO_TRANSFORM_LIMIT) return 0;
-	return 1;
+    zorder_tail_counter++;
+    if (list_entry < 0) {
+        polygon_info_head = polyinfonumpolys;
+    }
+    zorder_current_index = zorder_shape_list[zorder_current_index];
+    polyinfonumpolys++;
+    polyinfoptrnext += (unsigned)(transshapenumvertscopy * (unsigned)sizeof(struct POINT2D))
+                       + POLYINFO_ENTRY_HEADER_SIZE;
+    if (polyinfonumpolys == POLYINFO_MAX_POLYS)
+        return 1;
+    if (polyinfoptrnext <= POLYINFO_TRANSFORM_LIMIT)
+        return 0;
+    return 1;
 }
 
 /**
@@ -1319,42 +1537,42 @@ unsigned polyinfo_insert_sorted_by_depth(unsigned depth_key_input, unsigned sear
  * @param i3 Viewport width parameter.
  * @param i4 Viewport height parameter.
  */
-void set_projection(int i1, int i2, int i3, int i4) {
-	
-    projectiondata1 = (((long)i1 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV) >> PROJECTION_ANGLE_HALF_SHIFT;
-    projectiondata2 = (((long)i2 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV) >> PROJECTION_ANGLE_HALF_SHIFT;
+void
+set_projection(int i1, int i2, int i3, int i4) {
+
+    projectiondata1 = (((long)i1 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV)
+                      >> PROJECTION_ANGLE_HALF_SHIFT;
+    projectiondata2 = (((long)i2 << PROJECTION_ANGLE_SHIFT) / PROJECTION_ANGLE_SCALE_DIV)
+                      >> PROJECTION_ANGLE_HALF_SHIFT;
     projection_apply((unsigned short)i3, (unsigned short)i4);
-	
 }
 
 /** Set projection from raw angles (nopsub_322DF). */
-void set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
+void
+set_projection_raw(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
     projectiondata1 = ang1;
     projectiondata2 = ang2;
     projection_apply(i3, i4);
 }
 
-/** @brief Legacy compatibility wrapper for set_projection_raw(). */
-void nopsub_322DF(unsigned short ang1, unsigned short ang2, unsigned short i3, unsigned short i4) {
-	set_projection_raw(ang1, ang2, i3, i4);
-}
-
-/** @brief Set global palette brightness level used by 3-D renderer. */
-void set_byte_4032C(unsigned short val) {
-	palette_brightness_level = (unsigned char)val;
+/** @brief Set global palette brightness level used by the 3-D renderer. */
+void
+shape3d_set_palette_brightness(unsigned short level) {
+    palette_brightness_level = (unsigned char)level;
 }
 
 /** @brief Update projection center offsets on X/Y axes. */
-void set_projection_offsets(unsigned short arg0, unsigned short arg2) {
-	projectiondata4 = arg0;
-	projectiondata5 = projectiondata3 + arg0;
-	projectiondata7 = arg2;
-	projectiondata8 = projectiondata6 + arg2;
+void
+set_projection_offsets(unsigned short xOffset, unsigned short yOffset) {
+    projectiondata4 = xOffset;
+    projectiondata5 = projectiondata3 + xOffset;
+    projectiondata7 = yOffset;
+    projectiondata8 = projectiondata6 + yOffset;
 }
 
 /** @brief Store a 32-bit signed value into a raw byte buffer. */
-static void write_i32_to_buffer(unsigned char* dst, int32_t value)
-{
+static void
+write_i32_to_buffer(unsigned char *dst, int32_t value) {
     memcpy(dst, &value, sizeof(value));
 }
 
@@ -1371,31 +1589,34 @@ static void write_i32_to_buffer(unsigned char* dst, int32_t value)
  * @param use_scaled_preview Non-zero to use scaled preview mode.
  * @return View direction angle in engine angle units.
  */
-unsigned select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE* cliprect, int use_scaled_preview) {
-	struct MATRIX* matptr;
-	struct VECTOR vec, vec2;
+unsigned
+select_cliprect_rotate(int angZ, int angX, int angY, struct RECTANGLE *cliprect,
+                       int use_scaled_preview) {
+    struct MATRIX *matptr;
+    struct VECTOR vec, vec2;
 
-	//return select_cliprect_rotate_(angX, angY, angZ, cliprect, use_scaled_preview);
-	
-	mat_temp = *mat_rot_zxy(angZ, angX, angY, 1);
-	polyinfo_reset();
-	select_rect_rc = *cliprect;
-	select_rect_scale_preview = use_scaled_preview;
+    //return select_cliprect_rotate_(angX, angY, angZ, cliprect, use_scaled_preview);
+
+    mat_temp = *mat_rot_zxy(angZ, angX, angY, 1);
+    polyinfo_reset();
+    select_rect_rc = *cliprect;
+    select_rect_scale_preview = use_scaled_preview;
     matptr = mat_rot_zxy(-angZ, -angX, -angY, ROTATION_ZERO_ARG);
     vec.z = SELECT_CLIP_VEC_Z;
-	vec.y = 0;
-	vec.x = 0;
-	mat_mul_vector(&vec, matptr, &vec2);
+    vec.y = 0;
+    vec.x = 0;
+    mat_mul_vector(&vec, matptr, &vec2);
     return polarAngle(vec2.x, vec2.z) & PROJECTION_ANGLE_MASK;
 }
 
 /**
  * @brief Reset the polygon info buffer for a new frame.
  */
-void polyinfo_reset(void) {
-	polyinfonumpolys = 0;
-	polyinfoptrnext = 0;
-	polygon_op_error_code = 0;
+void
+polyinfo_reset(void) {
+    polyinfonumpolys = 0;
+    polyinfoptrnext = 0;
+    polygon_op_error_code = 0;
     zorder_shape_list[POLYINFO_HEAD_INDEX] = ZORDER_LINK_END;
     polygon_info_head = POLYINFO_HEAD_INDEX;
 }
@@ -1403,7 +1624,8 @@ void polyinfo_reset(void) {
 /**
  * @brief Precompute sin/cos values at the fixed 80-degree angle.
  */
-void calc_sincos80(void) {
+void
+calc_sincos80(void) {
     write_i32_to_buffer(sin80, (int32_t)sin_fast(SINCOS80_ANGLE));
     write_i32_to_buffer(cos80, (int32_t)cos_fast(SINCOS80_ANGLE));
     write_i32_to_buffer(sin80_2, (int32_t)sin_fast(SINCOS80_ANGLE));
@@ -1413,66 +1635,44 @@ void calc_sincos80(void) {
 /**
  * @brief Atexit handler: free the polygon info buffer.
  */
-static void free_polyinfo_atexit(void) {
-	if (s_polyinfo_base != NULL) {
-		mmgr_free((char*)s_polyinfo_base);
-		s_polyinfo_base = NULL;
-		polyinfoptr = NULL;
-	}
+static void
+free_polyinfo_atexit(void) {
+    if (s_polyinfo_base != NULL) {
+        mmgr_free((char *)s_polyinfo_base);
+        s_polyinfo_base = NULL;
+        polyinfoptr = NULL;
+    }
 }
 
 /**
  * @brief Allocate and initialise the polygon info buffer and z-order tables.
  */
-void init_polyinfo(void) {
-    static int atexit_registered = 0;
+void
+init_polyinfo(void) {
+    static bool atexit_registered = false;
     if (s_polyinfo_base != NULL) {
-        mmgr_free((char*)s_polyinfo_base);
+        mmgr_free((char *)s_polyinfo_base);
         s_polyinfo_base = NULL;
         polyinfoptr = NULL;
     }
     polyinfoptr = mmgr_alloc_resbytes("polyinfo", POLYINFO_BUFFER_SIZE);
     s_polyinfo_base = polyinfoptr;
     if (!atexit_registered) {
-        atexit(free_polyinfo_atexit);
-        atexit_registered = 1;
+        (void)atexit(free_polyinfo_atexit);
+        atexit_registered = true;
     }
-	
+
     mat_rot_y(&mat_y0, 0);
     mat_rot_y(&mat_y100, MAT_Y_ROT_100);
     mat_rot_y(&mat_y200, MAT_Y_ROT_200);
     mat_rot_y(&mat_y300, MAT_Y_ROT_300);
-	calc_sincos80();
-}
-
-enum { TRACKOBJECT_RAW_SIZE = 14 };
-
-/**
- * @brief Return a pointer to a track-object table entry by index.
- *
- * @param table  Base of the track-object table.
- * @param index  Entry index.
- * @return Pointer to the entry.
- */
-static inline const unsigned char* trkobj_entry(const unsigned char* table, unsigned index)
-{
-    return table + index * TRACKOBJECT_RAW_SIZE;
-}
-
-/**
- * @brief Extract the overlay byte from a track-object entry.
- *
- * @param obj  Pointer to the track-object entry.
- * @return Overlay value.
- */
-static inline unsigned char trkobj_overlay(const unsigned char* obj)
-{
-    return obj[8];
+    calc_sincos80();
 }
 
 /** Ported from seg020.asm */
-void draw_sphere_from_vertex_buffer(const unsigned short* control_points_ptr, unsigned fill_color) {
-	unsigned vertbuf[64];  /* 128 bytes = 64 words */
+void
+draw_sphere_from_vertex_buffer(const unsigned short *control_points_ptr, unsigned fill_color) {
+    unsigned vertbuf[64]; /* 128 bytes = 64 words */
     build_sphere_vertex_buffer(control_points_ptr, vertbuf);
     preRender_default_alt(fill_color, SPHERE_VERTEX_BUFFER_LINES, vertbuf);
 }
@@ -1484,160 +1684,160 @@ void draw_sphere_from_vertex_buffer(const unsigned short* control_points_ptr, un
  * @param radius Sphere radius.
  * @param color Fill color index.
  */
-void preRender_sphere(int center_x, int center_y, int radius, int color) {
-	/* Large arrays for left/right edge coordinates (stack: ~2KB) */
-	unsigned short left_edge_x[493];  /* x1 array (left edges) */
-	unsigned short right_edge_x[493];  /* x2 array (right edges) */
-	
+void
+preRender_sphere(int center_x, int center_y, int radius, int color) {
+    /* Large arrays for left/right edge coordinates (stack: ~2KB) */
+    unsigned short left_edge_x[493];  /* x1 array (left edges) */
+    unsigned short right_edge_x[493]; /* x2 array (right edges) */
+
     /* Local variables for helper function call */
     unsigned short helper_coords[6];
-	
-	int adjusted_radius;
-	int half;
-	int bx_val;
-	int left_clip, right_clip;
-	int y_start, total_lines;
-	unsigned char * table_ptr;
+
+    int adjusted_radius;
+    int half;
+    int bottom_extent;
+    int left_clip, right_clip;
+    int y_start, total_lines;
+    unsigned char *table_ptr;
     uintptr_t dseg_base;
-	int si_idx, di_idx, bx_ofs;
-	int half_width;
-	int x_left, x_right;
-	int clip_skip;
-	int y_top_clip;
-	
-	/* Calculate adjusted radius: radius - radius/4 + radius/16 */
-	adjusted_radius = radius;
-	{
-		int ax = radius >> 2;
-		adjusted_radius -= ax;
-		ax >>= 2;
-		adjusted_radius += ax;
-	}
-	
-	/* If adjusted radius <= 0, nothing to draw */
-	if (adjusted_radius <= 0) {
-		return;
-	}
-	
-	half = adjusted_radius >> 1;
-	
-	/* If half == 0, just draw single pixel */
-	if (half == 0) {
-		putpixel_single_clipped(color, center_y, center_x);
-		return;
-	}
-	
-	bx_val = adjusted_radius - half;
-	
-	/* Cache sprite1 clip bounds */
-	left_clip = sprite1.sprite_left2;
-	right_clip = sprite1.sprite_widthsum - 1;
-	
-	/* Clipping checks */
-	/* Check if top of sphere is below viewport */
-	if (center_y - half >= (int)sprite1.sprite_height) {
-		return;
-	}
-	y_start = center_y - half;
-	
-	/* Check if bottom of sphere is above viewport */
-	if (center_y + bx_val <= (int)sprite1.sprite_top) {
-		return;
-	}
-	
-	/* Horizontal clipping check */
-	{
-		int dx = bx_val + (bx_val >> 2);
-		if (center_x - dx > right_clip) {
-			return;
-		}
-		if (center_x + dx < left_clip) {
-			return;
-		}
-	}
-	
+    int left_row, right_row, mirror_offset;
+    int half_width;
+    int x_left, x_right;
+    int clip_skip;
+    int y_top_clip;
+
+    /* Calculate adjusted radius: radius - radius/4 + radius/16 */
+    adjusted_radius = radius;
+    {
+        int ax = radius >> SPHERE_RADIUS_QUARTER_SHIFT;
+        adjusted_radius -= ax;
+        ax >>= (SPHERE_RADIUS_SIXTEENTH_SHIFT - SPHERE_RADIUS_QUARTER_SHIFT);
+        adjusted_radius += ax;
+    }
+
+    /* If adjusted radius <= 0, nothing to draw */
+    if (adjusted_radius <= 0) {
+        return;
+    }
+
+    half = adjusted_radius >> 1;
+
+    /* If half == 0, just draw single pixel */
+    if (half == 0) {
+        putpixel_single_clipped(color, center_y, center_x);
+        return;
+    }
+
+    bottom_extent = adjusted_radius - half;
+
+    /* Cache sprite1 clip bounds */
+    left_clip = sprite1.sprite_left2;
+    right_clip = sprite1.sprite_widthsum - 1;
+
+    /* Clipping checks */
+    /* Check if top of sphere is below viewport */
+    if (center_y - half >= (int)sprite1.sprite_height) {
+        return;
+    }
+    y_start = center_y - half;
+
+    /* Check if bottom of sphere is above viewport */
+    if (center_y + bottom_extent <= (int)sprite1.sprite_top) {
+        return;
+    }
+
+    /* Horizontal clipping check */
+    {
+        int dx = bottom_extent + (bottom_extent >> SPHERE_CLIP_MARGIN_QUARTER_SHIFT);
+        if (center_x - dx > right_clip) {
+            return;
+        }
+        if (center_x + dx < left_clip) {
+            return;
+        }
+    }
+
     /* If sphere is large (>= SPHERE_LARGE_RADIUS_MIN), use helper function */
-    if (bx_val >= SPHERE_LARGE_RADIUS_MIN) {
-		/* Build helper coordinate struct */
-        helper_coords[0] = center_x;           /* x */
-		helper_coords[1] = center_x;           /* wheel_vertices_base_ptr = x */
-        helper_coords[2] = center_x + (radius >> 1);  /* x + radius/2 */
-        helper_coords[3] = center_y;           /* y */
-        helper_coords[4] = center_y;           /* y */
-        helper_coords[5] = center_y + (adjusted_radius >> 1);  /* y + adj/2 */
+    if (bottom_extent >= SPHERE_LARGE_RADIUS_MIN) {
+        /* Build helper coordinate struct */
+        helper_coords[0] = center_x;                          /* x */
+        helper_coords[1] = center_x;                          /* wheel_vertices_base_ptr = x */
+        helper_coords[2] = center_x + (radius >> 1);          /* x + radius/2 */
+        helper_coords[3] = center_y;                          /* y */
+        helper_coords[4] = center_y;                          /* y */
+        helper_coords[5] = center_y + (adjusted_radius >> 1); /* y + adj/2 */
         draw_sphere_from_vertex_buffer(helper_coords, color);
-		return;
-	}
-	
-	/* Use lookup table for small spheres */
+        return;
+    }
+
+    /* Use lookup table for small spheres */
     /* Convert DSEG offset table to flat pointer */
-    dseg_base = (uintptr_t)&off_3F3C8[0] - (uintptr_t)SPHERE_LUT_DSEG_OFFSET;
-    table_ptr = (unsigned char *)(dseg_base + (uintptr_t)off_3F3C8[bx_val]);
-	total_lines = adjusted_radius;
-	bx_ofs = (adjusted_radius - 1) * 2;   /* offset for mirror entries */
-	si_idx = 0;
-	di_idx = 0;
-	
-	/* Build edge arrays from lookup table */
-	while (bx_ofs >= 0) {
-		half_width = *table_ptr++;
-		
-		/* Calculate left edge */
-		x_left = center_x - half_width;
-		if (x_left > right_clip) {
-			/* Line is entirely off right edge - skip it */
-			y_start++;
-			total_lines -= 2;
-			bx_ofs -= 4;
-			continue;
-		}
-		if (x_left < left_clip) {
-			x_left = left_clip;
-		}
-		left_edge_x[si_idx] = x_left;
-		left_edge_x[si_idx + (bx_ofs >> 1)] = x_left;
-		
-		/* Calculate right edge */
-		x_right = center_x + half_width;
-		if (x_right < left_clip) {
-			/* Line is entirely off left edge - should not happen after above check */
-			y_start++;
-			total_lines -= 2;
-			bx_ofs -= 4;
-			continue;
-		}
-		if (x_right > right_clip) {
-			x_right = right_clip;
-		}
-		right_edge_x[di_idx] = x_right;
-		right_edge_x[di_idx + (bx_ofs >> 1)] = x_right;
-		
-		si_idx++;
-		di_idx++;
-		bx_ofs -= 4;
-	}
-	
-	/* Apply vertical clipping */
-	clip_skip = 0;
-	y_top_clip = sprite1.sprite_top - y_start;
-	if (y_top_clip > 0) {
-		total_lines -= y_top_clip;
-		clip_skip = y_top_clip * 2;  /* bytes to skip in arrays */
-		y_start = sprite1.sprite_top;
-	}
-	
-	/* Bottom clip */
-	{
-		int y_bottom_over = y_start + total_lines - sprite1.sprite_height;
-		if (y_bottom_over > 0) {
-			total_lines -= y_bottom_over;
-		}
-	}
-	
-	/* Draw the filled lines */
-	draw_filled_lines(color, total_lines, y_start,
-	                  (unsigned short *)&right_edge_x[clip_skip >> 1],
-	                  (unsigned short *)&left_edge_x[clip_skip >> 1]);
+    dseg_base = (uintptr_t)&sphere_lut_offsets[0] - (uintptr_t)SPHERE_LUT_DSEG_OFFSET;
+    table_ptr = (unsigned char *)(dseg_base + (uintptr_t)sphere_lut_offsets[bottom_extent]);
+    total_lines = adjusted_radius;
+    mirror_offset = (adjusted_radius - 1) * 2; /* offset for mirror entries */
+    left_row = 0;
+    right_row = 0;
+
+    /* Build edge arrays from lookup table */
+    while (mirror_offset >= 0) {
+        half_width = *table_ptr++;
+
+        /* Calculate left edge */
+        x_left = center_x - half_width;
+        if (x_left > right_clip) {
+            /* Line is entirely off right edge - skip it */
+            y_start++;
+            total_lines -= 2;
+            mirror_offset -= 4;
+            continue;
+        }
+        if (x_left < left_clip) {
+            x_left = left_clip;
+        }
+        left_edge_x[left_row] = x_left;
+        left_edge_x[left_row + (mirror_offset >> 1)] = x_left;
+
+        /* Calculate right edge */
+        x_right = center_x + half_width;
+        if (x_right < left_clip) {
+            /* Line is entirely off left edge - should not happen after above check */
+            y_start++;
+            total_lines -= 2;
+            mirror_offset -= 4;
+            continue;
+        }
+        if (x_right > right_clip) {
+            x_right = right_clip;
+        }
+        right_edge_x[right_row] = x_right;
+        right_edge_x[right_row + (mirror_offset >> 1)] = x_right;
+
+        left_row++;
+        right_row++;
+        mirror_offset -= 4;
+    }
+
+    /* Apply vertical clipping */
+    clip_skip = 0;
+    y_top_clip = sprite1.sprite_top - y_start;
+    if (y_top_clip > 0) {
+        total_lines -= y_top_clip;
+        clip_skip = y_top_clip * 2; /* bytes to skip in arrays */
+        y_start = sprite1.sprite_top;
+    }
+
+    /* Bottom clip */
+    {
+        int y_bottom_over = y_start + total_lines - sprite1.sprite_height;
+        if (y_bottom_over > 0) {
+            total_lines -= y_bottom_over;
+        }
+    }
+
+    /* Draw the filled lines */
+    draw_filled_lines(color, total_lines, y_start, (unsigned short *)&right_edge_x[clip_skip >> 1],
+                      (unsigned short *)&left_edge_x[clip_skip >> 1]);
 }
 
 /**
@@ -1645,73 +1845,83 @@ void preRender_sphere(int center_x, int center_y, int radius, int color) {
  * @param input_data Packed input control point coordinates.
  * @param output_data Output ring vertex/interpolation data.
  */
-void build_wheel_ring_vertices(int* input_data, int* output_data) {
-	int si, di;
+void
+build_wheel_ring_vertices(int *input_data, int *output_data) {
+    int x1;
+    int halfDeltaY2;
     int half_delta_x1, half_delta_y1, neg_delta_x1, neg_delta_y1;
-	int i;
-	
-	si = input_data[0];  /* x1 */
-	
-	/* Store deltas at output indices 0,1,8,9 */
-	output_data[0] = input_data[2] - si;       /* delta_x1 = x2 - x1 */
-	output_data[1] = input_data[3] - input_data[1]; /* delta_y1 = y2 - y1 */
-	output_data[8] = input_data[4] - si;       /* delta_x2 = x3 - x1 */
-	output_data[9] = input_data[5] - input_data[1]; /* delta_y2 = y3 - y1 */
-	
-	/* Calculate scaled coordinates */
+    int i;
+
+    x1 = input_data[0]; /* x1 */
+
+    /* Store deltas at output indices 0,1,8,9 */
+    output_data[0] = input_data[2] - x1;            /* delta_x1 = x2 - x1 */
+    output_data[1] = input_data[3] - input_data[1]; /* delta_y1 = y2 - y1 */
+    output_data[8] = input_data[4] - x1;            /* delta_x2 = x3 - x1 */
+    output_data[9] = input_data[5] - input_data[1]; /* delta_y2 = y3 - y1 */
+
+    /* Calculate scaled coordinates */
     /* output_data[4,5] at WHEEL_SCALE_OUTER_Q15 scale */
-    output_data[4] = multiply_and_scale(output_data[8] + output_data[0], WHEEL_SCALE_OUTER_Q15);
-    output_data[5] = multiply_and_scale(output_data[1] + output_data[9], WHEEL_SCALE_OUTER_Q15);
-	
+    output_data[4] = multiply_and_scale((short)output_data[8] + output_data[0], WHEEL_SCALE_OUTER_Q15);
+    output_data[5] = multiply_and_scale((short)output_data[1] + output_data[9], WHEEL_SCALE_OUTER_Q15);
+
     /* output_data[2,3] at WHEEL_SCALE_INNER_Q15 scale with half delta */
-    output_data[2] = multiply_and_scale(output_data[0] + (output_data[8] >> 1), WHEEL_SCALE_INNER_Q15);
-	di = output_data[9] >> 1;
-	output_data[3] = multiply_and_scale(output_data[1] + di, WHEEL_SCALE_INNER_Q15);
-	
+    output_data[2] = multiply_and_scale((short)output_data[0] + (output_data[8] >> 1),
+                                        WHEEL_SCALE_INNER_Q15);
+    halfDeltaY2 = output_data[9] >> 1;
+    output_data[3] = multiply_and_scale((short)output_data[1] + halfDeltaY2, WHEEL_SCALE_INNER_Q15);
+
     /* output_data[6,7] at WHEEL_SCALE_INNER_Q15 scale with half base */
     half_delta_x1 = output_data[0] >> 1;
-    output_data[6] = multiply_and_scale(output_data[8] + half_delta_x1, WHEEL_SCALE_INNER_Q15);
+    output_data[6] = multiply_and_scale((short)output_data[8] + half_delta_x1, WHEEL_SCALE_INNER_Q15);
     half_delta_y1 = output_data[1] >> 1;
-    output_data[7] = multiply_and_scale(output_data[9] + half_delta_y1, WHEEL_SCALE_INNER_Q15);
-	
+    output_data[7] = multiply_and_scale((short)output_data[9] + half_delta_y1, WHEEL_SCALE_INNER_Q15);
+
     /* output_data[12,13] at WHEEL_SCALE_OUTER_Q15 scale with negated base */
     neg_delta_x1 = -output_data[0];
-    output_data[12] = multiply_and_scale(output_data[8] + neg_delta_x1, WHEEL_SCALE_OUTER_Q15);
+    output_data[12] = multiply_and_scale((short)output_data[8] + neg_delta_x1, WHEEL_SCALE_OUTER_Q15);
     neg_delta_y1 = -output_data[1];
-    output_data[13] = multiply_and_scale(output_data[9] + neg_delta_y1, WHEEL_SCALE_OUTER_Q15);
-	
+    output_data[13] = multiply_and_scale((short)output_data[9] + neg_delta_y1, WHEEL_SCALE_OUTER_Q15);
+
     /* output_data[14,15] at WHEEL_SCALE_INNER_Q15 scale */
-    output_data[14] = multiply_and_scale(neg_delta_x1 + (output_data[8] >> 1), WHEEL_SCALE_INNER_Q15);
-    output_data[15] = multiply_and_scale(neg_delta_y1 + di, WHEEL_SCALE_INNER_Q15);
-	
-	/* output_data[10,11] at WHEEL_SCALE_INNER_Q15 scale */
-    output_data[10] = multiply_and_scale(output_data[8] - half_delta_x1, WHEEL_SCALE_INNER_Q15);
-    output_data[11] = multiply_and_scale(output_data[9] - half_delta_y1, WHEEL_SCALE_INNER_Q15);
-	
-	/* Now fill remaining entries 16-31 by offsetting with base coords */
-	for (i = 0; i < 8; i++) {
-		int idx = i * 2;
-		di = input_data[0];  /* x base */
-		output_data[16 + idx] = di - output_data[idx];
-		output_data[16 + idx + 1] = input_data[1] - output_data[idx + 1];
-		output_data[idx] += di;
-		output_data[idx + 1] += input_data[1];
-	}
+    output_data[14] = multiply_and_scale((short)neg_delta_x1 + (output_data[8] >> 1),
+                                         WHEEL_SCALE_INNER_Q15);
+    output_data[15] = multiply_and_scale((short)neg_delta_y1 + halfDeltaY2, WHEEL_SCALE_INNER_Q15);
+
+    /* output_data[10,11] at WHEEL_SCALE_INNER_Q15 scale */
+    output_data[10] = multiply_and_scale((short)output_data[8] - half_delta_x1, WHEEL_SCALE_INNER_Q15);
+    output_data[11] = multiply_and_scale((short)output_data[9] - half_delta_y1, WHEEL_SCALE_INNER_Q15);
+
+    /* Now fill remaining entries by offsetting with base coords */
+    for (i = 0; i < WHEEL_RING_VERTEX_PAIRS; i++) {
+        int idx = i * 2;
+        output_data[WHEEL_RING_MIRROR_OFFSET + idx] = x1 - output_data[idx];
+        output_data[WHEEL_RING_MIRROR_OFFSET + idx + 1] = input_data[1] - output_data[idx + 1];
+        output_data[idx] += x1;
+        output_data[idx + 1] += input_data[1];
+    }
 }
 
 /** Ported from seg019.asm */
-void build_interpolated_wheel_rings(int* input_data, int* output_data, int interpolation_factor) {
+void
+build_interpolated_wheel_rings(int *input_data, int *output_data, int interpolation_factor) {
     int start_x, start_y, interp_x12, interp_y12, interp_x13, interp_y13;
     int interp[6];
-	
-	start_x = input_data[0];
-	start_y = input_data[1];
-	
-    interp_x12 = multiply_and_scale((short)interpolation_factor, (short)(input_data[2] - start_x)) + start_x;
-    interp_y12 = multiply_and_scale((short)interpolation_factor, (short)(input_data[3] - input_data[1])) + input_data[1];
-    interp_x13 = multiply_and_scale((short)interpolation_factor, (short)(input_data[4] - start_x)) + start_x;
-    interp_y13 = multiply_and_scale((short)interpolation_factor, (short)(input_data[5] - input_data[1])) + input_data[1];
-	
+
+    start_x = input_data[0];
+    start_y = input_data[1];
+
+    interp_x12 = multiply_and_scale((short)interpolation_factor, (short)(input_data[2] - start_x))
+                 + start_x;
+    interp_y12 = multiply_and_scale((short)interpolation_factor,
+                                    (short)(input_data[3] - input_data[1]))
+                 + input_data[1];
+    interp_x13 = multiply_and_scale((short)interpolation_factor, (short)(input_data[4] - start_x))
+                 + start_x;
+    interp_y13 = multiply_and_scale((short)interpolation_factor,
+                                    (short)(input_data[5] - input_data[1]))
+                 + input_data[1];
+
     build_wheel_ring_vertices(input_data, output_data);
     interp[0] = start_x;
     interp[1] = start_y;
@@ -1719,114 +1929,120 @@ void build_interpolated_wheel_rings(int* input_data, int* output_data, int inter
     interp[3] = interp_y12;
     interp[4] = interp_x13;
     interp[5] = interp_y13;
-    build_wheel_ring_vertices(interp, output_data + 32);
+    build_wheel_ring_vertices(interp, output_data + WHEEL_BUFFER_INNER_RING_OFFSET);
 }
 
 /** Ported from seg023.asm */
-void build_wheel_shell_vertices(int* input_data, int* output_data, int interpolation_factor) {
+void
+build_wheel_shell_vertices(int *input_data, int *output_data, int interpolation_factor) {
     int shell_offset_x, shell_offset_y;
-    int* src;
-    int* dest;
-	int i;
-	
+    int *src;
+    int *dest;
+    int i;
+
     build_interpolated_wheel_rings(input_data, output_data, interpolation_factor);
-	
-	/* input_data[6] is at offset 12, input_data[7] at 14 */
+
+    /* input_data[6] is at offset 12, input_data[7] at 14 */
     shell_offset_x = input_data[6] - input_data[0];
     shell_offset_y = input_data[7] - input_data[1];
-	
-	/* Copy 16 POINT2D entries from output_data to output_data+128 with offset applied */
+
+    /* Copy 16 POINT2D entries from output_data to output_data+128 with offset applied */
     src = output_data;
-    dest = output_data + 64;
-	
+    dest = output_data + WHEEL_BUFFER_BACK_FACE_OFFSET;
+
     for (i = 0; i < WHEEL_RING_POINTS; i++) {
-        dest[0] = src[0] + shell_offset_x;  /* x */
-        dest[1] = src[1] + shell_offset_y;  /* y */
-		src += 2;  /* 4 bytes */
-		dest += 2;
-	}
+        dest[0] = src[0] + shell_offset_x; /* x */
+        dest[1] = src[1] + shell_offset_y; /* y */
+        src += 2;                          /* 4 bytes */
+        dest += 2;
+    }
 }
 
 /* Forward declaration for preRender_wheel */
-void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D vertex_lines[]);
+void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count,
+                     struct POINT2D vertex_lines[]);
 
 /** Ported from seg022.asm */
-void preRender_wheel(int* input_data, int output_data, unsigned sidewall_color, unsigned rim_color, unsigned tread_color) {
-	/* Three regions: outer ring (outer_ring_points), inner ring (inner_ring_points), back-face copy (back_face_points) */
-	/* Each region: 16 POINT2D = 32 ints. Original ASM: 64 bytes each, C port: 128 bytes each */
-	unsigned wheelBuf[96];    /* 384 bytes = 3 x 32 ints */
-	struct POINT2D outBuf[18]; /* outline_buffer_region region - 72 bytes for 18 points */
-	struct POINT2D quadVerts[4];
-	int i, minIdx, minY, curIdx;
-	struct POINT2D* wheel0;
-	struct POINT2D* wheel1;
-	struct POINT2D* outPtr;
-	struct POINT2D* outEnd;
-	
-	/* Call helper to fill both wheel point arrays */
-    build_wheel_shell_vertices(input_data, (int*)wheelBuf, output_data);
-	
-	wheel0 = (struct POINT2D*)wheelBuf;        /* 16 outer ring points */
-	wheel1 = (struct POINT2D*)(wheelBuf + 64); /* 16 back-face copy points */
-	
-	/* Draw 15 quads connecting the two wheels */
+void
+preRender_wheel(int *input_data, int output_data, unsigned sidewall_color, unsigned rim_color,
+                unsigned tread_color) {
+    /* Three regions: outer ring (outer_ring_points), inner ring (inner_ring_points), back-face copy (back_face_points) */
+    /* Each region: 16 POINT2D = 32 ints. Original ASM: 64 bytes each, C port: 128 bytes each */
+    unsigned wheelBuf[96];     /* 384 bytes = 3 x 32 ints */
+    struct POINT2D outBuf[18]; /* outline_buffer_region region - 72 bytes for 18 points */
+    struct POINT2D quadVerts[4];
+    int i, minIdx, minY, curIdx;
+    struct POINT2D *wheel0;
+    struct POINT2D *wheel1;
+    struct POINT2D *outPtr;
+    struct POINT2D *outEnd;
+
+    /* Call helper to fill both wheel point arrays */
+    build_wheel_shell_vertices(input_data, (int *)wheelBuf, output_data);
+
+    wheel0 = (struct POINT2D *)wheelBuf;        /* 16 outer ring points */
+    wheel1 = (struct POINT2D *)(wheelBuf + 64); /* 16 back-face copy points */
+
+    /* Draw 15 quads connecting the two wheels */
     for (i = 0; i < WHEEL_SIDE_QUAD_COUNT; i++) {
-		quadVerts[0] = wheel0[i];
-		quadVerts[1] = wheel0[i+1];
-		quadVerts[2] = wheel1[i+1];
-		quadVerts[3] = wheel1[i];
-        draw_wheel_quad(sidewall_color, 4, quadVerts);
-	}
-	
-	/* Draw wrap-around quad (i=15 to i=0) */
-	quadVerts[0] = wheel0[15];
-	quadVerts[1] = wheel0[0];
-	quadVerts[2] = wheel1[0];
-	quadVerts[3] = wheel1[15];
-    draw_wheel_quad(sidewall_color, 4, quadVerts);
-	
-	/* Find point with minimum Y in wheel0 */
-	minY = wheel0[0].py;
-	minIdx = 0;
+        quadVerts[0] = wheel0[i];
+        quadVerts[1] = wheel0[i + 1];
+        quadVerts[2] = wheel1[i + 1];
+        quadVerts[3] = wheel1[i];
+        draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
+    }
+
+    /* Draw wrap-around quad (last to first) */
+    quadVerts[0] = wheel0[WHEEL_SIDE_QUAD_COUNT];
+    quadVerts[1] = wheel0[0];
+    quadVerts[2] = wheel1[0];
+    quadVerts[3] = wheel1[WHEEL_SIDE_QUAD_COUNT];
+    draw_wheel_quad(sidewall_color, WHEEL_QUAD_VERTEX_COUNT, quadVerts);
+
+    /* Find point with minimum Y in wheel0 */
+    minY = wheel0[0].py;
+    minIdx = 0;
     for (i = 1; i < WHEEL_RING_POINTS; i++) {
-		if (wheel0[i].py < minY) {
-			minY = wheel0[i].py;
-			minIdx = i;
-		}
-	}
-	
-	/* Build first half outline: walk forward from minIdx, collecting 9 points from each wheel */
-	/* Original ASM uses outer ring (outer_ring_points) and inner ring (inner_ring_points) for the cap outline */
-	struct POINT2D* innerRing = (struct POINT2D*)(wheelBuf + 32);
-	outPtr = outBuf;
-	outEnd = outBuf + 17;  /* Last entry at index 17 */
-	curIdx = minIdx;
-	for (i = 0; i <= 8; i++) {
-		*outPtr = wheel0[curIdx];
-		*outEnd = innerRing[curIdx];
-		outPtr++;
-		outEnd--;
-		curIdx++;
-        if (curIdx >= WHEEL_RING_POINTS) curIdx = 0;
-	}
-    preRender_default_alt(rim_color, WHEEL_RIM_OUTLINE_LINECOUNT, (unsigned*)outBuf);
-	
-	/* Build second half outline: walk backward from minIdx */
-	outPtr = outBuf;
-	outEnd = outBuf + 17;
-	curIdx = minIdx;
-	for (i = 0; i < 9; i++) {
-		*outPtr = wheel0[curIdx];
-		*outEnd = innerRing[curIdx];
-		outPtr++;
-		outEnd--;
-		curIdx--;
-        if (curIdx < 0) curIdx = WHEEL_SIDE_QUAD_COUNT;
-	}
-    preRender_default_alt(rim_color, WHEEL_RIM_OUTLINE_LINECOUNT, (unsigned*)outBuf);
-	
-	/* Draw inner ring (tread) - original ASM uses inner_ring_points (inner ring) */
-    preRender_default_alt(tread_color, WHEEL_TREAD_LINECOUNT, (unsigned*)innerRing);
+        if (wheel0[i].py < minY) {
+            minY = wheel0[i].py;
+            minIdx = i;
+        }
+    }
+
+    /* Build first half outline: walk forward from minIdx, collecting 9 points from each wheel */
+    /* Original ASM uses outer ring (outer_ring_points) and inner ring (inner_ring_points) for the cap outline */
+    struct POINT2D *innerRing = (struct POINT2D *)(wheelBuf + WHEEL_BUFFER_INNER_RING_OFFSET);
+    outPtr = outBuf;
+    outEnd = outBuf + WHEEL_OUTLINE_LAST_POINT_INDEX;
+    curIdx = minIdx;
+    for (i = 0; i < WHEEL_OUTLINE_ARC_POINT_COUNT; i++) {
+        *outPtr = wheel0[curIdx];
+        *outEnd = innerRing[curIdx];
+        outPtr++;
+        outEnd--;
+        curIdx++;
+        if (curIdx >= WHEEL_RING_POINTS)
+            curIdx = 0;
+    }
+    preRender_default_alt(rim_color, WHEEL_RIM_OUTLINE_LINECOUNT, (unsigned *)outBuf);
+
+    /* Build second half outline: walk backward from minIdx */
+    outPtr = outBuf;
+    outEnd = outBuf + WHEEL_OUTLINE_LAST_POINT_INDEX;
+    curIdx = minIdx;
+    for (i = 0; i < WHEEL_OUTLINE_ARC_POINT_COUNT; i++) {
+        *outPtr = wheel0[curIdx];
+        *outEnd = innerRing[curIdx];
+        outPtr++;
+        outEnd--;
+        curIdx--;
+        if (curIdx < 0)
+            curIdx = WHEEL_SIDE_QUAD_COUNT;
+    }
+    preRender_default_alt(rim_color, WHEEL_RIM_OUTLINE_LINECOUNT, (unsigned *)outBuf);
+
+    /* Draw inner ring (tread) - original ASM uses inner_ring_points (inner ring) */
+    preRender_default_alt(tread_color, WHEEL_TREAD_LINECOUNT, (unsigned *)innerRing);
 }
 
 struct DRAW_HEALTH_STATS {
@@ -1848,8 +2064,9 @@ struct DRAW_HEALTH_STATS {
  * @param count   Number of points.
  * @param depth   Polygon depth key.
  */
-static void draw_health_note_poly(struct DRAW_HEALTH_STATS* stats, const int* points, int count, unsigned short depth)
-{
+static void
+draw_health_note_poly(struct DRAW_HEALTH_STATS *stats, const int *points, int count,
+                      unsigned short depth) {
     int i;
     int minx, maxx, miny, maxy;
 
@@ -1861,25 +2078,25 @@ static void draw_health_note_poly(struct DRAW_HEALTH_STATS* stats, const int* po
     minx = maxx = points[0];
     miny = maxy = points[1];
     for (i = 1; i < count; ++i) {
-        int x = points[i * 2];
+        int x = points[(ptrdiff_t)(i * 2)];
         int y = points[i * 2 + 1];
-        if (x < minx) minx = x;
-        if (x > maxx) maxx = x;
-        if (y < miny) miny = y;
-        if (y > maxy) maxy = y;
+        if (x < minx)
+            minx = x;
+        if (x > maxx)
+            maxx = x;
+        if (y < miny)
+            miny = y;
+        if (y > maxy)
+            maxy = y;
     }
 
-    if (maxx < sprite1.sprite_left2 ||
-        minx >= sprite1.sprite_widthsum ||
-        maxy < sprite1.sprite_top ||
-        miny >= sprite1.sprite_height) {
+    if (maxx < sprite1.sprite_left2 || minx >= sprite1.sprite_widthsum || maxy < sprite1.sprite_top
+        || miny >= sprite1.sprite_height) {
         stats->fully_clipped++;
     }
 
-    if (minx < -DRAW_HEALTH_EXTREME_COORD_LIMIT ||
-        maxx > DRAW_HEALTH_EXTREME_COORD_LIMIT ||
-        miny < -DRAW_HEALTH_EXTREME_COORD_LIMIT ||
-        maxy > DRAW_HEALTH_EXTREME_COORD_LIMIT) {
+    if (minx < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxx > DRAW_HEALTH_EXTREME_COORD_LIMIT
+        || miny < -DRAW_HEALTH_EXTREME_COORD_LIMIT || maxy > DRAW_HEALTH_EXTREME_COORD_LIMIT) {
         stats->extreme_coords++;
     }
 
@@ -1893,8 +2110,8 @@ static void draw_health_note_poly(struct DRAW_HEALTH_STATS* stats, const int* po
  *
  * @param stats  Accumulator for draw-health counters.
  */
-static void draw_health_validate_links(struct DRAW_HEALTH_STATS* stats)
-{
+static void
+draw_health_validate_links(struct DRAW_HEALTH_STATS *stats) {
     int node = zorder_shape_list[POLYINFO_HEAD_INDEX];
     unsigned walked = 0;
     unsigned short prev_depth = USHRT_MAX;
@@ -1927,29 +2144,29 @@ static void draw_health_validate_links(struct DRAW_HEALTH_STATS* stats)
  * Iterates over all accepted polygons, reads material/pattern info,
  * and calls the appropriate preRender function.
  */
-void get_a_poly_info(void) {
-	unsigned mattype;
-	int matcolor;
-	int maxcount;
-	int matpattern;
-	int pattype2;
-	int regdi;
-	unsigned char * polyinfoptr;
-	int * pdata;
-	unsigned counter;
-	int j;
-    int polygon_points_xy[256];
-    const unsigned char* clrlist;
-    const unsigned char* clrlist2;
-    const unsigned char* patlist;
-    const unsigned char* patlist2;
+void
+get_a_poly_info(void) {
+    unsigned mattype;
+    int matcolor;
+    int maxcount;
+    int matpattern;
+    int pattype2;
+    int poly_index;
+    unsigned char *polyinfoptr;
+    int *pdata;
+    unsigned counter;
+    int j;
+    int polygon_points_xy[VERTEX_CACHE_COUNT];
+    const unsigned char *clrlist;
+    const unsigned char *clrlist2;
+    const unsigned char *patlist;
+    const unsigned char *patlist2;
     static int draw_health_enabled = -1;
     static int draw_health_every = 30;
     static int draw_strict_enabled = -1;
     static int draw_strict_every = 60;
     static int draw_strict_max_depth = 4095;
     static int draw_strict_max_abs_coord = 8192;
-    static unsigned draw_strict_drop_total = 0;
     static unsigned draw_strict_log_count = 0;
 
     struct DRAW_HEALTH_STATS draw_health;
@@ -1965,199 +2182,207 @@ void get_a_poly_info(void) {
         draw_health_validate_links(&draw_health);
     }
 
-    regdi = POLYINFO_HEAD_INDEX;
-	for (counter = 0; counter < polyinfonumpolys; counter++) {
-		regdi = zorder_shape_list[regdi];
-        if (regdi < 0 || regdi >= POLYINFO_MAX_POLYS) {
+    poly_index = POLYINFO_HEAD_INDEX;
+    for (counter = 0; counter < polyinfonumpolys; counter++) {
+        poly_index = zorder_shape_list[poly_index];
+        if (poly_index < 0 || poly_index >= POLYINFO_MAX_POLYS) {
             break;
         }
-        if (polyinfoptrs[regdi] == 0) {
+        if (polyinfoptrs[poly_index] == 0) {
             break;
         }
-		polyinfoptr = (unsigned char *)polyinfoptrs[regdi];
+        polyinfoptr = (unsigned char *)polyinfoptrs[poly_index];
         if (draw_strict_enabled) {
-            unsigned short depth_check = *(unsigned short*)polyinfoptr;
+            unsigned short depth_check = *(unsigned short *)polyinfoptr;
             if ((int)depth_check <= 0 || (int)depth_check > draw_strict_max_depth) {
-                draw_strict_drop_total++;
                 if (draw_strict_log_count < DRAW_STRICT_LOG_LIMIT) {
                     draw_strict_log_count++;
                 }
                 continue;
             }
         }
-		mattype = polyinfoptr[2];
-		if (mattype >= MATERIAL_TYPE_INVALID_START) {
+        mattype = polyinfoptr[2];
+        if (mattype >= MATERIAL_TYPE_INVALID_START) {
             mattype = 0;
         }
-		clrlist = material_color_list;
-        if (material_clrlist_ptr_cpy != 0 && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
-			clrlist = material_clrlist_ptr_cpy;
-		}
-		matcolor = (int)clrlist[(unsigned)mattype * 2u];
+        clrlist = material_color_list;
+        if (material_clrlist_ptr_cpy != 0
+            && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+            clrlist = material_clrlist_ptr_cpy;
+        }
+        matcolor = (int)clrlist[(size_t)((unsigned)mattype * 2u)];
 
-		switch ((signed char)polyinfoptr[4]) {
-		case 0: /* polygon */
-            {
-                int drop_poly = 0;
-			maxcount = (signed char)polyinfoptr[3];
-            if (maxcount <= 1 || maxcount > (int)(sizeof(polygon_points_xy) / (sizeof(polygon_points_xy[0]) * 2))) {
+        switch ((signed char)polyinfoptr[4]) {
+        case 0: /* polygon */
+        {
+            bool drop_poly = false;
+            maxcount = (int)(signed char)polyinfoptr[3];
+            if (maxcount <= 1
+                || maxcount
+                       > (int)(sizeof(polygon_points_xy) / (sizeof(polygon_points_xy[0]) * 2))) {
                 break;
             }
             pdata = (int *)(polyinfoptr + POLYINFO_ENTRY_HEADER_SIZE);
-			for (j = 0; j < maxcount; j++) {
-				polygon_points_xy[j * 2]     = pdata[j * 2];
-				polygon_points_xy[j * 2 + 1] = pdata[j * 2 + 1];
+            for (j = 0; j < maxcount; j++) {
+                polygon_points_xy[(ptrdiff_t)(j * 2)] = pdata[(ptrdiff_t)(j * 2)];
+                polygon_points_xy[j * 2 + 1] = pdata[j * 2 + 1];
                 {
-                    int ax = polygon_points_xy[j * 2] < 0 ? -polygon_points_xy[j * 2] : polygon_points_xy[j * 2];
-                    int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1] : polygon_points_xy[j * 2 + 1];
+                    int ax = polygon_points_xy[(ptrdiff_t)(j * 2)] < 0 ? -polygon_points_xy[(ptrdiff_t)(j * 2)]
+                                                          : polygon_points_xy[(ptrdiff_t)(j * 2)];
+                    int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1]
+                                                              : polygon_points_xy[j * 2 + 1];
                     if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT) {
-                        drop_poly = 1;
+                        drop_poly = true;
                     }
                 }
-			}
+            }
             if (drop_poly) {
                 break;
             }
 
             patlist = material_pattern_list;
-            if (material_patlist_ptr_cpy != 0 && (uintptr_t)material_patlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+            if (material_patlist_ptr_cpy != 0
+                && (uintptr_t)material_patlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                 patlist = material_patlist_ptr_cpy;
             }
-            matpattern = (int)patlist[(unsigned)mattype * 2u];
-			pattype2 = 0;
-			if (matpattern == 1 || matpattern == 2) {
+            matpattern = (int)patlist[(size_t)((unsigned)mattype * 2u)];
+            pattype2 = 0;
+            if (matpattern == 1 || matpattern == 2) {
                 patlist2 = material_pattern2_list;
-                if (material_patlist2_ptr_cpy != 0 && (uintptr_t)material_patlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+                if (material_patlist2_ptr_cpy != 0
+                    && (uintptr_t)material_patlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                     patlist2 = material_patlist2_ptr_cpy;
                 }
                 pattype2 = (int)material_table_word_at(patlist2, (unsigned)mattype);
             }
-			if (matpattern == 0) {
-                preRender_default(matcolor, maxcount, (unsigned int*)polygon_points_xy);
-            } else if (matpattern == 1) {
+            if (matpattern == 0) {
+                preRender_default(matcolor, maxcount, (unsigned int *)polygon_points_xy);
+            }
+            else if (matpattern == 1) {
                 if (pattype2 != 0) {
-                    preRender_patterned(pattype2, matcolor, maxcount, (struct POINT2D*)polygon_points_xy);
+                    preRender_patterned(pattype2, matcolor, maxcount,
+                                        (struct POINT2D *)polygon_points_xy);
                 }
                 /* pattype2 == 0: pixel mask is 0 → polygon is invisible, skip (matches original ASM jz _fill_next) */
-            } else if (matpattern == 2) {
+            }
+            else if (matpattern == 2) {
                 clrlist2 = material_color_list;
-                if (material_clrlist2_ptr_cpy != 0 && (uintptr_t)material_clrlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+                if (material_clrlist2_ptr_cpy != 0
+                    && (uintptr_t)material_clrlist2_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                     clrlist2 = material_clrlist2_ptr_cpy;
                 }
-                preRender_two_color_pattern_flag1(pattype2,
-                    clrlist2[(unsigned)mattype * 2u],
-                    matcolor, maxcount, (struct POINT2D*)polygon_points_xy);
-			}
+                preRender_two_color_pattern_flag1(pattype2, clrlist2[(size_t)((unsigned)mattype * 2u)],
+                                                  matcolor, maxcount,
+                                                  (struct POINT2D *)polygon_points_xy);
+            }
             if (draw_health_enabled) {
-                draw_health_note_poly(&draw_health, polygon_points_xy, maxcount, *(unsigned short*)polyinfoptr);
+                draw_health_note_poly(&draw_health, polygon_points_xy, maxcount,
+                                      *(unsigned short *)polyinfoptr);
                 draw_health.drawn_total++;
             }
-			break;
+            break;
+        }
+        case 1: /* line */
+        {
+            int x0 = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
+            int y0 = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
+            int x1 = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
+            int y1 = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET);
+            int a0 = x0 < 0 ? -x0 : x0;
+            int b0 = y0 < 0 ? -y0 : y0;
+            int a1 = x1 < 0 ? -x1 : x1;
+            int b1 = y1 < 0 ? -y1 : y1;
+            if (a0 > RENDER_COORD_ABS_LIMIT || b0 > RENDER_COORD_ABS_LIMIT
+                || a1 > RENDER_COORD_ABS_LIMIT || b1 > RENDER_COORD_ABS_LIMIT) {
+                continue;
             }
-		case 1: /* line */
-            {
-                int x0 = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
-                int y0 = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
-                int x1 = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
-                int y1 = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET);
-                int a0 = x0 < 0 ? -x0 : x0;
-                int b0 = y0 < 0 ? -y0 : y0;
-                int a1 = x1 < 0 ? -x1 : x1;
-                int b1 = y1 < 0 ? -y1 : y1;
-                if (a0 > RENDER_COORD_ABS_LIMIT || b0 > RENDER_COORD_ABS_LIMIT ||
-                    a1 > RENDER_COORD_ABS_LIMIT || b1 > RENDER_COORD_ABS_LIMIT) {
-                    continue;
-                }
-            }
+        }
             if (draw_health_enabled) {
                 int line_pts[4];
-                line_pts[0] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
-                line_pts[1] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
-                line_pts[2] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
-                line_pts[3] = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET);
-                draw_health_note_poly(&draw_health, line_pts, 2, *(unsigned short*)polyinfoptr);
+                line_pts[0] = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
+                line_pts[1] = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
+                line_pts[2] = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
+                line_pts[3] = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET);
+                draw_health_note_poly(&draw_health, line_pts, LINE_VERTEX_COUNT,
+                                      *(unsigned short *)polyinfoptr);
                 draw_health.drawn_total++;
             }
-            preRender_line(
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET),
-				matcolor);
-			break;
-		case 2: /* sphere */
-            {
-                int sx = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
-                int sy = *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
-                int sr = *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
-                int ax = sx < 0 ? -sx : sx;
-                int ay = sy < 0 ? -sy : sy;
-                if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT || sr > RENDER_COORD_ABS_LIMIT) {
-                    continue;
-                }
+            preRender_line(*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
+                           *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
+                           *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET),
+                           *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y1_OFFSET), matcolor);
+            break;
+        case PRIMITIVE_TYPE_SPHERE: {
+            int sx = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET);
+            int sy = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET);
+            int sr = (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET);
+            int ax = sx < 0 ? -sx : sx;
+            int ay = sy < 0 ? -sy : sy;
+            if (ax > RENDER_COORD_ABS_LIMIT || ay > RENDER_COORD_ABS_LIMIT
+                || sr > RENDER_COORD_ABS_LIMIT) {
+                continue;
             }
+        }
             if (draw_health_enabled) {
                 draw_health.drawn_total++;
-                if (*(unsigned short*)polyinfoptr < NEAR_PLANE_Z) {
+                if (*(unsigned short *)polyinfoptr < NEAR_PLANE_Z) {
                     draw_health.near_depth++;
                 }
             }
-			preRender_sphere(
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET),
-				matcolor);
-			break;
-		case 3: { /* wheel */
-            const struct POINT2D* wheel_pts;
+            preRender_sphere((int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
+                             (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
+                             (int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X1_OFFSET), matcolor);
+            break;
+        case PRIMITIVE_TYPE_WHEEL: {
+            const struct POINT2D *wheel_pts;
             int wheel_interp;
-			int drop_wheel = 0;
+            bool drop_wheel = false;
             clrlist = material_color_list;
-            if (material_clrlist_ptr_cpy != 0 && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
+            if (material_clrlist_ptr_cpy != 0
+                && (uintptr_t)material_clrlist_ptr_cpy >= POLYLIST_PTR_SANITY_MIN) {
                 clrlist = material_clrlist_ptr_cpy;
             }
-            wheel_pts = (const struct POINT2D*)(polyinfoptr + POLYINFO_ENTRY_HEADER_SIZE);
-			for (j = 0; j < 4; j++) {
-                polygon_points_xy[j * 2]     = wheel_pts[j].px;
+            wheel_pts = (const struct POINT2D *)(polyinfoptr + POLYINFO_ENTRY_HEADER_SIZE);
+            for (j = 0; j < 4; j++) {
+                polygon_points_xy[(ptrdiff_t)(j * 2)] = wheel_pts[j].px;
                 polygon_points_xy[j * 2 + 1] = wheel_pts[j].py;
-				{
-					int ax = polygon_points_xy[j * 2] < 0 ? -polygon_points_xy[j * 2] : polygon_points_xy[j * 2];
-					int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1] : polygon_points_xy[j * 2 + 1];
+                {
+                    int ax = polygon_points_xy[(ptrdiff_t)(j * 2)] < 0 ? -polygon_points_xy[(ptrdiff_t)(j * 2)]
+                                                          : polygon_points_xy[(ptrdiff_t)(j * 2)];
+                    int ay = polygon_points_xy[j * 2 + 1] < 0 ? -polygon_points_xy[j * 2 + 1]
+                                                              : polygon_points_xy[j * 2 + 1];
                     if (ax > WHEEL_VERTEX_CONTROL_ABS_MAX || ay > WHEEL_VERTEX_CONTROL_ABS_MAX) {
-						drop_wheel = 1;
-					}
-				}
-			}
+                        drop_wheel = true;
+                    }
+                }
+            }
             if (drop_wheel) {
                 continue;
             }
-			if (draw_health_enabled) {
-				draw_health_note_poly(&draw_health, polygon_points_xy, 4, *(unsigned short*)polyinfoptr);
-				draw_health.drawn_total++;
-			}
+            if (draw_health_enabled) {
+                draw_health_note_poly(&draw_health, polygon_points_xy, WHEEL_QUAD_VERTEX_COUNT,
+                                      *(unsigned short *)polyinfoptr);
+                draw_health.drawn_total++;
+            }
             /* Original ASM: mov ax, (offset trkObjectList.ss_ssOvelay+460h)
                This is a compile-time constant = dseg offset 8344 + 8 + 1120 = 9472.
                Used as Q1.14 fixed-point interpolation factor (9472/16384 ≈ 0.578)
                controlling the inner wheel ring radius (tire width ratio). */
             wheel_interp = WHEEL_INTERP_Q14;
-            preRender_wheel(polygon_points_xy,
-				wheel_interp,
-				matcolor,
-                clrlist[((unsigned)mattype + 1u) * 2u],
-                clrlist[((unsigned)mattype + 2u) * 2u]);
-			break;
-		}
-		case 5: /* pixel */
-			putpixel_single_clipped(
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
-                *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET),
-				matcolor);
-			break;
-		default:
-			break;
-		}
-	}
-	polyinfo_reset();
+            preRender_wheel(polygon_points_xy, wheel_interp, matcolor,
+                            clrlist[(size_t)(((unsigned)mattype + 1u) * 2u)],
+                            clrlist[(size_t)(((unsigned)mattype + 2u) * 2u)]);
+            break;
+        }
+        case PRIMITIVE_TYPE_PIXEL:
+            putpixel_single_clipped((int)*(unsigned *)(polyinfoptr + POLYINFO_LINE_X0_OFFSET),
+                                    *(unsigned *)(polyinfoptr + POLYINFO_LINE_Y0_OFFSET), matcolor);
+            break;
+        default:
+            break;
+        }
+    }
+    polyinfo_reset();
     (void)draw_health_every;
     (void)draw_strict_every;
     (void)draw_strict_max_abs_coord;
@@ -2169,12 +2394,13 @@ void get_a_poly_info(void) {
  * @param vertex_line_count Number of vertices.
  * @param vertex_lines Interleaved x/y coordinates.
  */
-void preRender_default_alt(unsigned fill_color, unsigned vertex_line_count, unsigned* vertex_lines) {
-	//return preRender_default_alt_(fill_color, vertex_line_count, vertex_lines);
+void
+preRender_default_alt(unsigned fill_color, unsigned vertex_line_count, unsigned *vertex_lines) {
+    //return preRender_default_alt_(fill_color, vertex_line_count, vertex_lines);
 
     spritefunc = &draw_filled_lines;
     imagefunc = &preRender_line;
-    preRender_default_impl(fill_color, vertex_line_count, (int*)vertex_lines, 0);
+    preRender_default_impl(fill_color, vertex_line_count, (int *)vertex_lines, 0);
 }
 
 /**
@@ -2184,52 +2410,42 @@ void preRender_default_alt(unsigned fill_color, unsigned vertex_line_count, unsi
  * @param vertex_line_count  Number of vertex pairs.
  * @param vertex_lines       Array of vertex coordinate pairs.
  */
-void preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned* vertex_lines) {
-	//return preRender_default_(fill_color, vertex_line_count, vertex_lines);
+void
+preRender_default(unsigned fill_color, unsigned vertex_line_count, unsigned *vertex_lines) {
+    //return preRender_default_(fill_color, vertex_line_count, vertex_lines);
 
     spritefunc = &draw_filled_lines;
     imagefunc = &preRender_line;
-    preRender_default_impl(fill_color, vertex_line_count, (int*)vertex_lines, 1);
+    preRender_default_impl(fill_color, vertex_line_count, (int *)vertex_lines, 1);
 }
 
 /** @brief Draw wheel quad.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
-void draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D vertex_lines[]) {
+void
+draw_wheel_quad(unsigned fill_color, unsigned vertex_line_count, struct POINT2D vertex_lines[]) {
 
     //return draw_wheel_quad_(fill_color, vertex_line_count, &vertex_lines);
 
     spritefunc = &draw_filled_lines;
     imagefunc = &preRender_line;
-    preRender_default_impl(fill_color, vertex_line_count, (int*)vertex_lines, 0);
+    preRender_default_impl(fill_color, vertex_line_count, (int *)vertex_lines, 0);
 }
 
 
 /** @brief Draw two color patterned lines sprite.
- * @param color Parameter value.
- * @param numlines Parameter value.
- * @param y Parameter value.
- * @param x2arr Parameter value.
- * @param x1arr Parameter value.
- * @return Function return value.
  */
-static void draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numlines, unsigned short y,
-    unsigned short* x2arr, unsigned short* x1arr) {
+static void
+draw_two_color_patterned_lines_sprite(unsigned short color, unsigned short numlines,
+                                      unsigned short y, unsigned short *x2arr,
+                                      unsigned short *x1arr) {
     draw_two_color_patterned_lines((unsigned char)color, numlines, y, x2arr, x1arr);
 }
 
 /** @brief Draw patterned lines sprite.
- * @param color Parameter value.
- * @param numlines Parameter value.
- * @param y Parameter value.
- * @param x2arr Parameter value.
- * @param x1arr Parameter value.
- * @return Function return value.
  */
-static void draw_patterned_lines_sprite(unsigned short color, unsigned short numlines, unsigned short y,
-    unsigned short* x2arr, unsigned short* x1arr) {
+static void
+draw_patterned_lines_sprite(unsigned short color, unsigned short numlines, unsigned short y,
+                            unsigned short *x2arr, unsigned short *x1arr) {
     draw_patterned_lines((unsigned char)color, numlines, y, x2arr, x1arr);
 }
 
@@ -2243,42 +2459,41 @@ static void draw_patterned_lines_sprite(unsigned short color, unsigned short num
  * @param vertex_lines       Vertex coordinate array.
  * @param variant_flag       Variant rendering flag.
  */
-static void preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_color, unsigned fill_color, unsigned vertex_line_count, struct POINT2D* vertex_lines, unsigned variant_flag) {
+static void
+preRender_two_color_pattern_impl(unsigned pattern, unsigned alt_color, unsigned fill_color,
+                                 unsigned vertex_line_count, struct POINT2D *vertex_lines,
+                                 unsigned variant_flag) {
     spritefunc = draw_two_color_patterned_lines_sprite;
     imagefunc = &preRender_line;
 
     polygon_pattern_type = pattern;
     polygon_alternate_color = alt_color;
-    preRender_default_impl(fill_color, vertex_line_count, (int*)vertex_lines, variant_flag);
+    preRender_default_impl(fill_color, vertex_line_count, (int *)vertex_lines, variant_flag);
 }
 
 /** @brief Prerender two color pattern flag1.
- * @param pattern Parameter value.
- * @param alt_color Parameter value.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
-void preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color, unsigned vertex_line_count, struct POINT2D* vertex_lines) {
+void
+preRender_two_color_pattern_flag1(unsigned pattern, unsigned alt_color, unsigned fill_color,
+                                  unsigned vertex_line_count, struct POINT2D *vertex_lines) {
 
-    preRender_two_color_pattern_impl(pattern, alt_color, fill_color, vertex_line_count, vertex_lines, 1);
+    preRender_two_color_pattern_impl(pattern, alt_color, fill_color, vertex_line_count,
+                                     vertex_lines, 1);
 }
 
 /** @brief Prerender patterned.
- * @param pattern_type Parameter value.
- * @param fill_color Parameter value.
- * @param vertex_line_count Parameter value.
- * @param vertex_lines Parameter value.
  */
-void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count, struct POINT2D* vertex_lines) {
+void
+preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned vertex_line_count,
+                    struct POINT2D *vertex_lines) {
 
-	//return preRender_patterned_(pattern_type, fill_color, vertex_line_count, vertex_lines);
+    //return preRender_patterned_(pattern_type, fill_color, vertex_line_count, vertex_lines);
 
     spritefunc = draw_patterned_lines_sprite;
-	imagefunc = &preRender_line;
-	polygon_pattern_type = pattern_type;
-	
-    preRender_default_impl(fill_color, vertex_line_count, (int*)vertex_lines, 0);
+    imagefunc = &preRender_line;
+    polygon_pattern_type = pattern_type;
+
+    preRender_default_impl(fill_color, vertex_line_count, (int *)vertex_lines, 0);
 }
 
 /**
@@ -2287,22 +2502,22 @@ void preRender_patterned(unsigned pattern_type, unsigned fill_color, unsigned ve
  * @param fill_color         Fill colour index.
  * @param vertex_line_count  Number of vertex line entries.
 /** @brief Array.
- * @param variant_flag Parameter value.
- * @return Function return value.
  */
-void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int* vertex_lines, unsigned variant_flag) {
+void
+preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int *vertex_lines,
+                       unsigned variant_flag) {
     int16_t scanline_x_bounds[SCANLINE_HEIGHT + SCANLINE_HEIGHT];
-    int16_t* scanline_bounds;
+    int16_t *scanline_bounds;
     int min_y, max_y;
     int right_clip_bound, left_clip_bound;
 
-	int* vertex_line_ptr;
+    int *vertex_line_ptr;
     int minx, maxx;
     unsigned i;
     int temp0x, temp0y, temp1y;
 
     int sprite1_sprite_left2 = sprite1.sprite_left2;
-        (void)variant_flag;
+    (void)variant_flag;
 
     int sprite1_sprite_widthsum = sprite1.sprite_widthsum;
     int sprite1_sprite_top = sprite1.sprite_top;
@@ -2312,11 +2527,13 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
     {
         int si;
         for (si = 0; si < SCANLINE_HEIGHT; si++) {
-            scanline_x_bounds[si]       = (int16_t)sprite1_sprite_widthsum; /* x1 (left) = far right -> empty */
-            scanline_x_bounds[SCANLINE_HEIGHT + si] = (int16_t)(sprite1_sprite_left2 - 1); /* x2 (right) = far left -> empty */
+            scanline_x_bounds[si]
+                = (int16_t)sprite1_sprite_widthsum; /* x1 (left) = far right -> empty */
+            scanline_x_bounds[SCANLINE_HEIGHT + si]
+                = (int16_t)(sprite1_sprite_left2 - 1); /* x2 (right) = far left -> empty */
         }
     }
-	
+
     vertex_line_ptr = vertex_lines;
     scanline_bounds = scanline_x_bounds;
     left_clip_bound = sprite1_sprite_left2;
@@ -2325,62 +2542,58 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
         return;
     }
     max_y = min_y = vertex_line_ptr[1];
-	maxx = minx = vertex_line_ptr[0];
-	if (vertex_line_count - 1 == 0) {
-        imagefunc((unsigned short)vertex_line_ptr[0],
-                  (unsigned short)vertex_line_ptr[1],
-                  (unsigned short)vertex_line_ptr[0],
-                  (unsigned short)vertex_line_ptr[1],
+    maxx = minx = vertex_line_ptr[0];
+    if (vertex_line_count - 1 == 0) {
+        imagefunc((unsigned short)vertex_line_ptr[0], (unsigned short)vertex_line_ptr[1],
+                  (unsigned short)vertex_line_ptr[0], (unsigned short)vertex_line_ptr[1],
                   fill_color);
-		return ;
-	}
+        return;
+    }
 
-	for (i = 1; i < vertex_line_count; i++) {
+    for (i = 1; i < vertex_line_count; i++) {
         if (vertex_lines[i * 2 + 1] <= min_y) {
-            min_y = vertex_lines[i*2 + 1];
-		}
+            min_y = vertex_lines[i * 2 + 1];
+        }
         if (vertex_lines[i * 2 + 1] > max_y) {
             max_y = vertex_lines[i * 2 + 1];
-		}
-		
-		if (vertex_lines[i * 2 + 0] < minx) {
-			minx = vertex_lines[i * 2 + 0];
-		}
-		if (vertex_lines[i * 2 + 0] > maxx) {
-			maxx = vertex_lines[i * 2 + 0];
-		}
-		
-	}
+        }
+
+        if (vertex_lines[i * 2 + 0] < minx) {
+            minx = vertex_lines[i * 2 + 0];
+        }
+        if (vertex_lines[i * 2 + 0] > maxx) {
+            maxx = vertex_lines[i * 2 + 0];
+        }
+    }
 
     if (maxx < left_clip_bound) {
         return;
     }
     if (minx >= right_clip_bound) {
-        return ;
+        return;
     }
     if (max_y < sprite1_sprite_top) {
-        return ;
+        return;
     }
     if (min_y >= sprite1_sprite_height) {
-        return ;
+        return;
     }
     if (max_y == min_y) {
         /* Single-scanline polygon: draw as a clipped horizontal fill.
 /** @brief Imagefunc.
- * @param them Parameter value.
- * @param sprite1_sprite_height Parameter value.
- * @return Function return value.
  */
         if (min_y >= sprite1_sprite_top && min_y < sprite1_sprite_height) {
             int cx1 = minx, cx2 = maxx;
-            if (cx1 < left_clip_bound) cx1 = left_clip_bound;
-            if (cx2 > right_clip_bound) cx2 = right_clip_bound;
+            if (cx1 < left_clip_bound)
+                cx1 = left_clip_bound;
+            if (cx2 > right_clip_bound)
+                cx2 = right_clip_bound;
             if (cx1 <= cx2) {
                 scanline_x_bounds[min_y] = (int16_t)cx1;
                 scanline_x_bounds[SCANLINE_HEIGHT + min_y] = (int16_t)cx2;
                 spritefunc((unsigned short)fill_color, 1, (unsigned short)min_y,
-                           (unsigned short*)&scanline_x_bounds[SCANLINE_HEIGHT + min_y],
-                           (unsigned short*)&scanline_x_bounds[min_y]);
+                           (unsigned short *)&scanline_x_bounds[SCANLINE_HEIGHT + min_y],
+                           (unsigned short *)&scanline_x_bounds[min_y]);
             }
         }
         return;
@@ -2389,11 +2602,13 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
         /* Single-column polygon: draw a clipped vertical line */
         if (minx >= left_clip_bound && minx <= right_clip_bound) {
             int cy1 = min_y, cy2 = max_y;
-            if (cy1 < sprite1_sprite_top) cy1 = sprite1_sprite_top;
-            if (cy2 >= sprite1_sprite_height) cy2 = sprite1_sprite_height - 1;
+            if (cy1 < sprite1_sprite_top)
+                cy1 = sprite1_sprite_top;
+            if (cy2 >= sprite1_sprite_height)
+                cy2 = sprite1_sprite_height - 1;
             if (cy1 <= cy2) {
-                imagefunc((unsigned short)minx, (unsigned short)cy1,
-                          (unsigned short)minx, (unsigned short)cy2, fill_color);
+                imagefunc((unsigned short)minx, (unsigned short)cy1, (unsigned short)minx,
+                          (unsigned short)cy2, fill_color);
             }
         }
         return;
@@ -2416,8 +2631,14 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
             continue;
         }
         if (y0 > y1) {
-            int tx = x0; x0 = x1; x1 = tx;
-            { int ty = y0; y0 = y1; y1 = ty; }
+            int tx = x0;
+            x0 = x1;
+            x1 = tx;
+            {
+                int ty = y0;
+                y0 = y1;
+                y1 = ty;
+            }
         }
 
         y_start = y0;
@@ -2460,24 +2681,21 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
 
     temp0y = max_y;
 
-	if (temp0y >= sprite1_sprite_height) 
-		temp0y = sprite1_sprite_height - 1;
+    if (temp0y >= sprite1_sprite_height)
+        temp0y = sprite1_sprite_height - 1;
     temp1y = min_y;
-	if (temp1y < sprite1_sprite_top)
-		temp1y = sprite1_sprite_top;
-	
-	temp0x = temp0y - temp1y;
-	if (temp0x <= 0) {
-        return ;
-    }
-	temp0x++;
-	
-    spritefunc((unsigned short)fill_color,
-               (unsigned short)temp0x,
-               (unsigned short)temp1y,
-               (unsigned short*)&scanline_x_bounds[SCANLINE_HEIGHT + temp1y],
-               (unsigned short*)&scanline_x_bounds[temp1y]);
+    if (temp1y < sprite1_sprite_top)
+        temp1y = sprite1_sprite_top;
 
+    temp0x = temp0y - temp1y;
+    if (temp0x <= 0) {
+        return;
+    }
+    temp0x++;
+
+    spritefunc((unsigned short)fill_color, (unsigned short)temp0x, (unsigned short)temp1y,
+               (unsigned short *)&scanline_x_bounds[SCANLINE_HEIGHT + temp1y],
+               (unsigned short *)&scanline_x_bounds[temp1y]);
 }
 // generate_poly_edges is called preRender_helper in the IDB.
 /**
@@ -2486,10 +2704,11 @@ void preRender_default_impl(unsigned fill_color, unsigned vertex_line_count, int
  * Also known as preRender_helper in the IDB.
  *
  * @param scanline_bounds  Scanline min/max X buffer.
- * @param regsi            Pointer to polygon edge data.
+ * @param edge_state            Pointer to polygon edge data.
  * @param mode             0 = primary path, 1 = secondary path.
  */
-void generate_poly_edges(int16_t* scanline_bounds, int* regsi, int mode) {
+void
+generate_poly_edges(int16_t *scanline_bounds, int *edge_state, int mode) {
 
     int sprite1_sprite_left2 = sprite1.sprite_left2;
     int sprite1_sprite_widthsum = sprite1.sprite_widthsum;
@@ -2497,191 +2716,193 @@ void generate_poly_edges(int16_t* scanline_bounds, int* regsi, int mode) {
     unsigned long value;
     unsigned long temp;
 
-    if (mode == 1) {
-        goto preRender_helper2;
+    if (mode != 1) {
+        count = edge_state[EDGE_STATE_CLIP_TOP];
+        if (count > 0) {
+            ofs = edge_state_start_row_from_count(edge_state, count);
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                }
+            }
+        }
+
+        count = edge_state[EDGE_STATE_CLIP_BOTTOM];
+        if (count > 0) {
+            ofs = edge_state_start_row_from_count(edge_state, count);
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                }
+            }
+        }
+
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_RIGHT];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                }
+            }
+        }
+
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_LEFT];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
+            for (i = 0; i < count; i++) {
+                int idx = ofs + i;
+                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                    scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
+                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                }
+            }
+        }
     }
-	count = regsi[10];
-	if (count > 0) {
-        ofs = edge_state_start_row_from_count(regsi, count);
-		for (i = 0; i < count; i++) {
+
+    count = edge_state[EDGE_STATE_COUNT];
+    if (count <= 0)
+        return;
+
+    ofs = edge_state[EDGE_STATE_Y_TOP];
+
+    switch (edge_state[EDGE_STATE_MODE]) {
+    case 0:
+    case 1:
+        return;
+    case SHAPE3D_EDGE_MODE_VERTICAL:
+        for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                scanline_bounds[idx] = (int16_t)edge_state[EDGE_STATE_X];
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)edge_state[EDGE_STATE_X];
             }
-		}
-	}
-	
-	count = regsi[12];
-	if (count > 0) {
-        ofs = edge_state_start_row_from_count(regsi, count);
-		for (i = 0; i < count; i++) {
+        }
+        return;
+    case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
+        for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                scanline_bounds[idx] = (int16_t)(edge_state[EDGE_STATE_X] - i);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(edge_state[EDGE_STATE_X] - i);
             }
-		}
-	}
-	
-	count = regsi[11];
-	if (count > 0) {
-		ofs = regsi[5] + 1;
-		for (i = 0; i < count; i++) {
+        }
+        return;
+    case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
+        for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_left2;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_left2 - 1);
+                scanline_bounds[idx] = (int16_t)(edge_state[EDGE_STATE_X] + i);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(edge_state[EDGE_STATE_X] + i);
             }
-		}
-	}
-	
-	count = regsi[13];
-	if (count > 0) {
-		ofs = regsi[5] + 1;
-		for (i = 0; i < count; i++) {
+        }
+        return;
+    case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
+        value = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                | (unsigned int)edge_state[EDGE_STATE_FRAC];
+        value += FIXED_HALF_16;
+        for (i = 0; i < count; i++) {
             int idx = ofs + i;
             if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                scanline_bounds[idx] = (int16_t)sprite1_sprite_widthsum;
-                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(sprite1_sprite_widthsum - 1);
+                scanline_bounds[idx] = (int16_t)(value >> FIXED_SHIFT_16);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
             }
-		}
-	}
-
-preRender_helper2:
-
-	count = regsi[7];
-	if (count <= 0) return ;
-
-	ofs = regsi[3];
-
-	switch (regsi[9]) {
-		case 0:
-		case 1:
-			return;
-		case 2:
-			for (i = 0; i < count; i++) {
-                int idx = ofs + i;
-                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                    scanline_bounds[idx] = (int16_t)regsi[1];
-                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)regsi[1];
-                }
-			}
-			return ;
-		case 3:
-			for (i = 0; i < count; i++) {
-                int idx = ofs + i;
-                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                    scanline_bounds[idx] = (int16_t)(regsi[1] - i);
-                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(regsi[1] - i);
-                }
-			}
-			return ;
-		case 4:
-			for (i = 0; i < count; i++) {
-                int idx = ofs + i;
-                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                    scanline_bounds[idx] = (int16_t)(regsi[1] + i);
-                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(regsi[1] + i);
-                }
-			}
-			return ;
-		case 5:
-            value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) | (unsigned int)regsi[2];
-            value += FIXED_HALF_16;
-			for (i = 0; i < count; i++) {
-				int idx = ofs + i;
-                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                    scanline_bounds[idx] = (int16_t)(value >> FIXED_SHIFT_16);
-                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
-                }
-				value -= (unsigned int)regsi[6];
-			}
-			return ;
-		case 6:
-            value = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) | (unsigned int)regsi[2];
-            value += FIXED_HALF_16;
-			for (i = 0; i < count; i++) {
-				int idx = ofs + i;
-                if (idx >= 0 && idx < SCANLINE_HEIGHT) {
-                    scanline_bounds[idx] = (int16_t)(value >> FIXED_SHIFT_16);
-                    scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
-                }
-				
-				value += (unsigned int)regsi[6];
-			}
-			return ;
-		case 7:
-			value = (unsigned int)regsi[1];
-			temp = (unsigned int)regsi[2];
-			if (temp + FIXED_HALF_16 > USHRT_MAX)
-				ofs++;
-			temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
-            if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
+            value -= (unsigned int)edge_state[EDGE_STATE_STEP];
+        }
+        return;
+    case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
+        value = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                | (unsigned int)edge_state[EDGE_STATE_FRAC];
+        value += FIXED_HALF_16;
+        for (i = 0; i < count; i++) {
+            int idx = ofs + i;
+            if (idx >= 0 && idx < SCANLINE_HEIGHT) {
+                scanline_bounds[idx] = (int16_t)(value >> FIXED_SHIFT_16);
+                scanline_bounds[SCANLINE_HEIGHT + idx] = (int16_t)(value >> FIXED_SHIFT_16);
             }
-			for (i = 0; i < count; i++) {
-				if (temp + (unsigned int)regsi[6] <= USHRT_MAX) {
-					value--;
-					if (i == count - 1) {
-                        if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                            scanline_bounds[ofs] = (int16_t)(value + 1);
-                        }
-					}
-				} else {
-                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                        scanline_bounds[ofs] = (int16_t)value;
-                    }
-					value--;
-					ofs++;
-                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                        scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
-                    }
-				}
-				temp = (temp + (unsigned int)regsi[6])  & FIXED_FRAC_MASK_16;
-			}
-			return ;
 
-		case 8:
-			value = (unsigned int)regsi[1];
-			temp = (unsigned int)regsi[2];
-			if (temp + FIXED_HALF_16 > USHRT_MAX)
-				ofs++;
-            temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
-            if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                scanline_bounds[ofs] = (int16_t)value;
+            value += (unsigned int)edge_state[EDGE_STATE_STEP];
+        }
+        return;
+    case SHAPE3D_EDGE_MODE_STEEP_LEFT:
+        value = (unsigned int)edge_state[EDGE_STATE_X];
+        temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+        if (temp + FIXED_HALF_16 > USHRT_MAX)
+            ofs++;
+        temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
+        if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+            scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
+        }
+        for (i = 0; i < count; i++) {
+            if (temp + (unsigned int)edge_state[EDGE_STATE_STEP] <= USHRT_MAX) {
+                value--;
+                if (i == count - 1) {
+                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                        scanline_bounds[ofs] = (int16_t)(value + 1);
+                    }
+                }
             }
-			for (i = 0; i < count; i++) {
-				if (temp + (unsigned int)regsi[6] <= USHRT_MAX) {
-					value++;
-					if (i == count - 1) {
-                        if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                            scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)(value - 1);
-                        }
-					}
-				} else {
-                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                        scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
-                    }
-					value++;
-					ofs++;
-                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
-                        scanline_bounds[ofs] = (int16_t)value;
-                    }
-				}
-				temp = (temp + (unsigned int)regsi[6])  & FIXED_FRAC_MASK_16;
-			}
-			return ;
+            else {
+                if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                    scanline_bounds[ofs] = (int16_t)value;
+                }
+                value--;
+                ofs++;
+                if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                    scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
+                }
+            }
+            temp = (temp + (unsigned int)edge_state[EDGE_STATE_STEP]) & FIXED_FRAC_MASK_16;
+        }
+        return;
 
-			
-		/*case 8:
-			value = regsi[1];
-			temp = regsi[2] + 32768;
+    case SHAPE3D_EDGE_MODE_STEEP_RIGHT:
+        value = (unsigned int)edge_state[EDGE_STATE_X];
+        temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+        if (temp + FIXED_HALF_16 > USHRT_MAX)
+            ofs++;
+        temp = (temp + FIXED_HALF_16) & FIXED_FRAC_MASK_16;
+        if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+            scanline_bounds[ofs] = (int16_t)value;
+        }
+        for (i = 0; i < count; i++) {
+            if (temp + (unsigned int)edge_state[EDGE_STATE_STEP] <= USHRT_MAX) {
+                value++;
+                if (i == count - 1) {
+                    if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                        scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)(value - 1);
+                    }
+                }
+            }
+            else {
+                if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                    scanline_bounds[SCANLINE_HEIGHT + ofs] = (int16_t)value;
+                }
+                value++;
+                ofs++;
+                if (ofs >= 0 && ofs < SCANLINE_HEIGHT) {
+                    scanline_bounds[ofs] = (int16_t)value;
+                }
+            }
+            temp = (temp + (unsigned int)edge_state[EDGE_STATE_STEP]) & FIXED_FRAC_MASK_16;
+        }
+        return;
+
+
+    /*case 8:
+			value = edge_state[EDGE_STATE_X];
+			temp = edge_state[EDGE_STATE_FRAC] + 32768;
 			if (temp <= 0)
 				ofs++;
             scanline_bounds[ofs] = value;
 			for (i = 0; i < count; i++) {
-				temp += (unsigned int)regsi[6];
+				temp += (unsigned int)edge_state[EDGE_STATE_STEP];
 				if (temp >= 0) {
 					value++;
 				} else {
@@ -2695,12 +2916,12 @@ preRender_helper2:
                 scanline_bounds[480 + ofs + i] = value - 1;
 			}
 			return ;*/
-		case 9:
-		default:
-			return ;
-	}
+    case SHAPE3D_EDGE_MODE_INVALID:
+    default:
+        return;
+    }
 
-    #undef CLAMP_X
+#undef CLAMP_X
 }
 
 
@@ -2709,70 +2930,54 @@ preRender_helper2:
  * @brief Accumulate edge contributions into scanline min/max bounds.
  *
  * Also known as preRender_helper3 in the IDB.
- *
- * @param regsi              Pointer to polygon edge data.
-/** @brief Unused.
- * @param scanline_bounds Parameter value.
- * @return Function return value.
  */
-void accumulate_scanline_bounds(int* regsi, unsigned unused_flag, unsigned apply_border_clip, int16_t* scanline_bounds) {
-	int count;
-	int ofs;
-	int i;
-	int x;
-	int mode;
-	unsigned long accum;
+void
+accumulate_scanline_bounds(int *edge_state, unsigned unused_flag, unsigned apply_border_clip,
+                           int16_t *scanline_bounds) {
+    int count;
+    int ofs;
+    int i;
+    int x;
+    int mode;
+    unsigned long accum;
 
     (void)unused_flag;
 
-	#define UPDATE_MIN_MAX(row, xv) do { \
-        int _x = (xv); \
-        if ((row) >= 0 && (row) < SCANLINE_HEIGHT) { \
-            if (_x < (int)scanline_bounds[(row)]) scanline_bounds[(row)] = (int16_t)_x; \
-            if (_x > (int)scanline_bounds[SCANLINE_HEIGHT + (row)]) scanline_bounds[SCANLINE_HEIGHT + (row)] = (int16_t)_x; \
-		} \
-	} while(0)
+#define UPDATE_MIN_MAX(row, xv)                                         \
+    do {                                                                \
+        int _x = (xv);                                                  \
+        if ((row) >= 0 && (row) < SCANLINE_HEIGHT) {                    \
+            if (_x < (int)scanline_bounds[(row)])                       \
+                scanline_bounds[(row)] = (int16_t)_x;                   \
+            if (_x > (int)scanline_bounds[SCANLINE_HEIGHT + (row)])     \
+                scanline_bounds[SCANLINE_HEIGHT + (row)] = (int16_t)_x; \
+        }                                                               \
+    } while (0)
 
-	count = regsi[7];
-	if (count <= 0) {
-		goto done_clip;
-	}
+    count = edge_state[EDGE_STATE_COUNT];
+    if (count > 0) {
+        ofs = edge_state[EDGE_STATE_Y_TOP];
+        mode = edge_state[EDGE_STATE_MODE];
 
-	ofs = regsi[3];
-	mode = regsi[9];
+        if (mode == SHAPE3D_EDGE_MODE_STEEP_LEFT) {
+            unsigned long temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+            unsigned long step = (unsigned int)edge_state[EDGE_STATE_STEP];
+            unsigned long sum;
+            int ax = edge_state[EDGE_STATE_X];
+            int row = ofs;
+            int rem = count;
 
-	if (mode == 7) {
-        unsigned long temp = (unsigned int)regsi[2];
-        unsigned long step = (unsigned int)regsi[6];
-        unsigned long sum;
-        int ax = regsi[1];
-        int row = ofs;
-        int rem = count;
-
-        sum = temp + FIXED_HALF_16;
-        if (sum > FIXED_FRAC_MASK_16) row++;
-        temp = sum & FIXED_FRAC_MASK_16;
-
-        while (rem > 0) {
-            if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
-                scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
-            }
-
-            sum = temp + step;
-            temp = sum & FIXED_FRAC_MASK_16;
-            if (sum > FIXED_FRAC_MASK_16) {
-                if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
-                    scanline_bounds[row] = (int16_t)ax;
-                }
+            sum = temp + FIXED_HALF_16;
+            if (sum > FIXED_FRAC_MASK_16)
                 row++;
-                ax--;
-                rem--;
-                continue;
-            }
+            temp = sum & FIXED_FRAC_MASK_16;
 
-            ax--;
-            rem--;
             while (rem > 0) {
+                if (row >= 0 && row < SCANLINE_HEIGHT
+                    && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                    scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
+                }
+
                 sum = temp + step;
                 temp = sum & FIXED_FRAC_MASK_16;
                 if (sum > FIXED_FRAC_MASK_16) {
@@ -2782,335 +2987,196 @@ void accumulate_scanline_bounds(int* regsi, unsigned unused_flag, unsigned apply
                     row++;
                     ax--;
                     rem--;
-                    break;
+                    continue;
                 }
+
                 ax--;
                 rem--;
-            }
+                while (rem > 0) {
+                    sum = temp + step;
+                    temp = sum & FIXED_FRAC_MASK_16;
+                    if (sum > FIXED_FRAC_MASK_16) {
+                        if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
+                            scanline_bounds[row] = (int16_t)ax;
+                        }
+                        row++;
+                        ax--;
+                        rem--;
+                        break;
+                    }
+                    ax--;
+                    rem--;
+                }
 
-            if (rem == 0) {
-                ax++;
-                if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
-                    scanline_bounds[row] = (int16_t)ax;
+                if (rem == 0) {
+                    ax++;
+                    if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
+                        scanline_bounds[row] = (int16_t)ax;
+                    }
                 }
             }
         }
-		goto done_clip;
-	} else if (mode == 8) {
-        unsigned long temp = (unsigned int)regsi[2];
-        unsigned long step = (unsigned int)regsi[6];
-        unsigned long sum;
-        int ax = regsi[1];
-        int row = ofs;
-        int rem = count;
+        else if (mode == SHAPE3D_EDGE_MODE_STEEP_RIGHT) {
+            unsigned long temp = (unsigned int)edge_state[EDGE_STATE_FRAC];
+            unsigned long step = (unsigned int)edge_state[EDGE_STATE_STEP];
+            unsigned long sum;
+            int ax = edge_state[EDGE_STATE_X];
+            int row = ofs;
+            int rem = count;
 
-        sum = temp + FIXED_HALF_16;
-        if (sum > FIXED_FRAC_MASK_16) row++;
-        temp = sum & FIXED_FRAC_MASK_16;
-
-        while (rem > 0) {
-            if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
-                scanline_bounds[row] = (int16_t)ax;
-            }
-
-            sum = temp + step;
-            temp = sum & FIXED_FRAC_MASK_16;
-            if (sum > FIXED_FRAC_MASK_16) {
-                if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
-                    scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
-                }
+            sum = temp + FIXED_HALF_16;
+            if (sum > FIXED_FRAC_MASK_16)
                 row++;
-                ax++;
-                rem--;
-                continue;
-            }
+            temp = sum & FIXED_FRAC_MASK_16;
 
-            ax++;
-            rem--;
             while (rem > 0) {
+                if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[row] > ax) {
+                    scanline_bounds[row] = (int16_t)ax;
+                }
+
                 sum = temp + step;
                 temp = sum & FIXED_FRAC_MASK_16;
                 if (sum > FIXED_FRAC_MASK_16) {
-                    if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                    if (row >= 0 && row < SCANLINE_HEIGHT
+                        && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
                         scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
                     }
                     row++;
                     ax++;
                     rem--;
-                    break;
+                    continue;
                 }
+
                 ax++;
                 rem--;
-            }
+                while (rem > 0) {
+                    sum = temp + step;
+                    temp = sum & FIXED_FRAC_MASK_16;
+                    if (sum > FIXED_FRAC_MASK_16) {
+                        if (row >= 0 && row < SCANLINE_HEIGHT
+                            && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                            scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
+                        }
+                        row++;
+                        ax++;
+                        rem--;
+                        break;
+                    }
+                    ax++;
+                    rem--;
+                }
 
-            if (rem == 0) {
-                ax--;
-                if (row >= 0 && row < SCANLINE_HEIGHT && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
-                    scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
+                if (rem == 0) {
+                    ax--;
+                    if (row >= 0 && row < SCANLINE_HEIGHT
+                        && scanline_bounds[SCANLINE_HEIGHT + row] < ax) {
+                        scanline_bounds[SCANLINE_HEIGHT + row] = (int16_t)ax;
+                    }
                 }
             }
         }
-		goto done_clip;
-	}
+        else {
+            accum = (((unsigned long)(unsigned int)edge_state[EDGE_STATE_X]) << FIXED_SHIFT_16)
+                    | (unsigned int)edge_state[EDGE_STATE_FRAC];
 
-    accum = (((unsigned long)(unsigned int)regsi[1]) << FIXED_SHIFT_16) | (unsigned int)regsi[2];
+            for (i = 0; i < count; i++) {
+                switch (mode) {
+                case SHAPE3D_EDGE_MODE_DIAGONAL_LEFT:
+                    x = edge_state[EDGE_STATE_X] - i;
+                    break;
+                case SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT:
+                    x = edge_state[EDGE_STATE_X] + i;
+                    break;
+                case SHAPE3D_EDGE_MODE_SHALLOW_LEFT:
+                    x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
+                    accum -= (unsigned int)edge_state[EDGE_STATE_STEP];
+                    break;
+                case SHAPE3D_EDGE_MODE_SHALLOW_RIGHT:
+                    x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
+                    accum += (unsigned int)edge_state[EDGE_STATE_STEP];
+                    break;
+                case SHAPE3D_EDGE_MODE_VERTICAL:
+                default:
+                    x = edge_state[EDGE_STATE_X];
+                    break;
+                }
 
-	for (i = 0; i < count; i++) {
-		switch (mode) {
-			case 3:
-				x = regsi[1] - i;
-				break;
-			case 4:
-				x = regsi[1] + i;
-				break;
-            case 5:
-                x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-				accum -= (unsigned int)regsi[6];
-				break;
-			case 6:
-                x = (int)((accum + FIXED_HALF_16) >> FIXED_SHIFT_16);
-				accum += (unsigned int)regsi[6];
-				break;
-			case 2:
-			default:
-				x = regsi[1];
-				break;
-		}
+                if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
+                    if (x < (int)scanline_bounds[ofs + i]) {
+                        scanline_bounds[ofs + i] = (int16_t)x;
+                    }
+                    if (x > (int)scanline_bounds[SCANLINE_HEIGHT + ofs + i]) {
+                        scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (int16_t)x;
+                    }
+                }
+            }
+        } /* end else generic path */
+    } /* end if (count > 0) */
 
-		if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-            if (x < (int)scanline_bounds[ofs + i]) {
-                scanline_bounds[ofs + i] = (int16_t)x;
-			}
-            if (x > (int)scanline_bounds[SCANLINE_HEIGHT + ofs + i]) {
-                scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (int16_t)x;
-			}
-		}
-	}
+#undef UPDATE_MIN_MAX
 
-	#undef UPDATE_MIN_MAX
 
-done_clip:
     if (apply_border_clip != 0) {
-		count = regsi[10];
-		if (count > 0) {
-			ofs = regsi[3] - count;
-			if (regsi[2] < 0) {
-				ofs++;
-			}
+        count = edge_state[EDGE_STATE_CLIP_TOP];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_TOP] - count;
+            if (edge_state[EDGE_STATE_FRAC] < 0) {
+                ofs++;
+            }
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-                    scanline_bounds[ofs + i] = sprite1.sprite_left2;
-				}
-			}
-		}
+                    scanline_bounds[ofs + i] = (short)sprite1.sprite_left2;
+                }
+            }
+        }
 
-		count = regsi[12];
-		if (count > 0) {
-			ofs = regsi[3] - count;
-			if (regsi[2] < 0) {
-				ofs++;
-			}
+        count = edge_state[EDGE_STATE_CLIP_BOTTOM];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_TOP] - count;
+            if (edge_state[EDGE_STATE_FRAC] < 0) {
+                ofs++;
+            }
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-                    scanline_bounds[SCANLINE_HEIGHT + ofs + i] = sprite1.sprite_widthsum - 1;
-				}
-			}
-		}
+                    scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (short)sprite1.sprite_widthsum - 1;
+                }
+            }
+        }
 
-		count = regsi[11];
-		if (count > 0) {
-			ofs = regsi[5] + 1;
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_RIGHT];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-                    scanline_bounds[ofs + i] = sprite1.sprite_left2;
-				}
-			}
-		}
+                    scanline_bounds[ofs + i] = (short)sprite1.sprite_left2;
+                }
+            }
+        }
 
-		count = regsi[13];
-		if (count > 0) {
-			ofs = regsi[5] + 1;
+        count = edge_state[EDGE_STATE_EXTEND_BOTTOM_LEFT];
+        if (count > 0) {
+            ofs = edge_state[EDGE_STATE_Y_BOTTOM] + 1;
             for (i = 0; i < count; i++) {
                 if (ofs + i >= 0 && ofs + i < SCANLINE_HEIGHT) {
-                    scanline_bounds[SCANLINE_HEIGHT + ofs + i] = sprite1.sprite_widthsum - 1;
-				}
-			}
-		}
-	}
+                    scanline_bounds[SCANLINE_HEIGHT + ofs + i] = (short)sprite1.sprite_widthsum - 1;
+                }
+            }
+        }
+    }
 }
 
-unsigned  legacy_interp_default_scale = 50;
+unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                                int *edge_state, unsigned allow_steep_modes);
 
-static unsigned  g_interp_blob[1177] = {
-    2256u, 32768u, 21845u, 43690u, 16384u, 32768u, 49152u, 13107u, 26214u, 39321u,
-    52428u, 10922u, 21845u, 32768u, 43690u, 54613u, 9362u, 18724u, 28086u, 37449u,
-    46811u, 56173u, 8192u, 16384u, 24576u, 32768u, 40960u, 49152u, 57344u, 7281u,
-    14563u, 21845u, 29127u, 36408u, 43690u, 50972u, 58254u, 6553u, 13107u, 19660u,
-    26214u, 32768u, 39321u, 45875u, 52428u, 58982u, 5957u, 11915u, 17873u, 23831u,
-    29789u, 35746u, 41704u, 47662u, 53620u, 59578u, 5461u, 10922u, 16384u, 21845u,
-    27306u, 32768u, 38229u, 43690u, 49152u, 54613u, 60074u, 5041u, 10082u, 15123u,
-    20164u, 25206u, 30247u, 35288u, 40329u, 45371u, 50412u, 55453u, 60494u, 4681u,
-    9362u, 14043u, 18724u, 23405u, 28086u, 32768u, 37449u, 42130u, 46811u, 51492u,
-    56173u, 60854u, 4369u, 8738u, 13107u, 17476u, 21845u, 26214u, 30583u, 34952u,
-    39321u, 43690u, 48059u, 52428u, 56797u, 61166u, 4096u, 8192u, 12288u, 16384u,
-    20480u, 24576u, 28672u, 32768u, 36864u, 40960u, 45056u, 49152u, 53248u, 57344u,
-    61440u, 3855u, 7710u, 11565u, 15420u, 19275u, 23130u, 26985u, 30840u, 34695u,
-    38550u, 42405u, 46260u, 50115u, 53970u, 57825u, 61680u, 3640u, 7281u, 10922u,
-    14563u, 18204u, 21845u, 25486u, 29127u, 32768u, 36408u, 40049u, 43690u, 47331u,
-    50972u, 54613u, 58254u, 61895u, 3449u, 6898u, 10347u, 13797u, 17246u, 20695u,
-    24144u, 27594u, 31043u, 34492u, 37941u, 41391u, 44840u, 48289u, 51738u, 55188u,
-    58637u, 62086u, 3276u, 6553u, 9830u, 13107u, 16384u, 19660u, 22937u, 26214u,
-    29491u, 32768u, 36044u, 39321u, 42598u, 45875u, 49152u, 52428u, 55705u, 58982u,
-    62259u, 3120u, 6241u, 9362u, 12483u, 15603u, 18724u, 21845u, 24966u, 28086u,
-    31207u, 34328u, 37449u, 40569u, 43690u, 46811u, 49932u, 53052u, 56173u, 59294u,
-    62415u, 2978u, 5957u, 8936u, 11915u, 14894u, 17873u, 20852u, 23831u, 26810u,
-    29789u, 32768u, 35746u, 38725u, 41704u, 44683u, 47662u, 50641u, 53620u, 56599u,
-    59578u, 62557u, 2849u, 5698u, 8548u, 11397u, 14246u, 17096u, 19945u, 22795u,
-    25644u, 28493u, 31343u, 34192u, 37042u, 39891u, 42740u, 45590u, 48439u, 51289u,
-    54138u, 56987u, 59837u, 62686u, 2730u, 5461u, 8192u, 10922u, 13653u, 16384u,
-    19114u, 21845u, 24576u, 27306u, 30037u, 32768u, 35498u, 38229u, 40960u, 43690u,
-    46421u, 49152u, 51882u, 54613u, 57344u, 60074u, 62805u, 2621u, 5242u, 7864u,
-    10485u, 13107u, 15728u, 18350u, 20971u, 23592u, 26214u, 28835u, 31457u, 34078u,
-    36700u, 39321u, 41943u, 44564u, 47185u, 49807u, 52428u, 55050u, 57671u, 60293u,
-    62914u, 2520u, 5041u, 7561u, 10082u, 12603u, 15123u, 17644u, 20164u, 22685u,
-    25206u, 27726u, 30247u, 32768u, 35288u, 37809u, 40329u, 42850u, 45371u, 47891u,
-    50412u, 52932u, 55453u, 57974u, 60494u, 63015u, 2427u, 4854u, 7281u, 9709u,
-    12136u, 14563u, 16990u, 19418u, 21845u, 24272u, 26699u, 29127u, 31554u, 33981u,
-    36408u, 38836u, 41263u, 43690u, 46117u, 48545u, 50972u, 53399u, 55826u, 58254u,
-    60681u, 63108u, 2340u, 4681u, 7021u, 9362u, 11702u, 14043u, 16384u, 18724u,
-    21065u, 23405u, 25746u, 28086u, 30427u, 32768u, 35108u, 37449u, 39789u, 42130u,
-    44470u, 46811u, 49152u, 51492u, 53833u, 56173u, 58514u, 60854u, 63195u, 2259u,
-    4519u, 6779u, 9039u, 11299u, 13559u, 15819u, 18078u, 20338u, 22598u, 24858u,
-    27118u, 29378u, 31638u, 33897u, 36157u, 38417u, 40677u, 42937u, 45197u, 47457u,
-    49716u, 51976u, 54236u, 56496u, 58756u, 61016u, 63276u, 2184u, 4369u, 6553u,
-    8738u, 10922u, 13107u, 15291u, 17476u, 19660u, 21845u, 24029u, 26214u, 28398u,
-    30583u, 32768u, 34952u, 37137u, 39321u, 41506u, 43690u, 45875u, 48059u, 50244u,
-    52428u, 54613u, 56797u, 58982u, 61166u, 63351u, 2114u, 4228u, 6342u, 8456u,
-    10570u, 12684u, 14798u, 16912u, 19026u, 21140u, 23254u, 25368u, 27482u, 29596u,
-    31710u, 33825u, 35939u, 38053u, 40167u, 42281u, 44395u, 46509u, 48623u, 50737u,
-    52851u, 54965u, 57079u, 59193u, 61307u, 63421u, 2048u, 4096u, 6144u, 8192u,
-    10240u, 12288u, 14336u, 16384u, 18432u, 20480u, 22528u, 24576u, 26624u, 28672u,
-    30720u, 32768u, 34816u, 36864u, 38912u, 40960u, 43008u, 45056u, 47104u, 49152u,
-    51200u, 53248u, 55296u, 57344u, 59392u, 61440u, 63488u, 1985u, 3971u, 5957u,
-    7943u, 9929u, 11915u, 13901u, 15887u, 17873u, 19859u, 21845u, 23831u, 25817u,
-    27803u, 29789u, 31775u, 33760u, 35746u, 37732u, 39718u, 41704u, 43690u, 45676u,
-    47662u, 49648u, 51634u, 53620u, 55606u, 57592u, 59578u, 61564u, 63550u, 1927u,
-    3855u, 5782u, 7710u, 9637u, 11565u, 13492u, 15420u, 17347u, 19275u, 21202u,
-    23130u, 25057u, 26985u, 28912u, 30840u, 32768u, 34695u, 36623u, 38550u, 40478u,
-    42405u, 44333u, 46260u, 48188u, 50115u, 52043u, 53970u, 55898u, 57825u, 59753u,
-    61680u, 63608u, 1872u, 3744u, 5617u, 7489u, 9362u, 11234u, 13107u, 14979u,
-    16852u, 18724u, 20597u, 22469u, 24341u, 26214u, 28086u, 29959u, 31831u, 33704u,
-    35576u, 37449u, 39321u, 41194u, 43066u, 44938u, 46811u, 48683u, 50556u, 52428u,
-    54301u, 56173u, 58046u, 59918u, 61791u, 63663u, 1820u, 3640u, 5461u, 7281u,
-    9102u, 10922u, 12743u, 14563u, 16384u, 18204u, 20024u, 21845u, 23665u, 25486u,
-    27306u, 29127u, 30947u, 32768u, 34588u, 36408u, 38229u, 40049u, 41870u, 43690u,
-    45511u, 47331u, 49152u, 50972u, 52792u, 54613u, 56433u, 58254u, 60074u, 61895u,
-    63715u, 1771u, 3542u, 5313u, 7084u, 8856u, 10627u, 12398u, 14169u, 15941u,
-    17712u, 19483u, 21254u, 23026u, 24797u, 26568u, 28339u, 30111u, 31882u, 33653u,
-    35424u, 37196u, 38967u, 40738u, 42509u, 44281u, 46052u, 47823u, 49594u, 51366u,
-    53137u, 54908u, 56679u, 58451u, 60222u, 61993u, 63764u, 1724u, 3449u, 5173u,
-    6898u, 8623u, 10347u, 12072u, 13797u, 15521u, 17246u, 18970u, 20695u, 22420u,
-    24144u, 25869u, 27594u, 29318u, 31043u, 32768u, 34492u, 36217u, 37941u, 39666u,
-    41391u, 43115u, 44840u, 46565u, 48289u, 50014u, 51738u, 53463u, 55188u, 56912u,
-    58637u, 60362u, 62086u, 63811u, 1680u, 3360u, 5041u, 6721u, 8402u, 10082u,
-    11762u, 13443u, 15123u, 16804u, 18484u, 20164u, 21845u, 23525u, 25206u, 26886u,
-    28566u, 30247u, 31927u, 33608u, 35288u, 36969u, 38649u, 40329u, 42010u, 43690u,
-    45371u, 47051u, 48731u, 50412u, 52092u, 53773u, 55453u, 57133u, 58814u, 60494u,
-    62175u, 63855u, 1638u, 3276u, 4915u, 6553u, 8192u, 9830u, 11468u, 13107u,
-    14745u, 16384u, 18022u, 19660u, 21299u, 22937u, 24576u, 26214u, 27852u, 29491u,
-    31129u, 32768u, 34406u, 36044u, 37683u, 39321u, 40960u, 42598u, 44236u, 45875u,
-    47513u, 49152u, 50790u, 52428u, 54067u, 55705u, 57344u, 58982u, 60620u, 62259u,
-    63897u, 1598u, 3196u, 4795u, 6393u, 7992u, 9590u, 11189u, 12787u, 14385u,
-    15984u, 17582u, 19181u, 20779u, 22378u, 23976u, 25575u, 27173u, 28771u, 30370u,
-    31968u, 33567u, 35165u, 36764u, 38362u, 39960u, 41559u, 43157u, 44756u, 46354u,
-    47953u, 49551u, 51150u, 52748u, 54346u, 55945u, 57543u, 59142u, 60740u, 62339u,
-    63937u, 1560u, 3120u, 4681u, 6241u, 7801u, 9362u, 10922u, 12483u, 14043u,
-    15603u, 17164u, 18724u, 20284u, 21845u, 23405u, 24966u, 26526u, 28086u, 29647u,
-    31207u, 32768u, 34328u, 35888u, 37449u, 39009u, 40569u, 42130u, 43690u, 45251u,
-    46811u, 48371u, 49932u, 51492u, 53052u, 54613u, 56173u, 57734u, 59294u, 60854u,
-    62415u, 63975u, 1524u, 3048u, 4572u, 6096u, 7620u, 9144u, 10668u, 12192u,
-    13716u, 15240u, 16765u, 18289u, 19813u, 21337u, 22861u, 24385u, 25909u, 27433u,
-    28957u, 30481u, 32005u, 33530u, 35054u, 36578u, 38102u, 39626u, 41150u, 42674u,
-    44198u, 45722u, 47246u, 48770u, 50295u, 51819u, 53343u, 54867u, 56391u, 57915u,
-    59439u, 60963u, 62487u, 64011u, 1489u, 2978u, 4468u, 5957u, 7447u, 8936u,
-    10426u, 11915u, 13405u, 14894u, 16384u, 17873u, 19362u, 20852u, 22341u, 23831u,
-    25320u, 26810u, 28299u, 29789u, 31278u, 32768u, 34257u, 35746u, 37236u, 38725u,
-    40215u, 41704u, 43194u, 44683u, 46173u, 47662u, 49152u, 50641u, 52130u, 53620u,
-    55109u, 56599u, 58088u, 59578u, 61067u, 62557u, 64046u, 1456u, 2912u, 4369u,
-    5825u, 7281u, 8738u, 10194u, 11650u, 13107u, 14563u, 16019u, 17476u, 18932u,
-    20388u, 21845u, 23301u, 24758u, 26214u, 27670u, 29127u, 30583u, 32039u, 33496u,
-    34952u, 36408u, 37865u, 39321u, 40777u, 42234u, 43690u, 45147u, 46603u, 48059u,
-    49516u, 50972u, 52428u, 53885u, 55341u, 56797u, 58254u, 59710u, 61166u, 62623u,
-    64079u, 1424u, 2849u, 4274u, 5698u, 7123u, 8548u, 9972u, 11397u, 12822u,
-    14246u, 15671u, 17096u, 18521u, 19945u, 21370u, 22795u, 24219u, 25644u, 27069u,
-    28493u, 29918u, 31343u, 32768u, 34192u, 35617u, 37042u, 38466u, 39891u, 41316u,
-    42740u, 44165u, 45590u, 47014u, 48439u, 49864u, 51289u, 52713u, 54138u, 55563u,
-    56987u, 58412u, 59837u, 61261u, 62686u, 64111u, 1394u, 2788u, 4183u, 5577u,
-    6971u, 8366u, 9760u, 11155u, 12549u, 13943u, 15338u, 16732u, 18126u, 19521u,
-    20915u, 22310u, 23704u, 25098u, 26493u, 27887u, 29282u, 30676u, 32070u, 33465u,
-    34859u, 36253u, 37648u, 39042u, 40437u, 41831u, 43225u, 44620u, 46014u, 47409u,
-    48803u, 50197u, 51592u, 52986u, 54380u, 55775u, 57169u, 58564u, 59958u, 61352u,
-    62747u, 64141u, 1365u, 2730u, 4096u, 5461u, 6826u, 8192u, 9557u, 10922u,
-    12288u, 13653u, 15018u, 16384u, 17749u, 19114u, 20480u, 21845u, 23210u, 24576u,
-    25941u, 27306u, 28672u, 30037u, 31402u, 32768u, 34133u, 35498u, 36864u, 38229u,
-    39594u, 40960u, 42325u, 43690u, 45056u, 46421u, 47786u, 49152u, 50517u, 51882u,
-    53248u, 54613u, 55978u, 57344u, 58709u, 60074u, 61440u, 62805u, 64170u, 1337u,
-    2674u, 4012u, 5349u, 6687u, 8024u, 9362u, 10699u, 12037u, 13374u, 14712u,
-    16049u, 17387u, 18724u, 20062u, 21399u, 22736u, 24074u, 25411u, 26749u, 28086u,
-    29424u, 30761u, 32099u, 33436u, 34774u, 36111u, 37449u, 38786u, 40124u, 41461u,
-    42799u, 44136u, 45473u, 46811u, 48148u, 49486u, 50823u, 52161u, 53498u, 54836u,
-    56173u, 57511u, 58848u, 60186u, 61523u, 62861u, 64198u,
-};
-
-static unsigned g_interp_offsets_rel[50] = {
-    0u, 0u, 0u, 2u, 6u, 12u, 20u, 30u, 42u, 56u,
-    72u, 90u, 110u, 132u, 156u, 182u, 210u, 240u, 272u, 306u,
-    342u, 380u, 420u, 462u, 506u, 552u, 600u, 650u, 702u, 756u,
-    812u, 870u, 930u, 992u, 1056u, 1122u, 1190u, 1260u, 1332u, 1406u,
-    1482u, 1560u, 1640u, 1722u, 1806u, 1892u, 1980u, 2070u, 2162u, 2256u,
-};
-
-unsigned  off_2F44A[50] = { 0 };
-static unsigned char g_interp_tables_ready = 0;
-
-/**
- * @brief Initialise interpolation lookup tables for edge rendering.
- */
-static void __attribute__((unused)) shape3d_init_interp_tables(void)
-{
-    unsigned i;
-    uintptr_t base_off;
-
-    if (g_interp_tables_ready != 0) {
-        return;
-    }
-
-    base_off = (uintptr_t)g_interp_blob;
-    for (i = 0; i < INTERP_TABLE_COUNT; i++) {
-        off_2F44A[i] = (unsigned)(base_off + (uintptr_t)g_interp_offsets_rel[i]);
-    }
-
-    g_interp_tables_ready = 1;
-}
-
-unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y, int* edge_state, unsigned allow_steep_modes);
-
-/**
-/** @brief Segment.
- * @param edge_state Parameter value.
- * @return Function return value.
- */
-unsigned draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y, int* edge_state) {
-    //return draw_line_related_(start_x, start_y, end_x, end_y, edge_state);
+unsigned
+draw_line_related(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                  int *edge_state) {
     return draw_line_related_impl(start_x, start_y, end_x, end_y, edge_state, 0);
 }
 
-/**
-/** @brief Segment.
- * @param edge_state Parameter value.
- * @return Function return value.
- */
-unsigned draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y, int* edge_state) {
+unsigned
+draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                      int *edge_state) {
     //return draw_line_related_alt_(start_x, start_y, end_x, end_y, edge_state);
     return draw_line_related_impl(start_x, start_y, end_x, end_y, edge_state, 1);
 }
@@ -3127,7 +3193,9 @@ unsigned draw_line_related_alt(unsigned start_x, unsigned start_y, unsigned end_
  * @param allow_steep_modes  Non-zero to enable steep-line processing modes.
  * @return Edge processing result code.
  */
-unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y, int* edge_state, unsigned allow_steep_modes) {
+unsigned
+draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end_x, unsigned end_y,
+                       int *edge_state, unsigned allow_steep_modes) {
     int x0;
     int y0;
     int x1;
@@ -3145,7 +3213,7 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
     long long accum;
 
     if (edge_state == 0) {
-        return 0;
+        return SHAPE3D_DRAW_LINE_OK;
     }
 
     for (dx = 0; dx < EDGE_STATE_WORD_COUNT; dx++) {
@@ -3172,7 +3240,7 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
     bottom = (int)sprite1.sprite_height - 1;
 
     if (y1 < top || y0 > bottom) {
-        return 1;
+        return SHAPE3D_DRAW_LINE_NO_OUTPUT;
     }
 
     yclip_top = 0;
@@ -3186,17 +3254,17 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
         y1 = bottom;
     }
     if (y1 < y0) {
-        return 1;
+        return SHAPE3D_DRAW_LINE_NO_OUTPUT;
     }
 
     dx = x1 - x0;
     dy = y1 - y0;
 
-    edge_state[3] = y0;
-    edge_state[5] = y1;
-    edge_state[7] = dy + 1;
-    edge_state[10] = yclip_top;
-    edge_state[12] = yclip_bottom;
+    edge_state[EDGE_STATE_Y_TOP] = y0;
+    edge_state[EDGE_STATE_Y_BOTTOM] = y1;
+    edge_state[EDGE_STATE_COUNT] = dy + 1;
+    edge_state[EDGE_STATE_CLIP_TOP] = yclip_top;
+    edge_state[EDGE_STATE_CLIP_BOTTOM] = yclip_bottom;
 
     if (dy == 0) {
         int xh = x0;
@@ -3206,91 +3274,93 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
         if (xh > right) {
             xh = right;
         }
-        edge_state[1] = xh;
-        edge_state[9] = 2;
-        return 0;
+        edge_state[EDGE_STATE_X] = xh;
+        edge_state[EDGE_STATE_MODE] = SHAPE3D_EDGE_MODE_VERTICAL;
+        return SHAPE3D_DRAW_LINE_OK;
     }
 
     accum = ((long long)x0) << FIXED_SHIFT_16;
     xstep = (int)(((long long)dx << FIXED_SHIFT_16) / dy);
 
     if (xstep == 0) {
-        mode = 2;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
-    } else if (xstep == FIXED_ONE_16) {
-        mode = 4;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
-    } else if (xstep == -FIXED_ONE_16) {
-        mode = 3;
-        edge_state[1] = x0;
-        edge_state[7] = dy + 1;
-    } else if (allow_steep_modes != 0 && xstep > FIXED_ONE_16) {
+        mode = SHAPE3D_EDGE_MODE_VERTICAL;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
+    }
+    else if (xstep == FIXED_ONE_16) {
+        mode = SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
+    }
+    else if (xstep == -FIXED_ONE_16) {
+        mode = SHAPE3D_EDGE_MODE_DIAGONAL_LEFT;
+        edge_state[EDGE_STATE_X] = x0;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
+    }
+    else if (allow_steep_modes != 0 && xstep > FIXED_ONE_16) {
         /* Steep right: dx > dy → mode 8 (x-major DDA, no y-clip adjustment needed) */
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)dx);
-        mode = 8;
-        edge_state[1] = x0;       /* x = startX */
-        edge_state[2] = 0;        /* yfrac = 0 */
-        edge_state[6] = ystep_steep; /* y step per x advance */
-        edge_state[7] = dx + 1;   /* count = x-pixel steps */
-    } else if (allow_steep_modes != 0 && xstep < -FIXED_ONE_16) {
+        mode = SHAPE3D_EDGE_MODE_STEEP_RIGHT;
+        edge_state[EDGE_STATE_X] = x0;          /* x = startX */
+        edge_state[EDGE_STATE_FRAC] = 0;           /* yfrac = 0 */
+        edge_state[EDGE_STATE_STEP] = ystep_steep; /* y step per x advance */
+        edge_state[EDGE_STATE_COUNT] = dx + 1;      /* count = x-pixel steps */
+    }
+    else if (allow_steep_modes != 0 && xstep < -FIXED_ONE_16) {
         /* Steep left: |dx| > dy → mode 7 (x-major DDA, no y-clip adjustment needed) */
         int absdx = -dx;
         int ystep_steep = (int)(((long long)dy << FIXED_SHIFT_16) / (long long)absdx);
-        mode = 7;
-        edge_state[1] = x0;       /* x = startX */
-        edge_state[2] = 0;        /* yfrac = 0 */
-        edge_state[6] = ystep_steep; /* y step per x advance */
-        edge_state[7] = absdx + 1;  /* count = x-pixel steps */
-    } else if (xstep > 0) {
-        mode = 6;
-        edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
-        edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
-        edge_state[6] = xstep;
-        edge_state[7] = dy + 1;
-    } else {
-        mode = 5;
-        edge_state[1] = (int)(accum >> FIXED_SHIFT_16);
-        edge_state[2] = (int)(accum & FIXED_FRAC_MASK_16);
-        edge_state[6] = -xstep;
-        edge_state[7] = dy + 1;
+        mode = SHAPE3D_EDGE_MODE_STEEP_LEFT;
+        edge_state[EDGE_STATE_X] = x0;          /* x = startX */
+        edge_state[EDGE_STATE_FRAC] = 0;           /* yfrac = 0 */
+        edge_state[EDGE_STATE_STEP] = ystep_steep; /* y step per x advance */
+        edge_state[EDGE_STATE_COUNT] = absdx + 1;   /* count = x-pixel steps */
+    }
+    else if (xstep > 0) {
+        mode = SHAPE3D_EDGE_MODE_SHALLOW_RIGHT;
+        edge_state[EDGE_STATE_X] = (int)(accum >> FIXED_SHIFT_16);
+        edge_state[EDGE_STATE_FRAC] = (int)(accum & FIXED_FRAC_MASK_16);
+        edge_state[EDGE_STATE_STEP] = xstep;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
+    }
+    else {
+        mode = SHAPE3D_EDGE_MODE_SHALLOW_LEFT;
+        edge_state[EDGE_STATE_X] = (int)(accum >> FIXED_SHIFT_16);
+        edge_state[EDGE_STATE_FRAC] = (int)(accum & FIXED_FRAC_MASK_16);
+        edge_state[EDGE_STATE_STEP] = -xstep;
+        edge_state[EDGE_STATE_COUNT] = dy + 1;
     }
 
-    edge_state[4] = edge_state[2];
-    edge_state[8] = x1;
-    edge_state[9] = mode;
+    edge_state[EDGE_STATE_FRAC_INIT] = edge_state[EDGE_STATE_FRAC];
+    edge_state[EDGE_STATE_X_END] = x1;
+    edge_state[EDGE_STATE_MODE] = mode;
 
     if (allow_steep_modes == 0) {
         /* X clipping when allow_steep_modes == 0 (draw_line_related, not _alt) */
         int x_start = x0;
         int x_end = x1;
-        int count = edge_state[7];
-        
+        int count = edge_state[EDGE_STATE_COUNT];
+
         /* Early-out: line completely outside x bounds */
         if (x_start < left && x_end < left) {
-            return 2;
+            return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
         }
         if (x_start > right && x_end > right) {
-            return 2;
+            return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
         }
-        
+
         /* Clip x coordinates based on mode */
-        if (mode == 2) {
+        if (mode == SHAPE3D_EDGE_MODE_VERTICAL) {
             /* Vertical line: clip x to bounds */
             if (x0 < left) {
-                edge_state[1] = left;
-            } else if (x0 > right) {
-                edge_state[1] = right;
+                edge_state[EDGE_STATE_X] = left;
             }
-        } else if (mode == 3 || mode == 5) {
-/** @brief Left.
- * @param high Parameter value.
- * @param left Parameter value.
- * @param right Parameter value.
- * @param xstep Parameter value.
- * @return Function return value.
- */
+            else if (x0 > right) {
+                edge_state[EDGE_STATE_X] = right;
+            }
+        }
+        else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT
+                 || mode == SHAPE3D_EDGE_MODE_SHALLOW_LEFT) {
             /* Line going left (x decreasing as y increases):
              * Start x = x0 (high), End x = x1 (low)
              * Clip: if x_end < left, reduce count from bottom
@@ -3299,33 +3369,30 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
             if (x_end < left && count > 0 && xstep != 0) {
                 /* End of line is left of viewport - clip bottom */
                 int rows_outside = (left - x_end);
-                if (mode == 3) {
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
                     /* dx/dy = -1, so 1 pixel per row */
-                    edge_state[12] += rows_outside;  /* yclip_bottom */
-                    edge_state[7] -= rows_outside;
-                    edge_state[5] -= rows_outside;
-                    if (edge_state[7] <= 0) return 2;
+                    edge_state[EDGE_STATE_CLIP_BOTTOM] += rows_outside; /* yclip_bottom */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_BOTTOM] -= rows_outside;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
             if (x_start > right && count > 0 && xstep != 0) {
                 /* Start of line is right of viewport - clip top */
                 int rows_outside = (x_start - right);
-                if (mode == 3) {
-                    edge_state[10] += rows_outside;  /* yclip_top */
-                    edge_state[7] -= rows_outside;
-                    edge_state[3] += rows_outside;
-                    edge_state[1] = right;
-                    if (edge_state[7] <= 0) return 2;
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_LEFT) {
+                    edge_state[EDGE_STATE_CLIP_TOP] += rows_outside; /* yclip_top */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_TOP] += rows_outside;
+                    edge_state[EDGE_STATE_X] = right;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
-        } else if (mode == 4 || mode == 6) {
-/** @brief Right.
- * @param low Parameter value.
- * @param left Parameter value.
- * @param right Parameter value.
- * @param xstep Parameter value.
- * @return Function return value.
- */
+        }
+        else if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT
+                 || mode == SHAPE3D_EDGE_MODE_SHALLOW_RIGHT) {
             /* Line going right (x increasing as y increases):
              * Start x = x0 (low), End x = x1 (high)
              * Clip: if x_start < left, reduce count from top
@@ -3334,28 +3401,30 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
             if (x_start < left && count > 0 && xstep != 0) {
                 /* Start of line is left of viewport - clip top */
                 int rows_outside = (left - x_start);
-                if (mode == 4) {
-                    edge_state[10] += rows_outside;  /* yclip_top */
-                    edge_state[7] -= rows_outside;
-                    edge_state[3] += rows_outside;
-                    edge_state[1] = left;
-                    if (edge_state[7] <= 0) return 2;
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
+                    edge_state[EDGE_STATE_CLIP_TOP] += rows_outside; /* yclip_top */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_TOP] += rows_outside;
+                    edge_state[EDGE_STATE_X] = left;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
             if (x_end > right && count > 0 && xstep != 0) {
                 /* End of line is right of viewport - clip bottom */
                 int rows_outside = (x_end - right);
-                if (mode == 4) {
-                    edge_state[12] += rows_outside;  /* yclip_bottom */
-                    edge_state[7] -= rows_outside;
-                    edge_state[5] -= rows_outside;
-                    if (edge_state[7] <= 0) return 2;
+                if (mode == SHAPE3D_EDGE_MODE_DIAGONAL_RIGHT) {
+                    edge_state[EDGE_STATE_CLIP_BOTTOM] += rows_outside; /* yclip_bottom */
+                    edge_state[EDGE_STATE_COUNT] -= rows_outside;
+                    edge_state[EDGE_STATE_Y_BOTTOM] -= rows_outside;
+                    if (edge_state[EDGE_STATE_COUNT] <= 0)
+                        return SHAPE3D_DRAW_LINE_CLIPPED_OUTSIDE_X;
                 }
             }
         }
     }
 
-    return 0;
+    return SHAPE3D_DRAW_LINE_OK;
 }
 
 /**
@@ -3366,14 +3435,15 @@ unsigned draw_line_related_impl(unsigned start_x, unsigned start_y, unsigned end
  * @param shape_index  Index into game3dshapes[].
  * @return 1 on success, 0 if shape not found.
  */
-static int shape3d_try_init_shape(char* resptr, const char* name, int shape_index) {
-    char* shape_ptr;
+static int
+shape3d_try_init_shape(char *resptr, const char *name, int shape_index) {
+    char *shape_ptr;
 
     if (resptr == 0 || shape_index < 0 || shape_index >= SHAPE3D_TOTAL_SHAPES) {
         return 0;
     }
 
-    shape_ptr = locate_shape_nofatal(resptr, (char*)name);
+    shape_ptr = locate_shape_nofatal(resptr, (char *)name);
     if (shape_ptr == 0) {
         memset(&game3dshapes[shape_index], 0, sizeof(game3dshapes[shape_index]));
         return 0;
@@ -3389,105 +3459,135 @@ static int shape3d_try_init_shape(char* resptr, const char* name, int shape_inde
  * @param player_car_id    4-character player car identifier.
  * @param opponent_car_id  4-character opponent car identifier.
  */
-void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
-	int i;
-	struct VECTOR * wheel_vertices_base_ptr;
+void
+shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
+    int i;
+    struct VECTOR *wheel_vertices_base_ptr;
     unsigned long car_resource_size_bytes;
-	aStxxx[2] = player_car_id[0];
-	aStxxx[3] = player_car_id[1];
-	aStxxx[4] = player_car_id[2];
-	aStxxx[5] = player_car_id[3];
+    aStxxx[2] = player_car_id[0];
+    aStxxx[3] = player_car_id[1];
+    aStxxx[4] = player_car_id[2];
+    aStxxx[5] = player_car_id[3];
     aStxxx[6] = 0;
-	carresptr = file_load_3dres(aStxxx);
+    carresptr = file_load_3dres(aStxxx);
 
     if (carresptr == 0) {
-        memset(&game3dshapes[124], 0, sizeof(game3dshapes[124]));
-        memset(&game3dshapes[126], 0, sizeof(game3dshapes[126]));
-        memset(&game3dshapes[128], 0, sizeof(game3dshapes[128]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR0], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR0]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1]));
+        memset(&game3dshapes[SHAPE3D_SLOT_PLAYER_CAR2], 0,
+               sizeof(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR2]));
         return;
     }
 
-    shape3d_try_init_shape((char*)carresptr, "car0", 124);
-    shape3d_try_init_shape((char*)carresptr, "car1", 126);
+    shape3d_try_init_shape((char *)carresptr, "car0", SHAPE3D_SLOT_PLAYER_CAR0);
+    shape3d_try_init_shape((char *)carresptr, "car1", SHAPE3D_SLOT_PLAYER_CAR1);
 
-    if (game3dshapes[126].shape3d_verts != 0 && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
-        wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
+    if (game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts != 0
+        && game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+        wheel_vertices_base_ptr
+            = &(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]);
         carshapevec.z = wheel_vertices_base_ptr[0].z;
-        carshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x)/2;
-        carshapevec2.z = wheel_vertices_base_ptr[6].z;
-        carshapevec2.x = (wheel_vertices_base_ptr[6].x + wheel_vertices_base_ptr[9].x) /2;
-		
+        carshapevec.x
+            = (short)(wheel_vertices_base_ptr[CAR_WHEEL_RING_MIDPOINT].x + wheel_vertices_base_ptr[0].x)
+              / 2;
+        carshapevec2.z = wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].z;
+        carshapevec2.x
+            = (short)(wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].x
+               + wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING + CAR_WHEEL_RING_MIDPOINT].x)
+              / 2;
+
         for (i = 0; i < 6; i++) {
-            carshapevecs[i].x = carshapevec.x - wheel_vertices_base_ptr[i + 0].x;
-            carshapevecs[i].z = carshapevec.z - wheel_vertices_base_ptr[i + 0].z;
+            carshapevecs[i].x = (short)carshapevec.x - wheel_vertices_base_ptr[i + 0].x;
+            carshapevecs[i].z = (short)carshapevec.z - wheel_vertices_base_ptr[i + 0].z;
             carshapevecs[i].y = wheel_vertices_base_ptr[i + 0].y;
-            carshapevecs2[i].x = carshapevec2.x - wheel_vertices_base_ptr[i + 6].x;
-            carshapevecs2[i].z = carshapevec2.z - wheel_vertices_base_ptr[i + 6].z;
-            carshapevecs2[i].y = wheel_vertices_base_ptr[i + 6].y;
-            carshapevecs3[i] = wheel_vertices_base_ptr[i + 12];
-            carshapevecs4[i] = wheel_vertices_base_ptr[i + 18];
+            carshapevecs2[i].x = (short)carshapevec2.x
+                                 - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].x;
+            carshapevecs2[i].z = (short)carshapevec2.z
+                                 - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].z;
+            carshapevecs2[i].y = wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].y;
+            carshapevecs3[i] = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS];
+            carshapevecs4[i]
+                = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS + WHEEL_POINTS_PER_RING];
         }
     }
 
-	for (i = 0; i < 5; i++) {
-		viewport_clipping_bounds[i] = 0;
-	}
+    for (i = 0; i < WHEEL_STATE_CACHE_SIZE; i++) {
+        viewport_clipping_bounds[i] = 0;
+    }
 
-    shape3d_try_init_shape((char*)carresptr, "car2", 128);
-    shape3d_try_init_shape((char*)carresptr, "exp0", 116);
-    shape3d_try_init_shape((char*)carresptr, "exp1", 117);
-    shape3d_try_init_shape((char*)carresptr, "exp2", 118);
-    shape3d_try_init_shape((char*)carresptr, "exp3", 119);
+    shape3d_try_init_shape((char *)carresptr, "car2", SHAPE3D_SLOT_PLAYER_CAR2);
+    shape3d_try_init_shape((char *)carresptr, "exp0", SHAPE3D_SLOT_PLAYER_EXP0);
+    shape3d_try_init_shape((char *)carresptr, "exp1", SHAPE3D_SLOT_PLAYER_EXP1);
+    shape3d_try_init_shape((char *)carresptr, "exp2", SHAPE3D_SLOT_PLAYER_EXP2);
+    shape3d_try_init_shape((char *)carresptr, "exp3", SHAPE3D_SLOT_PLAYER_EXP3);
 
-	if (opponent_car_id[0] != -1) {
-		if (player_car_id[0] == opponent_car_id[0] && player_car_id[1] == opponent_car_id[1] &&
-			player_car_id[2] == opponent_car_id[2] && player_car_id[3] == opponent_car_id[3])
-		{
-            car_resource_size_bytes = mmgr_get_chunk_size_bytes((char*)carresptr);
-			car2resptr = mmgr_alloc_resbytes("car2", car_resource_size_bytes);
-            memcpy((char*)car2resptr, (const char*)carresptr, (size_t)car_resource_size_bytes);
-		} else {
-			aStxxx[2] = opponent_car_id[0];
-			aStxxx[3] = opponent_car_id[1];
-			aStxxx[4] = opponent_car_id[2];
-			aStxxx[5] = opponent_car_id[3];
+    if (opponent_car_id[0] != -1) {
+        if (player_car_id[0] == opponent_car_id[0] && player_car_id[1] == opponent_car_id[1]
+            && player_car_id[2] == opponent_car_id[2] && player_car_id[3] == opponent_car_id[3]) {
+            car_resource_size_bytes = mmgr_get_chunk_size_bytes((char *)carresptr);
+            car2resptr = mmgr_alloc_resbytes("car2", (long)car_resource_size_bytes);
+            memcpy((char *)car2resptr, (const char *)carresptr, (size_t)car_resource_size_bytes);
+        }
+        else {
+            aStxxx[2] = opponent_car_id[0];
+            aStxxx[3] = opponent_car_id[1];
+            aStxxx[4] = opponent_car_id[2];
+            aStxxx[5] = opponent_car_id[3];
             aStxxx[6] = 0;
-			car2resptr = file_load_3dres(aStxxx);
-		}
+            car2resptr = file_load_3dres(aStxxx);
+        }
 
-        shape3d_try_init_shape((char*)car2resptr, "car0", 125);
-        shape3d_try_init_shape((char*)car2resptr, "car1", 127);
+        shape3d_try_init_shape((char *)car2resptr, "car0", SHAPE3D_SLOT_OPPONENT_CAR0);
+        shape3d_try_init_shape((char *)car2resptr, "car1", SHAPE3D_SLOT_OPPONENT_CAR1);
 
-        /* Reference uses game3dshapes[126] (player's car1) for opponent wheel setup */
-        if (game3dshapes[126].shape3d_verts != 0 && game3dshapes[126].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
-            wheel_vertices_base_ptr = &(game3dshapes[126].shape3d_verts[8]);
+        /* Reference uses the player car1 wheel vertices for opponent wheel setup. */
+        if (game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts != 0
+            && game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_numverts >= CAR_SHAPE_MIN_VERTS) {
+            wheel_vertices_base_ptr = &(
+                game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]);
             oppcarshapevec.z = wheel_vertices_base_ptr[0].z;
-            oppcarshapevec.x = (wheel_vertices_base_ptr[3].x + wheel_vertices_base_ptr[0].x)/2;
-            oppcarshapevec2.z = wheel_vertices_base_ptr[6].z;
-            oppcarshapevec2.x = (wheel_vertices_base_ptr[6].x + wheel_vertices_base_ptr[9].x) /2;
+            oppcarshapevec.x = (short)(wheel_vertices_base_ptr[CAR_WHEEL_RING_MIDPOINT].x
+                                + wheel_vertices_base_ptr[0].x)
+                               / 2;
+            oppcarshapevec2.z = wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].z;
+            oppcarshapevec2.x
+                = (short)(wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING].x
+                   + wheel_vertices_base_ptr[WHEEL_POINTS_PER_RING + CAR_WHEEL_RING_MIDPOINT].x)
+                  / 2;
 
             for (i = 0; i < 6; i++) {
-                oppcarshapevecs[i].x = oppcarshapevec.x - wheel_vertices_base_ptr[i + 0].x;
-                oppcarshapevecs[i].z = oppcarshapevec.z - wheel_vertices_base_ptr[i + 0].z;
+                oppcarshapevecs[i].x = (short)oppcarshapevec.x - wheel_vertices_base_ptr[i + 0].x;
+                oppcarshapevecs[i].z = (short)oppcarshapevec.z - wheel_vertices_base_ptr[i + 0].z;
                 oppcarshapevecs[i].y = wheel_vertices_base_ptr[i + 0].y;
-                oppcarshapevecs2[i].x = oppcarshapevec2.x - wheel_vertices_base_ptr[i + 6].x;
-                oppcarshapevecs2[i].z = oppcarshapevec2.z - wheel_vertices_base_ptr[i + 6].z;
-                oppcarshapevecs2[i].y = wheel_vertices_base_ptr[i + 6].y;
-                oppcarshapevecs3[i] = wheel_vertices_base_ptr[i + 12];
-                oppcarshapevecs4[i] = wheel_vertices_base_ptr[i + 18];
+                oppcarshapevecs2[i].x = (short)oppcarshapevec2.x
+                                        - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].x;
+                oppcarshapevecs2[i].z = (short)oppcarshapevec2.z
+                                        - wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].z;
+                oppcarshapevecs2[i].y = wheel_vertices_base_ptr[i + WHEEL_POINTS_PER_RING].y;
+                oppcarshapevecs3[i] = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS];
+                oppcarshapevecs4[i]
+                    = wheel_vertices_base_ptr[i + WHEEL_POINTS_BOTH_RINGS + WHEEL_POINTS_PER_RING];
             }
         }
-		for (i = 0; i < 5; i++) {
-			game_frame_pointer[i] = 0;
-		}
-        shape3d_init_shape(locate_shape_fatal((char*)car2resptr, "car2"), &game3dshapes[129]);
-        shape3d_init_shape(locate_shape_fatal((char*)car2resptr, "exp0"), &game3dshapes[120]);
-        shape3d_init_shape(locate_shape_fatal((char*)car2resptr, "exp1"), &game3dshapes[121]);
-        shape3d_init_shape(locate_shape_fatal((char*)car2resptr, "exp2"), &game3dshapes[122]);
-        shape3d_init_shape(locate_shape_fatal((char*)car2resptr, "exp3"), &game3dshapes[123]);
-	} else {
-		car2resptr = 0;
-	}
+        for (i = 0; i < WHEEL_STATE_CACHE_SIZE; i++) {
+            game_frame_pointer[i] = 0;
+        }
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "car2"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_CAR2]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp0"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP0]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp1"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP1]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp2"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP2]);
+        shape3d_init_shape(locate_shape_fatal((char *)car2resptr, "exp3"),
+                           &game3dshapes[SHAPE3D_SLOT_OPPONENT_EXP3]);
+    }
+    else {
+        car2resptr = 0;
+    }
 }
 
 /**
@@ -3500,73 +3600,83 @@ void shape3d_load_car_shapes(char player_car_id[], char opponent_car_id[]) {
  * @param wheel_vertex_offsets   Base vertex offsets for wheel rings.
  * @param wheel_center_points    Centre points for inner/outer wheel rings.
  */
-void shape3d_update_car_wheel_vertices(struct VECTOR * wheel_vertices, int wheel_rotation_angle, short* wheel_compression_src, short* wheel_state_cache, struct VECTOR* wheel_vertex_offsets, struct VECTOR* wheel_center_points) {
-	int i, j;
+void
+shape3d_update_car_wheel_vertices(struct VECTOR *wheel_vertices, int wheel_rotation_angle,
+                                  short *wheel_compression_src, short *wheel_state_cache,
+                                  struct VECTOR *wheel_vertex_offsets,
+                                  struct VECTOR *wheel_center_points) {
+    int i, j;
     int sin_half_angle;
     int cos_half_angle;
     int rotated_component;
     int wheel_drop;
     int wheel_vertex_end;
     //return shape3d_update_car_wheel_vertices_legacy(wheel_vertices, wheel_rotation_angle, wheel_compression_src, wheel_state_cache, wheel_vertex_offsets, wheel_center_points);
-    if (wheel_state_cache[4] != 0) {
+    if (wheel_state_cache[WHEEL_ROTATION_CACHE_SLOT] != 0) {
         sin_half_angle = sin_fast(wheel_rotation_angle / 2);
         cos_half_angle = cos_fast(wheel_rotation_angle / 2);
 
         for (i = 0; i < WHEEL_POINTS_PER_RING; i++) {
-            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, cos_half_angle);
-            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle) + wheel_center_points[0].x + rotated_component;
-            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, cos_half_angle);
-            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle) + wheel_center_points[0].z + rotated_component;
-		}
+            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, (short)cos_half_angle);
+            wheel_vertices[i].x = (short)multiply_and_scale(wheel_vertex_offsets[i].z, (short)sin_half_angle)
+                                  + wheel_center_points[0].x + rotated_component;
+            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, (short)cos_half_angle);
+            wheel_vertices[i].z = (short)multiply_and_scale(wheel_vertex_offsets[i].x, (short)sin_half_angle)
+                                  + wheel_center_points[0].z + rotated_component;
+        }
         for (i = WHEEL_POINTS_PER_RING; i < WHEEL_POINTS_BOTH_RINGS; i++) {
-            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, cos_half_angle);
-            wheel_vertices[i].x = multiply_and_scale(wheel_vertex_offsets[i].z, sin_half_angle) + wheel_center_points[1].x + rotated_component;
-            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, cos_half_angle);
-            wheel_vertices[i].z = multiply_and_scale(wheel_vertex_offsets[i].x, sin_half_angle) + wheel_center_points[1].z + rotated_component;
-		}
-        wheel_state_cache[4] = wheel_rotation_angle;
-	}
+            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].x, (short)cos_half_angle);
+            wheel_vertices[i].x = (short)multiply_and_scale(wheel_vertex_offsets[i].z, (short)sin_half_angle)
+                                  + wheel_center_points[1].x + rotated_component;
+            rotated_component = multiply_and_scale(wheel_vertex_offsets[i].z, (short)cos_half_angle);
+            wheel_vertices[i].z = (short)multiply_and_scale(wheel_vertex_offsets[i].x, (short)sin_half_angle)
+                                  + wheel_center_points[1].z + rotated_component;
+        }
+        wheel_state_cache[WHEEL_ROTATION_CACHE_SLOT] = (short)wheel_rotation_angle;
+    }
 
-	for (j = 0; j < WHEEL_COUNT; j++) {
-		
-    wheel_drop = labs(labs(wheel_compression_src[j]) >> WHEEL_COMPRESSION_SHIFT);
+    for (j = 0; j < WHEEL_COUNT; j++) {
+
+        wheel_drop = (int)labs(labs(wheel_compression_src[j]) >> WHEEL_COMPRESSION_SHIFT);
         //wheel_drop = (wheel_compression_src[j]) >> 6;
         if (wheel_state_cache[j] == wheel_drop)
-			continue;
-		i = j * WHEEL_POINTS_PER_RING;
+            continue;
+        i = j * WHEEL_POINTS_PER_RING;
         wheel_vertex_end = (j * WHEEL_POINTS_PER_RING) + WHEEL_POINTS_PER_RING;
 
         for (; i < wheel_vertex_end; i++) {
-            wheel_vertices[i].y = (wheel_vertex_offsets[i].y) - wheel_drop;
-		}
-        wheel_state_cache[j] = wheel_drop;
-	}
+            wheel_vertices[i].y = (short)(wheel_vertex_offsets[i].y) - wheel_drop;
+        }
+        wheel_state_cache[j] = (short)wheel_drop;
+    }
 
-	return ;
+    return;
 }
 
 /**
  * @brief Reset wheel vertices to neutral position and free car shape resources.
  */
-void shape3d_free_car_shapes() {
-	if (car2resptr != 0) {
-		shape3d_update_car_wheel_vertices(&(game3dshapes[127].shape3d_verts[8]), 0, (short*)car_wheel_vertex_data, game_frame_pointer, oppcarshapevecs, &oppcarshapevec);
-        mmgr_release((char*)car2resptr);
-	}
-        shape3d_update_car_wheel_vertices(&(game3dshapes[126].shape3d_verts[8]), 0, (short*)car_wheel_vertex_data, viewport_clipping_bounds, carshapevecs, &carshapevec);
-    mmgr_free((char*)carresptr);
+void
+shape3d_free_car_shapes() {
+    if (car2resptr != 0) {
+        shape3d_update_car_wheel_vertices(
+            &(game3dshapes[SHAPE3D_SLOT_OPPONENT_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]),
+            0, (short *)car_wheel_vertex_data, game_frame_pointer, oppcarshapevecs,
+            &oppcarshapevec);
+        mmgr_release((char *)car2resptr);
+    }
+    shape3d_update_car_wheel_vertices(
+        &(game3dshapes[SHAPE3D_SLOT_PLAYER_CAR1].shape3d_verts[CAR_WHEEL_VERTEX_BASE_INDEX]), 0,
+        (short *)car_wheel_vertex_data, viewport_clipping_bounds, carshapevecs, &carshapevec);
+    mmgr_free((char *)carresptr);
 }
 
 // Draw a line from (startX, startY) to (endX, endY) with specified color
 /** @brief Prerender line.
- * @param startX Parameter value.
- * @param startY Parameter value.
- * @param endX Parameter value.
- * @param endY Parameter value.
- * @param color Parameter value.
  */
-void preRender_line(unsigned short startX, unsigned short startY,
-                    unsigned short endX, unsigned short endY, unsigned short color) {
+void
+preRender_line(unsigned short startX, unsigned short startY, unsigned short endX,
+               unsigned short endY, unsigned short color) {
     int x0 = (int)(int16_t)startX;
     int y0 = (int)(int16_t)startY;
     int x1 = (int)(int16_t)endX;
@@ -3595,4 +3705,3 @@ void preRender_line(unsigned short startX, unsigned short startY,
         }
     }
 }
-

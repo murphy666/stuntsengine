@@ -21,13 +21,12 @@
  */
 
 /* font.c — Font rendering extracted from stunts.c */
-#define FONT_IMPL
 #include "stunts.h"
 #include "shape2d.h"
 #include "font.h"
 
 /* --- g_fontdef_ptr --- */
-unsigned char* g_fontdef_ptr = 0;
+unsigned char *g_fontdef_ptr = 0;
 
 /* --- font_set_fontdef2 --- */
 
@@ -37,9 +36,10 @@ unsigned char* g_fontdef_ptr = 0;
  * @param data Parameter `data`.
  */
 
-void font_set_fontdef2(void * data) {
-	set_fontdefseg(data);
-	fontdef_line_height = *((unsigned short *)((char *)data + 14));
+void
+font_set_fontdef2(void *data) {
+    set_fontdefseg(data);
+    fontdef_line_height = *((unsigned short *)((char *)data + 14));
 }
 
 /* --- font_set_fontdef --- */
@@ -48,8 +48,9 @@ void font_set_fontdef2(void * data) {
 /** @brief Select the default font definition buffer and refresh cached metrics.
  */
 
-void font_set_fontdef(void) {
-	font_set_fontdef2(fontdefptr);
+void
+font_set_fontdef(void) {
+    font_set_fontdef2(fontdefptr);
 }
 
 /* --- set_fontdefseg --- */
@@ -64,8 +65,9 @@ void font_set_fontdef(void) {
  * @param data Pointer to the loaded font definition structure.
  */
 
-void set_fontdefseg(void * data) {
-	g_fontdef_ptr = (unsigned char*)data;
+void
+set_fontdefseg(void *data) {
+    g_fontdef_ptr = (unsigned char *)data;
 }
 
 /* --- font_set_colors --- */
@@ -77,13 +79,14 @@ void set_fontdefseg(void * data) {
  * @param bg_color Parameter `bg_color`.
  */
 
-void font_set_colors(int fg_color, unsigned short bg_color) {
-	unsigned short * fontdef = (unsigned short *)g_fontdef_ptr;
-	if (fontdef == 0) {
-		return;
-	}
-	fontdef[0] = (unsigned char)fg_color;  // Offset 0 - foreground color as byte extended to word
-	fontdef[1] = (unsigned char)bg_color; // Offset 2 - background color as byte extended to word
+void
+font_set_colors(int fg_color, unsigned short bg_color) {
+    unsigned short *fontdef = (unsigned short *)g_fontdef_ptr;
+    if (fontdef == 0) {
+        return;
+    }
+    fontdef[0] = (unsigned char)fg_color; // Offset 0 - foreground color as byte extended to word
+    fontdef[1] = (unsigned char)bg_color; // Offset 2 - background color as byte extended to word
 }
 
 /* --- font_op --- */
@@ -95,46 +98,50 @@ void font_set_colors(int fg_color, unsigned short bg_color) {
  * @param maxChars Maximum number of characters to include in the measurement.
  * @return Total pixel width for the measured substring.
  */
-unsigned short font_op(char* text, unsigned short maxChars) {
-	unsigned char * fontdef = g_fontdef_ptr;
-	unsigned short width = 0;
-	if (fontdef == 0) {
-		return 0;
-	}
-	unsigned char proportional = fontdef[12];
-	unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
-	unsigned short default_width = *(unsigned short *)(fontdef + 18);
-	unsigned short * char_table = (unsigned short *)(fontdef + 22);
-	unsigned short fixed_width = default_width;
-	int has_width_byte = 0;
-	unsigned short remaining = maxChars;
-	if (default_width == 0) {
-		default_width = 8;
-	}
+unsigned short
+font_op(char *text, unsigned short maxChars) {
+    unsigned char *fontdef = g_fontdef_ptr;
+    unsigned short width = 0;
+    if (fontdef == 0) {
+        return 0;
+    }
+    unsigned char proportional = fontdef[12];
+    unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
+    unsigned short default_width = *(unsigned short *)(fontdef + 18);
+    unsigned short *char_table = (unsigned short *)(fontdef + 22);
+    unsigned short fixed_width = default_width;
+    bool has_width_byte = false;
+    unsigned short remaining = maxChars;
+    if (default_width == 0) {
+    }
 
-	if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
-		has_width_byte = 1;
-	} else if (proportional == 1 && prop1_width != 0) {
-		fixed_width = prop1_width;
-	}
+    if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
+        has_width_byte = true;
+    }
+    else if (proportional == 1 && prop1_width != 0) {
+        fixed_width = prop1_width;
+    }
 
-	if (remaining == 0) return 0;
+    if (remaining == 0)
+        return 0;
 
-	while (*text && remaining--) {
-		unsigned char ch = *text++;
-		unsigned short char_ptr = char_table[ch];
-		unsigned short char_width;
+    while (*text && remaining--) {
+        unsigned char ch = *text++;
+        unsigned short char_ptr = char_table[ch];
+        unsigned short char_width;
 
-		if (char_ptr == 0) continue; // Character not in font
+        if (char_ptr == 0)
+            continue; // Character not in font
 
-		if (has_width_byte) {
-			char_width = fontdef[char_ptr];
-		} else {
-			char_width = fixed_width;
-		}
-		width += char_width;
-	}
-	return width;
+        if (has_width_byte) {
+            char_width = fontdef[char_ptr];
+        }
+        else {
+            char_width = fixed_width;
+        }
+        width += char_width;
+    }
+    return width;
 }
 
 /* --- font_op2 --- */
@@ -145,8 +152,9 @@ unsigned short font_op(char* text, unsigned short maxChars) {
  * @param text Input string to measure.
  * @return Total pixel width for the full string.
  */
-unsigned short font_get_text_width(char* text) {
-	return font_op(text, (unsigned short)~0u);
+unsigned short
+font_get_text_width(char *text) {
+    return font_op(text, (unsigned short)~0u);
 }
 
 /* --- font_draw_text --- */
@@ -157,103 +165,105 @@ unsigned short font_get_text_width(char* text) {
  * @param x Left pixel position where rendering starts.
  * @param y Top pixel position where rendering starts.
  */
-void font_draw_text(char* str, unsigned short x, unsigned short y) {
-	unsigned char * fontdef = g_fontdef_ptr;
-	unsigned char * vram = (unsigned char *)sprite1.sprite_bitmapptr;
-	unsigned int * lineofs = sprite1.sprite_lineofs;
-	if (fontdef == 0) {
-		return;
-	}
-	unsigned char fg_color = fontdef[0];
-	unsigned char proportional = fontdef[12];
-	unsigned short font_height = *(unsigned short *)(fontdef + 14);
-	unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
-	unsigned short default_charwidth = *(unsigned short *)(fontdef + 18);
-	unsigned short * char_table = (unsigned short *)(fontdef + 22);
-	unsigned short font_x_position_base = *(unsigned short *)(fontdef + 8); // x position (from offset 8)
-	int has_width_byte = 0;
-		if (font_height == 0) {
-			font_height = fontdef_line_height;
-			if (font_height == 0) {
-				font_height = 8;
-			}
-		}
-		if (default_charwidth == 0) {
-			default_charwidth = 8;
-		}
+void
+font_draw_text(char *str, unsigned short x, unsigned short y) {
+    unsigned char *fontdef = g_fontdef_ptr;
+    unsigned char *vram = (unsigned char *)sprite1.sprite_bitmapptr;
+    unsigned int *lineofs = sprite1.sprite_lineofs;
+    if (fontdef == 0) {
+        return;
+    }
+    unsigned char fg_color = fontdef[0];
+    unsigned char proportional = fontdef[12];
+    unsigned short font_height = *(unsigned short *)(fontdef + 14);
+    unsigned short prop1_width = *(unsigned short *)(fontdef + 16);
+    unsigned short default_charwidth = *(unsigned short *)(fontdef + 18);
+    unsigned short *char_table = (unsigned short *)(fontdef + 22);
+    unsigned short font_x_position_base
+        = *(unsigned short *)(fontdef + 8); // x position (from offset 8)
+    bool has_width_byte = false;
+    if (font_height == 0) {
+        font_height = fontdef_line_height;
+        if (font_height == 0) {
+            font_height = 8;
+        }
+    }
+    if (default_charwidth == 0) {
+        default_charwidth = 8;
+    }
 
-		if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
-			has_width_byte = 1;
-		}
-	
-	// Set initial position
-	*(unsigned short *)(fontdef + 8) = x;
-	*(unsigned short *)(fontdef + 10) = y;
-	
-	while (1) {
-		unsigned char ch = *str;
-		unsigned short char_ptr;
-		unsigned short char_x, char_y;
-		unsigned short char_width_bytes;
-		unsigned short char_height;
-		unsigned short char_pixel_width;
-		unsigned short bx;
-		unsigned char * src;
-		unsigned short i, j, k;
-		
-		if (ch == 0) break;
-		
-		str++;
-		char_ptr = char_table[ch];
-		
-		if (char_ptr == 0) {
-			// Handle CR/LF
-			if (ch == 13 || ch == 10) {
-				*(unsigned short *)(fontdef + 8) = font_x_position_base;
-				*(unsigned short *)(fontdef + 10) += (unsigned short)(fontdef_line_height + 2);
-			}
-			continue;
-		}
-		
-		char_x = *(unsigned short *)(fontdef + 8);
-		
-		/* proportional==2 and some proportional==1 fonts use width byte at start of glyph
+    if (proportional == 2 || (proportional == 1 && prop1_width == 0)) {
+        has_width_byte = true;
+    }
+
+    // Set initial position
+    *(unsigned short *)(fontdef + 8) = x;
+    *(unsigned short *)(fontdef + 10) = y;
+
+    while (1) {
+        unsigned char ch = *str;
+        unsigned short char_ptr;
+        unsigned short char_x, char_y;
+        unsigned short char_width_bytes;
+        unsigned short char_height;
+        unsigned short char_pixel_width;
+        unsigned char *src;
+        unsigned short i, j, k;
+
+        if (ch == 0)
+            break;
+
+        str++;
+        char_ptr = char_table[ch];
+
+        if (char_ptr == 0) {
+            // Handle CR/LF
+            if (ch == 13 || ch == 10) {
+                *(unsigned short *)(fontdef + 8) = font_x_position_base;
+                *(unsigned short *)(fontdef + 10) += (unsigned short)(fontdef_line_height + 2);
+            }
+            continue;
+        }
+
+        char_x = *(unsigned short *)(fontdef + 8);
+
+        /* proportional==2 and some proportional==1 fonts use width byte at start of glyph
 		 * proportional==1 with non-zero offset 16 uses fixed width (e.g. LED font)
 		 * proportional==0 means fixed width from offset 18 (default_charwidth)
 		 */
-		if (has_width_byte) {
-			char_pixel_width = fontdef[char_ptr];
-			char_ptr++;
-		} else if (proportional == 1 && prop1_width != 0) {
-			char_pixel_width = prop1_width;
-		} else {
-			char_pixel_width = default_charwidth;
-		}
-		char_width_bytes = (char_pixel_width + 7) >> 3;
-		
-		char_height = font_height;
-		char_y = *(unsigned short *)(fontdef + 10);
-		src = fontdef + char_ptr;
-		bx = char_y << 1;
-		(void)bx;
-		
-		for (i = 0; i < char_height; i++) {
-			unsigned short di = lineofs[char_y + i] + char_x;
-			
-			for (j = 0; j < char_width_bytes; j++) {
-				unsigned char byte = *src++;
-				for (k = 0; k < 8; k++) {
-					if (byte & 128) {
-						vram[di] = fg_color;
-					}
-					byte <<= 1;
-					di++;
-				}
-			}
-		}
-		
-		*(unsigned short *)(fontdef + 8) += char_pixel_width;
-	}
+        if (has_width_byte) {
+            char_pixel_width = fontdef[char_ptr];
+            char_ptr++;
+        }
+        else if (proportional == 1 && prop1_width != 0) {
+            char_pixel_width = prop1_width;
+        }
+        else {
+            char_pixel_width = default_charwidth;
+        }
+        char_width_bytes = (char_pixel_width + 7) >> 3;
+
+        char_height = font_height;
+        char_y = *(unsigned short *)(fontdef + 10);
+        src = fontdef + char_ptr;
+
+        for (i = 0; i < char_height; i++) {
+            unsigned short di = lineofs[char_y + i] + char_x;
+
+            for (j = 0; j < char_width_bytes; j++) {
+                unsigned char byte = *src++;
+                for (k = 0; k < 8; k++) {
+                    if (byte & 128) {
+                        vram[di] = fg_color;
+                    }
+                    byte <<= 1;
+                    di++;
+                }
+            }
+        }
+
+        *(unsigned short *)(fontdef + 8) += char_pixel_width;
+    }
 }
 
 /* --- font_op2_alt --- */
@@ -265,22 +275,24 @@ void font_draw_text(char* str, unsigned short x, unsigned short y) {
  * @return Function result.
  */
 
-int font_get_centered_x(char* text) {
-	int width = font_get_text_width(text);
-	int result = 320 - width;  // 320 - width
-	// Arithmetic right shift to divide by 2 (handling negative properly)
-	if (result < 0) {
-		result = (result - 1) >> 1;
-	} else {
-		result = result >> 1;
-	}
-	return result;
+int
+font_get_centered_x(char *text) {
+    int width = font_get_text_width(text);
+    int result = 320 - width; // 320 - width
+    // Arithmetic right shift to divide by 2 (handling negative properly)
+    if (result < 0) {
+        result = (result - 1) >> 1;
+    }
+    else {
+        result = result >> 1;
+    }
+    return result;
 }
 
 /* Font globals */
 unsigned char font_x_position_base[2] = { 0, 0 };
 unsigned short fontdefseg = 0;
-void * fontnptr = 0;
-void * fontdefptr = 0;
+void *fontnptr = 0;
+void *fontdefptr = 0;
 unsigned short fontdef_line_height = 0;
-void * fontledresptr = 0;
+void *fontledresptr = 0;

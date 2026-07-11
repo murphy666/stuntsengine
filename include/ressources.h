@@ -23,73 +23,63 @@
 #ifndef RESSOURCES_H
 #define RESSOURCES_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-const char* file_find(const char* query);
-const char* file_find_next(void);
-const char* file_find_next_alt(void);
+const char *file_find(const char *query);
+const char *file_find_next(void);
+const char *file_find_next_alt(void);
 
-void file_build_path(const char* dir, const char* name, const char* ext, char* dst, size_t dst_size);
-const char* file_combine_and_find(const char* dir, const char* name, const char* ext);
+void file_build_path(const char *dir, const char *name, const char *ext, char *dst,
+                     size_t dst_size);
+const char *file_combine_and_find(const char *dir, const char *name, const char *ext);
 
-unsigned short file_paras(const char* filename, int fatal);
-unsigned short file_paras_fatal(const char* filename);
-unsigned short file_paras_nofatal(const char* filename);
+unsigned short file_paras(const char *filename, int fatal);
+unsigned short file_paras_fatal(const char *filename);
+unsigned short file_paras_nofatal(const char *filename);
 
-unsigned short file_decomp_paras(const char* filename, int fatal);
-unsigned short file_decomp_paras_fatal(const char* filename);
-unsigned short file_decomp_paras_nofatal(const char* filename);
+unsigned short file_decomp_paras(const char *filename, int fatal);
+unsigned short file_decomp_paras_fatal(const char *filename);
+unsigned short file_decomp_paras_nofatal(const char *filename);
 
-void * file_read(const char* filename, void * dst, int fatal);
-void * file_read_fatal(const char* filename, void * dst);
-void * file_read_nofatal(const char* filename, void * dst);
+void *file_read(const char *filename, void *dst, int fatal);
+void *file_read_fatal(const char *filename, void *dst);
+void *file_read_nofatal(const char *filename, void *dst);
 
-/* Global state — defined in src/data_runtime.c */
+extern bool joystick_assigned_flags;
 
-#ifdef DATA_RUNTIME_IMPL
-#  define _RT_
-#else
-#  define _RT_ extern
-#endif
-
-_RT_ char             joystick_assigned_flags;
-_RT_ unsigned         resource_alloc_state_a;
-_RT_ unsigned         resource_alloc_state_b;
-
-#undef _RT_
-
-extern short is_audioloaded;
-extern char  g_is_busy;
+extern bool is_audioloaded;
+extern bool g_is_busy;
 
 /* Debug helpers */
-void debug_track_terrain_map(const char * tag);
+void debug_track_terrain_map(const char *tag);
 
-short file_write(const char* filename, void * src, unsigned long length, int fatal);
-short file_write_fatal(const char* filename, void * src, unsigned long length);
-short file_write_nofatal(const char* filename, void * src, unsigned long length);
+short file_write(const char *filename, void *src, unsigned long length, int fatal);
+short file_write_fatal(const char *filename, void *src, unsigned long length);
+short file_write_nofatal(const char *filename, void *src, unsigned long length);
 
-void * file_decomp(const char* filename, int fatal);
-void * file_decomp_fatal(const char* filename);
-void * file_decomp_nofatal(const char* filename);
+void *file_decomp(const char *filename, int fatal);
+void *file_decomp_fatal(const char *filename);
+void *file_decomp_nofatal(const char *filename);
 
-void * file_load_binary(const char* filename, int fatal);
-void * file_load_binary_nofatal(const char* filename);
-void * file_load_binary_fatal(const char* filename);
+void *file_load_binary(const char *filename, int fatal);
+void *file_load_binary_nofatal(const char *filename);
+void *file_load_binary_fatal(const char *filename);
 
-void * file_load_resfile(const char* filename);
-void * file_load_resource(int type, const char* filename);
-void unload_resource(void * resptr);
-void file_load_audiores(const char* songfile, const char* voicefile, const char* name);
-void * file_load_3dres(const char* filename);
+void *file_load_resfile(const char *filename);
+void *file_load_resource(int type, const char *filename);
+void unload_resource(void *resptr);
+void file_load_audiores(const char *songfile, const char *voicefile, const char *name);
+void *file_load_3dres(const char *filename);
 
-short file_load_replay(const char* dir, const char* name);
-short file_write_replay(const char* filename);
+short file_load_replay(const char *dir, const char *name);
+short file_write_replay(const char *filename);
 
-void parse_filepath_separators_dosptr(const char* src, void* dst);
+void parse_filepath_separators_dosptr(const char *src, void *dst);
 
 #ifdef __cplusplus
 }

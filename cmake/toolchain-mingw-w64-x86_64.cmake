@@ -4,12 +4,12 @@
 # Usage (one-time configure):
 #   cmake -S . -B build_cmake_windows \
 #         -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw-w64-x86_64.cmake \
-#         -DSDL2_MINGW_ROOT=library/sdl2-windows/SDL2-2.32.2/x86_64-w64-mingw32 \
+#         -DSDL3_MINGW_ROOT=library/sdl3-windows/SDL3-3.4.4/x86_64-w64-mingw32 \
 #         -DCMAKE_BUILD_TYPE=Release
 #
 #   cmake --build build_cmake_windows
 #
-# The resulting stunts.exe and SDL2.dll are placed in build_cmake_windows/.
+# The resulting stunts.exe and SDL3.dll are placed in build_cmake_windows/.
 # ---------------------------------------------------------------------------
 
 set(CMAKE_SYSTEM_NAME    Windows)
@@ -42,22 +42,28 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-# ----- SDL2 location (set via -DSDL2_MINGW_ROOT=...) ----------------------
-# The variable SDL2_MINGW_ROOT should point to the arch-specific sub-directory
-# of the SDL2 MinGW developer package, e.g.:
-#   library/sdl2-windows/SDL2-2.32.2/x86_64-w64-mingw32
+# ----- SDL3 location (set via -DSDL3_MINGW_ROOT=...) ----------------------
+# The variable SDL3_MINGW_ROOT should point to the arch-specific sub-directory
+# of the SDL3 MinGW developer package, e.g.:
+#   library/sdl3-windows/SDL3-3.4.4/x86_64-w64-mingw32
 #
 # If not provided on the command line, fall back to a sensible default relative
 # to the source tree so the preset can be used without extra flags.
-if(NOT SDL2_MINGW_ROOT)
-    set(SDL2_MINGW_ROOT
-        "${CMAKE_SOURCE_DIR}/library/sdl2-windows/SDL2-2.32.2/x86_64-w64-mingw32")
+if(NOT SDL3_MINGW_ROOT)
+    file(GLOB _SDL3_MINGW_ROOT_GLOB
+        "${CMAKE_SOURCE_DIR}/library/sdl3-windows/*/x86_64-w64-mingw32")
+    list(LENGTH _SDL3_MINGW_ROOT_GLOB _SDL3_MINGW_ROOT_COUNT)
+    if(_SDL3_MINGW_ROOT_COUNT GREATER 0)
+        list(GET _SDL3_MINGW_ROOT_GLOB 0 SDL3_MINGW_ROOT)
+    else()
+        set(SDL3_MINGW_ROOT
+            "${CMAKE_SOURCE_DIR}/library/sdl3-windows/SDL3-3.4.4/x86_64-w64-mingw32")
+    endif()
 endif()
 
-# Expose the SDL2 root to find_package
-list(APPEND CMAKE_PREFIX_PATH "${SDL2_MINGW_ROOT}")
-list(APPEND CMAKE_PREFIX_PATH "${SDL2_MINGW_ROOT}/lib/cmake/SDL2")
-# SDL2_DIR must be set so find_package(SDL2) can locate sdl2-config.cmake even
+# Expose the SDL3 root to find_package
+list(APPEND CMAKE_PREFIX_PATH "${SDL3_MINGW_ROOT}")
+list(APPEND CMAKE_PREFIX_PATH "${SDL3_MINGW_ROOT}/lib/cmake/SDL3")
+# SDL3_DIR must be set so find_package(SDL3) can locate SDL3Config.cmake even
 # when CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY is in effect.
-set(SDL2_DIR "${SDL2_MINGW_ROOT}/lib/cmake/SDL2" CACHE PATH "SDL2 CMake config dir" FORCE)
-set(ENV{SDL2DIR} "${SDL2_MINGW_ROOT}")
+set(SDL3_DIR "${SDL3_MINGW_ROOT}/lib/cmake/SDL3" CACHE PATH "SDL3 CMake config dir" FORCE)

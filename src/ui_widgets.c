@@ -36,77 +36,20 @@
 #include "mouse.h"
 #include "keyboard.h"
 #include "timer.h"
-#include "highscore.h"   /* menu_reset_idle_timers */
-#include "data_game.h"   /* camera_view_matrix, object_visibility_state, kbormouse, idle_expired, idle_counter */
-#include "ui.h"          /* show_dialog */
-
-static unsigned char ui_nav_geometric(
-    unsigned char current,
-    int dir_x,
-    int dir_y,
-    const unsigned short *x1,
-    const unsigned short *x2,
-    const unsigned short *y1,
-    const unsigned short *y2,
-    unsigned short count)
-{
-    unsigned short best = current;
-    unsigned short best_primary = 65535;
-    unsigned short best_secondary = 65535;
-    int cur_x = (int)(x1[current] + x2[current]) / 2;
-    int cur_y = (int)(y1[current] + y2[current]) / 2;
-    unsigned short i;
-
-    for (i = 0; i < count; ++i) {
-        int dx;
-        int dy;
-        unsigned short primary;
-        unsigned short secondary;
-
-        if (i == current) {
-            continue;
-        }
-
-        dx = ((int)(x1[i] + x2[i]) / 2) - cur_x;
-        dy = ((int)(y1[i] + y2[i]) / 2) - cur_y;
-
-        if (dir_x != 0) {
-            if (dx * dir_x <= 0) {
-                continue;
-            }
-            primary = (unsigned short)((dx < 0) ? -dx : dx);
-            secondary = (unsigned short)((dy < 0) ? -dy : dy);
-        } else if (dir_y != 0) {
-            if (dy * dir_y <= 0) {
-                continue;
-            }
-            primary = (unsigned short)((dy < 0) ? -dy : dy);
-            secondary = (unsigned short)((dx < 0) ? -dx : dx);
-        } else {
-            continue;
-        }
-
-        if (primary < best_primary || (primary == best_primary && secondary < best_secondary)) {
-            best = i;
-            best_primary = primary;
-            best_secondary = secondary;
-        }
-    }
-
-    return (unsigned char)best;
-}
+#include "highscore.h" /* menu_reset_idle_timers */
+#include "ui.h" /* show_dialog */
 
 /* ------------------------------------------------------------------ */
 /* ui_button_menu_run                                                  */
 /* ------------------------------------------------------------------ */
 
-unsigned char ui_button_menu_run(UIButtonMenu *menu)
-{
-    unsigned char  selected;
-    unsigned char  prev_selected;
+unsigned char
+ui_button_menu_run(UIButtonMenu *menu) {
+    unsigned char selected;
+    unsigned char prev_selected;
     unsigned short delta;
     unsigned short key_code;
-    short          hit;
+    short hit;
     unsigned short local_idle;
 
     if (menu->count == 0) {
@@ -117,14 +60,14 @@ unsigned char ui_button_menu_run(UIButtonMenu *menu)
     if (selected >= menu->count) {
         selected = 0;
     }
-    prev_selected = 255;  /* force first-frame redraw */
+    prev_selected = 255; /* force first-frame redraw */
     local_idle = 0;
 
     /* Flush stale input so we don't immediately confirm. */
     check_input();
     mousebutinputcode = 0;
     joyinputcode = 0;
-    timer_get_delta_alt();
+    (void)timer_get_delta_alt();
 
     while (1) {
         /* ----- selection-change callback ----- */
@@ -138,59 +81,53 @@ unsigned char ui_button_menu_run(UIButtonMenu *menu)
         }
 
         /* ----- blink / present ----- */
-        delta = mouse_update_menu_blink(
-            selected,
-            menu->x1, menu->x2,
-            menu->y1, menu->y2,
-            menu->sprite_hi, menu->sprite_lo
-        );
+        delta = mouse_update_menu_blink(selected, menu->x1, menu->x2, menu->y1, menu->y2,
+                                        menu->sprite_hi, menu->sprite_lo);
         if (delta == 0) {
             delta = 1;
         }
 
         /* ----- per-frame callback ----- */
+        key_code = 0;
         if (menu->frame_cb) {
             unsigned short cb_key = menu->frame_cb(selected, delta, menu->frame_cb_ctx);
             if (cb_key != 0) {
                 key_code = cb_key;
-                goto handle_key;
             }
         }
 
-        /* ----- idle timeout ----- */
-        if (menu->idle_timeout != 0) {
-            local_idle += delta;
-            idle_counter += delta;
-            if (idle_expired != 0 || local_idle >= menu->idle_timeout) {
-                idle_expired++;
-                selected = menu->default_sel;
-                return UI_SEL_TIMEOUT;
-            }
-        }
-
-        /* ----- input polling ----- */
-        key_code = input_checking(delta);
-
-        /* ----- mouse hit test ----- */
-        hit = mouse_multi_hittest(
-            (short)menu->count,
-            menu->x1, menu->x2,
-            menu->y1, menu->y2
-        );
-        if (hit >= 0 && hit < (short)menu->count) {
-            if (kbormouse != 0) {
-                selected = (unsigned char)hit;
-            }
-            if (kbormouse != 0 && UI_IS_CONFIRM(key_code)) {
-                return selected;
-            }
-        }
+        video_refresh();
 
         if (key_code == 0) {
-            continue;
+            /* ----- idle timeout ----- */
+            if (menu->idle_timeout != 0) {
+                local_idle += delta;
+                idle_counter += delta;
+                if (idle_expired != 0 || local_idle >= menu->idle_timeout) {
+                    idle_expired++;
+                    return UI_SEL_TIMEOUT;
+                }
+            }
+
+            /* ----- input polling ----- */
+            key_code = input_checking(delta);
+
+            /* ----- mouse hit test ----- */
+            hit = mouse_multi_hittest((short)menu->count, menu->x1, menu->x2, menu->y1, menu->y2);
+            if (hit >= 0 && hit < (short)menu->count) {
+                if (mouse_input_active) {
+                    selected = (unsigned char)hit;
+                }
+                if (mouse_input_active && UI_IS_CONFIRM(key_code)) {
+                    return selected;
+                }
+            }
+
+            if (key_code == 0) {
+                continue;
+            }
         }
 
-handle_key:
         /* ----- confirm ----- */
         if (UI_IS_CONFIRM(key_code)) {
             return selected;
@@ -204,59 +141,48 @@ handle_key:
         /* ----- navigation ----- */
         if (menu->nav_mode == UI_NAV_HORIZONTAL) {
             if (key_code == UI_KEY_LEFT) {
-                selected = (selected == 0)
-                    ? (unsigned char)(menu->count - 1)
-                    : (unsigned char)(selected - 1);
-            } else if (key_code == UI_KEY_RIGHT) {
-                selected = (selected >= menu->count - 1)
-                    ? 0
-                    : (unsigned char)(selected + 1);
+                selected = (selected == 0) ? (unsigned char)(menu->count - 1)
+                                           : (unsigned char)(selected - 1);
             }
-        } else if (menu->nav_mode == UI_NAV_VERTICAL) {
+            else if (key_code == UI_KEY_RIGHT) {
+                selected = (selected >= menu->count - 1) ? 0 : (unsigned char)(selected + 1);
+            }
+        }
+        else if (menu->nav_mode == UI_NAV_VERTICAL) {
             if (key_code == UI_KEY_UP) {
-                selected = (selected == 0)
-                    ? (unsigned char)(menu->count - 1)
-                    : (unsigned char)(selected - 1);
-            } else if (key_code == UI_KEY_DOWN) {
-                selected = (selected >= menu->count - 1)
-                    ? 0
-                    : (unsigned char)(selected + 1);
+                selected = (selected == 0) ? (unsigned char)(menu->count - 1)
+                                           : (unsigned char)(selected - 1);
             }
-        } else if (menu->nav_mode == UI_NAV_BOTH_LR_SWAP) {
+            else if (key_code == UI_KEY_DOWN) {
+                selected = (selected >= menu->count - 1) ? 0 : (unsigned char)(selected + 1);
+            }
+        }
+        else if (menu->nav_mode == UI_NAV_BOTH_LR_SWAP) {
             /* Original main menu: RIGHT/UP = prev, LEFT/DOWN = next */
             if (key_code == UI_KEY_RIGHT || key_code == UI_KEY_UP) {
-                selected = (selected == 0)
-                    ? (unsigned char)(menu->count - 1)
-                    : (unsigned char)(selected - 1);
-            } else if (key_code == UI_KEY_LEFT || key_code == UI_KEY_DOWN) {
-                selected = (selected >= menu->count - 1)
-                    ? 0
-                    : (unsigned char)(selected + 1);
+                selected = (selected == 0) ? (unsigned char)(menu->count - 1)
+                                           : (unsigned char)(selected - 1);
             }
-        } else if (menu->nav_mode == UI_NAV_GEOMETRIC) {
-            if (key_code == UI_KEY_LEFT) {
-                selected = ui_nav_geometric(selected, -1, 0,
-                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
-            } else if (key_code == UI_KEY_RIGHT) {
-                selected = ui_nav_geometric(selected, 1, 0,
-                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
-            } else if (key_code == UI_KEY_UP) {
-                selected = ui_nav_geometric(selected, 0, -1,
-                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
-            } else if (key_code == UI_KEY_DOWN) {
-                selected = ui_nav_geometric(selected, 0, 1,
-                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
+            else if (key_code == UI_KEY_LEFT || key_code == UI_KEY_DOWN) {
+                selected = (selected >= menu->count - 1) ? 0 : (unsigned char)(selected + 1);
             }
-        } else {
+        }
+        else if (menu->nav_mode == UI_NAV_LOOKUP) {
+            if (key_code == UI_KEY_LEFT && selected < menu->count) {
+                selected = menu->nav_left[selected];
+            }
+            else if (key_code == UI_KEY_RIGHT && selected < menu->count) {
+                selected = menu->nav_right[selected];
+            }
+        }
+        else {
             /* UI_NAV_BOTH (default — matches original) */
             if (UI_IS_NAV_PREV(key_code)) {
-                selected = (selected == 0)
-                    ? (unsigned char)(menu->count - 1)
-                    : (unsigned char)(selected - 1);
-            } else if (UI_IS_NAV_NEXT(key_code)) {
-                selected = (selected >= menu->count - 1)
-                    ? 0
-                    : (unsigned char)(selected + 1);
+                selected = (selected == 0) ? (unsigned char)(menu->count - 1)
+                                           : (unsigned char)(selected - 1);
+            }
+            else if (UI_IS_NAV_NEXT(key_code)) {
+                selected = (selected >= menu->count - 1) ? 0 : (unsigned char)(selected + 1);
             }
         }
     }
@@ -266,9 +192,9 @@ handle_key:
 /* Text rendering helpers                                              */
 /* ------------------------------------------------------------------ */
 
-unsigned short ui_draw_text(const char *text, unsigned short x, unsigned short y,
-                            unsigned short fg_color, unsigned short bg_color)
-{
+unsigned short
+ui_draw_text(const char *text, unsigned short x, unsigned short y, unsigned short fg_color,
+             unsigned short bg_color) {
     unsigned short w;
     font_set_colors((int)fg_color, bg_color);
     font_draw_text((char *)text, x, y);
@@ -276,21 +202,22 @@ unsigned short ui_draw_text(const char *text, unsigned short x, unsigned short y
     return w;
 }
 
-unsigned short ui_measure_text(const char *text)
-{
+unsigned short
+ui_measure_text(const char *text) {
     return font_get_text_width((char *)text);
 }
 
-unsigned short ui_center_x(unsigned short item_w)
-{
-    if (item_w >= UI_SCREEN_W) return 0;
+unsigned short
+ui_center_x(unsigned short item_w) {
+    if (item_w >= UI_SCREEN_W)
+        return 0;
     return (UI_SCREEN_W - item_w) / 2;
 }
 
-unsigned short ui_center_in(unsigned short container_x, unsigned short container_w,
-                            unsigned short item_w)
-{
-    if (item_w >= container_w) return container_x;
+unsigned short
+ui_center_in(unsigned short container_x, unsigned short container_w, unsigned short item_w) {
+    if (item_w >= container_w)
+        return container_x;
     return container_x + (container_w - item_w) / 2;
 }
 
@@ -298,17 +225,15 @@ unsigned short ui_center_in(unsigned short container_x, unsigned short container
 /* Panel drawing                                                       */
 /* ------------------------------------------------------------------ */
 
-void ui_draw_panel(const UIPanel *panel)
-{
+void
+ui_draw_panel(const UIPanel *panel) {
     /* Fill background */
     sprite_fill_rect_clipped(panel->x, panel->y, panel->w, panel->h,
                              (unsigned char)panel->fill_color);
 
     /* 1-pixel border (matches original sprite_draw_rect_outline) */
-    sprite_draw_rect_outline(panel->x, panel->y,
-                             (unsigned short)(panel->x + panel->w - 1),
-                             (unsigned short)(panel->y + panel->h - 1),
-                             panel->border_color);
+    sprite_draw_rect_outline(panel->x, panel->y, (unsigned short)(panel->x + panel->w - 1),
+                             (unsigned short)(panel->y + panel->h - 1), panel->border_color);
 
     /* Optional title */
     if (panel->title != NULL) {
@@ -323,10 +248,8 @@ void ui_draw_panel(const UIPanel *panel)
 /* Text table                                                          */
 /* ------------------------------------------------------------------ */
 
-void ui_draw_text_table(const UITextTable *table,
-                        const char *cells[],
-                        const char *headers[])
-{
+void
+ui_draw_text_table(const UITextTable *table, const char *cells[], const char *headers[]) {
     unsigned short row, col;
     unsigned short y;
 
@@ -335,21 +258,20 @@ void ui_draw_text_table(const UITextTable *table,
         for (col = 0; col < table->num_columns && col < UI_TABLE_MAX_COLS; col++) {
             if (headers[col] != NULL) {
                 font_set_colors(0, table->header_color);
-                font_draw_text((char *)headers[col],
-                               table->col_x[col], table->y_start);
+                font_draw_text((char *)headers[col], table->col_x[col], table->y_start);
             }
         }
     }
 
     /* Draw data rows */
     for (row = 0; row < table->num_rows && row < UI_TABLE_MAX_ROWS; row++) {
-        y = (unsigned short)(table->y_start
-            + (headers != NULL ? table->row_height : 0)
-            + row * table->row_height);
+        y = (unsigned short)(table->y_start + (headers != NULL ? table->row_height : 0)
+                             + row * table->row_height);
 
         if (row == table->highlight_row) {
             font_set_colors(0, table->highlight_color);
-        } else {
+        }
+        else {
             font_set_colors(0, table->text_color);
         }
 
@@ -378,8 +300,8 @@ void ui_draw_text_table(const UITextTable *table,
  *   '}' creates a section separator (4px spacing)
  *   '@' marks coordinate output positions (type 3 only)
  */
-static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short buflen)
-{
+static void
+ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short buflen) {
     unsigned short pos = 0;
     unsigned short i;
 
@@ -388,7 +310,8 @@ static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short 
     /* Append text lines (each terminated by ']') */
     for (i = 0; i < dlg->num_lines && i < UI_DIALOG_MAX_LINES; i++) {
         const char *line = dlg->lines[i];
-        if (line == NULL) continue;
+        if (line == NULL)
+            continue;
         while (*line != '\0' && pos < buflen - 2) {
             buf[pos++] = *line++;
         }
@@ -400,7 +323,8 @@ static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short 
     /* Append button definitions (each wrapped in [ ]) */
     for (i = 0; i < dlg->num_buttons && i < UI_DIALOG_MAX_BUTTONS; i++) {
         const char *btn = dlg->buttons[i];
-        if (btn == NULL) continue;
+        if (btn == NULL)
+            continue;
         if (pos < buflen - 2) {
             buf[pos++] = '[';
         }
@@ -415,8 +339,8 @@ static void ui_dialog_build_text(const UIDialog *dlg, char *buf, unsigned short 
     buf[pos] = '\0';
 }
 
-short ui_dialog_run(const UIDialog *dlg)
-{
+short
+ui_dialog_run(const UIDialog *dlg) {
     char text_buf[512];
     unsigned short border;
     unsigned short dx, dy;
@@ -445,8 +369,8 @@ short ui_dialog_run(const UIDialog *dlg)
     return show_dialog(2, 1, text_buf, dx, dy, border, dlg->coords, dlg->default_button);
 }
 
-short ui_dialog_info(const char *text)
-{
+short
+ui_dialog_info(const char *text) {
     UIDialog dlg;
     memset(&dlg, 0, sizeof(dlg));
     dlg.mode = UI_DIALOG_INFO;
@@ -458,9 +382,8 @@ short ui_dialog_info(const char *text)
     return ui_dialog_run(&dlg);
 }
 
-short ui_dialog_confirm(const char *text,
-                        const char *btn_yes, const char *btn_no)
-{
+short
+ui_dialog_confirm(const char *text, const char *btn_yes, const char *btn_no) {
     UIDialog dlg;
     memset(&dlg, 0, sizeof(dlg));
     dlg.mode = UI_DIALOG_CONFIRM;
@@ -480,13 +403,10 @@ short ui_dialog_confirm(const char *text,
 /* Resource-text dialog wrappers                                       */
 /* ------------------------------------------------------------------ */
 
-short ui_dialog_show_restext(unsigned short mode, unsigned short create_window,
-                             void *text_res_ptr,
-                             unsigned short x, unsigned short y,
-                             unsigned short border_color,
-                             unsigned short *coords,
-                             unsigned char default_button)
-{
+short
+ui_dialog_show_restext(unsigned short mode, unsigned short create_window, void *text_res_ptr,
+                       unsigned short x, unsigned short y, unsigned short border_color,
+                       unsigned short *coords, unsigned char default_button) {
     unsigned short type;
 
     if (border_color == 0) {
@@ -495,41 +415,54 @@ short ui_dialog_show_restext(unsigned short mode, unsigned short create_window,
 
     /* Map widget mode to internal show_dialog type */
     switch (mode) {
-    case UI_DIALOG_INFO:    type = 1; break;
-    case UI_DIALOG_CONFIRM: type = 2; break;
-    case UI_DIALOG_TIMED:   type = 4; break;
-    default:                type = mode; break;  /* pass-through for 0, 3 */
+    case UI_DIALOG_INFO:
+        type = 1;
+        break;
+    case UI_DIALOG_CONFIRM:
+        type = 2;
+        break;
+    case UI_DIALOG_TIMED:
+        type = 4;
+        break;
+    default:
+        type = mode;
+        break; /* pass-through for 0, 3 */
     }
 
-    return show_dialog(type, create_window, text_res_ptr,
-                       x, y, border_color, coords, default_button);
+    return show_dialog(type, create_window, text_res_ptr, x, y, border_color, coords,
+                       default_button);
 }
 
-short ui_dialog_display_only(void *text_res_ptr, unsigned short x, unsigned short y,
-                             unsigned short border_color)
-{
-    if (border_color == 0) border_color = dialogarg2;
+short
+ui_dialog_display_only(void *text_res_ptr, unsigned short x, unsigned short y,
+                       unsigned short border_color) {
+    if (border_color == 0)
+        border_color = dialogarg2;
     return show_dialog(0, 0, text_res_ptr, x, y, border_color, 0, 0);
 }
 
-short ui_dialog_timed(void *text_res_ptr)
-{
-    return show_dialog(4, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0, 0);
+short
+ui_dialog_timed(void *text_res_ptr) {
+    return show_dialog(4, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
+                       0);
 }
 
-short ui_dialog_info_restext(void *text_res_ptr)
-{
-    return show_dialog(1, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0, 0);
+short
+ui_dialog_info_restext(void *text_res_ptr) {
+    return show_dialog(1, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
+                       0);
 }
 
-short ui_dialog_confirm_restext(void *text_res_ptr, unsigned char default_button)
-{
-    return show_dialog(2, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0, default_button);
+short
+ui_dialog_confirm_restext(void *text_res_ptr, unsigned char default_button) {
+    return show_dialog(2, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, dialogarg2, 0,
+                       default_button);
 }
 
-short ui_dialog_layout(void *text_res_ptr, unsigned short border_color,
-                       unsigned short *coords)
-{
-    if (border_color == 0) border_color = dialogarg2;
-    return show_dialog(3, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, border_color, coords, 0);
+short
+ui_dialog_layout(void *text_res_ptr, unsigned short border_color, unsigned short *coords) {
+    if (border_color == 0)
+        border_color = dialogarg2;
+    return show_dialog(3, 1, text_res_ptr, UI_DIALOG_AUTO_POS, UI_DIALOG_AUTO_POS, border_color,
+                       coords, 0);
 }

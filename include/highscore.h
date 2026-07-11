@@ -25,13 +25,19 @@
 
 struct RECTANGLE;
 
-unsigned short enter_hiscore(unsigned short score, void* textres_ptr, unsigned char arg6);
+extern char *highscore_data;
+extern unsigned short highscore_primary_index[];
+extern char gnam_string[];
+extern char gsna_string[];
+extern char player_name_buffer[];
+
+unsigned short enter_hiscore(unsigned short score, void *textres_ptr, unsigned char raceResultFlag);
 unsigned short highscore_write_b(void);
 unsigned short end_hiscore(void);
-struct RECTANGLE* hiscore_draw_text(char* str, int x, int y, int colour, int shadowColour);
+struct RECTANGLE *hiscore_draw_text(char *str, int x, int y, int colour, int shadowColour);
 void menu_reset_idle_timers(void);
 unsigned short highscore_write_a_(unsigned short write_defaults);
-void print_highscore_entry_(unsigned short index, unsigned char* lengths);
+void print_highscore_entry_(unsigned short index, unsigned char *lengths);
 void highscore_draw_screen(void);
 
 #endif /* HIGHSCORE_H */

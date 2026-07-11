@@ -503,14 +503,27 @@ Menu music is stored as a KMS resource (packed inside the song `.RES` file under
 0xE7  [name_len u8]  [name bytes]  [KMS event stream...]  0xE7 (next track or EOF)
 ```
 
-Each track is parsed with `audio_kms_parse_track()` into a flat `AUDIO_KMS_NOTE` event pool of up to 4096 events across up to 8 tracks.  Track metadata is stored in `AUDIO_KMS_TRACK_INFO`:
+Each track is parsed with `audio_kms_parse_track()` into a flat `AUDIO_KMS_NOTE` event pool of up to 4096 events across up to 8 tracks.  Each note event carries:
 
 ```c
-start_idx    // offset into g_audio_kms_evt_pool
-count        // number of note events in this track
-loop_ticks   // total KMS ticks for full loop length
-synth_type   // 0=melodic, 1=percussive, 2=hi-hat
-name[20]     // track name (from E7 header)
+pitch           // AD15 pitch value (note byte + VCE transpose)
+velocity        // MIDI velocity 0-127
+dur             // note duration in KMS music ticks
+abs_tick        // absolute tick within the loop at which the note starts
+instrument_idx  // VCE instrument index (resolved at parse time from DC command)
+channel_volume  // MIDI CC7 channel volume 0-127 (from DF command)
+```
+
+Track metadata is stored in `AUDIO_KMS_TRACK_INFO`:
+
+```c
+start_idx       // offset into g_audio_kms_evt_pool
+count           // number of note events in this track
+loop_ticks      // total KMS ticks for full loop length
+synth_type      // 0=melodic, 1=percussive, 2=hi-hat
+name[20]        // track name (from E7 header)
+instrument_idx  // default VCE instrument index for the track (from DC command)
+channel_volume  // default channel volume (from DF CC7 command)
 ```
 
 Track classification (`audio_kms_synth_type`) is by name string pattern:
@@ -521,67 +534,107 @@ Track classification (`audio_kms_synth_type`) is by name string pattern:
 Playback state per voice (`AUDIO_KMS_VOICE`):
 
 ```c
-ei              // current event index within track
-frame_in_gap    // samples elapsed since event onset
-gap_frames      // samples until next event
-snd_frames      // samples the note should sound (≤ gap_frames)
-phase           // oscillator phase accumulator
-lfsr            // xorshift32 PRNG state (initialised per-track with unique seed)
+ei                    // current event index within track
+tick_pos              // current absolute music tick (wraps at loop_ticks)
+note_end_tick         // absolute tick at which the active note should be silenced
+note_active           // 1 if an OPL2 note is currently keyed on
+active_pitch          // pitch of the currently sounding note
+active_instrument_idx // VCE instrument index of the currently sounding note
+frame_in_gap          // (legacy, unused in OPL2 path) samples since event onset
+phase                 // (legacy, unused in OPL2 path) oscillator phase accumulator
+lfsr                  // xorshift32 PRNG state (used only in noise fallback paths)
 ```
 
-### 8.2 Per-Track Synthesis
+### 8.2 OPL2 FM Synthesis Path
 
-All synthesis runs in `audio_sb_generate_dma_samples()`, one sample at a time.
+Menu music plays through the OPL2 emulator using VCE instrument patches — not a software oscillator.  All active KMS tracks share the same OPL2 chip instance as the engine and SFX sounds.
 
-**Melodic tracks (type 0) — sawtooth + ADSR envelope:**
+**Channel assignment:**
 
+Each KMS track is assigned one OPL2 channel at music-resource load time:
+```c
+g_audio_kms_opl2_ch[t] = (t < 9) ? t : -1;  /* track index direct-maps to OPL2 ch */
 ```
-step = (note_hz << 16) / sample_rate
-phase += step
+Up to 8 simultaneous voices (channels 0–7 for up to 8 tracks; channel 8 can still be used by SFX).
 
-envelope:
-  attack  phase  → env = fp × peak / attack_frames
-  decay   phase  → env = peak - dp × (peak - sustain) / decay_frames
-  sustain phase  → env = sustain
-  release phase  → env = remaining_frames × sustain / release_frames
+**Per-note playback (`audio_kms_note_on`):**
 
-waveform: audio_soft_wave(phase)
-  = h1 - h2/2 + h3/3 - h4/4  (parabolic sine harmonics 1–4, × 4/5)
-  gives a sawtooth-approximation timbre matching OPL2 FM character
+On each note event `audio_kms_resolve_instrument(ev)` finds the VCE patch:
+- Looks up `ev->instrument_idx` in `g_audio_vce_instruments[]`.
+- If the instrument has `drum_flag == 5` **and** `ev->pitch` is in the range 24–39, remaps to a named percussion patch via `s_kms_drum_names[]`:
+  ```
+  BASD TOMM SNAR TOMM TOMM TOMM CHHT TOMM OHHT TOMM OHHT TOMM TOMM RIDE TOMM CRSH
+  ```
+  (pitch 24 = BASD, pitch 25 = TOMM, pitch 26 = SNAR, … pitch 39 = CRSH)
 
-output = soft_wave(phase) × env / 128
-```
-
-**Percussive tracks (type 1) — pitch-dependent:**
-
-*Kick drum (pitch ≤ 25):*
-```
-80 ms cap, quadratic decay: env = 110 × rem² / cap²
-output = (noise/2 + tone/2) × env / 128
+Then the note is voiced:
+```c
+audio_opl2_program_channel(ch, ins)                             // write all FM operator registers
+audio_opl2_music_volume(ch, velocity, channel_volume, ins)      // set carrier (and optionally modulator) TL
+audio_opl2_music_set_pitch(ch, pitch+ins.transpose, ins.fine_tune, ins.op1_mult, keyon=1)
 ```
 
-*Snare / Tom (pitch > 25):*
+**Velocity and volume (`audio_opl2_music_volume`):**
+
 ```
-65 ms cap, linear decay: env = 85 × rem / cap
-output = (noise × 0.7 + tone × 0.3) × env / 128
+scale = (channel_volume × velocity + 63) / 127    clamped [0,127]
+
+TL(op) = 63 − (scale × (63 − base_TL) + 63) / 127
 ```
 
-**Hi-hat / Cymbal (type 2) — pure noise:**
-```
-18 ms cap, linear decay: env = 52 × rem / cap
-output = (noise >> 3) × env / 128
+Applied to the carrier (op1) unconditionally; applied to the modulator (op0) only when `ins.opl_con == 1` (additive connection mode).
+
+The `vel_sensitivity` field from the VCE record controls whether the note's actual velocity or the maximum (127) is used.  Channel volume is pre-scaled by synth type before being passed in:
+
+| Synth type | Channel volume scale |
+|---|---|
+| Melodic (0) | × 1 (unmodified) |
+| Percussive (1) | × 4/5 |
+| Hi-hat (2) | × 3/5 |
+
+**Pitch calculation (AD15 fnum table):**
+
+```c
+block = (pitch / 12) & 7
+fnum  = s_ad15_fnum_table[pitch % 12]    /* 12-entry C..B Fnum table from AD15.DRV */
+packed = ((block << 10) | (fnum & 1023)) + fine_tune
+
+OPL2 reg 0xA0+ch = packed & 0xFF
+OPL2 reg 0xB0+ch = (keyon << 5) | (packed >> 8) & 0x1F
 ```
 
-All tracks are mixed by averaging: `music_mixed /= n_tracks`.
+**Note duration and key-off (`audio_kms_advance_ticks`):**
+
+The sequencer advances each voice's `tick_pos` by 1 per music tick.  Note-on fires when `abs_tick <= tick_pos`; note-off fires when `tick_pos >= note_end_tick`.
+
+Duration is capped before calculating `note_end_tick`:
+
+| Synth type | Maximum note duration |
+|---|---|
+| Hi-hat (2) | 2 KMS ticks |
+| Percussive (1) | 4 KMS ticks |
+| Melodic (0) | `ev->dur` (uncapped) |
+
+`audio_kms_note_off()` → `audio_opl2_silence_channel(ch)` (forces TL = 63 on both operators then clears key-on).
+
+**OPL2 output gain:**
+
+When `g_audio_menu_music_enabled && !g_audio_menu_music_paused`, the entire OPL2 chip output is scaled before mixing with SFX:
+```c
+opl_sample = (opl_sample × g_audio_menu_gain + 2600) / 5200;
+```
+Default `g_audio_menu_gain = 9000` (≈ 1.73× unity at a nominal 5200 scale).  Controlled via `STUNTS_AUDIO_MENU_GAIN`.
 
 **Menu music gates:**
-- `g_audio_menu_music_enabled` enabled by `init_audio_resources()` when a menu-track name is used.
-- When enabled, OPL2 engine sample generation is suppressed and replaced by the KMS sequencer.
-- `audio_set_menu_music_paused(1)` zeroes music contributions without stopping the sequencer clock.
+- `g_audio_menu_music_enabled` is set by `audio_load_menu_resource()` when KMS track data is successfully loaded.
+- During menu screens the engine handles are inactive, so music and SFX channels do not compete for OPL2 resources.
+- `audio_set_menu_music_paused(1)` suspends the KMS tick advance and the gain scaling without resetting the sequencer clock.
 
 ### 8.3 Legacy Note Sequencer (fallback)
 
-When `g_audio_kms_n_tracks == 0` (no E7-prefixed track headers found), the legacy sequencer operates on `g_audio_menu_resource_notes[]` / `g_audio_menu_resource_durations[]` arrays populated by scanning the KMS stream for simple note events.  It advances one note per `ticks_left` decrement.  This is the pre-KMS fallback path.
+When `g_audio_kms_n_tracks == 0` (no E7-prefixed track headers found), the legacy sequencer path is taken: `g_audio_menu_resource_notes[]` / `g_audio_menu_resource_durations[]` arrays are populated by scanning the KMS stream for simple note events, and the sequencer advances one note per `ticks_left` decrement.
+
+In the current implementation the legacy note state (`g_audio_menu_resource_current_note`, `_current_instrument`, `_current_velocity`) is advanced by the timer loop but is **not** connected to OPL2 output — no note-on/off is triggered from this path.  The timing state is maintained for the pre-KMS fallback path.
 
 ---
 
@@ -683,9 +736,8 @@ $$f_{Hz} = \frac{F_{num} \times ClkOPL}{2^{(Block+20)}} = \frac{F_{num} \times 3
 
 `audio_sync_car_audio()` is called once per rendered frame from `gamemech.c`.  For each active car that has an audio handle:
 
-1. Computes relative position `(dx, dy, dz)` between the car and the player camera.
-2. Calls `audio_update_engine_sound(handle_id, rpm, dx, dy, dz, …, divisor)`.
-3. For the player car, `divisor` is typically 1 (undivided, full volume range).  For opponent cars, `divisor` scales with their lateral separation.
+1. Calls `audio_update_engine_sound(handle_id, rpm, dx, dy, dz, …, divisor)` directly for both the player car (`crash_sound_handle`) and the opponent (`audio_opponent_engine_handle`) during live gameplay.
+2. For the player car, `divisor` is 1 (undivided, full volume range).  For the opponent car, `divisor` scales with lateral separation.
 
 `audio_apply_crash_flags(flags, sound_id)` is called from `carstate.c` when the physics state machine sets crash or skid bits:
 
@@ -699,6 +751,10 @@ $$f_{Hz} = \frac{F_{num} \times ClkOPL}{2^{(Block+20)}} = \frac{F_{num} \times 3
 
 `audio_replay_update_engine_sounds(info, sound_id)` is the replay-mode equivalent that reconstructs per-frame RPM and distance from replay data.
 
+**Bug fixes applied:**
+- Opponent car audio functions (`audio_update_engine_sound`, `audio_apply_crash_flags`, `audio_select_crash2_fx_and_restart`, `audio_clear_chunk_fx`, `audio_stop_engine_note`) now correctly use `audio_opponent_engine_handle` for the opponent car.  Previously they erroneously used `audio_engine_sound_handle` (the player car handle), which caused opponent engine sounds to interfere with the player car audio.
+- `audio_engine_radius3d(inner_z, inner_y, outer_y)` parameter order was corrected.  The distance metrics `near_metric` and `far_metric` are now computed with the correct axis mapping, fixing inaccurate distance-based volume attenuation for opponent car sounds.
+
 ---
 
 ## 12. Environment Variable Tuning
@@ -709,7 +765,7 @@ All tuning variables are read once at `audio_load_driver()`:
 |---|---|---|---|
 | `STUNTS_AUDIO_BACKEND` | (use SDL) | `off`/`none`/`null` to disable | Disables audio subsystem entirely |
 | `STUNTS_AUDIO_REFRESH_HZ` | `timer_get_dispatch_hz()` | 30–200 | Audio tick rate; lower = more CPU-friendly, higher = tighter latency |
-| `STUNTS_AUDIO_MENU_GAIN` | 5200 | 1000–22000 | Menu music soft-synth amplitude scale |
+| `STUNTS_AUDIO_MENU_GAIN` | 9000 | 1000–22000 | OPL2 output gain during menu music playback (`opl_sample × gain / 5200`); higher = louder music relative to SFX |
 | `STUNTS_AUDIO_MENU_NOTE_TICKS` | 24 | 8–80 | Legacy sequencer note duration in ticks |
 | `STUNTS_AUDIO_MENU_TRANSPOSE` | 0 | −48 to +24 semitones | Shifts all menu music notes by this many MIDI semitones |
 | `STUNTS_AUDIO_MENU_DURATION_SCALE` | 1 | 1–8 | Multiplies note durations (slows menu music) |
