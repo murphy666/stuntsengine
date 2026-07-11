@@ -920,6 +920,7 @@ unsigned short  input_checking(unsigned short delta) {
 	unsigned short joy_flags_new;
 	unsigned short joy_changed;
 	static unsigned long s_inputcheck_prev_counter = 0;
+	static unsigned char s_joy_repeat_started = 0;
 	enum {
 		INPUT_REPEAT_INTERVAL = UI_INPUT_REPEAT_MS
 	};
@@ -974,6 +975,7 @@ unsigned short  input_checking(unsigned short delta) {
 		joy_changed &= joy_flags_new; /* New flags that were just set */
 		newjoyflags = joy_changed;
 		joyflags = joy_flags_new;
+		s_joy_repeat_started = 0;
 		
 		/* Map joystick buttons to key codes */
 		if (newjoyflags & 32) {
@@ -996,7 +998,8 @@ unsigned short  input_checking(unsigned short delta) {
 		}
 	} else if (joy_flags_new != 0) {
 		/* Auto-repeat for held joystick */
-		if (input_framecount3 + INPUT_REPEAT_INTERVAL < input_framecount) {
+		unsigned short repeat_threshold = s_joy_repeat_started ? INPUT_REPEAT_INTERVAL : UI_INPUT_REPEAT_INITIAL_MS;
+		if (input_framecount3 + repeat_threshold < input_framecount) {
 			/* Same logic as initial joystick press for auto-repeat */
 			if (newjoyflags & 32) {
 				joyinputcode = UI_KEY_ENTER;
@@ -1014,9 +1017,12 @@ unsigned short  input_checking(unsigned short delta) {
 			
 			if (joyinputcode != 0) {
 				input_framecount3 = input_framecount;
+				s_joy_repeat_started = 1;
 				kbormouse = 0;
 			}
 		}
+	} else {
+		s_joy_repeat_started = 0;
 	}
 	
 	/* Check mouse state */
@@ -2096,6 +2102,7 @@ file_search_loop:
 			}
 			
 			mouse_draw_transparent_check();
+			video_refresh();
 		}
 		
 		/* Get input */
@@ -2114,13 +2121,13 @@ file_search_loop:
 				/* Scroll up button */
 				if (mouse_release_click != 0) {
 					selected_file_index = 0;
-					scroll_offset = 255;  /* Will be fixed up below */
+					scroll_offset = 0;
 					nav_input_code = 0;
 				}
 			} else if (row_hit_or_index == 1) {
 				/* Scroll up one */
 				if (mouse_release_click != 0) {
-					if (selected_file_index + scroll_offset > 0) {
+					if (selected_file_index > 0) {
 						selected_file_index--;
 					}
 					if (selected_file_index < scroll_offset) {
@@ -2161,7 +2168,9 @@ file_search_loop:
 			selection_done = 255;
 		} else if (nav_input_code == UI_KEY_UP) {
 			/* Up arrow */
-			selected_file_index--;
+			if (selected_file_index > 0) {
+				selected_file_index--;
+			}
 		} else if (nav_input_code == UI_KEY_DOWN) {
 			/* Down arrow */
 			if (selected_file_index < file_count - 1) {
@@ -2191,6 +2200,10 @@ file_search_loop:
 		}
 		
 		/* Adjust scroll to keep selection visible */
+		if (file_count != 0 && selected_file_index >= file_count) {
+			selected_file_index = file_count - 1;
+		}
+
 		if (selected_file_index < scroll_offset) {
 			scroll_offset = selected_file_index;
 		}

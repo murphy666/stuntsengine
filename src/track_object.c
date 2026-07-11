@@ -834,7 +834,7 @@ compute_elem_crds:
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
             int px_adj = elemPos.x + BTO_TURN_OFFSET_SMALL;
-            turnRadius = polarRadius2D(pz_adj, px_adj);
+            turnRadius = polarRadius2D(px_adj, pz_adj);
             if (turnRadius > BTO_TURN_SMALL_INNER) {
                 if (turnRadius < BTO_TURN_SMALL_OUTER) goto set_pavement;
             }
@@ -845,7 +845,7 @@ compute_elem_crds:
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
             int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
-            turnRadius = polarRadius2D(pz_adj, px_adj);
+            turnRadius = polarRadius2D(px_adj, pz_adj);
             if (turnRadius > BTO_TURN_LARGE_INNER) {
                 if (turnRadius < BTO_TURN_LARGE_OUTER) goto set_pavement;
             }
@@ -885,7 +885,7 @@ compute_elem_crds:
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
             int px_adj = BTO_TURN_OFFSET_SMALL - elemPos.x;
-            turnRadius = polarRadius2D(pz_adj, px_adj);
+            turnRadius = polarRadius2D(px_adj, pz_adj);
             if (turnRadius > BTO_TURN_SMALL_INNER) {
                 if (turnRadius < BTO_TURN_SMALL_OUTER) goto set_pavement;
             }
@@ -905,7 +905,7 @@ compute_elem_crds:
         {
             int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
             int px_adj = BTO_TURN_OFFSET_LARGE - elemPos.x;
-            turnRadius = polarRadius2D(pz_adj, px_adj);
+            turnRadius = polarRadius2D(px_adj, pz_adj);
             if (turnRadius > BTO_TURN_LARGE_INNER) {
                 if (turnRadius < BTO_TURN_LARGE_OUTER) goto set_pavement;
             }
@@ -1688,12 +1688,12 @@ compute_elem_crds:
         }
 
         /* Main cork spiral region */
-        turnRadius = polarRadius2D(elemPos.z, corkLateralCoord);
+        turnRadius = polarRadius2D(corkLateralCoord, elemPos.z);
         if (turnRadius <= BTO_CORK_RADIUS_MIN) goto code_bto_blank;
         if (turnRadius >= BTO_CORK_RADIUS_MAX) goto code_bto_blank;
 
         {
-            int angle = polarAngle(elemPos.z, corkLateralCoord);
+            int angle = polarAngle(corkLateralCoord, elemPos.z);
             angle = -(angle - BTO_CORK_ANGLE_BASE);
             angle &= BTO_ORIENT_MASK; /* and ah, 3 */
             si = (angle * BTO_CORK_SEGMENT_COUNT) >> BTO_WORLD_TO_TILE_SHIFT;
@@ -2041,7 +2041,7 @@ do_sCorner:
     {
         int pz_adj = elemPos.z + BTO_TURN_OFFSET_SMALL;
         int px_adj = elemPos.x + BTO_TURN_OFFSET_SMALL;
-        turnRadius = polarRadius2D(pz_adj, px_adj);
+        turnRadius = polarRadius2D(px_adj, pz_adj);
         if (turnRadius > BTO_TURN_SMALL_INNER) {
             if (turnRadius < BTO_TURN_SMALL_OUTER) goto set_pavement;
         }
@@ -2052,7 +2052,7 @@ do_lCorner:
     {
         int pz_adj = elemPos.z + BTO_TURN_OFFSET_LARGE;
         int px_adj = elemPos.x + BTO_TURN_OFFSET_LARGE;
-        turnRadius = polarRadius2D(pz_adj, px_adj);
+        turnRadius = polarRadius2D(px_adj, pz_adj);
         if (turnRadius > BTO_TURN_LARGE_INNER) {
             if (turnRadius < BTO_TURN_LARGE_OUTER) goto set_pavement;
         }

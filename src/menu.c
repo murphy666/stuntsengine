@@ -889,8 +889,7 @@ static int opp_on_event(UIScreen *self, const UIEvent *ev)
 
 		menu_reset_idle_timers();
 
-		if (key == MENU_KEY_ENTER || key == MENU_KEY_ESCAPE
-			|| key == MENU_KEY_SPACE) {
+		if (UI_IS_CONFIRM(key) || UI_IS_CANCEL(key)) {
 			return opp_activate(st);
 		}
 
@@ -1963,7 +1962,7 @@ char run_menu_(void) {
 	btnmenu.sprite_lo = object_visibility_state;
 	btnmenu.default_sel = 0;
 	btnmenu.idle_timeout = MENU_IDLE_TIMEOUT_SHORT;
-	btnmenu.nav_mode = UI_NAV_BOTH_LR_SWAP;
+	btnmenu.nav_mode = UI_NAV_GEOMETRIC;
 
 	cb_ctx.sprite = sprite_ptr;
 	cb_ctx.blit_mode = MENU_BLIT_MODE_FULL;

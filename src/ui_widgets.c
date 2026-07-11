@@ -40,6 +40,62 @@
 #include "data_game.h"   /* camera_view_matrix, object_visibility_state, kbormouse, idle_expired, idle_counter */
 #include "ui.h"          /* show_dialog */
 
+static unsigned char ui_nav_geometric(
+    unsigned char current,
+    int dir_x,
+    int dir_y,
+    const unsigned short *x1,
+    const unsigned short *x2,
+    const unsigned short *y1,
+    const unsigned short *y2,
+    unsigned short count)
+{
+    unsigned short best = current;
+    unsigned short best_primary = 65535;
+    unsigned short best_secondary = 65535;
+    int cur_x = (int)(x1[current] + x2[current]) / 2;
+    int cur_y = (int)(y1[current] + y2[current]) / 2;
+    unsigned short i;
+
+    for (i = 0; i < count; ++i) {
+        int dx;
+        int dy;
+        unsigned short primary;
+        unsigned short secondary;
+
+        if (i == current) {
+            continue;
+        }
+
+        dx = ((int)(x1[i] + x2[i]) / 2) - cur_x;
+        dy = ((int)(y1[i] + y2[i]) / 2) - cur_y;
+
+        if (dir_x != 0) {
+            if (dx * dir_x <= 0) {
+                continue;
+            }
+            primary = (unsigned short)((dx < 0) ? -dx : dx);
+            secondary = (unsigned short)((dy < 0) ? -dy : dy);
+        } else if (dir_y != 0) {
+            if (dy * dir_y <= 0) {
+                continue;
+            }
+            primary = (unsigned short)((dy < 0) ? -dy : dy);
+            secondary = (unsigned short)((dx < 0) ? -dx : dx);
+        } else {
+            continue;
+        }
+
+        if (primary < best_primary || (primary == best_primary && secondary < best_secondary)) {
+            best = i;
+            best_primary = primary;
+            best_secondary = secondary;
+        }
+    }
+
+    return (unsigned char)best;
+}
+
 /* ------------------------------------------------------------------ */
 /* ui_button_menu_run                                                  */
 /* ------------------------------------------------------------------ */
@@ -176,6 +232,20 @@ handle_key:
                 selected = (selected >= menu->count - 1)
                     ? 0
                     : (unsigned char)(selected + 1);
+            }
+        } else if (menu->nav_mode == UI_NAV_GEOMETRIC) {
+            if (key_code == UI_KEY_LEFT) {
+                selected = ui_nav_geometric(selected, -1, 0,
+                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
+            } else if (key_code == UI_KEY_RIGHT) {
+                selected = ui_nav_geometric(selected, 1, 0,
+                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
+            } else if (key_code == UI_KEY_UP) {
+                selected = ui_nav_geometric(selected, 0, -1,
+                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
+            } else if (key_code == UI_KEY_DOWN) {
+                selected = ui_nav_geometric(selected, 0, 1,
+                    menu->x1, menu->x2, menu->y1, menu->y2, menu->count);
             }
         } else {
             /* UI_NAV_BOTH (default — matches original) */

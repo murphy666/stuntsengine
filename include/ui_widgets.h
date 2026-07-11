@@ -44,6 +44,7 @@
 #define UI_NAV_VERTICAL    1   /* Up/Down navigate, Left/Right ignored  */
 #define UI_NAV_BOTH        2   /* Both axes navigate (original default) */
 #define UI_NAV_BOTH_LR_SWAP 3  /* Both axes, LEFT=next/RIGHT=prev       */
+#define UI_NAV_GEOMETRIC   4   /* Directional nearest-neighbor nav      */
 
 /* -------- Button menu widget ---------------------------------------- */
 

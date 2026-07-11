@@ -109,8 +109,14 @@ static int dispatch_events(UIScreen *scr, unsigned short delta)
     UIEvent ev;
     unsigned short key;
     unsigned short mbut, mx, my;
+    unsigned short joy;
+    unsigned short changed;
+    unsigned char had_keyboard_event = 0;
     static unsigned short prev_mbut = 0;
     static unsigned short prev_mx = 0, prev_my = 0;
+    static unsigned short prev_joy = 0;
+    static unsigned short joy_repeat_elapsed = 0;
+    static unsigned char joy_repeat_started = 0;
     int result;
 
     if (!scr->on_event) return 0;
@@ -119,6 +125,7 @@ static int dispatch_events(UIScreen *scr, unsigned short delta)
     key = kb_get_char();
     if (key != 0) {
         kbormouse = 0;
+        had_keyboard_event = 1;
         memset(&ev, 0, sizeof(ev));
         ev.type = UI_EVENT_KEY_DOWN;
         ev.key  = key;
@@ -128,10 +135,17 @@ static int dispatch_events(UIScreen *scr, unsigned short delta)
     }
 
     /* --- joystick mapped to key events --- */
-    {
-        unsigned short joy = get_joy_flags();
-        static unsigned short prev_joy = 0;
-        unsigned short changed = (prev_joy ^ joy) & joy;
+    joy = get_joy_flags();
+
+    /* kb_get_char() + get_joy_flags() can represent the same physical key.
+     * When we already dispatched a keyboard event this frame, only sync
+     * held-state trackers and skip joy-derived emission to avoid double steps. */
+    if (had_keyboard_event != 0) {
+        prev_joy = joy;
+        joy_repeat_elapsed = 0;
+        joy_repeat_started = 0;
+    } else {
+        changed = (prev_joy ^ joy) & joy;
         prev_joy = joy;
 
         if (changed) {
@@ -152,6 +166,38 @@ static int dispatch_events(UIScreen *scr, unsigned short delta)
                 result = scr->on_event(scr, &ev);
                 if (result != 0) return result;
             }
+            joy_repeat_elapsed = 0;
+            joy_repeat_started = 0;
+        } else if (joy != 0) {
+            unsigned short jkey = 0;
+            unsigned short repeat_threshold = joy_repeat_started ? UI_INPUT_REPEAT_MS : UI_INPUT_REPEAT_INITIAL_MS;
+
+            if (joy_repeat_elapsed + delta < repeat_threshold) {
+                joy_repeat_elapsed = (unsigned short)(joy_repeat_elapsed + delta);
+            } else {
+                joy_repeat_elapsed = 0;
+                joy_repeat_started = 1;
+
+                if (joy & 32) jkey = UI_KEY_ENTER;
+                else if (joy & 16) jkey = UI_KEY_SPACE;
+                else if (joy & 1) jkey = UI_KEY_UP;
+                else if (joy & 2) jkey = UI_KEY_DOWN;
+                else if (joy & 8) jkey = UI_KEY_LEFT;
+                else if (joy & 4) jkey = UI_KEY_RIGHT;
+
+                if (jkey != 0) {
+                    kbormouse = 0;
+                    memset(&ev, 0, sizeof(ev));
+                    ev.type = UI_EVENT_KEY_DOWN;
+                    ev.key  = jkey;
+                    ev.delta = delta;
+                    result = scr->on_event(scr, &ev);
+                    if (result != 0) return result;
+                }
+            }
+        } else {
+            joy_repeat_elapsed = 0;
+            joy_repeat_started = 0;
         }
     }
 
@@ -300,6 +346,62 @@ typedef struct {
     unsigned char  initialized;
 } BtnMenuScreenState;
 
+static unsigned char ui_nav_geometric(
+    unsigned char current,
+    int dir_x,
+    int dir_y,
+    const unsigned short *x1,
+    const unsigned short *x2,
+    const unsigned short *y1,
+    const unsigned short *y2,
+    unsigned short count)
+{
+    unsigned short best = current;
+    unsigned short best_primary = 65535;
+    unsigned short best_secondary = 65535;
+    int cur_x = (int)(x1[current] + x2[current]) / 2;
+    int cur_y = (int)(y1[current] + y2[current]) / 2;
+    unsigned short i;
+
+    for (i = 0; i < count; ++i) {
+        int dx;
+        int dy;
+        unsigned short primary;
+        unsigned short secondary;
+
+        if (i == current) {
+            continue;
+        }
+
+        dx = ((int)(x1[i] + x2[i]) / 2) - cur_x;
+        dy = ((int)(y1[i] + y2[i]) / 2) - cur_y;
+
+        if (dir_x != 0) {
+            if (dx * dir_x <= 0) {
+                continue;
+            }
+            primary = (unsigned short)((dx < 0) ? -dx : dx);
+            secondary = (unsigned short)((dy < 0) ? -dy : dy);
+        } else if (dir_y != 0) {
+            if (dy * dir_y <= 0) {
+                continue;
+            }
+            primary = (unsigned short)((dy < 0) ? -dy : dy);
+            secondary = (unsigned short)((dx < 0) ? -dx : dx);
+        } else {
+            continue;
+        }
+
+        if (primary < best_primary || (primary == best_primary && secondary < best_secondary)) {
+            best = i;
+            best_primary = primary;
+            best_secondary = secondary;
+        }
+    }
+
+    return (unsigned char)best;
+}
+
 static int btnmenu_on_event(UIScreen *self, const UIEvent *ev)
 {
     BtnMenuScreenState *st = (BtnMenuScreenState *)self->userdata;
@@ -361,6 +463,20 @@ static int btnmenu_on_event(UIScreen *self, const UIEvent *ev)
             } else if (key == UI_KEY_LEFT || key == UI_KEY_DOWN) {
                 st->selected = (st->selected >= m->count - 1)
                     ? 0 : (unsigned char)(st->selected + 1);
+            }
+        } else if (m->nav_mode == UI_NAV_GEOMETRIC) {
+            if (key == UI_KEY_LEFT) {
+                st->selected = ui_nav_geometric(st->selected, -1, 0,
+                    m->x1, m->x2, m->y1, m->y2, m->count);
+            } else if (key == UI_KEY_RIGHT) {
+                st->selected = ui_nav_geometric(st->selected, 1, 0,
+                    m->x1, m->x2, m->y1, m->y2, m->count);
+            } else if (key == UI_KEY_UP) {
+                st->selected = ui_nav_geometric(st->selected, 0, -1,
+                    m->x1, m->x2, m->y1, m->y2, m->count);
+            } else if (key == UI_KEY_DOWN) {
+                st->selected = ui_nav_geometric(st->selected, 0, 1,
+                    m->x1, m->x2, m->y1, m->y2, m->count);
             }
         } else {
             if (UI_IS_NAV_PREV(key)) {

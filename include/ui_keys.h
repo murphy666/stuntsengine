@@ -56,7 +56,8 @@
 #define UI_KEY_ESCAPE_EXT   283     /* 0x011B — Alternate Escape code   */
 
 /* ---- Timing -------------------------------------------------------- */
-#define UI_INPUT_REPEAT_MS         100   /* Auto-repeat interval (ms)   */
+#define UI_INPUT_REPEAT_INITIAL_MS 280   /* Hold delay before repeat    */
+#define UI_INPUT_REPEAT_MS         170   /* Auto-repeat interval (ms)   */
 #define UI_MOUSE_AUTOHIDE_MS      2500  /* Mouse cursor auto-hide (ms) */
 #define UI_FRAMECOUNTER_WRAP      20000 /* Frame counter wrap threshold */
 #define UI_FRAMECOUNTER_SUBTRACT  10000 /* Subtracted on counter wrap   */

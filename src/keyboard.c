@@ -167,6 +167,8 @@ static unsigned char kb_sdl_scancode(SDL_Scancode sc)
 	case SDL_SCANCODE_LEFTBRACKET: return 26;
 	case SDL_SCANCODE_RIGHTBRACKET: return 27;
 	case SDL_SCANCODE_RETURN: return 28;
+	case SDL_SCANCODE_RETURN2: return 28;
+	case SDL_SCANCODE_KP_ENTER: return 28;
 	case SDL_SCANCODE_LCTRL:
 	case SDL_SCANCODE_RCTRL: return 29;
 	case SDL_SCANCODE_A: return 30;
@@ -237,7 +239,7 @@ static unsigned char kb_sdl_ascii(SDL_Keycode key, Uint16 mod)
 		return (unsigned char)('0' + (key - SDLK_0));
 	}
 	if (key == SDLK_SPACE) return ' ';
-	if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return KB_ASCII_CR;
+	if (key == SDLK_RETURN || key == SDLK_RETURN2 || key == SDLK_KP_ENTER) return KB_ASCII_CR;
 	if (key == SDLK_TAB) return KB_ASCII_TAB;
 	if (key == SDLK_BACKSPACE) return KB_ASCII_BS;
 	if (key == SDLK_ESCAPE) return KB_ASCII_ESC;
