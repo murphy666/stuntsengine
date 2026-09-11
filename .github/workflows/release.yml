@@ -56,6 +56,27 @@ jobs:
               fi
               cd "$RUNNER_TEMP"
               zip -r "${ARCHIVE_FILE}" "${ARCHIVE_NAME}"
+          - name: dos
+            preset: dos
+            archive_name: stunts-dos
+            archive_file: stunts-dos.zip
+            binary_dir: build_cmake_dos
+            package_cmd: |
+              set -e
+              pkgdir="$RUNNER_TEMP/${ARCHIVE_NAME}"
+              rm -rf "$pkgdir"
+              mkdir -p "$pkgdir"
+              cp "$BINARY_DIR/stunts.exe" "$pkgdir/"
+              cp README.md "$pkgdir/"
+              if [ -f docs/dos.md ]; then
+                mkdir -p "$pkgdir/docs"
+                cp docs/dos.md "$pkgdir/docs/"
+              fi
+              if [ -d ressources ] && [ "$(find ressources -mindepth 1 -maxdepth 1 | wc -l)" -gt 0 ]; then
+                cp -R ressources "$pkgdir/"
+              fi
+              cd "$RUNNER_TEMP"
+              zip -r "${ARCHIVE_FILE}" "${ARCHIVE_NAME}"
 
     steps:
       - name: Checkout repository
@@ -74,6 +95,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake mingw-w64 zip
+
+      - name: Install DOS cross-compile dependencies
+        if: matrix.platform.preset == 'dos'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build wget bzip2 zip
+
+      - name: Install DJGPP toolchain
+        if: matrix.platform.preset == 'dos'
+        run: |
+          set -e
+          DJGPP_VERSION=3.4
+          DJGPP_ARCHIVE=djgpp-linux64-gcc1220.tar.bz2
+          wget --fail --show-progress --https-only \
+            "https://github.com/andrewwutw/build-djgpp/releases/download/v${DJGPP_VERSION}/${DJGPP_ARCHIVE}" \
+            -O "$RUNNER_TEMP/${DJGPP_ARCHIVE}"
+          tar -xjf "$RUNNER_TEMP/${DJGPP_ARCHIVE}" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/djgpp/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/djgpp/bin/i586-pc-msdosdjgpp-gcc" --version
 
       - name: Configure
         run: cmake --preset "${{ matrix.platform.preset }}"
