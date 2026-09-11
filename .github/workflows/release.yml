@@ -34,6 +34,7 @@ jobs:
               mkdir -p "$pkgdir"
               cp "$BINARY_DIR/stunts" "$pkgdir/"
               cp README.md "$pkgdir/"
+              printf "%s\n" "$RELEASE_VERSION" > "$pkgdir/VERSION.txt"
               if [ -d ressources ] && [ "$(find ressources -mindepth 1 -maxdepth 1 | wc -l)" -gt 0 ]; then
                 cp -R ressources "$pkgdir/"
               fi
@@ -51,6 +52,7 @@ jobs:
               cp "$BINARY_DIR/stunts.exe" "$pkgdir/"
               find "$BINARY_DIR" -maxdepth 1 -type f \( -iname '*.dll' -o -iname '*.txt' \) -exec cp {} "$pkgdir/" \;
               cp README.md "$pkgdir/"
+              printf "%s\n" "$RELEASE_VERSION" > "$pkgdir/VERSION.txt"
               if [ -d ressources ] && [ "$(find ressources -mindepth 1 -maxdepth 1 | wc -l)" -gt 0 ]; then
                 cp -R ressources "$pkgdir/"
               fi
@@ -68,6 +70,7 @@ jobs:
               mkdir -p "$pkgdir"
               cp "$BINARY_DIR/stunts.exe" "$pkgdir/"
               cp README.md "$pkgdir/"
+              printf "%s\n" "$RELEASE_VERSION" > "$pkgdir/VERSION.txt"
               if [ -f docs/dos.md ]; then
                 mkdir -p "$pkgdir/docs"
                 cp docs/dos.md "$pkgdir/docs/"
@@ -134,6 +137,7 @@ jobs:
           ARCHIVE_NAME: ${{ matrix.platform.archive_name }}
           ARCHIVE_FILE: ${{ env.ARCHIVE_FILE_OUT }}
           BINARY_DIR: ${{ github.workspace }}/${{ matrix.platform.binary_dir }}
+          RELEASE_VERSION: ${{ github.event.inputs.version_override || github.ref_name }}
         run: ${{ matrix.platform.package_cmd }}
 
       - name: Upload build artifact
@@ -158,6 +162,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          name: Stunts Engine ${{ github.event.inputs.version_override || github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           files: |
             release-assets/**/*.tar.gz
             release-assets/**/*.zip
