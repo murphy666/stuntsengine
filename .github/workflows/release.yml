@@ -17,7 +17,7 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.platform.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -91,7 +91,7 @@ jobs:
         if: matrix.platform.preset == 'linux-release'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake libsdl2-dev
+          sudo apt-get install -y cmake libsdl3-dev
 
       - name: Install Windows cross-compile dependencies
         if: matrix.platform.preset == 'windows-x64'
@@ -111,7 +111,7 @@ jobs:
           set -e
           DJGPP_VERSION=3.4
           DJGPP_ARCHIVE=djgpp-linux64-gcc1220.tar.bz2
-          wget --fail --show-progress --https-only \
+          wget --show-progress --https-only \
             "https://github.com/andrewwutw/build-djgpp/releases/download/v${DJGPP_VERSION}/${DJGPP_ARCHIVE}" \
             -O "$RUNNER_TEMP/${DJGPP_ARCHIVE}"
           tar -xjf "$RUNNER_TEMP/${DJGPP_ARCHIVE}" -C "$RUNNER_TEMP"
