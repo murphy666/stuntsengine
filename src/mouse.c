@@ -22,7 +22,6 @@
 
 /* mouse.c — Mouse management extracted from stunts.c */
 #include <SDL3/SDL.h>
-#include <time.h>
 #include "stunts.h"
 #include "shape2d.h"
 #include "timer.h"
@@ -403,10 +402,7 @@ mouse_update_menu_blink(unsigned char selected, unsigned short *x1_arr, unsigned
         delta = (diff > 300UL) ? 300U : (unsigned short)diff;
     }
     if (delta == 0) {
-        struct timespec ts_yield;
-        ts_yield.tv_sec = 0;
-        ts_yield.tv_nsec = GAME_YIELD_NS;
-        nanosleep(&ts_yield, NULL);
+        SDL_DelayNS((Uint64)GAME_YIELD_NS);
     }
     /* timer_get_counter() units: g_timer_counter_units_per_tick=5 per 100Hz tick.
 	 * At 60fps delta≈5-10 units/frame.  Period=300, threshold=150 → 0.5s cycle. */

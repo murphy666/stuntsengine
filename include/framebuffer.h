@@ -38,11 +38,21 @@ typedef struct Framebuffer {
 struct SDL_Window;
 struct SDL_Renderer;
 struct SDL_Texture;
+struct SDL_Surface;
 
 typedef struct SDLContext {
     struct SDL_Window *window;
     struct SDL_Renderer *renderer;
     struct SDL_Texture *texture;
+    /* Direct-framebuffer path (DOS only): the game's 8-bit page is copied
+     * straight into a paletted window surface and the VGA DAC is driven from
+     * our own palette, so `renderer`/`texture`/`rgba` stay unused there.
+     * `surface` is owned by the window — it must not be destroyed by us. */
+    struct SDL_Surface *surface;
+    /* Last palette pushed to SDL. SDL_SetPaletteColors() bumps the palette
+     * version unconditionally and the DOS driver reprograms all 256 DAC
+     * entries on any version change, so only push when this differs. */
+    uint8_t palette_shadow[256][3];
     uint32_t rgba[FB_PIXELS];
 } SDLContext;
 

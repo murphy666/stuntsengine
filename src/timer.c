@@ -21,18 +21,13 @@
  */
 
 /* timer.c — Timer system extracted from stunts.c */
+#include <SDL3/SDL.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
-#include <unistd.h>
 #include "stunts.h"
 #include "game_timing.h"
 #include "shape2d.h"
 #include "timer.h"
-
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC CLOCK_REALTIME
-#endif
 
 /* Forward declarations are now in data_game.h and other module headers, included via stunts.h. */
 typedef void (*timer_callback_func_local)(void);
@@ -226,10 +221,7 @@ timer_wait_for_counter_rate(unsigned long rate_hz, unsigned long *next_counter,
     }
 
     while ((long)(*next_counter - current) > 0) {
-        struct timespec ts;
-        ts.tv_sec = 0;
-        ts.tv_nsec = GAME_YIELD_NS;
-        nanosleep(&ts, NULL);
+        SDL_DelayNS((Uint64)GAME_YIELD_NS);
         current = timer_get_counter();
     }
 
@@ -259,10 +251,7 @@ timer_get_delta(void) {
  * @return Function result.
  */
     if (!result) {
-        struct timespec ts;
-        ts.tv_sec = 0;
-        ts.tv_nsec = GAME_YIELD_NS;
-        nanosleep(&ts, NULL);
+        SDL_DelayNS((Uint64)GAME_YIELD_NS);
     }
 
     return result;
@@ -367,9 +356,7 @@ timer_wait_ticks_and_get_counter(unsigned long ticks) {
  */
 static unsigned long
 timer_now_ms(void) {
-    struct timespec ts;
-    (void)clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
+    return (unsigned long)SDL_GetTicks();
 }
 
 /* --- timer_dispatch_elapsed --- */

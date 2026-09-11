@@ -20,6 +20,11 @@
  * SOFTWARE.
  */
 
+/* Routes the real entry point through SDL_RunApp. That is a no-op on the
+ * desktop targets but required for other platforms. */
+#include <SDL3/SDL_main.h>
+
+#include <SDL3/SDL.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdarg.h>
@@ -2058,8 +2063,7 @@ run_game(void) {
                 /* Safety valve: if physics is significantly behind rendering,
 				 * yield briefly so the render path is not starved. */
                 if ((int)(replay_frame_counter - state.game_frame) > STN_REPLAY_RENDER_LAG_MAX) {
-                    struct timespec ts_yield = { 0, GAME_YIELD_NS };
-                    nanosleep(&ts_yield, NULL);
+                    SDL_DelayNS((Uint64)GAME_YIELD_NS);
                 }
                 continue;
             }
