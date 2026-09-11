@@ -18,7 +18,8 @@ cd "$REPO_ROOT"
 # ── 1. Build directories ──────────────────────────────────────────────────────
 # All CMake build trees follow the build_cmake* naming convention.
 # A plain 'build' directory is also cleaned for manual/legacy builds.
-for dir in build build_cmake build_cmake_release build_cmake_asan build_cmake_windows; do
+for dir in build build_cmake build_cmake_release build_cmake_asan build_cmake_windows \
+           build_cmake_dos; do
     if [[ -d "$dir" ]]; then
         echo "--> Removing $dir/"
         rm -rf "$dir"

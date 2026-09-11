@@ -4,7 +4,8 @@ A modern C reimplementation of the classic **4D Sports Driving / Stunts** (1990)
 racing game engine, building on the reverse-engineering work of the
 [Restunts](https://github.com/4d-stunts/restunts) project.
 
-Targets modern operating systems only — no DOS support.
+Targets modern operating systems, and 32-bit protected-mode DOS via DJGPP
+(see [docs/dos.md](docs/dos.md)).
 
 ## How
 
@@ -42,7 +43,7 @@ library/
   sdl3-windows/ SDL3 MinGW dev archive (auto-downloaded for Windows builds)
 ressources/     Game resource files (see "Game Resources" below)
 docs/           Design documents and the original game manual
-cmake/          CMake toolchain file for MinGW cross-compilation
+cmake/          CMake toolchain files (MinGW and DJGPP cross-compilation)
 clean_repo.sh   Script to remove all build artifacts and downloaded deps
 ```
 
@@ -73,6 +74,15 @@ sudo apt-get install mingw-w64
 
 The SDL3 Windows development archive is **downloaded automatically** by CMake
 on the first configure run. No manual SDL3 setup is needed.
+
+### DOS (cross-compile from Linux)
+
+Install the Linux prerequisites above, then a DJGPP cross-compiler, so that
+`i586-pc-msdosdjgpp-gcc` is on `PATH` (see <https://github.com/andrewwutw/build-djgpp>).
+
+SDL3 is fetched and built from source by CMake on the first configure run.
+To run the result you also need a DPMI host, `CWSDPMI.EXE`, from
+<https://sandmann.dotster.com/cwsdpmi/>.
 
 ---
 
@@ -128,6 +138,19 @@ cmake --build --preset windows-x64
 SDL3 is downloaded automatically on the first configure run.
 The output (`stunts.exe` + `SDL3.dll`) can be copied directly to a Windows machine.
 
+### DOS (cross-compile from Linux)
+
+Needs a DJGPP cross-compiler (`i586-pc-msdosdjgpp-gcc`) on `PATH`.
+
+```bash
+cmake --preset dos
+cmake --build --preset dos
+```
+
+SDL3 is fetched and built from source on the first configure run. The output
+`build_cmake_dos/stunts.exe` needs a DPMI host (`CWSDPMI.EXE`) beside it at
+runtime, plus the game data. See [docs/dos.md](docs/dos.md).
+
 ### All presets
 
 | Preset | Platform | Type |
@@ -136,6 +159,7 @@ The output (`stunts.exe` + `SDL3.dll`) can be copied directly to a Windows machi
 | `linux-release` | Linux | Release, optimised |
 | `linux-asan` | Linux | Debug + AddressSanitizer |
 | `windows-x64` | Windows (MinGW) | Release |
+| `dos` | DOS 32-bit (DJGPP) | Release |
 
 ### GitHub Releases
 
@@ -150,6 +174,7 @@ GitHub Actions release builds are defined in [.github/workflows/release.yml](.gi
 | Option | Default | Description |
 |--------|---------|-------------|
 | `STUNTS_ASAN` | `OFF` | Enable AddressSanitizer |
+| `STUNTS_FM_EMULATION` | `ON` (`OFF` on DOS) | Synthesize FM in software (Nuked-OPL3) instead of driving the OPL at port 388h. Forced `ON` off DOS. |
 
 ---
 

@@ -10,11 +10,27 @@ option(STUNTS_ASAN    "Build with AddressSanitizer (GCC/Clang only)"  OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---------------------------------------------------------------------------
+# Platform detection
+#
+# cmake/toolchain-djgpp.cmake sets CMAKE_SYSTEM_NAME=DOS. Everything that has
+# to differ for 32-bit protected-mode DOS keys off STUNTS_DOS.
+# ---------------------------------------------------------------------------
+if(CMAKE_SYSTEM_NAME STREQUAL "DOS")
+    set(STUNTS_DOS TRUE)
+endif()
+
+# ---------------------------------------------------------------------------
 # C standard
 # ---------------------------------------------------------------------------
 set(CMAKE_C_STANDARD   11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)   # use -std=c11, not gnu11 (fmopl gets gnu11 explicitly)
+if(STUNTS_DOS)
+    # DJGPP hides its POSIX/BSD extras (strcasecmp, usleep, …) behind
+    # !__STRICT_ANSI__, which -std=c11 defines. Use gnu11 there instead.
+    set(CMAKE_C_EXTENSIONS ON)
+else()
+    set(CMAKE_C_EXTENSIONS OFF)   # use -std=c11, not gnu11 (fmopl gets gnu11 explicitly)
+endif()
 
 # C++ standard
 set(CMAKE_CXX_STANDARD          17)
@@ -27,6 +43,7 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 # On Linux:  found via CMake config or pkg-config / system headers.
 # On Windows (cross-compile): auto-downloaded to library/sdl3-windows/.
 #   Override with -DSDL3_DIR=<path> if you have a custom installation.
+# On DOS (DJGPP):  built from source — no distro packages exist.
 # ---------------------------------------------------------------------------
 
 # Auto-download SDL3 MinGW development archive for Windows cross-builds.
@@ -86,14 +103,42 @@ if(WIN32)
     unset(_SDL3_CONFIG_DIR)
 endif()
 
-find_package(SDL3 QUIET CONFIG)
-
-if(TARGET SDL3::SDL3)
+if(STUNTS_DOS)
+    # No system SDL3 exists for DJGPP, so build it from source. DOS support is
+    # not in any upstream release yet — as of release-3.4.16, the newest, there
+    # is still no src/video/dos — it lives only on main. So this has to be a
+    # commit pin rather than a tag; revisit once a release carries it.
+    #
+    # Pinned by URL + SHA256 so the build is reproducible off a moving branch.
+    # This commit is the one that made the DOS joystick probe the gameport at
+    # 0x201 directly, replacing the BIOS INT 15h probe whose expensive polling
+    # loop interferes with SB16 IRQ timing — which matters here because the game
+    # opens a gamepad (src/keyboard.c). Anything older needs that fix carried
+    # separately.
+    include(FetchContent)
+    set(SDL_SHARED   OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC   ON  CACHE BOOL "" FORCE)
+    set(SDL_TESTS    OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDL_INSTALL  OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        SDL3
+        URL "https://github.com/libsdl-org/SDL/archive/015489c672f24feed28c2aa2cdd6176df95329f3.tar.gz"
+        URL_HASH SHA256=50c373115702974928c760f6e752aae33b69dcc51b4c2d909c35b30f41283a52
+        UPDATE_DISCONNECTED TRUE
+    )
+    FetchContent_MakeAvailable(SDL3)
     set(STUNTS_SDL_TARGET SDL3::SDL3)
 else()
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
-    set(STUNTS_SDL_TARGET PkgConfig::SDL3)
+    find_package(SDL3 QUIET CONFIG)
+
+    if(TARGET SDL3::SDL3)
+        set(STUNTS_SDL_TARGET SDL3::SDL3)
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+        set(STUNTS_SDL_TARGET PkgConfig::SDL3)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -132,10 +177,49 @@ endif()
 file(GLOB ALL_SRC CONFIGURE_DEPENDS "src/*.c")
 
 # ---------------------------------------------------------------------------
+# FM synthesis backend
+#
+# Off DOS there is no OPL chip to drive, so the AdLib register stream has to be
+# synthesized in software (src/opl2.c, on Nuked-OPL3) and mixed into the PCM
+# output. On DOS every AdLib and Sound Blaster card carries an OPL at port 388h,
+# so the default writes the chip directly (src/opl2_dos.c) and leaves the
+# emulator out of the build entirely.
+#
+# This is not just a size saving: software synthesis costs roughly 20 ms per
+# 100 Hz game tick on the 486-class hardware this targets, which drags the game
+# below 1 fps. Driving the chip costs a few port writes.
+#
+# Build -DSTUNTS_FM_EMULATION=ON for a Sound Blaster-compatible DOS card with no
+# FM part (much more CPU, and likely too slow to be playable).
+# ---------------------------------------------------------------------------
+if(STUNTS_DOS)
+    set(_fm_emulation_default OFF)
+else()
+    set(_fm_emulation_default ON)
+endif()
+option(STUNTS_FM_EMULATION
+    "Synthesize FM in software (Nuked-OPL3) instead of driving the OPL port; always ON off-DOS"
+    ${_fm_emulation_default})
+if(NOT STUNTS_DOS AND NOT STUNTS_FM_EMULATION)
+    message(STATUS "STUNTS_FM_EMULATION forced ON: only DOS can drive an OPL chip directly")
+    set(STUNTS_FM_EMULATION ON)
+endif()
+
+# The two backends implement the same opl2.h interface, so exactly one is built.
+if(STUNTS_FM_EMULATION)
+    list(REMOVE_ITEM ALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/opl2_dos.c")
+else()
+    list(REMOVE_ITEM ALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/opl2.c")
+    message(STATUS "FM: driving the OPL at port 388h (software synthesis not built)")
+endif()
+
+# ---------------------------------------------------------------------------
 # Git submodule auto-init  (library/adplug)
 # If the submodule checkout is missing, run `git submodule update --init`
 # so that a fresh clone + cmake configure "just works" on Linux and Windows.
+# Only needed for the software FM backend; the DOS default never compiles it.
 # ---------------------------------------------------------------------------
+if(STUNTS_FM_EMULATION)
 find_package(Git QUIET)
 set(_adplug_sentinel "${CMAKE_CURRENT_SOURCE_DIR}/library/adplug/src/fmopl.c")
 if(NOT EXISTS "${_adplug_sentinel}")
@@ -180,13 +264,19 @@ else()
         -Wno-sign-compare
         -Wno-unused-but-set-variable)
 endif()
+endif() # STUNTS_FM_EMULATION
 
 # ---------------------------------------------------------------------------
 # stunts executable
 # ---------------------------------------------------------------------------
-add_executable(stunts ${ALL_SRC} $<TARGET_OBJECTS:fmopl_obj>)
+if(STUNTS_FM_EMULATION)
+    add_executable(stunts ${ALL_SRC} $<TARGET_OBJECTS:fmopl_obj>)
+    target_include_directories(stunts PRIVATE library/adplug/src)
+else()
+    add_executable(stunts ${ALL_SRC})
+endif()
 
-target_include_directories(stunts PRIVATE src include library/adplug/src)
+target_include_directories(stunts PRIVATE src include)
 target_compile_options(stunts PRIVATE
     ${STUNTS_WARN_FLAGS})
 target_link_libraries(stunts PRIVATE ${STUNTS_SDL_TARGET})
@@ -207,9 +297,11 @@ if(STUNTS_ASAN)
     target_link_options(stunts PRIVATE ${ASAN_LINK_FLAGS})
 endif()
 
-# On Linux/macOS, expose POSIX.1-2008 APIs (nanosleep, clock_gettime, etc.)
-# which -std=c11 hides without a feature-test macro.
-if(NOT WIN32)
+# On Linux/macOS, expose POSIX.1-2008 APIs (opendir, readdir, etc.) which
+# -std=c11 hides without a feature-test macro. Not on DOS: DJGPP reads this as
+# _POSIX_SOURCE and would then hide the BSD extras (strcasecmp) that compat_fs.h
+# needs — the gnu11 dialect selected above already exposes everything there.
+if(NOT WIN32 AND NOT STUNTS_DOS)
     target_compile_definitions(stunts PRIVATE _POSIX_C_SOURCE=200809L)
 endif()
 

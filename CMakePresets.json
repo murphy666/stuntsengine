@@ -43,6 +43,17 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "dos",
+      "displayName": "DOS 32-bit (DJGPP cross-compile)",
+      "description": "Cross-compile for 32-bit protected-mode DOS using DJGPP on Linux. SDL3 is built from source during configure. Needs i586-pc-msdosdjgpp-gcc on PATH.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_cmake_dos",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-djgpp.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -61,6 +72,11 @@
     {
       "name": "windows-x64",
       "configurePreset": "windows-x64",
+      "jobs": 0
+    },
+    {
+      "name": "dos",
+      "configurePreset": "dos",
       "jobs": 0
     }
   ]
